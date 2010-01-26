@@ -1,0 +1,561 @@
+			      *automatic-tex-plugin* *atp* 
+			Introduction to Automatic (la)TeX Plugin
+				by Marcin Szamotulski
+			----------------------------------------
+
+
+					Abstract
+					========	
+
+This is a new plugin for vim to comfortably write TeX (LaTeX, PdfLaTeX)
+documents, which provides functionality not met in other plugins.  It makes
+you FREE from compiling procedure, making this process automatic using
+autocommands. It also provides useful mappings and ways to analyse your .log
+file.  To have full functionality you need: texloganalyser (a perl program
+written by Thomas van Oudenhove) and pdffonts available in the package
+app-text/poppler-utils (at least in Gentoo). Another good tool is texdoc,
+which is a part of texlive these day standard TeX distribution for Linux.
+
+
+                                                		*atp-help-toc*
+|atp-installation| 	Installation								
+|atp-functions| 	Functions
+|atp-configure| 	How to configure to your needs 
+|atp-mappings|  	Mappings and Commands
+|atp-errors|  		Error handling
+|atp-requirements|  	Requirements
+|atp-viewers| 		Note about viewers
+|atp-remarks|  		Final remarks
+
+	
+Note on usage: type :help atp<CTR>d to see all the helptags. To see help tags
+for all the defined functions :help atp*()<CTR>d, mappings: :help atp-map<CTR>d
+
+================================================================================
+Installation                               			*atp-installation*
+>
+	" :filetype plugin on is required to run this plugin, see
+	" |:filetype-plugin-on| and |:filetype-indent-on| if you want to have
+	" automatic intendation for TeX files.
+<
+To install you just need to copy tex.vim file to ~your ~/.vim/ftplugin/
+directory copy this help file to ~/.vim/doc and then run :helptags ~/.vim/doc
+and that's all, now you can just type your story ... :)
+
+
+================================================================================
+Functions                               			*atp-functions*
+
+The main function is not seen by the user (it is called s:compiler, for those
+who want to read the plugin). It executes tex compiler specified by the
+variable b:texcompiler after checking if the file has changed. It is executed
+as an autocommand by the line:
+	au! CursorHold $HOME*.tex silent call 's:auTeX()'
+where s:auTeX() is a simple function which calls s:compiler.
+As you can see it will run if a key is not pressed during time defined by
+option 'updatetime' (see |CursorHold|) in the normal mode. If you type in
+insertmode the file wan't be compiled (and that's alright as you can be in the
+middle of your very long formula). The value of 'updatetime' which works fine
+is around 1000ms ('updatetime' is set in miliseconds). The function s:auTeX() 
+if finds a difference between what is on you hard drive and what is in your
+buffer runs tex compiler (configured in b:texcompiler) with options:
+	-output-directory 
+	-jobname
+which points to a unique temporary file in vim temporary directory (using the
+function 'tempname()' (see |tempname()|. If you are concerned with security
+reasons read also: |shelltemp|, ... (THERE IS A HELP ON: HOW TO SET
+PERMISSIONS TO TEMPORARY FILES)
+
+You can switch off/on the function s:auTeX by pressing <S-F5>  or by letting
+the local to buffer variable b:autex=1 (on) b:autex=0 (off). It is useful in
+some situations. The key <S-F5> calls the function ToggleAuTex() which sets
+the variable b:autex and issue a message. 
+
+The second important variable b:texcompiler (see |b:texcompiler|) configures
+if you use TeX, PdfTeX, LaTeX, PdfLaTeX and it should point to the program
+name so please do not use capital letters.
+
+Next variable to set is b:outdir (see |b:outdir|). It configures where TeX
+will put the output and where viewer and log analyzing tools can find
+appropriate files.
+
+The last top most important variable is |g:keep| which is a list of extensions,
+by default it is
+	let g:keep = ["log","aux","toc","bbl"]
+Files with this extension will be copied from b:outdir to the temporary
+directory with appropriate name to be used when (La)TeX is compiling. (log file
+will be only copied after it is created, other files will be copied back and
+forth between you b:outdir and the temporary directory)
+
+There is also a variable which stores the last command which executed
+your tex compiler, see |b:texcommand|.   
+
+The last remark is that it is convenient to see if tex is running, if you are
+using a simple window manager like DWM or WMII or some others you can do that
+in your .xinitrc file. If you are using more complex window manager (Gnome,
+KDE) you can use the command GPID (or which is mapped to \g) which returns pid
+of |b:texcompiler| if it runs. The vim status line could be used for that but
+it seems to be to slow and the screen gets messy (at least for me).
+
+If you have defined a function with the same name it wan't be overwritten.
+You can check where the function was defined by the command
+	:verbose function TEX
+the last component is the name of the function (without () at the end).	
+
+Below I explain functions which are defined:
+/all of them do not have any arguments/
+
+TEX([runs])						*atp-TEX()*
+map \l,imap \ll, :TEX 
+
+	If anyway you want to run TeX yourself but you do not want to see the
+	output this is the right tool. This runs TeX in 'nonstopmode'. You can
+	specify an argument 'runs' which tells how many consecutive runs of
+	TeX you need (this is important if you want to compile Table of
+	Contents, or index, or the bibliography (see |atp-Bibtex()|)
+
+	If b:openviewer=1 and there current viewer (b:Viewer) is not running on the
+	output file then this function will open a viewer. By default b:openviewer=0
+	and this feature is disabled. 
+
+VTEX([runs])						*atp-VTEX()*
+map <F5>,imap <F5>, :VTEX 
+	
+	Verbose TeX, if you want to see the log file after tex compiler is
+	called. This runs TeX in the errorstop mode. 
+
+	If b:openviewer=1 and there current viewer (b:Viewer) is not running
+	on the ouput file then this function will open a viewer. By default
+	b:openviewer=0 and this feature is disabled. 
+
+	If the variable 'runs' is specified is given then VTEX will call the
+	tex compiler as many times as given. Only the last time is with
+	errorstop mode.
+	
+Bibtex([debug])						*atp-Bibtex()* 
+map \b, :Bibtex, :VBibtex
+	This function will call bibtex to produce the bibliography file
+	(.bbl). If in you |b:outdir| there is no aux file it first calls your
+	tex compiler. After the bbl file is produced two consecutive runs of
+	tex compiler are called to make your bibliography.
+
+	If you specify any value to the debug variable then then this function
+	will be called in verbose mode (only the last time tex compiler will
+	run in errorstop mode). This gives you the chance to see the output of
+	bibtex command for a second. The command :VBibtex is associated to
+	this behaviour.
+
+SimpleBibtex()						*atp-SimpleBibtex()*
+map \sb, :SBibtex
+	This calls bibtex on the aux file in your |b:outdir| directory and
+	shows you the output. It is useful if you are debugging your
+	bibliography database. 
+	
+ViewOutput()						*atp-ViewOutput()*
+map \v,map <F3>, imap \v, imap <F3>  
+
+	You would like to see what you are editing use this function. It will
+	use the program defined in the variable b:Viewer. See |b:Viewer|,
+	|b:XpdfServer|, |b:XpdfOptions|. When there is no output file it will run
+	TeX and open the file.
+
+OpenLog()						*atp-OpenLog()*
+map <F6>l, imap <F6>l
+	Opens log file in a new tab with two options (which are set
+	locally): ruler, nospell.	
+
+Delete()						*atp-Delete()*
+map <F6>d
+	Delets the files produced by TeX wich extensions belongs to
+	g:texextensions (see |g:texextensions|). It removes not taking care
+	about the name, i.e. it runs like: rm *.out.
+
+Print()							*atp-Print()*
+map \p
+	It will run lpr command and append to it the options defined in the
+	variable g:printeroptions. It prints the pdf file if you are using
+	Pdf(La)TeX  or the dvi file if you are using (La)TeX. Depneding, what
+	you have in |b:texcompiler|.
+
+ShowATPO()						*atp-show-options* *atp-ShowATPO()*
+:ShowATPO
+	This will show values of values that you use. If you specify any
+	argument additionaly the deafult values will be shown is suqare brackets.>
+		call ShowATPOptions("d")
+<		
+	
+
+================================================================================
+How to configure to your needs                          *atp-configure*
+
+There are several options you can set, and they might be set in your vimrc
+file, unless you want to use the default, which I provide below.
+
+All buffer variables (see |b:var|), i.e. these which name begins with "b:" can
+be should be set in you vimrc file. The best way to do that is by using
+autocommand:
+	au BufReadPre *.tex let b:texcompiler="latex"
+If you put just let b:texcompiler, this will also work but only open vim from
+terminal (not when you want to start edditing next buffer). 
+
+let b:texcomiler="pdflatex" 					*b:texcompiler*
+	Used by functions: TEX() (map \l, imap \l), VTEX() (map <F5>, imap <F5>)
+
+	You can set it to latex, tex, luatex, and so on.  
+	
+								*b:outdir*
+let b:outdir=fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/"
+Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete() 
+			i.e. in all functions.
+
+	This is the directory in which tex will put the output files. If the
+	open file is not a symbolic link it is equal to the directory in which
+	the tex file is located. If the open file is a symbolic link it points
+	to the directory in which the real file is located. 
+	
+	If you set this variable to './' (or '.') and change the current
+	working directory for example to /tmp (:cd /tmp) then the latex output
+	will be placed in /tmp, i.e. it will move with with cd. However, the
+	default value of b:outdir is not affected by :cd command.
+
+	You can see the current output directory in the status (it is in short
+	notation) to see it whole type
+		:echo b:outdir
+	or use the function ShowAPTO() (see |apt-ShowAPTO()|).		
+
+let g:askforoutdir=0						*g:askforoutdir*
+	Its values are 1 and 0.  When it is set to 1 you will be asked for the
+	name of a directory where tex will put output files, note that this
+	name should end with a "/".
+
+let b:Viewer="xpdf"						*b:Viewer*
+	it was tested with xpdf, evince, epdfviewer, kpdf, okular, xdvi and
+	they all works fine.  I'm using xpdf and the xpdf server options are
+	supported so that the file is automatically reloaded (other viewers,
+	except epdfview, have this functionality as well, except acroread in
+	which somehow it do not works. Read more about viewers in
+	|atp-viewers|. 
+
+let b:XpdfOptions=""						*b:XpdfOptions*
+	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
+
+	For example if you want to have different look of one document you can
+	set it to "-bg gray20". Other example:
+
+	let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue3 -papercolor SlateBlue4"
+
+let b:XpdfServer=fnamemodify(expand("%"),":t")			*b:XpdfServer*	
+	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
+
+	that is it is equal to the name of your open file. You do not need
+	escape spaces in the name (shellescape() function is used before it is
+	send to your shell).
+
+let b:openviewer=1						*b:openviewer*
+	If the function which calles TeX compiler do not see that you are
+	viewing the output file it will open it for you if b:openviewer=1.
+	Otherwise, this feature is disabled.
+
+let g:rmcommand="perltrash"					*g:rmcommand*
+	Used by function: Delete() (map <F6>d imap <F6>d)	
+
+	If you have another trash can program you can use it here, if you do
+	not have it you can use "rm" (at your own risk). Now, it is used to
+	delete the files produced by (La)TeX by the function Delete() (see
+	|apt-Delete()|). It will remove all files in the output directory (see
+	|b:outdir|), which ends with
+	an extension defined in the list g:texextensions  
+	
+	If you set 
+		let g:rmcommand=""
+	then the function Delete() (see |apt-Delete()|) will use the vim
+	|delete()| command, and will delete only the files produced by the
+	current .tex file. The temporary directory is cleared by rm command.
+
+	The program 'perltrash' is in the package app-misc/perltrash (at least
+	for Gentoo)
+
+								*g:texextensions*	
+let g:texextensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]	
+	 These list is used by the function Delete() (see |apt-Delete()|)
+	 which delets all the file with this extension in the directory
+	 b:outdir, unless g:rmcommand="" (see |g:rmcommand|) whene Delete()
+	 deletes only the output files for the current buffer.
+									
+let g:keep=["log","aux","toc","bbl"]				*g:keep*
+	
+	Files with this extension will be copied from b:outdir to the
+	temoporary directory with appropriet name to be used when (La)TeX is
+	compiling. (log file will be only copied after it is created, other
+	files will be copied back and forth between you b:outdir and the
+	temporary directory). These four are essentially minimum to work with 
+	table of contents and bibtex, possibly other classes like beamer or
+	packages like theorem (produced .thm files) have more special needs.
+	You can change this variable by the command:
+		:let g:keep+=["thm","spl"]
+								
+let g:printeroptions=""						*g:printeroptions*
+	You can set the printer options. These are options for the lpr
+	command, which will print the output file (pdf or dvi) this depends on
+	the b:texcompiler that you use.
+
+b:texcommand							*b:texcommand*
+	This variable is for debugging, it stores the last command executed to
+	compile your document. This changes also when your compiler was run
+	automatically.>
+		:call TEX(1)
+		:echo b:texcommand
+		:call TEX(2)
+		:echo b:texcommand
+<		
+		
+	
+
+================================================================================
+Mappings and Commands                     		*atp-mappings*
+
+Lots mappings which are given here uses # which is in a convenient place on
+British keyboards, but not in the US layout, you can change them for '`' or
+some other key that it is not used in vim (there are not many of them
+though). The most commonly used latex-suite plugin uses similar set of
+mappings (but there might be some differences).
+
+These mappings are loaded unless you set one of variables: 'no_plugin_maps' or
+'no_atp_maps'.
+
+Note: in all mappings "\" is really set to your <LocalLeader> (and thus, in
+fact, the mapping can differ).
+
+TEX()							*atp-map-TEX()*
+map \l,imap \l, :TEX 
+
+VTEX()							*atp-map-VTEX()*
+map <F5>,imap <F5>, :VTEX 
+
+ViewOutput()						*atp-map-ViewOutput()*
+map \v,map <F3>, imap \v, imap <F3>  
+
+Bibtex()						*atp-map-Bibtex()*
+map \b, :Bibtex
+
+SimpleBibtex()						*atp-map-SimpleBibtex()*
+map \sb, :SBibtex
+
+OpenLog()						*atp-map-OpenLog()*
+map <F6>l, imap <F6>l
+
+Delete()						*atp-map-Delete()*
+map <F6>d
+
+Print()							*atp-map-Print()*
+map \p
+	This calls the function Printer(g:printeroptions) (see |Print()|).
+
+								
+
+texdoc:							*atp-map-texdoc*
+<F1> 	   
+	This is both map and imap. Then You have to type what you are looking
+	for and press enter. The option 'keywordprg' set to 'texdoc -m', i.e
+	when your curosr is over a package name and you press 'K' key then you
+	should see the package document file.
+
+	Note: if you are using: 
+		au! BufWinEnter *.tex silent loadview
+		au! BufWinLeave *.tex mkview
+	in your $VIMRC file, you will need to change this option in all
+	~/.vim/view/*.tex= files. To check if this option was set from a view
+	file type 
+		:verbose set keywordprg?
+	Type in your terminal 
+		vim ~/.vim/view/*.tex=
+	then issue the command
+		:bufdo %s/setlocal keywordprg=\p*/setlocal keywordprg=texdoc\ -m/g | w
+		
+
+texloganalyzer mappings:				*atp-texlog* *atp-texloganalyzer*			
+<F6>+w			to see all warnings
+<F6>+r			to see warnings coming from references 
+<F6>+f			to see font warnings
+
+this is not a texloganalyzer mapping but it is a good place to mention it:
+<F6>+l			to open log file in another tab
+			this is a mapping to a function called |OpenLog()|.
+
+								
+pdffonts is mapped to <F6>+g				*atp-pdffonts*
+
+" FONT COMMANDS
+imap ##rm \textrm{}<Left>
+imap ##it \textit{}<Left>
+imap ##sl \textsl{}<Left>
+imap ##sf \textsf{}<Left>
+imap ##bf \textbf{}<Left>
+	
+imap ##mit \mathit{}<Left>
+imap ##mrm \mathrm{}<Left>
+imap ##msf \mathsf{}<Left>
+imap ##mbf \mathbf{}<Left>
+
+							*atp-mappings-greek-letters*
+" GREEK LETTERS
+imap #a \alpha
+imap #b \beta
+imap #c \chi
+imap #d \delta
+imap #e \epsilon
+imap #f \phi
+imap #y \psi
+imap #g \gamma
+imap #h \eta
+imap #k \kappa
+imap #l \lambda
+imap #i \iota
+imap #m \mu
+imap #n \nu
+imap #p \pi
+imap #o \theta
+imap #r \rho
+imap #s \sigma
+imap #t \tau
+imap #u \upsilon
+imap #vs \varsigma
+imap #vo \vartheta
+imap #w \omega
+imap #x \xi
+imap #z \zeta
+
+Not all upper Greek letters are in LaTeX:
+imap #D \Delta
+imap #Y \Psi
+imap #F \Phi
+imap #G \Gamma
+imap #L \Lambda
+imap #M \Mu
+imap #N \Nu
+imap #P \Pi
+imap #O \Theta
+imap #S \Sigma
+imap #T \Tau
+imap #U \Upsilon
+imap #V \Varsigma
+imap #W \Omega
+
+								*atp-mappings-environments*
+imap [b \begin{}<Left>
+imap [e \end{}<Left>
+inoremap [s \begin{}<CR>\end{}<Up><Right>
+
+inoremap ]c \begin{center}<Cr>\end{center}<Esc>O
+inoremap [c \begin{corollary}<Cr>\end{corollary}<Esc>O
+inoremap [d \begin{definition}<Cr>\end{definition}<Esc>O
+inoremap ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
+inoremap [q \begin{equation}<Cr>\end{equation}<Esc>O
+inoremap [a \begin{align}<Cr>\end{align}<Esc>O
+inoremap [x \begin{example}<Cr>\end{example}<Esc>O
+inoremap ]q \begin{equation}<Cr>\end{equation}<Esc>O
+inoremap ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
+inoremap ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
+inoremap [i \item  
+inoremap ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
+inoremap [l \begin{lemma}<Cr>\end{lemma}<Esc>O
+inoremap [n \begin{note}<Cr>\end{note}<Esc>O
+inoremap [o \begin{observation}<Cr>\end{observation}<Esc>O
+inoremap ]p \begin{proof}<Cr>\end{proof}<Esc>O
+inoremap [p \begin{proposition}<Cr>\end{proposition}<Esc>O
+inoremap [r \begin{remark}<Cr>\end{remark}<Esc>O
+inoremap [t \begin{theorem}<Cr>\end{theorem}<Esc>O
+imap 	 ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
+
+								*atp-mappings-other*
+These are very useful mappings for typing mathematics:
+imap __ _{}<Left>
+imap ^^ ^{}<Left>
+imap [m \[\]<Left><Left>
+
+================================================================================
+Error Handling							*atp-errors*
+	
+This plugins sets the option 
+	set errorfile=  log file in your b:outdir directory
+This allows you to use |quickfix| commands, for example to read the error file
+use :cg (see |cg|), to jump to the first error :cf (see |cg|), to list all
+errors :cl (see |cl|), read |errorformat| if you want to change the output of
+this commands
+
+================================================================================
+Requirements							*atp-requirements*
+
+This plugin requires vim version higher than 7, however a some simple changes
+can make it run on older versions as well (the 'source code' uses lists /g:keep
+and let g:texextensions are the only ones). 
+
+It is nice to have 'texdoc' program. This plugin maps <F1> to :!texdoc -m ...
+and allows to speed up your searches. Also the option 'keywordprg' has the
+value "texdoc -m", thus pressing 'K' (see |K|) over a texpackage should open
+you the package documentation. It is also a good advice to install help
+files of latex-suite, you can find there a big part of 'Non so short
+introduction to Latex' by Tobias Oetiker (copy them to your ~/.vim/doc
+document then use |:helptags| to install the helptags :helptags ~/.vim/doc and
+that's it). The same applies to this help file.
+
+Another good programs are texloganalyzer and pdffonts wchich are not required
+by there are some mappings to defined (see |texlog| and |pdffonts|).
+
+================================================================================
+Notes on Viewers                               			*atp-viewers*
+
+xpdf	
+	It is fully supported. 
+	It is configured in the way that when your tex file have errors, 
+	xpdf viewer will not reload your file, which I found useful. 
+
+	You can set your own options of xpdf using b:XpdfOptions, for example
+		let b:XpdfOptions="-bg grey20"
+	will make xpdf view different. This is helpfull when you edit to
+	files, and do not want to xpdf mix them. Other useful options are
+	-papercolor and -mattecolot for example
+		let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue3 -papercolor SlateBlue4"
+	for something which is more eye friendly.	
+evince
+	Works fine.
+okular
+kpdf
+	Works fine (moves page a little bit when updates a file).
+epdfview
+	This viewer does not support automatic reloads when the file
+	changes (but it seems that the work is in progress). You have to
+	issue CTRL-R yourself when the file is changed.
+acroread
+	As with epdfview (with the difference that it supports automatic
+	updates, but it do not works somehow)
+    xdvi
+	Works fine.
+
+
+================================================================================
+Final Remarks                               			*atp-remarks*
+	
+	To see some messages that are issued you can use :messages command.
+
+	If you find this plugin useful and have some comments you are
+	cordially invited to write to the author: <mszamot@gmail.com>.
+
+	There are other ways to make such an automatic plugin. The crucial
+	step is to make the plugin know that tex is already in use (if you run
+	to tex compilers on the same file at the same time the effect won't be
+	good).
+
+	For several month I was using a different code which was not using
+	temporary copies but was checking if the tex is running. It was
+	working very good but I didn't understand why (silly isn't it), and
+	when I started making changes it stopped working: the issue is that
+	it is difficult to make a function sleep until tex stops working not
+	putting whole vim into sleep - this the time that we want to save.
+	However, the advantage of using temporary files is smoothness (changes
+	appear faster in the output file). 
+
+	Best regards, and hopefully you will find this useful :) 
+	Marcin Szamotulski
+	
+vim:tw=78:ts=8:ft=help:norl:

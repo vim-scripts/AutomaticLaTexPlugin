@@ -3,6 +3,9 @@
 " Maintainer:	Marcin Szamotulski
 " Last Changed: 2010 Jan 25
 " URL:		
+"
+" GetLatestVimScripts: 2945 1 :AutoInstall: tex_atp.vim
+"
 
 if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1

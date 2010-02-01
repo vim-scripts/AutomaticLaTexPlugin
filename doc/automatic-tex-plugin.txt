@@ -3,6 +3,10 @@
 				by Marcin Szamotulski
 			----------------------------------------
 
+If you found this plugin useful, you are cordially invited to write to me
+mszamot@gmail.com, this is my first vim plugin, and its a great pleasure 
+to get even the smallest message.
+
 
 					Abstract
 					========	
@@ -16,10 +20,12 @@ written by Thomas van Oudenhove) and pdffonts available in the package
 app-text/poppler-utils (at least in Gentoo). Another good tool is texdoc,
 which is a part of texlive these day standard TeX distribution for Linux.
 
+We provide a powerful function to search in bibliographic files (bib files).
 
                                                 		*atp-help-toc*
 |atp-installation| 	Installation								
 |atp-functions| 	Functions
+|atp-bibsearch|		Searching in bib files
 |atp-configure| 	How to configure to your needs 
 |atp-mappings|  	Mappings and Commands
 |atp-errors|  		Error handling
@@ -118,6 +124,9 @@ map \l,imap \ll, :TEX
 	output file then this function will open a viewer. By default b:openviewer=0
 	and this feature is disabled. 
 
+	The command :2TEX will run :call TEX(2), :TEX 3 do :call TEX(3), and
+	:2TEX3 will resolve to :call TEX(3).
+
 VTEX([runs])						*atp-VTEX()*
 map <F5>,imap <F5>, :VTEX 
 	
@@ -132,8 +141,11 @@ map <F5>,imap <F5>, :VTEX
 	tex compiler as many times as given. Only the last time is with
 	errorstop mode.
 	
+	The command :2VTEX will run :call VTEX(2), :VTEX 3 do :call VTEX(3), and
+	:2VTEX3 will resolve to :call VTEX(3).
+
 Bibtex([debug])						*atp-Bibtex()* 
-map \b, :Bibtex, :VBibtex
+map \b, :Bibtex, :Bibtex v
 	This function will call bibtex to produce the bibliography file
 	(.bbl). If in you |b:outdir| there is no aux file it first calls your
 	tex compiler. After the bbl file is produced two consecutive runs of
@@ -142,8 +154,11 @@ map \b, :Bibtex, :VBibtex
 	If you specify any value to the debug variable then then this function
 	will be called in verbose mode (only the last time tex compiler will
 	run in errorstop mode). This gives you the chance to see the output of
-	bibtex command for a second. The command :VBibtex is associated to
+	bibtex command for a second. The command :Bibtex v is associated to
 	this behaviour.
+
+	The command :Bibtex  will :call Bibtex(), while :Bibtex v
+	(and :Bibtex <anything>) will :call Bibtex(1)
 
 SimpleBibtex()						*atp-SimpleBibtex()*
 map \sb, :SBibtex
@@ -158,6 +173,27 @@ map \v,map <F3>, imap \v, imap <F3>
 	use the program defined in the variable b:Viewer. See |b:Viewer|,
 	|b:XpdfServer|, |b:XpdfOptions|. When there is no output file it will run
 	TeX and open the file.
+
+BibSearch({pattern},{flag})				see |atp-BibSearch|
+:BibSearch
+	Finds bibentries in bibfiles given in yout tex file, which match the
+	pattern the output is configurable by the flag argument see
+	|atp-bibflags|.
+
+BibChoose						see |atp-BibChoose|
+map c,:BibChoose			/only in the buffer with search results/
+	It lets you copy the bib key directly to your tex file (after the
+	last cursor position) or to a choosen register see
+	|atp-bibchoose-register|.
+
+FindBibFiles({bufname})					*atp-FindBibFiles()*
+:FindBibFiles
+	This updates the variables s:bibfiles, s:allbibfiles,
+	s:notreadablebibfiles. Finds all bib files defined in all
+	\bibliography commands. For more about the above variables read
+	|atp-variables-bib|. This function is called internally be the
+	script functions BibSearch/BibChoose/ShowOptions.
+	The command is called with the argument=the name of current buffer. 
 
 OpenLog()						*atp-OpenLog()*
 map <F6>l, imap <F6>l
@@ -177,17 +213,357 @@ map \p
 	Pdf(La)TeX  or the dvi file if you are using (La)TeX. Depneding, what
 	you have in |b:texcompiler|.
 
-ShowATPO()						*atp-show-options* *atp-ShowATPO()*
-:ShowATPO
+ShowOptions()						*atp-show-options* *atp-ShowOptions()*
+:ShowOptions, :ShowOptions v 
 	This will show values of values that you use. If you specify any
-	argument additionaly the deafult values will be shown is suqare brackets.>
-		call ShowATPOptions("d")
+	argument additionaly the deafult values will be shown is suqare brackets.
+>
+		:ShowOptions v
 <		
 	
+TOC()
+:TOC
+	List a table of contents of the eddited file /there are other better
+	ways to do that, for example using ctags program (see |ctags|). Also
+	tagslist plugin seems to be good.  Hopefuly it will develope to
+	something more useful. 
+
+================================================================================
+Searching in bib files 		                        *atp-bibsearch*
+
+		
+		____________________________
+		Naming Convensions:	
+		@article{<label>,					\	
+			author = { .... },		<-- bibentry    | 
+			title  = { .... },				 > bibfield
+			journal= " .... ",				|
+		}							/	
+
+			article 		<-- bibfield keyword 
+			author,title,...	<-- bibentry label 	
+			<label>			<-- bibfield label 	
+
+One more function is provided which searches the bib files for bibfields, 
+and for the bibfield labels for the latex command \cite{}.
+
+BibSearch([pattern],[flags])				*atp-BibSearch* 
+
+	BibSearch finds bibfields in bibliographis found in your tex source
+	file and defined in the variable b:bibfiles (which is |List|). It
+	shows the result in a new buffer (which is named after the pattern),
+	where there are two mappings c - for choose and q - for quit. The
+	first one calls the function BibChoose, wich  allows you to copy the
+	keyword of the whole bibentry directly to your source file or to the
+	register, for the useg see |atp-bibchoose:input|. The second key: 'q',
+	is mapped to :hide, so that you can open the window afterwards.
+	The buftype option is set to nowrite. 
+
+	Former searches are accesible unless you delete their buffers, use :ls
+	to see which searches are done. 
+
+	Both takes two arguments (the last one is optional), first one is the
+	pattern to match against each line of the bibliographic files supplied
+	in the commands \bibliography (if there are several names,please do
+	not add a white space ' ' after ',' unless the file name begins with a
+	space. i.e.
+>
+ "	\bibliography(Mathematics, Physics,/home/user/Bibliography)
+< 
+	then the plugin will understand that the names of the bib files are
+	'Mathematics.bib', ' Physics.bib' and '/home/user/Bibliography.bib'.
+
+								*atp-bibsearch-patterns*
+								*atp-bibsearch-examples*
+	Each line of every bib file found in your tex docummnet will be
+	matched against the pattern, for example 
+>
+ "	if pattern='author.*Grothendieck'
+<
+ 	will result in all the bibliographic positions which in one line have
+	the words 'author' and 'Grothendieck' (in most cases it means that you
+	will see only works of Grothendieck). Another example:
+>
+ "	if pattern='author.*Joayl\|Galois Theory'
+<
+	will result in all bibfields which author is Joyal or 
+	which includes the words 'Galois Theory' (which by the way apear in
+	many article/book tiles):	
+>
+ "	if pattern='author.*Joayl\|title\p*Galois Theory'
+<
+	This will match against all bibentries written by Joyal or which title
+	includes the word 'Galois Theory'.
+> 	
+ "		:call BibSearch('author.*Joyal\&.*Tirney')	
+<	
+	will find all the bibentries which were written by Joyal and Tirney
+	(and maybe somebody else). 
+
+	For now, there is no possibility to filter bibliographic entries which
+	both match a pattern in separate lines, i.g. to show all bibentries
+	written by Joyal on 'Descent Theory'.
+
+	Before a match, all '{', and '}' are deleted from the line of the bibfile.
+	But you will see them in the output (what can be useful for debugging
+	errors in bibfiles)
+
+	Note that in vim patterns should be quoted using '...' not "...".   
+
+	Further examples are supplied after the next section
+	|atp-bibflags-examples|, which describes other functionalities
+	of the BibSearch/BibChoos functions.
+
+								*atp-bibsearch-flags*
+								*atp-bibflags*
+	The first optional argument [flags] chooses what and in which order
+	you want to see the  bibentries found (entries are listed in
+	the order they appear in bib file).  Flag is a word made of letters.
+	There are three kinds of flags: entry flags which mathes againts
+	labels of bibentries, like author, title, etc..., and keyword flags: which
+	matches agains keywords of bibfields: @article, @book, @techreport,
+	etc...  and two special flags 'All' and 'L'. A flag is a word on
+	letters:
+>
+ "		a  - author
+ " 		e  - editor
+ " 		t  - title
+ " 		b  - booktitle
+ " 		j  - journal
+ " 		s  - series
+ " 		y  - year
+ " 		n  - number
+ " 		v  - volume
+ " 		p  - pages
+ " 		P  - Publisher
+ " 		N  - Note
+ " 		S  - School
+ " 		h  - howpublished
+ " 		o  - organization
+ "		u  - url	
+ "		H  - Homepage	
+ "any other letter - do not show anything but the first line of bibentry 
+ "		@a - article 						/@article/
+ "		@b - book or booklet 					/@book,@booklet/
+ "		@B - Booklet 						/@booklet/	
+ "		@c - incollection 					/@incollection,@inbook/
+ "		@p - proceedings, inproceedings, conference   		/@proceedings,@inproceedings,@conference/
+ "		@m - misc 						/@misc/
+ "		@M - Manual 						/@manual/
+ "		@t - master or PhD thesis  				/@masterthesis,@phdthesis/
+ "		@T - Techreport 					/@techreport/
+ "		@u - unpublished  					/@unpublished/		
+ "		All - all flags						(see |atp-bibflags:all|)		
+ "		L   - last flags					(see |atp-bibflags:last|)		
+<
+
+	Examples:
+>
+ "		tayu@a		--> show the entries: tile, author, year, url of matching articles.
+ "		baeP@b		--> show the entries: booktitle, author, editor, 
+ " 							publisher of matching books (@book,@booklet).
+< 
+	If flags '@.' are filtered out, if one do not belongs to the one above
+	then it is deleated. You can see which flags are defined using
+	ShowOptions function/command (they are listed as Available
+	KeyWordFlags).
+								*atp-g:defaultbibflags*
+								*atp-bibflags:default*
+	The default flag is stored in the global variable g:defaultbibflags and is
+	equal to 'tabejsyu'. This means that the ouput for each bibfield found 
+	will include the 
+		title
+		author
+		booktitle
+		editor
+		journal 
+		series
+		year
+	if title,author,... are specified in the bibliography for the given
+	position. If there are many position which match you can set flags to
+	be as simple as possible to include more lines on the screen. For
+	example 'tabe' is quite reasonable (note that all bibentries are
+	matched separately, i.e. if a bibfield has both 'title' and 'booktitle'
+	bibentries it will give you both of them.
+
+								*atp-bibsearch-show-only-keys*
+	If you just want to list just the lines with bibfields keywords:
+	@article{, @book{, etc. supply a flag which do not belongs to
+	'g:defaultallbibflags', for example 'X', or 'X@a'
+	
+								*atp-bibflags:+*
+	You can also specify flags with '+', for example: 
+>	
+ "	flags='+p'
+ "	flags='+@b'
+<
+	This feature ADDS FLAGS TO THE DEFAULT VALUE defined in
+	|g:defaulbibflags|. The first will result in showing the default
+	entries and the page number, the second will result in showing only
+	books with the default bibentries. You can specify as many additional
+	flags as you wish. 
+								*atp-bibsearch-output*
+	Note that the function shows the line with database file name if
+		there are entries in this bibliography 
+		which match the pattern
+	thus,for example, if you specify the flag '@a' and you see the line
+	with database file name, but you do not see any bibfield under, then
+	in this database there are bibfields which match but these are not
+	articles. 	
+	
+								*atp-bibflags:all*
+								*atp-g:defaultallbibflags*
+	The flags='All' is a synonim of flag=g:defaultallbibflags which by default is
+	equal to'tabejfsvnyPNSohiuHcp' i.e. all flags in this order. If you
+	add your own flag you should change this global variable. You can add to
+	this flag any flag which contains '@' (see |atp-bibsearch-flags|) by
+	the plus operator, i.e. All+@a@b or +@aAll will give the same result.
+
+								*atp-bibflags:last*
+								*atp-b:lastbibflags*	
+	The variable 'b:lastbibflags' stores the recently used flags. The flag
+	'L' sets the flags for this search to the value of 'b:lastbibflags'.
+	You can write '+L@a', '+L@a', 'L@a' or '@aL' but not '+@La', if you
+	want to add some flags to previous searches. Next time the flag 'L'
+	will change the meaning (i.e. it is really the last time not earlier
+	:) However, there is no '-' :( '-@aL' could be helpful.
+	 
+	The variable 'b:lastbibflags' is not changed when you use the 'All'
+	flag.
+
+								*atp-bibflags:add-flag*
+	You can add your own flags but not keyword flags (i.e. @a,@b,...).
+	Just add an entry to the dictionary g:bibflagsdict. (:ShowOptions v to
+	see its current value), For example
+>    
+ "    let g:bibflagsdict=extend(g:bibflagsdict, { '<oneletter>' : [ '<bibentryname>': '<how to show>'] })
+< 
+    	where, <oneletter> is the flag to use, it must be different from the
+	dfined flags, <bibentry_name> is a lowercase bibentry name, like
+	'title', 'url', etc., <how to show> if you want to have a nice output
+	put the bibentry name and that much of white spaces to get 13 strings.
+
+		
+								*atp-bibchoose-register*
+	The function/command BibChoose ask you for the number of the biblabel to
+	copy to your file (after the current cursor position) or to a
+	specified register.
+
+	    If you give just a number, e.g. '12', then the bibfield label of this
+	    bibfield will be inserted after the cursor position, if you
+	    specify number followed by a register name, i.g. '12e', '12+',
+	    '12-', then the label will be copied to this register. Registers
+	    which you can use are [a-z*+-].
+
+	    Press <Enter> if you do not want to copy anything.
+
+								*atp-bibsearch-highlight*
+		
+	Syntax for the buffer keeping the results of the BibSearch
+	command are defined in the file syntax/bibsearch.vim. It is based on
+	the syntax file for bibfiles, and by default links the groups to the
+	groups for bibfiles. There is one group more:
+		bibsearchInfo
+	which is used to highlight the number and line numbers of found
+	entries. (Actually, just one group changed, comparing
+	to syntax file for bibfiels, bibComment --> bibsearchComment).
+
+	There are two commands to make the life easier:
+								*atp-BibChoose-command*
+							 	*atp-BibSearch-command*
+:BibSearch [pattern] [flag] 
+:BibChoose 			/available only in the buffer with results of :BibSearch./
+map c
+
+	which do what you expect. The arguments should not be quoted and
+	should be separated with a white space (if you want to include a white
+	space in an argument use '\ '), for more see |f-args|. If you do not
+	provide any argument then all entries of all bibfiles will be shown.
+	Examples:
+
+								*atp-bibflags:examples*
+	Some examples:
+>
+ "	:BibSearch 
+<				this is a tip how to show all bibfields with
+				the default flags
+>
+ "	:BibSearch @ yt	
+<				this is a tip how to show all bibfields with
+				different flags than the default ones, which
+				is equivalent to:
+>
+ "      :call BibSearch('','yt')
+< 
+>
+ "	:BibSearch title[\s.]*Galois Theory  aetb
+<
+	The next one shows all bibfileds which were written by Joyal and
+	Tirney (and mayby somebody else).
+> 	
+ "	:BibSearch 'author.*Joyal\&.*Tirney'
+<	
+
+								*atp-bibsearch-variables*
+								*atp-variables-bib*	
+SOME VARIABLES:
+	All the values of important variables can be shown by ShowOption
+	command.
+
+								*atp-b:bibfiles*
+b:bibfiles
+	This variable is a list and you can put here additional bib files.
+	They will be parsed by the BibSearch function.
+s:bibfiles
+	This variable is a list which stores bib files found in your tex files
+	and which are readable. It is set up when you first run of the
+	commands: BibSearch/ShowOptions. Its value is produced by the
+	functions FindBibFiles({bufname}).
+s:allbibfiles 
+	this is a sum of found bibfiles the locally defined b:bibfiles, which
+	not necessarily are readable.
+s:notreadablebibfiles
+	guess what :)
+
+
+
+-----------------------------------------------------------------------------------
+								*atp-bibsearch-bugs*
+	Please do not hesitate to report any bug to me:
+	mszamot@gmail.com 							
+	
+	The algorithm will work only if all kind of bibentries of your bibfile
+	are included in the list g:bibentries. However, changing just this
+	variable is not enough. In that case the search engine (function
+	s:search) will produce correct output, but the function which
+	displays found entries, will not know how to work with the new
+	entries. One would have to also add an entry to the dictionary
+	'g:bibflagsdict'. If it is the case, please let me know:
+	mszamot@gmail.com  
+
+	As you can see entries of the type '@string' which can be used in bib
+	files are not supported (i.e. there is no function which substitutes
+	the variables defined in @string to their values), but it is doable.
+			@string{ Name = Value }
+			
+------------------------------------------------------------------------------------	
+	Comments: for a bibfile with over 16000 lines and 1675 entries, it
+	took on my computer (AMD Core 2Duo 1.9Ghz) 25.5s to find all entries,
+	with the command ':BibSearch . All' and 1s to show results (the
+	longest loop took over 100000 times). However to find in this database
+	one entry with default flags (:BibSearch <Name>) it took 2.84s
+	(exactly 79 matching bibfields), and to display them another 0.6s. 
+
+	If for you the algorithm is too slow, there is a way to make it more
+	efficient: the problem with when every line is matched: when
+	we are in line x we go back to find the nearest line of the form
+	@article{, @book{, etc., if we find it we go to line x+1 and do it
+	once again. We could remember previous line numbers and test if we
+	already have done the calculations. This can avoid  long loops.
 
 ================================================================================
 How to configure to your needs                          *atp-configure*
-
+							*atp-variables*
 There are several options you can set, and they might be set in your vimrc
 file, unless you want to use the default, which I provide below.
 
@@ -198,11 +574,16 @@ autocommand:
 If you put just let b:texcompiler, this will also work but only open vim from
 terminal (not when you want to start edditing next buffer). 
 
-let b:texcomiler="pdflatex" 					*b:texcompiler*
+let b:texcompiler="pdflatex" 					*b:texcompiler*
 	Used by functions: TEX() (map \l, imap \l), VTEX() (map <F5>, imap <F5>)
 
-	You can set it to latex, tex, luatex, and so on.  
-	
+	You can set it to latex, tex, luatex, and so on and possibly to
+	lilypond. 
+
+let b:texoptions=""
+	If you want to set some additional options to your texcompiler, note
+	that, -jobname, -output-directory, -mode, are already used. 
+
 								*b:outdir*
 let b:outdir=fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/"
 Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete() 
@@ -221,7 +602,7 @@ Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete()
 	You can see the current output directory in the status (it is in short
 	notation) to see it whole type
 		:echo b:outdir
-	or use the function ShowAPTO() (see |apt-ShowAPTO()|).		
+	or use the function ShowOptions() (see |apt-ShowOptions()|).		
 
 let g:askforoutdir=0						*g:askforoutdir*
 	Its values are 1 and 0.  When it is set to 1 you will be asked for the
@@ -284,10 +665,10 @@ let g:texextensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "br
 									
 let g:keep=["log","aux","toc","bbl"]				*g:keep*
 	
-	Files with this extension will be copied from b:outdir to the
-	temoporary directory with appropriet name to be used when (La)TeX is
+	Files with this extension will be copied from 'b:outdir' to the
+	temporary directory with appropriate name to be used when (La)TeX is
 	compiling. (log file will be only copied after it is created, other
-	files will be copied back and forth between you b:outdir and the
+	files will be copied back and forth between you 'b:outdir' and the
 	temporary directory). These four are essentially minimum to work with 
 	table of contents and bibtex, possibly other classes like beamer or
 	packages like theorem (produced .thm files) have more special needs.
@@ -300,15 +681,28 @@ let g:printeroptions=""						*g:printeroptions*
 	the b:texcompiler that you use.
 
 b:texcommand							*b:texcommand*
-	This variable is for debugging, it stores the last command executed to
+	This variable is for debugging, it stores the last executed command to
 	compile your document. This changes also when your compiler was run
 	automatically.>
-		:call TEX(1)
+		:TEX
 		:echo b:texcommand
-		:call TEX(2)
+		:TEX 2
 		:echo b:texcommand
+
+let g:vartical=1		
+	If set to 1 BibSearch will split the window vertically, if set to
+	other value it will split the window horisontally.
 <		
 		
+g:defaultbibflags		see |atp-bibflags:default|
+g:defaultallbibflags		see |atp-bibflags:all|
+b:lastbibflags			see |atp-bibflags:last|
+
+b:bibfiles			see |atp-variables-bib|
+s:bibfiles
+s:allbibfiles
+s:notreadablebibfiles
+	For more on bib flags see |atp-bibsearch-flags|.
 	
 
 ================================================================================
@@ -325,6 +719,9 @@ These mappings are loaded unless you set one of variables: 'no_plugin_maps' or
 
 Note: in all mappings "\" is really set to your <LocalLeader> (and thus, in
 fact, the mapping can differ).
+
+ShowOptions						*atp-map-ShowOptions()*
+:ShowOptions, :ShowOptions v
 
 TEX()							*atp-map-TEX()*
 map \l,imap \l, :TEX 
@@ -482,6 +879,17 @@ This allows you to use |quickfix| commands, for example to read the error file
 use :cg (see |cg|), to jump to the first error :cf (see |cg|), to list all
 errors :cl (see |cl|), read |errorformat| if you want to change the output of
 this commands
+
+								*atp-errors-bibsearch*
+A possible error which may accour using the :BibSearch and :BibChoose commands
+has a simple cause: we count number of brackets '()', '{}' and '"' (but nor
+'\"') to see where the bibentry ends and where to join lines. The message
+error is echoed when more than 30 lines where processed and the matching
+bracket was not found (or the number of '"' is odd). Look at your bib file at
+specified position. Syntax highlighting for bib files can help you finding
+where is such an error. (After reading the bibfiles comment lines and lines
+which begin with @string are removed, so that the brackets in comment lines do
+not count)
 
 ================================================================================
 Requirements							*atp-requirements*

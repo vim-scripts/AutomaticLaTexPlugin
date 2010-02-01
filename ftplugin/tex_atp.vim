@@ -1,10 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Jan 25
+" Last Changed: 2010 Feb 1
 " URL:		
 "
-" GetLatestVimScripts: 2945 2 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 3 :AutoInstall: tex_atp.vim
 "
 " TODO Check against lilypond 
 " NOTES
@@ -1005,6 +1005,8 @@ function! s:showresults(bibresults,flags,pattern)
 				let l:bufnr=bufnr(a:pattern)
 				if bufexists(bufname(a:pattern))
 				    let l:bdelete=l:bufnr . "bdelete"
+				    let b:bufnr=l:bufnr		"DEBUG
+				    echomsg b:bufnr		"DEBUG
 				    exe l:bdelete
 				endif
 				unlet l:bufnr
@@ -1013,7 +1015,7 @@ function! s:showresults(bibresults,flags,pattern)
 				    let l:openbuffer="vnew" . l:openbuffer
 				    let l:skip=""
 				else
-				    let l:openbuffer="vnew" . l:openbuffer
+				    let l:openbuffer="new" . l:openbuffer
 				    let l:skip="       "
 				endif
 				exe l:openbuffer

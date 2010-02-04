@@ -1,24 +1,19 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Jan 25
+" Last Changed: 2010 Feb 4
 " URL:		
 
-map <buffer> c :call BibChoose()  <CR>
-map <buffer> q :hide<CR>
+"
+" MAPPINGS
+if !exists("no_plugin_maps") && !exists("no_atp_bibsearch_maps")
+    map <buffer> c :call BibChoose()  <CR>
+    map <buffer> q :hide<CR>
+    command! -buffer -nargs=* BibChoose 	:call BibChoose(<f-args>)
+endif
 
 if !exists("*BibChoose")
 function! BibChoose(...)
-"     if a:0 == 0
-" 	let l:bibresults=s:searchbib('')
-" 	let b:listofkeys=s:showresults(l:bibresults,'','')
-"     elseif a:0 == 1
-" 	let l:bibresults=s:searchbib(a:1)
-" 	let b:listofkeys=s:showresults(l:bibresults,'',a:1)
-"     else
-" 	let l:bibresults=s:searchbib(a:1)
-" 	let b:listofkeys=s:showresults(l:bibresults,a:2,a:1)
-"     endif
     let l:which=input("Which entry? (enter for none) ")
     if l:which =~ '\<\d*\>'
 	let l:start=stridx(b:listofkeys[l:which],'{')+1
@@ -93,9 +88,8 @@ function! BibChoose(...)
 		let @@=l:choice
 	    endif
 	    q
-	    echohl WarningMsg | echomsg "Choice written to the register '" . l:letter . "'" | echohl None
+	    echohl WarningMsg | echomsg "Choice yanekd to the register '" . l:letter . "'" | echohl None
     endif
 endfunction
 endif
-command! -buffer -nargs=* BibChoose 	:call BibChoose(<f-args>)
 

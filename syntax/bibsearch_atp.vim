@@ -2,7 +2,7 @@
 " Language:	bibsearchTeX (bibsearchliographic database format for (La)TeX)
 " Author:	Bernd Feige <Bernd.Feige@gmx.net>
 " Modified:	Marcin Szamotulski
-" Last Change:	Feb 01, 2010
+" Last Change:	Feb 04, 2010
 
 " This is a modification of syntax/bibsearch.vim
 
@@ -46,9 +46,9 @@ syn cluster bibsearchVarContents	contains=bibsearchUnescapedSpecial,bibsearchBra
 syn match bibsearchUnescapedSpecial contained /[^\\][%&]/hs=s+1
 syn match bibsearchKey contained /\s*[^ \t}="]\+,/hs=s,he=e-1 nextgroup=bibsearchField
 syn match bibsearchVariable contained /[^{}," \t=]/
-syn region bibsearchQuote contained start=/"/ end=/"/ skip=/\(\\"\)/ contains=@bibsearchVarContents
-syn region bibsearchBrace contained start=/{/ end=/}/ skip=/\(\\[{}]\)/ contains=@bibsearchVarContents
-syn region bibsearchParen contained start=/(/ end=/)/ skip=/\(\\[()]\)/ contains=@bibsearchVarContents
+syn region bibsearchQuote contained start=/"/ end=/"/  contains=@bibsearchVarContents
+syn region bibsearchBrace contained start=/{/ end=/}/  contains=@bibsearchVarContents
+syn region bibsearchParen contained start=/(/ end=/)/  contains=@bibsearchVarContents
 syn region bibsearchField contained start="\S\+\s*=\s*" end=/[}),]/me=e-1 contains=bibsearchEntryKw,bibsearchNSEntryKw,bibsearchBrace,bibsearchParen,bibsearchQuote,bibsearchVariable
 syn region bibsearchEntryData contained start=/[{(]/ms=e+1 end=/[})]/me=e-1 contains=bibsearchKey,bibsearchField
 " Actually, 5.8 <= Vim < 6.0 would ignore the `fold' keyword anyway, but Vim<5.8 would produce
@@ -91,10 +91,9 @@ if version >= 508 || !exists("did_bib_syn_inits")
   HiLink bibsearchUnescapedSpecial	bibUnescapedSpecial
   HiLink bibsearchComment	bibComment
   HiLink bibsearchComment2	bibsearchComment
-  HiLink bibsearchQuote		bibQuote	
-  HiLink bibsearchBrace  	bibBrace
-  HiLink bibsearchParenendif	bibParenendif
-  HiLink bibsearchField		bibField
+  HiLink bibsearchQuote		bibQuote        
+  HiLink bibsearchBrace		bibBrace        
+  HiLink bibsearchParen		bibParen        
   delcommand HiLink
 endif
 let b:current_syntax = "bibsearch"

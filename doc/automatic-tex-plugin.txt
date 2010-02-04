@@ -31,7 +31,9 @@ We provide a powerful function to search in bibliographic files (bib files).
 |atp-errors|  		Error handling
 |atp-requirements|  	Requirements
 |atp-viewers| 		Note about viewers
+|atp-color-highlight|	Colors and syntaxes defined
 |atp-remarks|  		Final remarks
+|atp-copy-rights|	Copy Rights
 
 	
 Note on usage: type :help atp<CTR>d to see all the helptags. To see help tags
@@ -83,7 +85,7 @@ name so please do not use capital letters.
 
 Next variable to set is b:outdir (see |b:outdir|). It configures where TeX
 will put the output and where viewer and log analyzing tools can find
-appropriate files.
+appropriate files. 
 
 The last top most important variable is |g:keep| which is a list of extensions,
 by default it is
@@ -180,10 +182,10 @@ BibSearch({pattern},{flag})				see |atp-BibSearch|
 	pattern the output is configurable by the flag argument see
 	|atp-bibflags|.
 
-BibChoose						see |atp-BibChoose|
-map c,:BibChoose			/only in the buffer with search results/
-	It lets you copy the bib key directly to your tex file (after the
-	last cursor position) or to a choosen register see
+BibChoose({pattern},{flag})				see |atp-BibChoose|
+:BibChoose
+	Finds like BibSearch and let you copy the bib key directly to your tex
+	file (after the curent cursor position) or to a choosen register see
 	|atp-bibchoose-register|.
 
 FindBibFiles({bufname})					*atp-FindBibFiles()*
@@ -199,6 +201,9 @@ OpenLog()						*atp-OpenLog()*
 map <F6>l, imap <F6>l
 	Opens log file in a new tab with two options (which are set
 	locally): ruler, nospell.	
+
+	You can also use the standard command (distributed with vim)
+	":Texplore" to see log,aux,... files.
 
 Delete()						*atp-Delete()*
 map <F6>d
@@ -220,13 +225,35 @@ ShowOptions()						*atp-show-options* *atp-ShowOptions()*
 >
 		:ShowOptions v
 <		
-	
+							*atp-TOC()*	
 TOC()
-:TOC
-	List a table of contents of the eddited file /there are other better
-	ways to do that, for example using ctags program (see |ctags|). Also
-	tagslist plugin seems to be good.  Hopefuly it will develope to
-	something more useful. 
+map t
+	Shows Table of Contents of your document. It do not yet support the
+	started version of chapter, section,... environemnts. It opens new
+	window in which you can use the mappings: 
+		'e' 	to echo the line from your tex file
+		'c' 	to copy the label of the chapter under the curosor
+				to a register, if it exists,
+	 	'p' 	to paste it directly to your tex file (just after the
+				current cursor position), 
+		's'	to show the context of the label: it splits the window
+				with your tex source file and sets the current
+				line to the line of the label
+		'q' 	to quit, and finaly, 
+		<Enter> to go to the chapter under the cursor.
+	There are also commands: ':C' and ':P', which do the same as 'c' and
+	'p' mappings. They all call the function 'Yank(<where>)', the argument
+	<where> can be one of: '@<register name>' or 'p'.  
+
+							*atp-Labels()*
+Labels()
+map \L
+	Shows labels defined in your file. You can also use the mappings
+	'e','c','p','s','q' and <Enter> as above.
+
+	If you forget what are these mappings, write map in the TOC or LABELS
+	window.
+	
 
 ================================================================================
 Searching in bib files 		                        *atp-bibsearch*
@@ -248,19 +275,11 @@ One more function is provided which searches the bib files for bibfields,
 and for the bibfield labels for the latex command \cite{}.
 
 BibSearch([pattern],[flags])				*atp-BibSearch* 
+BibChoose([pattern],[flags])				*atp-BibChoose*
 
-	BibSearch finds bibfields in bibliographis found in your tex source
-	file and defined in the variable b:bibfiles (which is |List|). It
-	shows the result in a new buffer (which is named after the pattern),
-	where there are two mappings c - for choose and q - for quit. The
-	first one calls the function BibChoose, wich  allows you to copy the
-	keyword of the whole bibentry directly to your source file or to the
-	register, for the useg see |atp-bibchoose:input|. The second key: 'q',
-	is mapped to :hide, so that you can open the window afterwards.
-	The buftype option is set to nowrite. 
-
-	Former searches are accesible unless you delete their buffers, use :ls
-	to see which searches are done. 
+	The function BibChoose allows you to copy the keyword of the whole
+	bibentry directly to the file or to the register, for the useg see
+	|atp-bibchoose:input|.
 
 	Both takes two arguments (the last one is optional), first one is the
 	pattern to match against each line of the bibliographic files supplied
@@ -458,28 +477,36 @@ BibSearch([pattern],[flags])				*atp-BibSearch*
 	    Press <Enter> if you do not want to copy anything.
 
 								*atp-bibsearch-highlight*
+	The colours of the output are set using 'echohl' command, the groups which
+	are in use are:
 		
-	Syntax for the buffer keeping the results of the BibSearch
-	command are defined in the file syntax/bibsearch.vim. It is based on
-	the syntax file for bibfiles, and by default links the groups to the
-	groups for bibfiles. There is one group more:
-		bibsearchInfo
-	which is used to highlight the number and line numbers of found
-	entries. (Actually, just one group changed, comparing
-	to syntax file for bibfiels, bibComment --> bibsearchComment).
+ 		highlight link BibtexFileNames 		Title	
+ 		highlight link BibtexLabels		ModeMsg
+ 		highlight link BibtexMatch		WarningMsg
+ 		highlight link BibtexGeneral		Normal
+ 
+	In your colour file (~/.vim/color/*.vim) you can set other colours.
+	See |highlight| or just read a colour file. For example, this is a
+	nice set of colours for dark background 
+		
+ 		highlight BibtexFileNames  cterm=none      ctermfg=161 	ctermbg=233
+ 		highlight BibtexLabels	   cterm=bold	   ctermfg=90	ctermbg=233
+		highlight BibtexMatch	   cterm=none      ctermfg=40  	ctermbg=233
+		highlight BibtexGeneral    cterm=none      ctermfg=255	ctermbg=233
+
+	Note that each message is echoed using the 'echomsg' command, and thus
+	it is added to the |message-history|. And thus, previous searches are
+	available using the :mes (see |:messages|) command.
 
 	There are two commands to make the life easier:
 								*atp-BibChoose-command*
 							 	*atp-BibSearch-command*
 :BibSearch [pattern] [flag] 
-:BibChoose 			/available only in the buffer with results of :BibSearch./
-map c
-
+:BibChoose [pattern] [flag] 
 	which do what you expect. The arguments should not be quoted and
-	should be separated with a white space (if you want to include a white
-	space in an argument use '\ '), for more see |f-args|. If you do not
-	provide any argument then all entries of all bibfiles will be shown.
-	Examples:
+	separated by a white spaces (if you want to include a white space use
+	'\ '), for more see |f-args|. If you do not provide any argument then
+	all entries of all bibfiles will be shown. Examples:
 
 								*atp-bibflags:examples*
 	Some examples:
@@ -513,11 +540,11 @@ SOME VARIABLES:
 								*atp-b:bibfiles*
 b:bibfiles
 	This variable is a list and you can put here additional bib files.
-	They will be parsed by the BibSearch function.
+	They will be parsed by the BibSearch/BibChoose functions.
 s:bibfiles
-	This variable is a list which stores bib files found in your tex files
-	and which are readable. It is set up when you first run of the
-	commands: BibSearch/ShowOptions. Its value is produced by the
+	This variable is a list which stores bib files found in your tex
+	files and which are readable. It is set up when you first run of the commands:
+	BibSearch/BibChoose/ShowOptions. Its value is produced by the
 	functions FindBibFiles({bufname}).
 s:allbibfiles 
 	this is a sum of found bibfiles the locally defined b:bibfiles, which
@@ -598,6 +625,9 @@ Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete()
 	working directory for example to /tmp (:cd /tmp) then the latex output
 	will be placed in /tmp, i.e. it will move with with cd. However, the
 	default value of b:outdir is not affected by :cd command.
+
+	White spaces and other characters should not be escaped. It will be
+	quoted in '...' using the |shellescape()| function.
 
 	You can see the current output directory in the status (it is in short
 	notation) to see it whole type
@@ -688,10 +718,6 @@ b:texcommand							*b:texcommand*
 		:echo b:texcommand
 		:TEX 2
 		:echo b:texcommand
-
-let g:vartical=1		
-	If set to 1 BibSearch will split the window vertically, if set to
-	other value it will split the window horisontally.
 <		
 		
 g:defaultbibflags		see |atp-bibflags:default|
@@ -747,6 +773,20 @@ map <F6>d
 Print()							*atp-map-Print()*
 map \p
 	This calls the function Printer(g:printeroptions) (see |Print()|).
+
+							*atp-map-TOC*
+:TOC
+map T
+	This is a mapping to the command ':TOC'
+
+							*atp-map-Labels*
+:Label
+map \L
+	This is a mapping to the command ':Labels'
+
+							*atp-map-UpdateLabels()* 
+:call UpdateLabels(bufname)	
+map \UL			<-- is mapped to UpdateLabels(bufname("%"))
 
 								
 
@@ -878,7 +918,7 @@ This plugins sets the option
 This allows you to use |quickfix| commands, for example to read the error file
 use :cg (see |cg|), to jump to the first error :cf (see |cg|), to list all
 errors :cl (see |cl|), read |errorformat| if you want to change the output of
-this commands
+this commands.
 
 								*atp-errors-bibsearch*
 A possible error which may accour using the :BibSearch and :BibChoose commands
@@ -940,6 +980,48 @@ acroread
     xdvi
 	Works fine.
 
+================================================================================
+Color highliting and syntax groups				*atp-color-highlight*
+
+There is a color scheme included: coots-beauty-256 you need 256 colors to use
+it. These are the highlights groups defined for various files:
+
+TOC file
+highlight atp_linenumber
+highlight atp_number
+
+highlight atp_chapter
+highlight atp_chaptertitle
+
+highlight atp_section
+highlight atp_sectiontitle
+
+highlight atp_subsection
+highlight atp_subsectiontitle
+
+highlight atp_abstract
+	*this group highlights all the unnubered chapters.
+
+The chapter group highlights or chapters, or sections, or parts, depending
+what is your top level section in your latex document. This applies,
+accordingly, to other groups.
+
+LABEL file
+highlight atp_label_linenr
+highlight atp_label_name 
+
+BIBSEARCH file:
+this is very much the same as the standard syntax for bib files. Groups are
+named bibsearch<NAME> instead of bib<NAME>. There is one more group added:
+>
+ "    bibsearchInfo
+<
+which highlights the line number of the bib entry in the bib file. 
+All bibsearch groups are by default linked to the bib groups.
+
+Yet, there is no default highlighting, try coots-beauty-256 color scheme. If
+you like it, I'm glad, if you have a nice (non standard) color scheme, I'm
+happy to get it, if you like to share it.
 
 ================================================================================
 Final Remarks                               			*atp-remarks*
@@ -966,4 +1048,19 @@ Final Remarks                               			*atp-remarks*
 	Best regards, and hopefully you will find this useful :) 
 	Marcin Szamotulski
 	
+	
+================================================================================
+Copy Rights							*atp-copy-rights*
+
+
+" Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
+"		granted to use and distribute this code, with or without
+"		modifications, provided that this copyright notice is copied
+"		with it. Like anything else that's free, Automatic TeX Plugin
+"		is provided *as is* and comes with no warranty of any kind,
+"		either expressed or implied. By using this plugin, you agree
+"		that in no event will the copyright holder be liable for any
+"		damages resulting from the use of this software.
+
+
 vim:tw=78:ts=8:ft=help:norl:

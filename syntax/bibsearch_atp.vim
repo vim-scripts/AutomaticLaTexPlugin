@@ -15,7 +15,8 @@ if version < 600
 elseif exists("b:current_syntax")
   finish
 endif
-
+" First we source syntax/bib.vim file
+source $VIMRUNTIME/syntax/bib.vim
 " Ignore case
 syn case ignore
 

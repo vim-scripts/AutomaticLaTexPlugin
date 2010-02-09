@@ -77,7 +77,9 @@ PERMISSIONS TO TEMPORARY FILES)
 You can switch off/on the function s:auTeX by pressing <S-F5>  or by letting
 the local to buffer variable b:autex=1 (on) b:autex=0 (off). It is useful in
 some situations. The key <S-F5> calls the function ToggleAuTex() which sets
-the variable b:autex and issue a message. 
+the variable b:autex and issue a message. You can also set this variable to 0
+for some files that are not supposed to be processed, for example:
+    au BufRead texmf/*.tex let b:autex0
 
 The second important variable b:texcompiler (see |b:texcompiler|) configures
 if you use TeX, PdfTeX, LaTeX, PdfLaTeX and it should point to the program
@@ -190,12 +192,13 @@ BibChoose({pattern},{flag})				see |atp-BibChoose|
 
 FindBibFiles({bufname})					*atp-FindBibFiles()*
 :FindBibFiles
+
 	This updates the variables s:bibfiles, s:allbibfiles,
-	s:notreadablebibfiles. Finds all bib files defined in all
-	\bibliography commands. For more about the above variables read
-	|atp-variables-bib|. This function is called internally be the
-	script functions BibSearch/BibChoose/ShowOptions.
-	The command is called with the argument=the name of current buffer. 
+	s:notreadablebibfiles (showed by ShowOptions command). Finds all bib
+	files defined in all '\bibliography' commands. For more about the
+	above variables read |atp-variables-bib|. This function is called
+	internally be the script functions BibSearch/BibChoose/ShowOptions.
+	The command :FindBibFiles finds bib files in the current buffer. 
 
 OpenLog()						*atp-OpenLog()*
 map <F6>l, imap <F6>l
@@ -227,12 +230,13 @@ ShowOptions()						*atp-show-options* *atp-ShowOptions()*
 <		
 							*atp-TOC()*	
 TOC()
-map t
+map T
 	Shows Table of Contents of your document. It do not yet support the
 	started version of chapter, section,... environemnts. It opens new
 	window in which you can use the mappings: 
+
 		'e' 	to echo the line from your tex file
-		'c' 	to copy the label of the chapter under the curosor
+		'y' 	to yank the label of the chapter under the curosor
 				to a register, if it exists,
 	 	'p' 	to paste it directly to your tex file (just after the
 				current cursor position), 
@@ -240,10 +244,23 @@ map t
 				with your tex source file and sets the current
 				line to the line of the label
 		'q' 	to quit, and finaly, 
-		<Enter> to go to the chapter under the cursor.
+		<Enter> to go to the chapter under the cursor and close ToC.
+		<space> to go to the chapter under the cursor but leave ToC
+			open.
+
 	There are also commands: ':C' and ':P', which do the same as 'c' and
 	'p' mappings. They all call the function 'Yank(<where>)', the argument
 	<where> can be one of: '@<register name>' or 'p'.  
+
+	TOC() supports many eddited files. For example if you have in your
+	buffer list two files a.tex and b.tex this command will produce table
+	of contents of both files. If you have just one opened window
+	(excluding the ToC window) then pressing <space>, <enter>, p and q
+	will take you to the right buffer (which will be read if is unloaded
+	or hidden): for example if you split a window then <space>, <enter>,
+	p, q will take you to the window from which you are comming. If you
+	have to windows with two different buffers loaded they will act on 
+	the window with the matching buffer name.
 
 							*atp-Labels()*
 Labels()
@@ -253,6 +270,8 @@ map \L
 
 	If you forget what are these mappings, write map in the TOC or LABELS
 	window.
+
+	For good support of multiple opened files one have to wait a moment.
 	
 
 ================================================================================
@@ -921,15 +940,14 @@ errors :cl (see |cl|), read |errorformat| if you want to change the output of
 this commands.
 
 								*atp-errors-bibsearch*
-A possible error which may accour using the :BibSearch and :BibChoose commands
-has a simple cause: we count number of brackets '()', '{}' and '"' (but nor
-'\"') to see where the bibentry ends and where to join lines. The message
-error is echoed when more than 30 lines where processed and the matching
-bracket was not found (or the number of '"' is odd). Look at your bib file at
-specified position. Syntax highlighting for bib files can help you finding
-where is such an error. (After reading the bibfiles comment lines and lines
-which begin with @string are removed, so that the brackets in comment lines do
-not count)
+A possible error which may accour using the :BibSearch commands has a simple
+cause: we count number of brackets '()', '{}' and '"' (but nor '\"') to see
+where the bibentry ends and where to join lines. The message error is echoed
+when more than 30 lines where processed and the matching bracket was not found
+(or the number of '"' is odd). Look at your bib file at the specified position.
+Syntax highlighting for bib files can help you finding where such an error is
+located. (After reading the bibfile comment lines and lines which begin with
+@string are removed, so that the brackets in comment lines do not count.)
 
 ================================================================================
 Requirements							*atp-requirements*
@@ -954,16 +972,16 @@ by there are some mappings to defined (see |texlog| and |pdffonts|).
 Notes on Viewers                               			*atp-viewers*
 
 xpdf	
-	It is fully supported. 
-	It is configured in the way that when your tex file have errors, 
-	xpdf viewer will not reload your file, which I found useful. 
+	It is fully supported. It is configured in the way that when your tex
+	file have errors, xpdf viewer will not reload your file, which I found
+	useful. 
 
 	You can set your own options of xpdf using b:XpdfOptions, for example
 		let b:XpdfOptions="-bg grey20"
 	will make xpdf view different. This is helpfull when you edit to
 	files, and do not want to xpdf mix them. Other useful options are
-	-papercolor and -mattecolot for example
-		let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue3 -papercolor SlateBlue4"
+	'-papercolor' and '-mattecolot' for example
+	    let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue3 -papercolor SlateBlue4"
 	for something which is more eye friendly.	
 evince
 	Works fine.
@@ -977,7 +995,7 @@ epdfview
 acroread
 	As with epdfview (with the difference that it supports automatic
 	updates, but it do not works somehow)
-    xdvi
+xdvi
 	Works fine.
 
 ================================================================================
@@ -986,47 +1004,43 @@ Color highliting and syntax groups				*atp-color-highlight*
 There is a color scheme included: coots-beauty-256 you need 256 colors to use
 it. These are the highlights groups defined for various files:
 
-TOC file
-highlight atp_linenumber
-highlight atp_number
+1) ToC file
+    highlight atp_linenumber
+    highlight atp_number
 
-highlight atp_chapter
-highlight atp_chaptertitle
+    highlight atp_chapter
+    highlight atp_section
+    highlight atp_subsection
+    highlight atp_abstract
+	*this group highlights abstrac, all the unnubered chapters and
+	bibliography.
 
-highlight atp_section
-highlight atp_sectiontitle
+    The chapter group highlights or chapters, or sections, or parts, depending
+    what is your top level section in your latex document. This applies,
+    accordingly, to other groups.
 
-highlight atp_subsection
-highlight atp_subsectiontitle
+2) Labels file
+    highlight atp_label_linenr
+    highlight atp_label_name 
 
-highlight atp_abstract
-	*this group highlights all the unnubered chapters.
-
-The chapter group highlights or chapters, or sections, or parts, depending
-what is your top level section in your latex document. This applies,
-accordingly, to other groups.
-
-LABEL file
-highlight atp_label_linenr
-highlight atp_label_name 
-
-BIBSEARCH file:
-this is very much the same as the standard syntax for bib files. Groups are
-named bibsearch<NAME> instead of bib<NAME>. There is one more group added:
+3) BibSearch file
+    this is very much the same as the standard syntax for bib files. Groups are
+    named bibsearch<NAME> instead of bib<NAME>. There is one more group added:
 >
  "    bibsearchInfo
 <
-which highlights the line number of the bib entry in the bib file. 
-All bibsearch groups are by default linked to the bib groups.
+    which highlights the line number of the bib entry in the bib file.  All
+    bibsearch groups are by default linked to the bib groups.
 
-Yet, there is no default highlighting, try coots-beauty-256 color scheme. If
-you like it, I'm glad, if you have a nice (non standard) color scheme, I'm
-happy to get it, if you like to share it.
+    Yet, there is no default highlighting, try coots-beauty-256 color scheme.
+    If you like it, I'm glad, if you have a nice (non standard) color scheme,
+    I'm happy to get it, if you like to share it.
 
 ================================================================================
 Final Remarks                               			*atp-remarks*
 	
-	To see some messages that are issued you can use :messages command.
+	To see some messages that are issued you can use :messages command
+	(see |:mes|).
 
 	If you find this plugin useful and have some comments you are
 	cordially invited to write to the author: <mszamot@gmail.com>.

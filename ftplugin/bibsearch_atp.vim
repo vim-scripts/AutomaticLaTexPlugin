@@ -7,14 +7,15 @@
 "
 " MAPPINGS
 if !exists("no_plugin_maps") && !exists("no_atp_bibsearch_maps")
-    map <buffer> c :call BibChoose()  <CR>
+    map <buffer> c :call BibChoose()<CR>
+    map <buffer> y :call BibChoose()<CR>
     map <buffer> q :hide<CR>
     command! -buffer -nargs=* BibChoose 	:call BibChoose(<f-args>)
 endif
 
 if !exists("*BibChoose")
 function! BibChoose(...)
-    let l:which=input("Which entry? (enter for none) ")
+    let l:which=input("Which entry? ( <Number><reg name><Enter>, <Number><Enter> or <Enter> for none) ")
     if l:which =~ '\<\d*\>'
 	let l:start=stridx(b:listofkeys[l:which],'{')+1
 	let l:choice=substitute(strpart(b:listofkeys[l:which],l:start),',','','')

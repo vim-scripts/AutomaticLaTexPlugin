@@ -142,7 +142,7 @@ highlight tesSpecialChar		ctermfg=39	ctermbg=233
 " \chapter, \section, ... {theorem} {definition}
 
 highlight Error          ctermfg=196         	ctermbg=233
-highlight SpellErrors  	 cterm=underline      	guibg=Red   guifg=234
+highlight SpellErrors  	 cterm=underline      	ctermfg=darkred ctermbg=233
 highlight SpellBad       ctermfg=196         	ctermbg=233
 highlight SpellCap       ctermfg=202         	ctermbg=233
 highlight SpellRare      ctermfg=203         	ctermbg=233

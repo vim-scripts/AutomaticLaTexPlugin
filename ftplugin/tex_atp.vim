@@ -1,9 +1,9 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Feb 4
+" Last Changed: 2010 Feb 9
 " URL:		
-" GetLatestVimScripts: 2945 4 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 5 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -15,42 +15,119 @@
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
 "
+" TODO write a function which lists the \input files and let them open.
+" TODO write a function which reads log file whenever it was modified.
+" 		solution 1: read (but when?) it to a variable and compare.	
+" 			with an autocommand loaded by s:compiler and deleted
+" 			when getpid returns an empty string.
+" 		solution 2: read it as a buffer and hide it and use checktime
+" 		to see if it was changed.
+"
 " TODO Check against lilypond 
-" TODO b:changedtick "HWO MANY CHANGES WERE DONE! this could be useful.
+" TODO b:changedtick "HOW MANY CHANGES WERE DONE! this could be useful.
+" TODO b:autex is not set when openning new buffer.
+" TODO command SetOutDir --> help file.
 " NOTES
 " s:tmpfile=temporary file value of tempname()
 " b:texfile=readfile(bunfname("%")
 
+" We need to know bufnumber and bufname in a tabpage.
+let t:bufname=bufname("")
+let t:bufnr=bufnr("")
+let t:winnr=winnr()
+au BufLeave *.tex let t:bufname=bufname("")
+au BufLeave *.tex let t:bufnr=bufnr("")
+au WinEnter *.tex let t:winnr=winnr("#")
+au WinEnter __ToC__ let t:winnr=winnr("#")
+
+" t:winnr,t:bufname,t:bufnr		- number of window from which TOC was called, we use
+" 					  it to come back to this window.
+
 if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1
 
+" Options
 setl keywordprg=texdoc\ -m
+setl include=\\input\\>
+setl includeexpr=substitute(v:fname,'\\%(.tex\\)\\?$','.tex','')
+" TODO set define and work on the abve settings, these settings work with [i
+" command but not with [d, [D and [+CTRL D (jump to first macro definition)
 
+" let &l:errorfile=b:outdir . fnameescape(fnamemodify(expand("%"),":t:r")) . ".log"
+if !exists("*SetErrorFile")
+function! SetErrorFile()
+    if !exists("b:outdir")
+	call s:setoutdir()
+    endif
+    let l:ef=b:outdir . fnamemodify(expand("%"),":t:r") . ".log"
+    let &l:errorfile=l:ef
+    set errorfile?
+endfunction
+endif
+" This options are set also when editing .cls files.
 function! s:setoutdir()
-if g:askfortheoutdir == 1 
-    let b:outdir=input("Where to put output? ")
-elseif get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" && g:askfortheoutdir != 1 
-     let b:outdir=fnamemodify(resolve(expand("%:p")),":h") . "/"
-"      	echomsg "DEBUG setting b:outdir to " . b:outdir
-     echoh WarningMsg | echomsg "Output Directory "b:outdir | echoh None
-endif	
+    if g:askfortheoutdir == 1 
+	let b:outdir=input("Where to put output? do not escape white spaces ")
+    endif
+    if get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" && g:askfortheoutdir != 1 || b:outdir == "" && g:askfortheoutdir == 1
+	 let b:outdir=fnamemodify(resolve(expand("%:p")),":h") . "/"
+    "      	echomsg "DEBUG setting b:outdir to " . b:outdir
+	 echoh WarningMsg | echomsg "Output Directory "b:outdir | echoh None
+	 if bufname("") =~ ".tex$"
+	     call SetErrorFile()
+	 endif
+    endif	
 endfunction
 
-let s:optionsDict= { "texoptions" : "", "reloadonerror" : "0", "openviewer" : "1", "autex" : "1", "Viewer" : "xpdf", "XpdfOptions" : "", "XpdfServer" : fnamemodify(expand("%"),":t"), "outdir" : fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", "askfortheoutdir" : "0", "texcompiler" : "pdflatex"}
+" these are all buffer related variables:
+let s:optionsDict= { 	"texoptions" 	: "", 		"reloadonerror" : "0", 
+		\	"openviewer" 	: "1", 		"autex" 	: "1", 
+		\	"Viewer" 	: "xpdf", 	"XpdfOptions" 	: "", 
+		\	"XpdfServer" 	: fnamemodify(expand("%"),":t"), 
+		\	"outdir" 	: fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/",
+		\	"texcompiler" 	: "pdflatex" }
 let s:ask={ "ask" : "0" }
-let g:rmcommand="perltrash"
-let g:texextensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]
-let g:keep=["log","aux","toc","bbl"]
-" let b:texinteraction='errorstopmode'
-let g:printingoptions=''
+" TODO every option should be set like this: do it with s:setoptinos
+if !exists("g:rmcommand") && executable("perltrash")
+    let g:rmcommand="perltrash"
+endif
+if !exists("g:askfortheoutdir")
+    let g:askfortheoutdir=0
+endif
+if !exists("g:texextensions")
+    let g:texextensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]
+endif
+if !exists("g:keep")
+    let g:keep=["log","aux","toc","bbl"]
+endif
+if !exists("g:printingoptions")
+    let g:printingoptions=''
+endif
+" opens bibsearch results in vertically split window.
+if !exists("g:vertical")
+    let g:vertical=1
+endif
+"TODO: put toc_window_with and labels_window_width into DOC file
+if !exists("t:toc_window_width")
+    let t:toc_window_width=30
+endif
+if !exists("t:labels_window_width")
+    let t:labels_window_width=30
+endif
+"TODO: to make it possible to read the log file after compilation.
+" if !exists("g:au_read_log_file")
+"     let g:au_read_log_file = 1
+" endif
 let s:COM=''
 " let b:outdir=substitute(fnameescape(resolve(expand("%:p"))),resolve(expand("%:r")) . "." . resolve(expand("%:e")) . "$","","")
-" let b:outdir=substitute(fnameescape(resolve(expand("%:p"))),resolve(expand("%:r")) . "." . resolve(expand("%:e")) . "$","","")
+
+" This function sets options (values of buffer related variables) which were
+" not set by the user to their default values.
 function! s:setoptions()
 let s:optionsKeys=keys(s:optionsDict)
 let s:optionsinuseDict=getbufvar(bufname("%"),"")
 for l:key in s:optionsKeys
-    if get(s:optionsinuseDict,l:key,"optionnotset") == "optionnotset" && l:key != "outdir" && l:key != "askfortheoutdir"
+    if get(s:optionsinuseDict,l:key,"optionnotset") == "optionnotset" && l:key != "outdir" 
 "  	    echomsg "Setting " . l:key . "=" . s:optionsDict[l:key]
 	call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
     elseif get(s:optionsinuseDict,l:key,"optionnotset") == "optionnotset" && l:key == "outdir"
@@ -109,12 +186,6 @@ if a:0 == 0
 	echomsg "s:notreadablebibfiles=" .  string(s:notreadablebibfiles)
     endif
     echohl None
-    echomsg ""
-"     highlight Chapter
-"     highlight Section
-"     highlight Subsection
-"     highlight Subsubsection
-"     highlight CurrentSection
 elseif a:0>=1 
     echohl BibResultsMatch
     echomsg "b:texcompiler=   " . b:texcompiler . "  [" . s:optionsDict["texcompiler"] . "]" 
@@ -164,15 +235,9 @@ elseif a:0>=1
     endif
     echohl None
     echomsg ""
-"     highlight Chapter
-"     highlight Section
-"     highlight Subsection
-"     highlight CurrentSection
-"     highlight Subsubsection
 endif
 endfunction
 endif
-command -buffer -nargs=? ShowOptions :call ShowOptions(<f-args>)
 
 function! ATPStatus()
 let s:status=""
@@ -190,12 +255,21 @@ endif
     return s:status
 endfunction
 
-function Setstatus()
+syntax match atp_statustitle 	/.*/ 
+syntax match atp_statussection 	/.*/ 
+syntax match atp_statusoutdir 	/.*/ 
+hi link atp_statustitle Number
+hi link atp_statussection Title
+hi link atp_statusoutdir String
+if !exists("*Setstatus")
+function! Setstatus()
     echomsg "Statusline set by ATP." 
 "     how to set highlight groups in ftplugin not using color file to make a
 "     nice status line
-    let &statusline='%<%#atp_statustitle#%f %(%h%m%r %)  %#atp_statussection#%{CTOC()}%=%#atp_statusoutdir#%{ATPStatus()}  %#atp_statusline#%-14.16(%l,%c%V%)%P'
+"     let &statusline='%<%#atp_statustitle#%f %(%h%m%r %)  %#atp_statussection#%{CTOC()}%=%#atp_statusoutdir#%{ATPStatus()}  %#atp_statusline#%-14.16(%l,%c%V%)%P'
+    let &statusline='%<%f %(%h%m%r %)  %{CTOC()}%=%{ATPStatus()}  %-14.16(%l,%c%V%)%P'
 endfunction
+endif
 if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
     au BufRead *.tex call Setstatus()
 endif
@@ -203,36 +277,11 @@ let b:texruns=0
 let b:log=0	
 let b:ftype=getftype(expand("%:p"))	
 let s:texinteraction="nonstopmode"
-let &l:errorfile=b:outdir . fnameescape(fnamemodify(expand("%"),":t:r")) . ".log"
-setlocal errorformat=%E!\ LaTeX\ %trror:\ %m,
-	\%E!\ %m,
-	\%Cl.%l\ %m,
-	\%+C\ \ %m.,
-	\%+C%.%#-%.%#,
-	\%+C%.%#[]%.%#,
-	\%+C[]%.%#,
-	\%+C%.%#%[{}\\]%.%#,
-	\%+C<%.%#>%.%#,
-	\%C\ \ %m,
-	\%-GSee\ the\ LaTeX%m,
-	\%-GType\ \ H\ <return>%m,
-	\%-G\ ...%.%#,
-	\%-G%.%#\ (C)\ %.%#,
-	\%-G(see\ the\ transcript%.%#),
-	\%-G\\s%#,
-	\%+O(%*[^()])%r,
-	\%+O%*[^()](%*[^()])%r,
-	\%+P(%f%r,
-	\%+P\ %\\=(%f%r,
-	\%+P%*[^()](%f%r,
-	\%+P[%\\d%[^()]%#(%f%r,
-	\%+Q)%r,
-	\%+Q%*[^()])%r,
-	\%+Q[%\\d%*[^()])%r,
+compiler tex
 let s:lockef=1
 au BufRead $l:errorfile setlocal autoread 
+
 "--------- FUNCTIONs -----------------------------------------------------
-"	
 function! s:outdir()
     if b:outdir !~ "\/$"
 	let b:outdir=b:outdir . "/"
@@ -273,24 +322,22 @@ function! ViewOutput()
 endfunction
 endif
 "-------------------------------------------------------------------------
-if !exists("*s:getpid")
 function! s:getpid()
 	let s:command="ps -ef | grep -v " . $SHELL  . " | grep " . b:texcompiler . " | grep -v grep | grep " . fnameescape(expand("%")) . " | awk '{print $2}'"
 	let s:var=substitute(system(s:command),'\D',' ','')
 	return s:var
 endfunction
-endif
+
 if !exists("*Getpid")
 function! Getpid()
 	let s:var=s:getpid()
 	if s:var != ""
 		echomsg b:texcompiler"pid"s:var 
 	else
-		echomsg b:texcompiler"is not running"
+		echomsg b:texcompiler "is not running"
 	endif
 endfunction
 endif
-command! -buffer GPID call Getpid()
 
 if !exists("*s:xpdfpid")
 function! s:xpdfpid() 
@@ -298,7 +345,6 @@ function! s:xpdfpid()
     return substitute(system(s:checkxpdf),'\D','','')
 endfunction
 endif
-command! -buffer CXPDF echo s:xpdfpid()
 "-------------------------------------------------------------------------
 function! s:compare(file,buffer)
     let l:buffer=getbufline(bufname("%"),"1","$")
@@ -316,8 +362,6 @@ function! s:compiler(bibtex,start,runs,verbose,command)
     	echohl WaningMsg | echomsg "Your"b:texcompiler"and"b:Viewer"are not compatible:" 
 	echomsg "b:texcompiler=" . b:texcompiler	
 	echomsg "b:Viewer=" . b:Viewer	
-	echomsg ""
-	echohl None
     endif
 	let s:tmpfile=tempname()
 	let s:dir=fnamemodify(s:tmpfile,":h")
@@ -329,6 +373,7 @@ function! s:compiler(bibtex,start,runs,verbose,command)
 	endif
 	let l:outfile=b:outdir . (fnamemodify(expand("%"),":t:r")) . l:ext
 	let l:outaux=b:outdir . (fnamemodify(expand("%"),":t:r")) . ".aux"
+	let l:outlog=b:outdir . (fnamemodify(expand("%"),":t:r")) . ".log"
 "	COPY IMPORTANT FILES TO TEMP DIRECTORY WITH CORRECT NAME 
 	let l:list=filter(copy(g:keep),'v:val != "log"')
 	for l:i in l:list
@@ -396,7 +441,7 @@ function! s:compiler(bibtex,start,runs,verbose,command)
 	    endif
 "   		echomsg "DEBUG runs s:texcomp="s:texcomp
 	endif
-" 	    echomsg "DEBUG X command s:texcomp=" s:texcomp
+"  	    	echomsg "DEBUG X command s:texcomp=" s:texcomp
 	if a:bibtex == 1
 	    if filereadable(l:outaux)
 		call s:copy(l:outaux,s:tmpfile . ".aux")
@@ -417,7 +462,7 @@ function! s:compiler(bibtex,start,runs,verbose,command)
 	let l:j=1
 	for l:i in g:keep 
 	    let s:copycmd="cp " . s:cpoption . " " . shellescape(s:tmpfile . "." . l:i) . " " . shellescape(b:outdir . (fnamemodify(expand("%"),":t:r")) . "." . l:i) 
-"  		echomsg "DEBUG 2 copycmd"s:copycmd
+"   		echomsg "DEBUG 2 copycmd"s:copycmd
 	    if l:j == 1
 		let s:copy=s:copycmd
 	    else
@@ -445,7 +490,7 @@ function! s:compiler(bibtex,start,runs,verbose,command)
 	endif
 	if a:verbose == 0
 " 		echomsg "DEBUG compile s:command="s:command
-	    return system(s:command)
+	    call system(s:command)
 	else
 	    let s:command="!clear;" . s:texcomp . " ; " . s:cpoutfile . " ; " . s:copy
 	    let b:texcommand=s:command
@@ -478,16 +523,16 @@ elseif a:0 == 0
 endif
 endfunction
 endif
-command! -buffer -nargs=? -count=1 TEX   :call TEX(<count>,<f-args>)
+
 " command! -buffer -count=1 TEX	:call TEX(<count>)		 
 if !exists("*ToggleAuTeX")
 function! ToggleAuTeX()
   if b:autex != 1
     let b:autex=1	
-    echo "automatic tex processing in ON"
+    echo "automatic tex processing is ON"
   else
     let b:autex=0
-    echo "automatic tex processing in OFF"
+    echo "automatic tex processing is OFF"
 endif
 endfunction
 endif
@@ -503,7 +548,6 @@ else
 endif
 endfunction
 endif
-command! -buffer -nargs=? -count=1 VTEX	:call  VTEX(<count>,<f-args>)
 "-------------------------------------------------------------------------
 if !exists("*SimpleBibtex")
 function! SimpleBibtex()
@@ -519,7 +563,6 @@ function! SimpleBibtex()
 "  	!clear;if [[ -h "%" ]];then realname=`readlink "%"`;realdir=`dirname "$realname"`;b_name=`basename "$realname" .tex`;else realdir="%:p:h";b_name="%:r";fi;bibtex "$realdir/$b_name".aux
 endfunction
 endif
-command! -buffer SBibtex :call SimpleBibtex()
 
 if !exists("*Bibtex")
 function! Bibtex(...)
@@ -534,7 +577,6 @@ function! Bibtex(...)
     endif
 endfunction
 endif
-command! -buffer -nargs=? Bibtex :call Bibtex(<f-args>)
 
 "-------------------------------------------------------------------------
 
@@ -552,8 +594,9 @@ function! Delete()
     for l:ext in g:texextensions
 	if executable(g:rmcommand)
 	    if g:rmcommand =~ "^\s*rm\p*" || g:rmcommand =~ "^\s*perltrash\p*"
-		let l:rm=g:rmcommand . " " . b:outdir . "*." . l:ext . " 2>/dev/null && echo Removed ./*" . l:ext . " files"
+		let l:rm=g:rmcommand . " " . shellescape(b:outdir) . "*." . l:ext . " 2>/dev/null && echo Removed ./*" . l:ext . " files"
 	    endif
+" 	    echomsg "DEBUG " l:rm
 	echo system(l:rm)
 	else
 	    let s:error=1
@@ -728,7 +771,6 @@ function! FindBibFiles(bufname)
     return s:bibfiles
 endfunction
 endif
-command -buffer FindBibFiles echo FindBibFiles(bufname('%'))
 " let s:bibfiles=FindBibFiles(bufname('%'))
 function! s:searchbib(pattern) 
 " 	echomsg "DEBUG pattern" a:pattern
@@ -934,10 +976,10 @@ function! s:comparelist(i1, i2)
    return str2nr(a:i1) == str2nr(a:i2) ? 0 : str2nr(a:i1) > str2nr(a:i2) ? 1 : -1
 endfunction
 "-------------------------s:showresults--------------------------------------
-let g:vertical=1
 function! s:showresults(bibresults,flags,pattern)
  
 " FLAGS:
+" for currently supported flags see ':h atp_bibflags'
 " All - all flags	
 " L - last flag
 " a - author
@@ -1025,15 +1067,15 @@ function! s:showresults(bibresults,flags,pattern)
 	    let b:kwflagslist=l:kwflagslist			" debug
 " echohl BibResultEntry | echomsg "BibSearch 2.0" | echohl None	    
 " echohl BibResultsMatch | echomsg "flags:" . join(l:flagslist,'') . join(l:kwflagslist,'') | echohl None
-				let l:bufnr=bufnr(a:pattern)
-				if bufexists(bufname("===" . a:pattern . "==="))
+				let l:bufnr=bufnr("___" . a:pattern . "___"  )
+				if bufexists(bufname("___" . a:pattern . "___"))
 				    let l:bdelete=l:bufnr . "bdelete"
-				    let b:bufnr=l:bufnr		"DEBUG
 				    echomsg b:bufnr		
 				    exe l:bdelete
+" 				    unlet t:bibbufnr
 				endif
 				unlet l:bufnr
- 				let l:openbuffer=" +set\\ buftype=nofile\\ filetype=bibsearch_atp " . fnameescape("===" . a:pattern . "===")
+ 				let l:openbuffer=" +setl\\ buftype=nofile\\ filetype=bibsearch_atp " . fnameescape("___" . a:pattern . "___")
 				if g:vertical ==1
 				    let l:openbuffer="vnew " . l:openbuffer 
 				    let l:skip=""
@@ -1042,11 +1084,7 @@ function! s:showresults(bibresults,flags,pattern)
 				    let l:skip="       "
 				endif
 				exe l:openbuffer
-" 				call setline(l:ln,"@Comment{BibSearch 2.0 flags " . join(l:flagslist,'') . join(l:kwflagslist,'') . "}")
-" 				let l:ln+=1
-" 				call setline(l:ln,"@Comment{flags " . join(l:flagslist,'') . join(l:kwflagslist,'') . "}")
-" 				let l:ln+=1
-
+				call s:setwindow()
     for l:bibfile in keys(a:bibresults)
 	if a:bibresults[l:bibfile] != {}
 " 	    echohl BibResultsFileNames | echomsg "Found in " . l:bibfile | echohl None
@@ -1091,7 +1129,7 @@ function! s:showresults(bibresults,flags,pattern)
 " we check if the entry was present in bib file:
 		    if l:values[g:bibflagsdict[l:lflag][0]] != "no" . g:bibflagsdict[l:lflag][0]
 " 			if l:values[g:bibflagsdict[l:lflag][0]] =~ a:pattern
-			    call setline(l:ln, l:skip . toupper(g:bibflagsdict[l:lflag][1]) . " = " . s:showvalue(l:values[g:bibflagsdict[l:lflag][0]]))
+			    call setline(l:ln, l:skip . g:bibflagsdict[l:lflag][1] . " = " . s:showvalue(l:values[g:bibflagsdict[l:lflag][0]]))
 			    let l:ln+=1
 " 			else
 " 			    call setline(l:ln, l:skip . g:bibflagsdict[l:lflag][1] . " = " . s:showvalue(l:values[g:bibflagsdict[l:lflag][0]]))
@@ -1143,11 +1181,18 @@ function! BibSearch(...)
     endif
 endfunction
 endif
-command -buffer -nargs=* BibSearch	:call BibSearch(<f-args>)
 
 "---------- TOC -----------------------------------------------------------
-" g:sections, b:toc
-"   \ 	'name'		: [ 'pattern to match',		        'pattern to match started version],
+" this function sets the options of BibSearch, ToC and Labels windows.
+function! s:setwindow()
+    " These options are set in the command line
+" +setl\\ buftype=nofile\\ filetype=bibsearch_atp   
+" +setl\\ buftype=nofile\\ filetype=toc_atp\\ nowrap
+" +setl\\ buftype=nofile\\ filetype=toc_atp\\ syntax=labels_atp
+	setlocal nonumber
+	setlocal winfixwidth
+	setlocal noswapfile	
+endfunction
 let g:sections={
     \	'chapter' 	: [           '^\s*\(\\chapter.*\)',	'\\chapter\*'],	
     \	'section' 	: [           '^\s*\(\\section.*\)',	'\\section\*'],
@@ -1157,28 +1202,34 @@ let g:sections={
     \	'abstract' 	: ['^\s*\(\\begin\s*{abstract}.*\|\\abstract\s*{.*\)',	'nopattern']}
 " this works only for latex documents.
 "----------- Make TOC -----------------------------
-" make l:toc a dictionary with keys: line numbers, values 
-" [ 'section-name', 'number', 'title']
-" where section name is element of keys(g:sections), number is the total
-" number, 'title=\1' where \1 is returned by the g:section['key'][0] pattern,
-" for now it is just whole line. The number can be skipped, is not used, the
-" pattern have to be written so that it returns the title, shorttitle and
-" label value or better, writte a function which reads a line character by
-" character and finds these values. For now \chapter*,  \section* are counted
-" it can be fixed.
-function! s:maketoc(bufname)
+" make t:toc a dictionary (with keys: buffer number) of dictionaries which
+" keys are: line numbers and values [ 'section-name', 'number', 'title'] where
+" section name is element of keys(g:sections), number is the total number,
+" 'title=\1' where \1 is returned by the g:section['key'][0] pattern.
+function! s:maketoc(filename)
     " first we get labels in case chapters have them (then we can copy them).
-    call UpdateLabels(a:bufname)
+    " TODO look TODO 1
+    call s:generatelabels(a:filename)
     let l:toc={}
-    let b:texfile=getbufline(bufname("%"),"1","$")
+    " TODO 1 we can check if there are changes in the file and copy the buffer
+    " to this variable only if there where changes.
+    let l:texfile=[]
+    " getbufline reads onlu loaded buffers, unloaded can be read from file.
+    let l:bufname=fnamemodify(a:filename,":t")
+    if bufloaded("^" . l:bufname . "$")
+	let l:texfile=getbufline("^" . l:bufname . "$","1","$")
+    else
+	w
+	let l:texfile=readfile(a:filename)
+    endif
     let l:true=1
     let l:i=0
-    " remove the bart before \begin{document}
+    " remove the part before \begin{document}
     while l:true == 1
-	if b:texfile[0] =~ '\\begin\s*{document}'
+	if l:texfile[0] =~ '\\begin\s*{document}'
 		let l:true=0
 	endif
-	call remove(b:texfile,0)
+	call remove(l:texfile,0)
 	let l:i+=1
     endwhile
     let l:bline=l:i
@@ -1197,10 +1248,10 @@ function! s:maketoc(bufname)
 	endif
 	let l:j+=1
     endfor
-    " filter b:texfile    
-    let s:filtered=filter(deepcopy(b:texfile),'v:val =~ l:filter')
+    " filter l:texfile    
+    let s:filtered=filter(deepcopy(l:texfile),'v:val =~ l:filter')
     let b:filtered=s:filtered
-    let b:texfile=b:texfile
+    let b:texfile=l:texfile
     for l:line in s:filtered
 	for l:section in keys(g:sections)
 	    if l:line =~ g:sections[l:section][0] 
@@ -1219,7 +1270,7 @@ function! s:maketoc(bufname)
 			let l:star=0
 		    endif
 " 		    substitute(l:line,g:sections[l:section][0],'\1','')
-		    let l:i=index(b:texfile,l:line)
+		    let l:i=index(l:texfile,l:line)
 		    let l:tline=l:i+l:bline+1
 		    " if it is not starred version add one to section number
 		    if l:star==0
@@ -1247,215 +1298,263 @@ function! s:maketoc(bufname)
 	    endif
 	endfor
     endfor
-    let t:toc=l:toc
-    return l:toc
+    if exists("t:toc")
+	call extend(t:toc, { a:filename : l:toc })
+    else
+	let t:toc={ a:filename : l:toc }
+    endif
+    return t:toc
 endfunction
 let t:texcompiler=b:texcompiler
-"----------------------Current TOC --------------
-function! CTOC()
-    if t:texcompiler =~ 'latex'    
-	if !exists("t:toc")
-	    let t:toc=s:maketoc(bufname("%"))
-	endif
-	let l:cline=line('.')
-	let l:sorted=sort(keys(t:toc),"s:comparelist")
-	let l:x=0
-	while l:x<len(l:sorted) && l:sorted[l:x]<=l:cline
-	   let l:x+=1 
-        endwhile
-	if l:x>=1
-	    let l:oline=t:toc[l:sorted[l:x-1]][2]
-	else
-	    let l:oline="Preambule"
-	endif
-	return l:oline
-    else    
-	return "This function works only for latex documents."
+"--------------------- Make a List of Buffers ----
+if !exists("t:buflist")
+    let t:buflist=[]
+endif
+function! s:buflist()
+    if bufname("") =~ ".tex$"
+	call add(t:buflist,fnamemodify(bufname(""),":p"))
     endif
-    return ""
 endfunction
+call s:buflist()
 "---------------------- Show TOC -----------------
+" Comments: this do not works when a buffer was deleted!  TOC calls
+" s:generatelabels and this is not compatible yet. The function TOC takes time,
+" it could be split into two functions show part and update part.
+
 function! s:showtoc(toc)
-    " make a test if the section number must start from chapter number or not
-    " (if there are no chapters)
-    let l:chapon=0
-    for l:line in keys(a:toc)
-	if a:toc[l:line][0] == 'chapter'
-	    let l:chapon=1
-	    break
-	endif
-    endfor
+    " this is a dictionary of line numbers where a new file begins.
     let l:cline=line(".")
-    let l:chnr=0
-    let l:secnr=0
-    let l:ssecnr=0
-    let l:sssecnr=0
-    for l:sections in keys(g:sections)
-	let l:nr{l:sections}=""
-    endfor
-    let l:sorted=sort(keys(a:toc),"s:comparelist")
-    let l:len=len(l:sorted)
-"     echomsg "LENGHT l:len=" l:len
-    let l:bname=bufname("%") . "-TOC"
-    let l:bnr=bufnr(l:bname)
-    let l:winnr=bufwinnr(l:bname)
-    let l:cbnr=bufnr("%")
-    let l:cwinnr=winnr()
-    " we are going to delete the TOC/LABEL buffer, 
-    " first we check if it is not the curret buffer
-    if buflisted(l:bname) && l:winnr != l:cwinnr
-    	exe l:winnr . " wincmd w"
-	silent exe "%delete"
-    elseif !buflisted(l:bname)
-	let l:openbuffer="35vnew +set\\ buftype=nofile\\ filetype=toc_atp\\ nowrap " . fnameescape(bufname('.') . "-TOC")
+"     " Open new window or jump to the existing one.
+"     " Remember the place from which we are coming:
+"     let t:bufname=bufname("")
+"     let t:winnr=winnr()	 these are already set by TOC()
+    let l:bname="__ToC__"
+    let l:tocwinnr=bufwinnr("^" . l:bname . "$") 
+"     echomsg "DEBUG a " . l:tocwinnr
+    if l:tocwinnr != -1
+	" Jump to the existing window.
+	    exe l:tocwinnr . " wincmd w"
+	    silent exe "%delete"
+    else
+	" Open new window if its width is defined (if it is not the code below
+	" will put toc in the current buffer so it is better to return.
+	if !exists("t:toc_window_width")
+	    echoerr "t:toc_window_width not set"
+	    return
+	endif
+	let l:openbuffer=t:toc_window_width . "vnew +setl\\ buftype=nofile\\ filetype=toc_atp\\ nowrap __ToC__"
 	exe l:openbuffer
-    elseif l:winnr== l:cwinnr
-	echoerr "ATP error in function s:showtoc, TOC/LABEL buffer 
-		    \ and the tex file buffer agree."
-	return ""
+	" We are setting the address from which we have come.
+	call s:setwindow()
     endif
+"     let t:tocwinnr=bufwinnr("^" . t:tocbufname . "$")
+"     echomsg "DEBUG T " . t:tocwinnr . " tocbufname " . t:tocbufname
     setlocal tabstop=4
-"     setlocal expandtab
     let l:number=1
-    for l:line in l:sorted
-	if l:cline<=l:line
-	    call setpos('.',[bufnr(bufname('%')),l:number,1,0])
-	endif
-	let l:lineidx=index(l:sorted,l:line)
-" 	echomsg "line idx  " l:lineidx
-	let l:nlineidx=l:lineidx+1
-	if l:nlineidx< len(l:sorted)
-	    let l:nline=l:sorted[l:nlineidx]
-	else
-	    let l:nline=line("$")
-	endif
-	let l:lenght=len(l:line) 	
-	if l:lenght == 0
-	    let l:showline="     "
-	elseif l:lenght == 1
-	    let l:showline="    " . l:line
-	elseif l:lenght == 2
-	    let l:showline="   " . l:line
-	elseif l:lenght == 3
-	    let l:showline="  " . l:line
-	elseif l:lenght == 4
-	    let l:showline=" " . l:line
-	elseif l:lenght>=5
-	    let l:showline=l:line
-	endif
-	if a:toc[l:line][0] == 'abstract'
- 	    call setline(l:number, l:showline . "\t" . "  " . "Abstract" )
-	elseif a:toc[l:line][0] =~ 'bibliography\|references'
-	    call setline (l:number, l:showline . "\t" . "  " . a:toc[l:line][2])
-	elseif a:toc[l:line][0] == 'chapter'
-	    let l:chnr=a:toc[l:line][1]
-	    let l:nr=l:chnr
-	    if a:toc[l:line][3]
-		"if it is stared version" 
-		let l:nr=substitute(l:nr,'.',' ','')
+    " this is the line number in toc.
+    " l:number is a line number relative to the file listed in toc.
+    " the current line number is l:linenumber+l:number
+    " there are two loops: one over l:linenumber and the second over l:number.
+    let l:numberdict={}
+    " this variable will be used to set the cursor position in ToC.
+    for l:openfile in keys(a:toc)
+	call extend(l:numberdict,{ l:openfile : l:number })
+	let l:chapon=0
+	let l:chnr=0
+	let l:secnr=0
+	let l:ssecnr=0
+	let l:sssecnr=0
+	let l:path=fnamemodify(bufname(""),":p:h")
+	for l:line in keys(a:toc[l:openfile])
+	    if a:toc[l:openfile][l:line][0] == 'chapter'
+		let l:chapon=1
+		break
 	    endif
-	    call setline (l:number, l:showline . "\t" . l:nr . " " . toupper(a:toc[l:line][2]))
-	elseif a:toc[l:line][0] == 'section'
-	    let l:secnr=a:toc[l:line][1]
-	    if l:chapon
-		let l:nr=l:chnr . "." . l:secnr  
-		if a:toc[l:line][3]
-		    "if it is stared version" 
-		    let l:nr=substitute(l:nr,'.',' ','g')
-		endif
-		call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:line][2])
+	endfor
+	" TODO: do I use this code?
+	for l:sections in keys(g:sections)
+	    let l:nr{l:sections}=""
+	endfor
+	let l:sorted=sort(keys(a:toc[l:openfile]),"s:comparelist")
+	let l:len=len(l:sorted)
+	call setline(l:number,fnamemodify(l:openfile,":t") . " (" . fnamemodify(l:openfile,":p:h") . ")")
+	let l:number+=1
+	for l:line in l:sorted
+	    let l:lineidx=index(l:sorted,l:line)
+" 	    echomsg "line idx  " l:lineidx
+	    let l:nlineidx=l:lineidx+1
+	    if l:nlineidx< len(l:sorted)
+		let l:nline=l:sorted[l:nlineidx]
 	    else
-		let l:nr=l:secnr 
-		if a:toc[l:line][3]
-		    "if it is stared version" 
-		    let l:nr=substitute(l:nr,'.',' ','g')
-		endif
-		call setline (l:number, l:showline . "\t" . l:nr . " " . a:toc[l:line][2])
+		let l:nline=line("$")
 	    endif
-	elseif a:toc[l:line][0] == 'subsection'
-	    let l:ssecnr=a:toc[l:line][1]
-	    if l:chapon
-		let l:nr=l:chnr . "." . l:secnr  . "." . l:ssecnr
-		if a:toc[l:line][3]
+	    let l:lenght=len(l:line) 	
+	    if l:lenght == 0
+		let l:showline="     "
+	    elseif l:lenght == 1
+		let l:showline="    " . l:line
+	    elseif l:lenght == 2
+		let l:showline="   " . l:line
+	    elseif l:lenght == 3
+		let l:showline="  " . l:line
+	    elseif l:lenght == 4
+		let l:showline=" " . l:line
+	    elseif l:lenght>=5
+		let l:showline=l:line
+	    endif
+	    " Print ToC lines.
+	    if a:toc[l:openfile][l:line][0] == 'abstract'
+		call setline(l:number, l:showline . "\t" . "  " . "Abstract" )
+	    elseif a:toc[l:openfile][l:line][0] =~ 'bibliography\|references'
+		call setline (l:number, l:showline . "\t" . "  " . a:toc[l:openfile][l:line][2])
+	    elseif a:toc[l:openfile][l:line][0] == 'chapter'
+		let l:chnr=a:toc[l:openfile][l:line][1]
+		let l:nr=l:chnr
+		if a:toc[l:openfile][l:line][3]
 		    "if it is stared version" 
-		    let l:nr=substitute(l:nr,'.',' ','g')
+		    let l:nr=substitute(l:nr,'.',' ','')
 		endif
-		call setline (l:number, l:showline . "\t\t\t" . l:nr . " " . a:toc[l:line][2])
+		call setline (l:number, l:showline . "\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+	    elseif a:toc[l:openfile][l:line][0] == 'section'
+		let l:secnr=a:toc[l:openfile][l:line][1]
+		if l:chapon
+		    let l:nr=l:chnr . "." . l:secnr  
+		    if a:toc[l:openfile][l:line][3]
+			"if it is stared version" 
+			let l:nr=substitute(l:nr,'.',' ','g')
+		    endif
+		    call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+		else
+		    let l:nr=l:secnr 
+		    if a:toc[l:openfile][l:line][3]
+			"if it is stared version" 
+			let l:nr=substitute(l:nr,'.',' ','g')
+		    endif
+		    call setline (l:number, l:showline . "\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+		endif
+	    elseif a:toc[l:openfile][l:line][0] == 'subsection'
+		let l:ssecnr=a:toc[l:openfile][l:line][1]
+		if l:chapon
+		    let l:nr=l:chnr . "." . l:secnr  . "." . l:ssecnr
+		    if a:toc[l:openfile][l:line][3]
+			"if it is stared version" 
+			let l:nr=substitute(l:nr,'.',' ','g')
+		    endif
+		    call setline (l:number, l:showline . "\t\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+		else
+		    let l:nr=l:secnr  . "." . l:ssecnr
+		    if a:toc[l:openfile][l:line][3]
+			"if it is stared version" 
+			let l:nr=substitute(l:nr,'.',' ','g')
+		    endif
+		    call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+		endif
+	    elseif a:toc[l:openfile][l:line][0] == 'subsubsection'
+		let l:sssecnr=a:toc[l:openfile][l:line][1]
+		if l:chapon
+		    let l:nr=l:chnr . "." . l:secnr . "." . l:sssecnr  
+		    if a:toc[l:openfile][l:line][3]
+			"if it is stared version" 
+			let l:nr=substitute(l:nr,'.',' ','g')
+		    endif
+		    call setline(l:number, a:toc[l:openfile][l:line][0] . "\t\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+		else
+		    let l:nr=l:secnr  . "." . l:ssecnr . "." . l:sssecnr
+		    if a:toc[l:openfile][l:line][3]
+			"if it is stared version" 
+			let l:nr=substitute(l:nr,'.',' ','g')
+		    endif
+		    call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+		endif
 	    else
-		let l:nr=l:secnr  . "." . l:ssecnr
-		if a:toc[l:line][3]
-		    "if it is stared version" 
-		    let l:nr=substitute(l:nr,'.',' ','g')
-		endif
-		call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:line][2])
+		let l:nr=""
 	    endif
-	elseif a:toc[l:line][0] == 'subsubsection'
-	    let l:sssecnr=a:toc[l:line][1]
-	    if l:chapon
-		let l:nr=l:chnr . "." . l:secnr . "." . l:sssecnr  
-		if a:toc[l:line][3]
-		    "if it is stared version" 
-		    let l:nr=substitute(l:nr,'.',' ','g')
-		endif
-		call setline(l:nr, a:toc[l:line][0] . "\t\t\t" . l:nr . " " . a:toc[l:line][2])
-	    else
-		let l:nr=l:secnr  . "." . l:ssecnr . "." . l:sssecnr
-		if a:toc[l:line][3]
-		    "if it is stared version" 
-		    let l:nr=substitute(l:nr,'.',' ','g')
-		endif
-		call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:line][2])
-	    endif
-	else
-	    let l:nr=""
-	endif
-" 	echo l:line . " " . a:toc[l:line][0] . " " . a:toc[l:line][1] . " " . a:toc[l:line][2]
- 	let l:number+=1
+    " 	echo l:line . " " . a:toc[l:openfile][l:line][0] . " " . a:toc[l:openfile][l:line][1] . " " . a:toc[l:openfile][l:line][2]
+	    let l:number+=1
+	endfor
     endfor
-    " set the cursor position on the correct line number.
-    let l:number=1
-    let b:sorted=l:sorted
-    for l:line in l:sorted
-    if l:cline>=l:line
-	call setpos('.',[bufnr(bufname('%')),l:number,1,0])
-    elseif l:number == 1 && l:cline<l:line
-	call setpos('.',[bufnr(bufname('%')),l:number,1,0])
-    endif
-    let l:number+=1
-    endfor
+	" set the cursor position on the correct line number.
+	" first get the line number of the begging of the ToC of t:bufname
+	" (current buffer)
+	let t:numberdict=l:numberdict	"DEBUG
+	let l:number=l:numberdict[fnamemodify(t:bufname,":p")]
+	let l:sorted=sort(keys(a:toc[fnamemodify(t:bufname,":p")]),"s:comparelist")
+	let t:sorted=l:sorted
+	for l:line in l:sorted
+	    if l:cline>=l:line
+		let l:number+=1
+" 		call setpos('.',[bufnr(""),l:number+1,1,0])
+" 	    elseif l:number == 1 && l:cline<l:line
+" 		call setpos('.',[bufnr(""),l:number+1,1,0])
+	    endif
+" 	    let l:number+=1
+	endfor
+	call setpos('.',[bufnr(""),l:number,1,0])
 "     call setpos('.',[l:bnumber,1,1,0])
 endfunction
-"------------------- TOC -------------------------------------------------
+"------------------- TOC ---------------------------------------------
 if !exists("*TOC")
 function! TOC()
-if b:texcompiler =~ 'latex'    
-    let s:toc=s:maketoc(bufname('%'))
-    call s:showtoc(s:toc)
-else    
-    echomsg "This function works only for latex documents."
-endif
+    if b:texcompiler !~ 'latex'    
+	echoerr "This function works only for latex documents."
+	return
+    endif
+    let t:bufname=bufname("")
+    " for each buffer in t:buflist (set by s:buflist)
+    for l:buffer in t:buflist 
+	    let t:toc=s:maketoc(l:buffer)
+    endfor
+    call s:showtoc(t:toc)
 endfunction
 endif
-command -buffer TOC :call TOC()
+"------------------- Current TOC -------------------------------------
+function! CTOC()
+    if t:texcompiler !~ 'latex'    
+	echoerr "This function works only for latex documents."
+	return
+    endif
+    let t:bufname=bufname("")
+    let t:toc=s:maketoc(t:bufname)
+    let l:cline=line('.')
+    let l:sorted=sort(keys(t:toc[t:bufname]),"s:comparelist")
+    let l:x=0
+    while l:x<len(l:sorted) && l:sorted[l:x]<=l:cline
+       let l:x+=1 
+    endwhile
+    if l:x>=1
+	let l:oline=t:toc[t:bufname][l:sorted[l:x-1]][2]
+    else
+	let l:oline="Preambule"
+    endif
+    return l:oline
+endfunction
 "--------- LABELS --------------------------------------------------------
-function! UpdateLabels(bufname)
-    let t:labels={}
-    let b:texfile=getbufline(a:bufname,"1","$")
+function! s:generatelabels(filename)
+    let s:labels={}
+    let l:bufname=fnamemodify(a:filename,":t")
+    " getbufline reads onlu loaded buffers, unloaded can be read from file.
+    if bufloaded("^" . l:bufname . "$")
+	let l:texfile=getbufline("^" . l:bufname . "$","1","$")
+    else
+	w
+	let l:texfile=readfile(a:filename)
+    endif
+"     echomsg "DEBUG X        " . fnamemodify(a:filename,":t")
     let l:true=1
     let l:i=0
     " remove the bart before \begin{document}
     while l:true == 1
-	if b:texfile[0] =~ '\\begin\s*{document}'
+	if l:texfile[0] =~ '\\begin\s*{document}'
 		let l:true=0
 	endif
-	call remove(b:texfile,0)
+	call remove(l:texfile,0)
 	let l:i+=1
     endwhile
     let l:bline=l:i
     let l:i=0
-    while l:i < len(b:texfile)
-	if b:texfile[l:i] =~ '\\label\s*{'
-	    let l:lname=matchstr(b:texfile[l:i],'\\label\s*{.*','')
+    while l:i < len(l:texfile)
+	if l:texfile[l:i] =~ '\\label\s*{'
+	    let l:lname=matchstr(l:texfile[l:i],'\\label\s*{.*','')
 	    let l:start=stridx(l:lname,'{')+1
 	    let l:lname=strpart(l:lname,l:start)
 	    let l:end=stridx(l:lname,'}')
@@ -1463,22 +1562,69 @@ function! UpdateLabels(bufname)
 	    let b:lname=l:lname
     "This can be extended to have also the whole environmet which
     "could be shown.
-	    call extend(t:labels,{ l:i+l:bline+1 : l:lname })
+	    call extend(s:labels,{ l:i+l:bline+1 : l:lname })
 	endif
 	let l:i+=1 
     endwhile
+    if exists("t:labels")
+	call extend(t:labels,{ a:filename : s:labels } )
+    else
+	let t:labels={ a:filename : s:labels }
+    endif
     return t:labels
 endfunction
-function s:showlabels(labels)
+
+function! s:showlabels(labels)
+    " the argument a:labels=t:labels[bufname("")] !
     let l:cline=line(".")
     let l:lines=sort(keys(a:labels),"s:comparelist")
-    let l:bname=bufname("%") . "-LABELS"
-    if buflisted(l:bname) != 0
-	 exe "bdelete! " . l:bname
+    " Open new window or jump to the existing one.
+    let l:bufname=bufname("")
+    let l:bufpath=fnamemodify(bufname(""),":p:h")
+    let l:bname="__LABELS__"
+    let l:labelswinnr=bufwinnr("^" . l:bname . "$")
+"     let t:bufnr=bufnr("")				" CHECK
+    let t:labelswinnr=winnr()
+    let t:labelsbufnr=bufnr("^" . l:bname . "$") 
+    let l:labelswinnr=bufwinnr(t:labelsbufnr)
+    if l:labelswinnr != -1
+	" Jump to the existing window.
+	exe l:labelswinnr . " wincmd w"
+	if l:labelswinnr != t:labelswinnr
+	    silent exe "%delete"
+	else
+	    echoerr "ATP error in function s:showtoc, TOC/LABEL buffer 
+		    \ and the tex file buffer agree."
+	    return
+	endif
+   else
+"     if buflisted("LABELS") != 0
+" 	 exe "bdelete! " . l:bname
+"     endif
+"     if exists("t:labelsbufnr")
+" 	let l:labelswinnr=bufwinnr(t:labelsbufnr)
+"     	exe l:labelswinnr . " wincmd w"
+" 	if t:labelsbufnr != t:bufnr
+" 	    silent exe "%delete"
+" 	else
+" 	    echoerr "ATP error in function s:showtoc, TOC/LABEL buffer 
+" 			\ and the tex file buffer agree."
+" 	    return
+" 	endif
+"     else
+	" Open new window if its width is defined (if it is not the code below
+	" will put labels in the current buffer so it is better to return.
+	if !exists("t:labels_window_width")
+	    echoerr "t:labels_window_width not set"
+	    return
+	endif
+	let l:openbuffer=t:labels_window_width . "vnew +setl\\ buftype=nofile\\ filetype=toc_atp\\ syntax=labels_atp __LABELS__"
+	exe l:openbuffer
+	call s:setwindow()
+	let t:labelsbufnr=bufnr("")
     endif
-    let l:openbuffer="35vnew +set\\ buftype=nofile\\ filetype=toc_atp\\ syntax=labels_atp " . fnameescape(l:bname)
-    exe l:openbuffer
-    let l:ln=1
+    call setline(1,l:bufname . " (" . l:bufpath . ")")
+    let l:ln=2
     for l:line in l:lines
 	call setline(l:ln, l:line . "\t" . a:labels[l:line]) 
 	let l:ln+=1
@@ -1494,12 +1640,14 @@ function s:showlabels(labels)
     let l:number+=1
     endfor
 endfunction
-
-function Labels()
-    let l:labels=UpdateLabels(bufname('%'))
-    call s:showlabels(l:labels)
+" -------------------- Labels -------------------
+if !exists("*Labels")
+function! Labels()
+    let t:labels=s:generatelabels(fnamemodify(bufname(""),":p"))
+    let t:bufname=fnamemodify(bufname(""),":p")
+    call s:showlabels(t:labels[t:bufname])
 endfunction
-command -buffer Labels	:call Labels() 
+endif
     
 "--------- MAPPINGS -------------------------------------------------------
 " Add mappings, unless the user didn't want this.
@@ -1632,3 +1780,18 @@ endif
 " package, a very powerful tool to make beautiful diagrams, and all sort of
 " pictures in latex.
 syn match texTikzCoord '\(|\)\?([A-Za-z0-9]\{1,3})\(|\)\?\|\(|\)\?(\d\d)|\(|\)\?'
+
+" COMMANDS
+command! -buffer SetErrorFile :call SetErrorFile()
+command! -buffer -nargs=? ShowOptions 	:call ShowOptions(<f-args>)
+command! -buffer GPID 	:call Getpid()
+command! -buffer CXPDF 	:echo s:xpdfpid()
+command! -buffer -nargs=? -count=1 TEX   :call TEX(<count>,<f-args>)
+command! -buffer -nargs=? -count=1 VTEX	:call  VTEX(<count>,<f-args>)
+command! -buffer SBibtex :call SimpleBibtex()
+command! -buffer -nargs=? Bibtex 	:call Bibtex(<f-args>)
+command! -buffer FindBibFiles echo FindBibFiles(bufname('%'))
+command! -buffer -nargs=* BibSearch	:call BibSearch(<f-args>)
+command! -buffer TOC 	:call TOC()
+command! -buffer Labels	:call Labels() 
+command! -buffer SetOutDir :call s:setoutdir()

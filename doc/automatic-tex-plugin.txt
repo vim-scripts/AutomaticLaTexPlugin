@@ -30,7 +30,7 @@ We provide a powerful function to search in bibliographic files (bib files).
 |atp-mappings|  	Mappings and Commands
 |atp-errors|  		Error handling
 |atp-requirements|  	Requirements
-|atp-viewers| 		Note about viewers
+|atp-viewers| 		Note about viewers (including inverse and reverse searching)
 |atp-color-highlight|	Colors and syntaxes defined
 |atp-remarks|  		Final remarks
 |atp-copy-rights|	Copy Rights
@@ -71,8 +71,7 @@ buffer runs tex compiler (configured in b:texcompiler) with options:
 	-jobname
 which points to a unique temporary file in vim temporary directory (using the
 function 'tempname()' (see |tempname()|. If you are concerned with security
-reasons read also: |shelltemp|, ... (THERE IS A HELP ON: HOW TO SET
-PERMISSIONS TO TEMPORARY FILES)
+reasons read also: |shelltemp|.
 
 You can switch off/on the function s:auTeX by pressing <S-F5>  or by letting
 the local to buffer variable b:autex=1 (on) b:autex=0 (off). It is useful in
@@ -131,6 +130,10 @@ map \l,imap \ll, :TEX
 	The command :2TEX will run :call TEX(2), :TEX 3 do :call TEX(3), and
 	:2TEX3 will resolve to :call TEX(3).
 
+	It is useful when you want to make the outline (using hyperref
+	package) of your article in pdf files, the tex file has to be
+	'sourced' twice. To make the bibliography you can use |atp-Bibtex()|.
+
 VTEX([runs])						*atp-VTEX()*
 map <F5>,imap <F5>, :VTEX 
 	
@@ -151,15 +154,15 @@ map <F5>,imap <F5>, :VTEX
 Bibtex([debug])						*atp-Bibtex()* 
 map \b, :Bibtex, :Bibtex v
 	This function will call bibtex to produce the bibliography file
-	(.bbl). If in you |b:outdir| there is no aux file it first calls your
-	tex compiler. After the bbl file is produced two consecutive runs of
-	tex compiler are called to make your bibliography.
+	(.bbl). If in |b:outdir| there is no 'aux' file it first calls tex
+	compiler. After the 'bbl' file is produced two consecutive runs of tex
+	compiler are called to make the bibliography.
 
 	If you specify any value to the debug variable then then this function
 	will be called in verbose mode (only the last time tex compiler will
 	run in errorstop mode). This gives you the chance to see the output of
 	bibtex command for a second. The command :Bibtex v is associated to
-	this behaviour.
+	this behaviour. If you want to just run bibtex see the next function.
 
 	The command :Bibtex  will :call Bibtex(), while :Bibtex v
 	(and :Bibtex <anything>) will :call Bibtex(1)
@@ -172,11 +175,11 @@ map \sb, :SBibtex
 	
 ViewOutput()						*atp-ViewOutput()*
 map \v,map <F3>, imap \v, imap <F3>  
-
 	You would like to see what you are editing use this function. It will
 	use the program defined in the variable b:Viewer. See |b:Viewer|,
 	|b:XpdfServer|, |b:XpdfOptions|. When there is no output file it will run
-	TeX and open the file.
+	TeX and open the file. Read more about particular viewers
+	(inverse/reverse searching) in |atp-viewers|. 
 
 BibSearch({pattern},{flag})				see |atp-BibSearch|
 :BibSearch
@@ -199,6 +202,35 @@ FindBibFiles({bufname})					*atp-FindBibFiles()*
 	above variables read |atp-variables-bib|. This function is called
 	internally be the script functions BibSearch/BibChoose/ShowOptions.
 	The command :FindBibFiles finds bib files in the current buffer. 
+
+							*atp-FindInputFiles()*
+FindInputFiles([bufname])
+:FindInputFiles [bufname]
+	This function finds all the input files, i.e. files put after the
+	tex commands: '\input', '\include' or '\includeonly'. And prints the
+	reuslt. 
+	The function and the command have one optional argument - the buffer
+	name. By default it searches for input files in the current buffer.
+	The bufername complition is set, hence you can use <Tab> to choose the
+	bufername as the argument of the command.
+
+
+							*atp-EditInputFile()*
+EditInputFile([bufname])
+:EditInputFile [bufname]
+	This function finds input files (using the function FindInputFiles()
+	in the current buffer and let you choose one to edit.
+	window. 
+
+	The argument is optional and works as in |atp-FindInputFiles()|.
+
+	The input file may contain white spaces, but then has to be quoted
+	with '"' (this is a latex requirement).
+
+	Input files are searched in the |b:outdir| directory, if not found
+	there then in the directory |g:texmf|. The default value is 
+	g:texmf=$HOME/texmf, which is the default value of local texmf tree in
+	texlive.
 
 OpenLog()						*atp-OpenLog()*
 map <F6>l, imap <F6>l
@@ -230,7 +262,7 @@ ShowOptions()						*atp-show-options* *atp-ShowOptions()*
 <		
 							*atp-TOC()*	
 TOC()
-map T
+map T, :TOC
 	Shows Table of Contents of your document. It do not yet support the
 	started version of chapter, section,... environemnts. It opens new
 	window in which you can use the mappings: 
@@ -264,7 +296,7 @@ map T
 
 							*atp-Labels()*
 Labels()
-map \L
+map \L, :Labels
 	Shows labels defined in your file. You can also use the mappings
 	'e','c','p','s','q' and <Enter> as above.
 
@@ -273,6 +305,16 @@ map \L
 
 	For good support of multiple opened files one have to wait a moment.
 	
+							*atp-SetOutDir*	
+:SetOutDir
+	This is a command wich sets b:outdir variables and |'errorfile'| option.
+	See |b:outdir| for the default value.
+
+							*atp-SetErrorFile*
+:SetErrorFile
+	If you change |b:outdir| variable and you want to update the
+	|'errorfile'| option use this command. It will show you the value to
+	which |'errorfile'| was set. 
 
 ================================================================================
 Searching in bib files 		                        *atp-bibsearch*
@@ -628,7 +670,8 @@ let b:texcompiler="pdflatex" 					*b:texcompiler*
 
 let b:texoptions=""
 	If you want to set some additional options to your texcompiler, note
-	that, -jobname, -output-directory, -mode, are already used. 
+	that, -jobname, -output-directory, -mode, are already used. You can
+	use this to make reverse searching with xdvi see |atp-xdvi|.
 
 								*b:outdir*
 let b:outdir=fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/"
@@ -653,6 +696,11 @@ Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete()
 		:echo b:outdir
 	or use the function ShowOptions() (see |apt-ShowOptions()|).		
 
+								*atp-g:texmf*
+let g:texmf=$HOME/texmf
+	This variable configures where input files are placed. See
+	|atp-EditInputFile()|.
+
 let g:askforoutdir=0						*g:askforoutdir*
 	Its values are 1 and 0.  When it is set to 1 you will be asked for the
 	name of a directory where tex will put output files, note that this
@@ -673,6 +721,11 @@ let b:XpdfOptions=""						*b:XpdfOptions*
 	set it to "-bg gray20". Other example:
 
 	let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue3 -papercolor SlateBlue4"
+
+	If you want this option to work in new open buffers put this in your
+	$VIMRC file:
+
+	au BufRead *.tex let b:XpdfOptions="-bg NavajoWhite4 -fg black -mattecolor burlywood"
 
 let b:XpdfServer=fnamemodify(expand("%"),":t")			*b:XpdfServer*	
 	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
@@ -811,10 +864,11 @@ map \UL			<-- is mapped to UpdateLabels(bufname("%"))
 
 texdoc:							*atp-map-texdoc*
 <F1> 	   
-	This is both map and imap. Then You have to type what you are looking
-	for and press enter. The option 'keywordprg' set to 'texdoc -m', i.e
+	This is both map and imap. Then you have to type what you are looking
+	for and press enter. The option 'keywordprg' is set to 'texdoc -m', i.e
 	when your curosr is over a package name and you press 'K' key then you
-	should see the package document file.
+	should see the package document file (if it is named after the
+	package).
 
 	Note: if you are using: 
 		au! BufWinEnter *.tex silent loadview
@@ -995,8 +1049,39 @@ epdfview
 acroread
 	As with epdfview (with the difference that it supports automatic
 	updates, but it do not works somehow)
+								*atp-xdvi*
 xdvi
-	Works fine.
+	Works fine. You can set reverse searching (i.e. position vim's cursor
+	after xdvi event: usually CTRL+Left Mouse)  with this options:
+
+	let b:texcompiler="latex"
+	let b:texoptions="-src-specials"
+	let b:Viewer="xdvi -editor 'gvim --remote-wait +%l %f'"
+
+	See vim tip at: http://vim.wikia.com/wiki/Vim_can_interact_with_xdvi 	
+
+	For inverse searching (position xdvi according to the vims cursor
+	position) you can set:
+>
+ "	let b:inverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
+<
+	To make an inverse search:
+>
+ "		:call system(b:inverse_search)
+<
+	And xdvi will place itself where your tex file is opened.  You can
+	make a map for this. At some stage it will be included in this plugin,
+	but I want to include also inverse and reverse searching using pdf
+	viewers.
+
+	To use this with vim rather than gvim one have to add servername. Run
+	vim as:
+>
+ " 	vim --servername vimtex
+ " 	let b:Viewer="xdvi -editor 'vim --servername " . v:servername . " --remote-wait +%l %f'"
+ "
+ "	let b:inverse_search="xdvi -editdor 'vim --servername " . v:servername "' -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
+<
 
 ================================================================================
 Color highliting and syntax groups				*atp-color-highlight*
@@ -1007,7 +1092,6 @@ it. These are the highlights groups defined for various files:
 1) ToC file
     highlight atp_linenumber
     highlight atp_number
-
     highlight atp_chapter
     highlight atp_section
     highlight atp_subsection
@@ -1020,6 +1104,7 @@ it. These are the highlights groups defined for various files:
     accordingly, to other groups.
 
 2) Labels file
+    highlight atp_label_filename
     highlight atp_label_linenr
     highlight atp_label_name 
 
@@ -1051,11 +1136,11 @@ Final Remarks                               			*atp-remarks*
 	good).
 
 	For several month I was using a different code which was not using
-	temporary copies but was checking if the tex is running. It was
+	temporary copies but was checking if the tex is running or not. It was
 	working very good but I didn't understand why (silly isn't it), and
 	when I started making changes it stopped working: the issue is that
 	it is difficult to make a function sleep until tex stops working not
-	putting whole vim into sleep - this the time that we want to save.
+	putting whole vim into sleep - this is the time that we want to save.
 	However, the advantage of using temporary files is smoothness (changes
 	appear faster in the output file). 
 

@@ -1,9 +1,9 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Feb 9
+" Last Changed: 2010 Feb 11
 " URL:		
-" GetLatestVimScripts: 2945 5 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 6 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -15,33 +15,47 @@
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
 "
-" TODO write a function which lists the \input files and let them open.
+"
+" TODO to make s:maketoc and s:generatelabels read all input files between
+" \begin{document} and \end{document}, and make it recursive.
+" now s:maketoc finds only labels of chapters/sections/...
+" TODO make toc work with parts!
+" TODO speed up ToC. The time consuming part is: vnew as shown by profiling.
+"
+" TODO we can add a pid file and test agianst it (if it exists) and run some
+" commands when there is no pid file: this could be a useful way to run :cg,
+" i.e. read the log file automatically. Getpid for Windows can return 0/1 and
+" thus all the things should work on Windows.
+"
 " TODO write a function which reads log file whenever it was modified.
 " 		solution 1: read (but when?) it to a variable and compare.	
 " 			with an autocommand loaded by s:compiler and deleted
 " 			when getpid returns an empty string.
-" 		solution 2: read it as a buffer and hide it and use checktime
+" 		solution 2: read it as a buffer then hide it and use checktime
 " 		to see if it was changed.
 "
 " TODO Check against lilypond 
 " TODO b:changedtick "HOW MANY CHANGES WERE DONE! this could be useful.
-" TODO b:autex is not set when openning new buffer.
-" TODO command SetOutDir --> help file.
+" TODO make a function which updates Labels and ToC, and do not update ToC and
+" Labels to often.
+" TODO make a split version of EditInputFile
+"
 " NOTES
-" s:tmpfile=temporary file value of tempname()
-" b:texfile=readfile(bunfname("%")
+" s:tmpfile =	temporary file value of tempname()
+" b:texfile =	readfile(bunfname("%")
 
 " We need to know bufnumber and bufname in a tabpage.
 let t:bufname=bufname("")
 let t:bufnr=bufnr("")
 let t:winnr=winnr()
+
+" These autocommands are used to remember the last opened buffer number and its
+" window numbers
 au BufLeave *.tex let t:bufname=bufname("")
 au BufLeave *.tex let t:bufnr=bufnr("")
 au WinEnter *.tex let t:winnr=winnr("#")
 au WinEnter __ToC__ let t:winnr=winnr("#")
-
-" t:winnr,t:bufname,t:bufnr		- number of window from which TOC was called, we use
-" 					  it to come back to this window.
+au WinEnter __Labels__ let t:winnr=winnr("#")
 
 if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1
@@ -57,7 +71,7 @@ setl includeexpr=substitute(v:fname,'\\%(.tex\\)\\?$','.tex','')
 if !exists("*SetErrorFile")
 function! SetErrorFile()
     if !exists("b:outdir")
-	call s:setoutdir()
+	call s:setoutdir(0)
     endif
     let l:ef=b:outdir . fnamemodify(expand("%"),":t:r") . ".log"
     let &l:errorfile=l:ef
@@ -65,15 +79,16 @@ function! SetErrorFile()
 endfunction
 endif
 " This options are set also when editing .cls files.
-function! s:setoutdir()
+function! s:setoutdir(arg)
     if g:askfortheoutdir == 1 
 	let b:outdir=input("Where to put output? do not escape white spaces ")
     endif
-    if get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" && g:askfortheoutdir != 1 || b:outdir == "" && g:askfortheoutdir == 1
+    if get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" 
+		\ && g:askfortheoutdir != 1 || b:outdir == "" && g:askfortheoutdir == 1
 	 let b:outdir=fnamemodify(resolve(expand("%:p")),":h") . "/"
     "      	echomsg "DEBUG setting b:outdir to " . b:outdir
 	 echoh WarningMsg | echomsg "Output Directory "b:outdir | echoh None
-	 if bufname("") =~ ".tex$"
+	 if bufname("") =~ ".tex$" && a:arg != 0
 	     call SetErrorFile()
 	 endif
     endif	
@@ -114,6 +129,9 @@ endif
 if !exists("t:labels_window_width")
     let t:labels_window_width=30
 endif
+if !exists("g:texmf")
+    let g:texmf=$HOME . "/texmf"
+endif
 "TODO: to make it possible to read the log file after compilation.
 " if !exists("g:au_read_log_file")
 "     let g:au_read_log_file = 1
@@ -131,7 +149,8 @@ for l:key in s:optionsKeys
 "  	    echomsg "Setting " . l:key . "=" . s:optionsDict[l:key]
 	call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
     elseif get(s:optionsinuseDict,l:key,"optionnotset") == "optionnotset" && l:key == "outdir"
-	call s:setoutdir()
+	" set b:outdir and the value of errorfile option
+	call s:setoutdir(1)
 	let s:ask["ask"] = 1
     endif
 endfor
@@ -354,6 +373,7 @@ endfunction
 function! s:copy(input,output)
 	call writefile(readfile(a:input),a:output)
 endfunction
+
 function! s:compiler(bibtex,start,runs,verbose,command)
     call s:outdir()
     	" IF b:texcompiler is not compatible with the viewer
@@ -420,8 +440,8 @@ function! s:compiler(bibtex,start,runs,verbose,command)
 	    let s:start = ""	
 	endif
 "	SET THE COMMAND 
-	let s:comp=b:texcompiler . " -interaction " . s:texinteraction . " -output-directory " . s:dir . " -jobname " . s:job . " " . shellescape(expand("%"))
-	let s:vcomp=b:texcompiler . " -interaction errorstopmode -output-directory " . s:dir . " -jobname " . s:job . " " . shellescape(expand("%"))
+	let s:comp=b:texcompiler . " " . b:texoptions . " -interaction " . s:texinteraction . " -output-directory " . s:dir . " -jobname " . s:job . " " . shellescape(expand("%"))
+	let s:vcomp=b:texcompiler . " " . b:texoptions  . " -interaction errorstopmode -output-directory " . s:dir . " -jobname " . s:job . " " . shellescape(expand("%"))
 	if a:verbose == 0 || a:runs > 1
 	    let s:texcomp=s:comp
 	else
@@ -516,7 +536,11 @@ if !exists("*TEX")
 function! TEX(...)
 let s:name=tempname()
 if a:0 >= 1
-    echomsg b:texcompiler . " will run " . a:1 . " times."
+    if a:1 > 1
+	echomsg b:texcompiler . " will run " . a:1 . " times."
+    else
+	echomsg b:texcompiler . " will run once."
+    endif
     call s:compiler(0,0,a:1,0,"COM")
 elseif a:0 == 0
     call s:compiler(0,0,1,0,"COM")
@@ -540,7 +564,11 @@ if !exists("*VTEX")
 function! VTEX(...)
     let s:name=tempname()
 if a:0 >= 1
-    echomsg b:texcompiler . " will run " . a:1 . " times."
+    if a:1 > 1
+	echomsg b:texcompiler . " will run " . a:1 . " times."
+    else
+	echomsg b:texcompiler . " will run once."
+    endif
     sleep 1
     call s:compiler(0,0,a:1,1,"COM")
 else
@@ -1068,11 +1096,9 @@ function! s:showresults(bibresults,flags,pattern)
 " echohl BibResultEntry | echomsg "BibSearch 2.0" | echohl None	    
 " echohl BibResultsMatch | echomsg "flags:" . join(l:flagslist,'') . join(l:kwflagslist,'') | echohl None
 				let l:bufnr=bufnr("___" . a:pattern . "___"  )
-				if bufexists(bufname("___" . a:pattern . "___"))
+				if l:bufnr != -1
 				    let l:bdelete=l:bufnr . "bdelete"
-				    echomsg b:bufnr		
 				    exe l:bdelete
-" 				    unlet t:bibbufnr
 				endif
 				unlet l:bufnr
  				let l:openbuffer=" +setl\\ buftype=nofile\\ filetype=bibsearch_atp " . fnameescape("___" . a:pattern . "___")
@@ -1087,7 +1113,7 @@ function! s:showresults(bibresults,flags,pattern)
 				call s:setwindow()
     for l:bibfile in keys(a:bibresults)
 	if a:bibresults[l:bibfile] != {}
-" 	    echohl BibResultsFileNames | echomsg "Found in " . l:bibfile | echohl None
+"  	    echohl BibResultsFileNames | echomsg "Found in " . l:bibfile | echohl None
 	    call setline(l:ln, "Found in " . l:bibfile )	
 	    let l:ln+=1
 	endif
@@ -1190,8 +1216,14 @@ function! s:setwindow()
 " +setl\\ buftype=nofile\\ filetype=toc_atp\\ nowrap
 " +setl\\ buftype=nofile\\ filetype=toc_atp\\ syntax=labels_atp
 	setlocal nonumber
-	setlocal winfixwidth
+ 	setlocal winfixwidth
 	setlocal noswapfile	
+	setlocal window
+	if &filetype == "bibsearch_atp"
+	    setlocal winwidth=30
+	elseif &filetype == "toc_atp"
+	    setlocal winwidth=20
+	endif
 endfunction
 let g:sections={
     \	'chapter' 	: [           '^\s*\(\\chapter.*\)',	'\\chapter\*'],	
@@ -1207,11 +1239,15 @@ let g:sections={
 " section name is element of keys(g:sections), number is the total number,
 " 'title=\1' where \1 is returned by the g:section['key'][0] pattern.
 function! s:maketoc(filename)
-    " first we get labels in case chapters have them (then we can copy them).
-    " TODO look TODO 1
-    call s:generatelabels(a:filename)
+
+    " this will store information { 'linenumber' : ['chapter/section/..', 'sectionnumber', 'section title', '0/1=not starred/starred'] }
     let l:toc={}
-    " TODO 1 we can check if there are changes in the file and copy the buffer
+
+    " if the dictinary with labels is not defined, define it
+    if !exists("t:labels")
+	let t:labels={}
+    endif
+    " TODO we could check if there are changes in the file and copy the buffer
     " to this variable only if there where changes.
     let l:texfile=[]
     " getbufline reads onlu loaded buffers, unloaded can be read from file.
@@ -1255,8 +1291,7 @@ function! s:maketoc(filename)
     for l:line in s:filtered
 	for l:section in keys(g:sections)
 	    if l:line =~ g:sections[l:section][0] 
-		if l:line =~ '^\s*%'
-		else
+		if l:line !~ '^\s*%'
 		    " THIS DO NOT WORKS WITH \abstract{ --> empty set, but with
 		    " \chapter{title} --> title, solution: the name of
 		    " 'Abstract' will be plased, as we know what we have
@@ -1294,12 +1329,27 @@ function! s:maketoc(filename)
 		    endwhile	
 		    let l:title=strpart(l:title,0,l:i)
 		    call extend(l:toc, { l:tline : [ l:section, l:ind{l:section}, l:title, l:star] }) 
+		    " extend t:labels
+		    let l:lname=matchstr(l:line,'\\label\s*{.*','')
+		    let l:start=stridx(l:lname,'{')+1
+		    let l:lname=strpart(l:lname,l:start)
+		    let l:end=stridx(l:lname,'}')
+		    let l:lname=strpart(l:lname,0,l:end)
+		    let b:lname=l:lname
+		    if	l:lname != ''
+			" if there was no t:labels for a:filename make an entry in
+			" t:labels
+			if !has_key(t:labels,a:filename)
+			    let t:labels[a:filename] = {}
+			endif
+			call extend(t:labels[a:filename],{ l:tline : l:lname },"force")
+		    endif
 		endif
 	    endif
 	endfor
     endfor
     if exists("t:toc")
-	call extend(t:toc, { a:filename : l:toc })
+	call extend(t:toc, { a:filename : l:toc },"force")
     else
 	let t:toc={ a:filename : l:toc }
     endif
@@ -1342,7 +1392,7 @@ function! s:showtoc(toc)
 	    echoerr "t:toc_window_width not set"
 	    return
 	endif
-	let l:openbuffer=t:toc_window_width . "vnew +setl\\ buftype=nofile\\ filetype=toc_atp\\ nowrap __ToC__"
+	let l:openbuffer=t:toc_window_width . "vnew +setl\\ wiw=15\\ buftype=nofile\\ filetype=toc_atp\\ nowrap __ToC__"
 	exe l:openbuffer
 	" We are setting the address from which we have come.
 	call s:setwindow()
@@ -1372,9 +1422,9 @@ function! s:showtoc(toc)
 	    endif
 	endfor
 	" TODO: do I use this code?
-	for l:sections in keys(g:sections)
-	    let l:nr{l:sections}=""
-	endfor
+" 	for l:sections in keys(g:sections)
+" 	    let l:nr{l:sections}=""
+" 	endfor
 	let l:sorted=sort(keys(a:toc[l:openfile]),"s:comparelist")
 	let l:len=len(l:sorted)
 	call setline(l:number,fnamemodify(l:openfile,":t") . " (" . fnamemodify(l:openfile,":p:h") . ")")
@@ -1567,7 +1617,7 @@ function! s:generatelabels(filename)
 	let l:i+=1 
     endwhile
     if exists("t:labels")
-	call extend(t:labels,{ a:filename : s:labels } )
+	call extend(t:labels,{ a:filename : s:labels },"force")
     else
 	let t:labels={ a:filename : s:labels }
     endif
@@ -1581,7 +1631,7 @@ function! s:showlabels(labels)
     " Open new window or jump to the existing one.
     let l:bufname=bufname("")
     let l:bufpath=fnamemodify(bufname(""),":p:h")
-    let l:bname="__LABELS__"
+    let l:bname="__Labels__"
     let l:labelswinnr=bufwinnr("^" . l:bname . "$")
 "     let t:bufnr=bufnr("")				" CHECK
     let t:labelswinnr=winnr()
@@ -1613,12 +1663,12 @@ function! s:showlabels(labels)
 " 	endif
 "     else
 	" Open new window if its width is defined (if it is not the code below
-	" will put labels in the current buffer so it is better to return.
+	" will put lab:cels in the current buffer so it is better to return.
 	if !exists("t:labels_window_width")
 	    echoerr "t:labels_window_width not set"
 	    return
 	endif
-	let l:openbuffer=t:labels_window_width . "vnew +setl\\ buftype=nofile\\ filetype=toc_atp\\ syntax=labels_atp __LABELS__"
+	let l:openbuffer=t:labels_window_width . "vnew +setl\\ buftype=nofile\\ filetype=toc_atp\\ syntax=labels_atp __Labels__"
 	exe l:openbuffer
 	call s:setwindow()
 	let t:labelsbufnr=bufnr("")
@@ -1648,132 +1698,229 @@ function! Labels()
     call s:showlabels(t:labels[t:bufname])
 endfunction
 endif
+" ----------------- ReadInputFiles ---------------
+if !exists("*FindInputFiles") 
+function! FindInputFiles(...)    
+
+    if a:0==0
+	let l:bufname=bufname("%")
+    else
+	let l:bufname=a:1
+    endif
+
+    let l:dir=fnamemodify(l:bufname,":p:h")
+    let l:texfile=readfile(fnamemodify(l:bufname,":p"))
+    let s:i=0
+    let l:inputlines=[]
+    for l:line in l:texfile
+	if l:line =~ "\\\\\\(input\\|include\\|includeonly\\)\\s" && l:line !~ "^\s*%"
+	    "add the line but cut it before first '%', thus we should get the
+	    "file name.
+	    let l:col=stridx(l:line,"%")
+	    if l:col != -1
+		let l:line=strpart(l:line,0,l:col)
+	    endif
+	    let l:inputlines=add(l:inputlines,l:line) 
+" 	    echomsg "DEBUG inputline " l:line
+	endif
+    endfor
+    let b:inputfiles=[]
+    for l:line in l:inputlines
+	    let l:inputfile=substitute(l:line,'\\\%(input\|include\|includeonly\)\s\+\(.*\)','\1','')
+	    call add(b:inputfiles,l:inputfile)
+" 	    echomsg "DEBUG inputfile " l:inputfile
+    endfor
+    if len(b:inputfiles) > 0 
+	echohl WarningMsg | echomsg "Found input files:" 
+    else
+	echohl WarningMsg | echomsg "No input files found." | echohl None
+	return []
+    endif
+    echohl texInput
+    let l:nr=1
+    for l:inputfile in b:inputfiles
+	" before we echo the filename, we clear it from \"
+	echomsg l:nr . ". " . substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
+	let l:nr+=1
+    endfor
+    echohl None
+    return b:inputfiles
+endfunction
+endif
+
+if !exists("*EditInputFile")
+function! EditInputFile(...)
+
+    if a:0==0
+	let l:bufname=bufname("%")
+    else
+	let l:bufname=a:1
+    endif
+
+    let l:dir=fnamemodify(l:bufname,":p:h")
+
+    let l:inputfiles=FindInputFiles(l:bufname)
+    if ! len(l:inputfiles) > 0
+	return 
+    endif
+
+    let l:which=input("Which file to edit? Press <Enter> for none ")
+
+    if l:which == ""
+	return
+    else
+	let l:which-=1
+    endif
+
+    let l:ifile=l:inputfiles[l:which]
+
+    "g:texmf should end with a '/'
+    if g:texmf !~ "\/$"
+	let g:texmf=g:texmf . "/"
+    endif
+
     
+    " remove all '"' from the line (latex do not supports file names with '"')
+    " this make the function work with lines like: '\\input "file name with spaces.tex"'
+    let l:ifile=substitute(l:ifile,'^\s*\"\|\"\s*$','','g')
+    " add .tex extension if it was not present
+    let l:ifile=substitute(l:ifile,'\(.tex\)\?\s*$','.tex','')
+    if filereadable(l:dir . l:ifile) 
+	exe "edit " . fnameescape(b:outdir . l:ifile)
+	let b:autex=0
+    else
+	let l:ifile=findfile(l:ifile,g:texmf . '**')
+	exe "edit " . fnameescape(l:ifile)
+	let b:autex=0
+    endif
+endfunction
+endif
+" TODO if the file was not found ask to make one.
 "--------- MAPPINGS -------------------------------------------------------
 " Add mappings, unless the user didn't want this.
 if !exists("no_plugin_maps") && !exists("no_atp_maps")
 
-noremap  <buffer> <LocalLeader>v		:call ViewOutput() <CR><CR>
-noremap  <buffer> <F3>        			:call ViewOutput() <CR><CR>
-inoremap <buffer> <F3> <Esc> 			:call ViewOutput() <CR><CR>
-noremap  <buffer> <LocalLeader>g 		:call Getpid()<CR>
-noremap  <buffer> T				:TOC<CR>
-noremap  <buffer> \L				:Labels<CR>
-noremap  <buffer> \UL				:call UpdateLabels(bufname('%'))<CR>
-noremap  <buffer> <LocalLeader>l 		:call TEX() <CR>	
-inoremap <buffer> <LocalLeader>l<Left><ESC> :call TEX() <CR>a
-noremap  <buffer> <F5> 			:call VTEX() <CR>	
-noremap  <buffer> <S-F5> 			:call ToggleAuTeX()<CR>
-inoremap <buffer> <F5> <Left><ESC> 		:call VTEX() <CR>a
-noremap  <buffer> <LocalLeader>sb		:call SimpleBibtex()<CR>
-noremap  <buffer> <LocalLeader>b		:call Bibtex()<CR>
-noremap  <buffer> <F6>d 			:call Delete() <CR>
-inoremap <buffer> <silent> <F6>l 		:call OpenLog() <CR>
-noremap  <buffer> <silent> <F6>l 		:call OpenLog() <CR>
-noremap  <buffer> <LocalLeader>e 		:cf<CR> 
-noremap  <buffer> <F6>w 			:call TexLog("-w")<CR>
-inoremap <buffer> <F6>w 			:call TexLog("-w")<CR>
-noremap  <buffer> <F6>r 			:call TexLog("-r")<CR>
-inoremap <buffer> <F6>r 			:call TexLog("-r")<CR>
-noremap  <buffer> <F6>f 			:call TexLog("-f")<CR>
-inoremap <buffer> <F6>f 			:call TexLog("-f")<CR>
-noremap  <buffer> <F6>g 			:call Pdffonts()<CR>
-noremap  <buffer> <F1> 	   			:!clear;texdoc -m 
-inoremap <buffer> <F1> <Esc> 			:!clear;texdoc -m  
-noremap  <buffer> <LocalLeader>p 		:call Print(g:printeroptions)<CR>
+map  <buffer> <LocalLeader>v		:call ViewOutput() <CR><CR>
+map  <buffer> <F3>        			:call ViewOutput() <CR><CR>
+imap <buffer> <F3> <Esc> 			:call ViewOutput() <CR><CR>
+map  <buffer> <LocalLeader>g 		:call Getpid()<CR>
+map  <buffer> T				:TOC<CR>
+map  <buffer> <LocalLeader>L		:Labels<CR>
+map  <buffer> <LocalLeader>UL		:call UpdateLabels(bufname('%'))<CR>
+map  <buffer> <LocalLeader>l 		:TEX<CR>	
+imap <buffer> <LocalLeader>l<Left><ESC> :TEX<CR>a
+map  <buffer> <F5> 			:call VTEX() <CR>	
+map  <buffer> <S-F5> 			:call ToggleAuTeX()<CR>
+imap <buffer> <F5> <Left><ESC> 		:call VTEX() <CR>a
+map  <buffer> <LocalLeader>sb		:call SimpleBibtex()<CR>
+map  <buffer> <LocalLeader>b		:call Bibtex()<CR>
+map  <buffer> <F6>d 			:call Delete() <CR>
+imap <buffer> <silent> <F6>l 		:call OpenLog() <CR>
+map  <buffer> <silent> <F6>l 		:call OpenLog() <CR>
+map  <buffer> <LocalLeader>e 		:cf<CR> 
+map  <buffer> <F6>w 			:call TexLog("-w")<CR>
+imap <buffer> <F6>w 			:call TexLog("-w")<CR>
+map  <buffer> <F6>r 			:call TexLog("-r")<CR>
+imap <buffer> <F6>r 			:call TexLog("-r")<CR>
+map  <buffer> <F6>f 			:call TexLog("-f")<CR>
+imap <buffer> <F6>f 			:call TexLog("-f")<CR>
+map  <buffer> <F6>g 			:call Pdffonts()<CR>
+map  <buffer> <F1> 	   			:!clear;texdoc -m 
+imap <buffer> <F1> <Esc> 			:!clear;texdoc -m  
+map  <buffer> <LocalLeader>p 		:call Print(g:printeroptions)<CR>
 
-" FONT COMMANDS
-inoremap <buffer> ##rm \textrm{}<Left>
-inoremap <buffer> ##it \textit{}<Left>
-inoremap <buffer> ##sl \textsl{}<Left>
-inoremap <buffer> ##sf \textsf{}<Left>
-inoremap <buffer> ##bf \textbf{}<Left>
+" FONT MAPPINGS
+imap <buffer> ##rm \textrm{}<Left>
+imap <buffer> ##it \textit{}<Left>
+imap <buffer> ##sl \textsl{}<Left>
+imap <buffer> ##sf \textsf{}<Left>
+imap <buffer> ##bf \textbf{}<Left>
 	
-inoremap <buffer> ##mit \mathit{}<Left>
-inoremap <buffer> ##mrm \mathrm{}<Left>
-inoremap <buffer> ##msf \mathsf{}<Left>
-inoremap <buffer> ##mbf \mathbf{}<Left>
+imap <buffer> ##mit \mathit{}<Left>
+imap <buffer> ##mrm \mathrm{}<Left>
+imap <buffer> ##msf \mathsf{}<Left>
+imap <buffer> ##mbf \mathbf{}<Left>
 
 " GREEK LETTERS
-inoremap <buffer> #a \alpha
-inoremap <buffer> #b \beta
-inoremap <buffer> #c \chi
-inoremap <buffer> #d \delta
-inoremap <buffer> #e \epsilon
-inoremap <buffer> #f \phi
-inoremap <buffer> #y \psi
-inoremap <buffer> #g \gamma
-inoremap <buffer> #h \eta
-inoremap <buffer> #k \kappa
-inoremap <buffer> #l \lambda
-inoremap <buffer> #i \iota
-inoremap <buffer> #m \mu
-inoremap <buffer> #n \nu
-inoremap <buffer> #p \pi
-inoremap <buffer> #o \theta
-inoremap <buffer> #r \rho
-inoremap <buffer> #s \sigma
-inoremap <buffer> #t \tau
-inoremap <buffer> #u \upsilon
-inoremap <buffer> #vs \varsigma
-inoremap <buffer> #vo \vartheta
-inoremap <buffer> #w \omega
-inoremap <buffer> #x \xi
-inoremap <buffer> #z \zeta
+imap <buffer> #a \alpha
+imap <buffer> #b \beta
+imap <buffer> #c \chi
+imap <buffer> #d \delta
+imap <buffer> #e \epsilon
+imap <buffer> #f \phi
+imap <buffer> #y \psi
+imap <buffer> #g \gamma
+imap <buffer> #h \eta
+imap <buffer> #k \kappa
+imap <buffer> #l \lambda
+imap <buffer> #i \iota
+imap <buffer> #m \mu
+imap <buffer> #n \nu
+imap <buffer> #p \pi
+imap <buffer> #o \theta
+imap <buffer> #r \rho
+imap <buffer> #s \sigma
+imap <buffer> #t \tau
+imap <buffer> #u \upsilon
+imap <buffer> #vs \varsigma
+imap <buffer> #vo \vartheta
+imap <buffer> #w \omega
+imap <buffer> #x \xi
+imap <buffer> #z \zeta
 
-inoremap <buffer> #D \Delta
-inoremap <buffer> #Y \Psi
-inoremap <buffer> #F \Phi
-inoremap <buffer> #G \Gamma
-inoremap <buffer> #L \Lambda
-inoremap <buffer> #M \Mu
-inoremap <buffer> #N \Nu
-inoremap <buffer> #P \Pi
-inoremap <buffer> #O \Theta
-inoremap <buffer> #S \Sigma
-inoremap <buffer> #T \Tau
-inoremap <buffer> #U \Upsilon
-inoremap <buffer> #V \Varsigma
-inoremap <buffer> #W \Omega
+imap <buffer> #D \Delta
+imap <buffer> #Y \Psi
+imap <buffer> #F \Phi
+imap <buffer> #G \Gamma
+imap <buffer> #L \Lambda
+imap <buffer> #M \Mu
+imap <buffer> #N \Nu
+imap <buffer> #P \Pi
+imap <buffer> #O \Theta
+imap <buffer> #S \Sigma
+imap <buffer> #T \Tau
+imap <buffer> #U \Upsilon
+imap <buffer> #V \Varsigma
+imap <buffer> #W \Omega
 
-inoremap <buffer> [b \begin{}<Left>
-inoremap <buffer> [e \end{}<Left>
-inoremap [s \begin{}<CR>\end{}<Up><Right>
+imap <buffer> [b \begin{}<Left>
+imap <buffer> [e \end{}<Left>
+imap [s \begin{}<CR>\end{}<Up><Right>
 
-inoremap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
-inoremap <buffer> [c \begin{corollary}<Cr>\end{corollary}<Esc>O
-inoremap <buffer> [d \begin{definition}<Cr>\end{definition}<Esc>O
-inoremap <buffer> ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
-inoremap <buffer> [q \begin{equation}<Cr>\end{equation}<Esc>O
-inoremap <buffer> [a \begin{align}<Cr>\end{align}<Esc>O
-inoremap <buffer> [x \begin{example}<Cr>\end{example}<Esc>O
-inoremap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
-inoremap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
-inoremap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
-inoremap <buffer> [i \item  
-inoremap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
-inoremap <buffer> [l \begin{lemma}<Cr>\end{lemma}<Esc>O
-inoremap <buffer> [n \begin{note}<Cr>\end{note}<Esc>O
-inoremap <buffer> [o \begin{observation}<Cr>\end{observation}<Esc>O
-inoremap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
-inoremap <buffer> [p \begin{proposition}<Cr>\end{proposition}<Esc>O
-inoremap <buffer> [r \begin{remark}<Cr>\end{remark}<Esc>O
-inoremap <buffer> [t \begin{theorem}<Cr>\end{theorem}<Esc>O
-inoremap <buffer> 	 ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
+imap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
+imap <buffer> [c \begin{corollary}<Cr>\end{corollary}<Esc>O
+imap <buffer> [d \begin{definition}<Cr>\end{definition}<Esc>O
+imap <buffer> ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
+imap <buffer> [q \begin{equation}<Cr>\end{equation}<Esc>O
+imap <buffer> [a \begin{align}<Cr>\end{align}<Esc>O
+imap <buffer> [x \begin{example}<Cr>\end{example}<Esc>O
+imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
+imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
+imap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
+imap <buffer> [i \item  
+imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
+imap <buffer> [l \begin{lemma}<Cr>\end{lemma}<Esc>O
+imap <buffer> [n \begin{note}<Cr>\end{note}<Esc>O
+imap <buffer> [o \begin{observation}<Cr>\end{observation}<Esc>O
+imap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
+imap <buffer> [p \begin{proposition}<Cr>\end{proposition}<Esc>O
+imap <buffer> [r \begin{remark}<Cr>\end{remark}<Esc>O
+imap <buffer> [t \begin{theorem}<Cr>\end{theorem}<Esc>O
+imap <buffer> 	 ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
 
-" inoremap {c \begin{corollary*}<Cr>\end{corollary*}<Esc>O
-" inoremap {d \begin{definition*}<Cr>\end{definition*}<Esc>O
-" inoremap {x \begin{example*}\normalfont<Cr>\end{example*}<Esc>O
-" inoremap {l \begin{lemma*}<Cr>\end{lemma*}<Esc>O
-" inoremap {n \begin{note*}<Cr>\end{note*}<Esc>O
-" inoremap {o \begin{observation*}<Cr>\end{observation*}<Esc>O
-" inoremap {p \begin{proposition*}<Cr>\end{proposition*}<Esc>O
-" inoremap {r \begin{remark*}<Cr>\end{remark*}<Esc>O
-" inoremap {t \begin{theorem*}<Cr>\end{theorem*}<Esc>O
+" imap {c \begin{corollary*}<Cr>\end{corollary*}<Esc>O
+" imap {d \begin{definition*}<Cr>\end{definition*}<Esc>O
+" imap {x \begin{example*}\normalfont<Cr>\end{example*}<Esc>O
+" imap {l \begin{lemma*}<Cr>\end{lemma*}<Esc>O
+" imap {n \begin{note*}<Cr>\end{note*}<Esc>O
+" imap {o \begin{observation*}<Cr>\end{observation*}<Esc>O
+" imap {p \begin{proposition*}<Cr>\end{proposition*}<Esc>O
+" imap {r \begin{remark*}<Cr>\end{remark*}<Esc>O
+" imap {t \begin{theorem*}<Cr>\end{theorem*}<Esc>O
 
-inoremap <buffer> __ _{}<Left>
-inoremap <buffer> ^^ ^{}<Left>
-inoremap <buffer> [m \[\]<Left><Left>
+imap <buffer> __ _{}<Left>
+imap <buffer> ^^ ^{}<Left>
+imap <buffer> [m \[\]<Left><Left>
 endif
 
 " This is an additional syntax group for enironment provided by the TIKZ
@@ -1786,12 +1933,16 @@ command! -buffer SetErrorFile :call SetErrorFile()
 command! -buffer -nargs=? ShowOptions 	:call ShowOptions(<f-args>)
 command! -buffer GPID 	:call Getpid()
 command! -buffer CXPDF 	:echo s:xpdfpid()
-command! -buffer -nargs=? -count=1 TEX   :call TEX(<count>,<f-args>)
+command! -buffer -nargs=? -count=1 TEX  :call TEX(<count>,<f-args>)
 command! -buffer -nargs=? -count=1 VTEX	:call  VTEX(<count>,<f-args>)
 command! -buffer SBibtex :call SimpleBibtex()
 command! -buffer -nargs=? Bibtex 	:call Bibtex(<f-args>)
-command! -buffer FindBibFiles echo FindBibFiles(bufname('%'))
+command! -buffer -nargs=1 -complete=buffer FindBibFiles echo FindBibFiles(<f-args>)
 command! -buffer -nargs=* BibSearch	:call BibSearch(<f-args>)
 command! -buffer TOC 	:call TOC()
 command! -buffer Labels	:call Labels() 
-command! -buffer SetOutDir :call s:setoutdir()
+command! -buffer SetOutDir :call s:setoutdir(1)
+" TODO to ToC:
+command! -buffer -nargs=? -complete=buffer FindInputFiles :call FindInputFiles(<f-args>)
+" command! -buffer EditInputFile :call EditInputFile(bufname("%"))
+command! -buffer -nargs=? -complete=buffer EditInputFile :call EditInputFile(<f-args>)

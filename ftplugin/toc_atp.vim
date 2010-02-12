@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Feb 9
+" Last Changed: 2010 Feb 11
 " URL:		
 
 function! s:getlinenr(...)
@@ -75,10 +75,12 @@ function! s:gotowinnr()
 	" if the t:winnr is still open
 	if bufwinnr(t:bufname) != -1
 	    let l:gotowinnr=t:winnr
+" 	    echomsg "DEBUG A"
 	else
 	    let l:gotowinnr=-1
+" 	    echomsg "DEBUG B"
 	endif
-	echomsg "DEBUG " . l:gotowinnr
+" 	echomsg "DEBUG C " . l:gotowinnr
     else
  	if bufwinnr("^" . l:bufname . "$") != 0
 	    " if not but there is a window with buffer l:bufname

@@ -5,10 +5,16 @@
 " URL:		
 
 "
+" Status Line:
+function! Status()
+    return "Bibsearch: " . substitute(expand("%"),"___","","g")
+endfunction
+setlocal statusline=%{Status()}
 " MAPPINGS
 if !exists("no_plugin_maps") && !exists("no_atp_bibsearch_maps")
     map <buffer> c :call BibChoose()<CR>
     map <buffer> y :call BibChoose()<CR>
+    map <buffer> p :call BibChoose()<CR>
     map <buffer> q :hide<CR>
     command! -buffer -nargs=* BibChoose 	:call BibChoose(<f-args>)
 endif
@@ -88,7 +94,6 @@ function! BibChoose(...)
 	    elseif l:letter == '-'
 		let @@=l:choice
 	    endif
-	    q
 	    echohl WarningMsg | echomsg "Choice yanekd to the register '" . l:letter . "'" | echohl None
     endif
 endfunction

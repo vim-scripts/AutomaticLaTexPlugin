@@ -1,6 +1,6 @@
 " Vim color file
 " Maintainer:	Marcin Szamotulski  <mszamot at gmail dot com>
-" Last Change:	2007 Mar 29
+" Last Change:	2009 Feb 19
 " Version:	1.0.0
 " URL:		http://www.axisym3.net/jdany/vim-the-editor/#ocean237256
 "
@@ -56,10 +56,13 @@ highlight MatchParen     			ctermfg=233	ctermbg=226	guifg=#1c1c1c guibg=gold
 
 highlight SpecialKey     ctermfg=129           	ctermbg=233			guifg=DarkViolet
 
-highlight StatusLine     cterm=none           	ctermfg=226 ctermbg=232		guifg=SlateBlue4 guibg=White
-highlight StatusLineNC   cterm=none           	ctermfg=245 ctermbg=232		guifg=SlateBlue4 guibg=snow4	 
-highlight VertSplit      cterm=none          	ctermfg=green   ctermbg=233	guifg=#1c1c1c	 guibg=DeepSkyBlue4
-highlight WildMenu       cterm=bold           	ctermfg=0   ctermbg=118
+highlight StatusLine     cterm=none     ctermfg=226 ctermbg=232		 guifg=#111111 guibg=SaddleBrown
+highlight StatusLineNC   cterm=none     ctermfg=245 ctermbg=232		 guifg=#111111 guibg=snow4	 
+highlight User1		 cterm=bold	ctermfg=226 ctermbg=232	gui=bold guifg=DarkOrange  guibg=#111111	 
+highlight User2		 cterm=none	ctermfg=red ctermbg=232		 guifg=DeepPink2  guibg=#111111
+highlight User3		 cterm=none	ctermfg=226 ctermbg=232		 guifg=Goldenrod2   guibg=#111111
+highlight VertSplit      cterm=none     ctermfg=green   ctermbg=233	 guifg=#1c1c1c	  guibg=DeepSkyBlue4
+highlight WildMenu       cterm=bold     ctermfg=0   ctermbg=118
 
 highlight Title          cterm=bold           	ctermfg=226 	ctermbg=232
 
@@ -119,7 +122,7 @@ highlight Ignore         ctermfg=67
 "highlight SpellRare      ctermfg=18           	ctermbg=233
 "highlight SpellLocal     ctermfg=17           	ctermbg=233
 
-highlight Todo           ctermfg=21           ctermbg=233
+highlight Todo           ctermfg=21           ctermbg=233	guifg=red guibg=#1c1c1c	gui=underline,bold
 
 highlight TabLine	cterm=none	ctermfg=white 	ctermbg=240
 highlight TabLineFill 	cterm=none	ctermfg=white 	ctermbg=240
@@ -152,34 +155,18 @@ highlight SpellCap       ctermfg=202         	ctermbg=233
 highlight SpellRare      ctermfg=203         	ctermbg=233
 highlight SpellLocal     ctermfg=202         	ctermbg=233
 
-" BibSearch
-" highlight BibResultsFileNames 	cterm=none      ctermfg=161  		ctermbg=233
-" highlight BibResultsLabels	cterm=bold	ctermfg=90		ctermbg=233
-" highlight BibResultsMatch	cterm=none      ctermfg=40  		ctermbg=233
-" highlight BibResultsGeneral	cterm=none      ctermfg=255		ctermbg=233
-" highlight BibResultsEntry	cterm=none      ctermfg=white		ctermbg=233
-" highlight BibResultsEntryLabel	cterm=bold      ctermfg=white		ctermbg=233
-" highlight BibResultsFirstLine	cterm=none      ctermfg=23		ctermbg=233
-" highlight BibResultsFieldLabel	cterm=none      ctermfg=green		ctermbg=233
-" highlight BibResultsFieldKeyword cterm=bold	ctermfg=red
-
-hi bibsearchInfo 	ctermfg=33
-hi bibsearchComment	cterm=bold 	ctermfg=27
-hi bibComment2		cterm=bold 	ctermfg=30
-hi bibsearchCommentContents cterm=none	ctermfg=30
-hi bibsearchType			ctermfg=24
+hi bibsearchInfo 	ctermfg=33			guifg=DeepPink3
+hi bibsearchComment	cterm=bold 	ctermfg=27	guifg=LawnGreen		gui=bold 
+hi bibComment2		cterm=bold 	ctermfg=30	guifg=SeaGreen4		gui=bold
+hi bibsearchCommentContents cterm=none	ctermfg=30	guifg=SeaGreen4		gui=none
+hi bibsearchType			ctermfg=24	guifg=MediumVioletRed
 " hi bibsearchEntryData						ctermfg=magenta
-hi bibsearchKey		cterm=bold 		ctermfg=white	
-hi bibsearchEntry 			ctermfg=33
-    hi bibsearchField 				ctermfg=green
-	hi bibsearchEntryKw			ctermfg=white
-	hi bibsearchVariable 			ctermfg=white
-
-" " powyzej dzialaja ponizej nie
-" 	hi bibsearchVarContents			ctermfg=red
-"  	hi bibsearchQuote			ctermfg=grey
-"  	hi bibsearchBrace			ctermfg=grey
-"  	hi bibsearchParen			ctermfg=grey
+hi bibsearchKey		cterm=bold 		ctermfg=white	guifg=white	gui=bold
+hi bibsearchEntry 				ctermfg=33	guifg=DeepSkyBlue
+    hi bibsearchField 				ctermfg=green	guifg=green1
+	hi bibsearchEntryKw			ctermfg=white	guifg=BlueViolet
+	hi bibsearchBrace			cterm=bold	guifg=white gui=none
+	hi bibsearchVariable 			ctermfg=white	guifg=white
 
 " ATP toc file
 highlight atp_filename						guifg=FireBrick
@@ -201,3 +188,6 @@ highlight atp_statusline 	cterm=bold	ctermfg=green 	ctermbg=233
 highlight atp_statustitle 	cterm=bold	ctermfg=grey 	ctermbg=233  
 highlight atp_statussection 	cterm=bold	ctermfg=yellow 	ctermbg=233  
 highlight atp_statusoutdir 			ctermfg=grey 	ctermbg=233 
+
+highlight link atp_Todo WarningMsg
+

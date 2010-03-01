@@ -2,7 +2,7 @@
 " Language:	bibsearchTeX (bibsearchliographic database format for (La)TeX)
 " Author:	Bernd Feige <Bernd.Feige@gmx.net>
 " Modified:	Marcin Szamotulski
-" Last Change:	Feb 04, 2010
+" Last Change:	Feb 19, 2010
 
 " This is a modification of syntax/bibsearch.vim
 
@@ -27,12 +27,11 @@ syn keyword bibsearchType contained	incollection inproceedings manual
 syn keyword bibsearchType contained	mastersthesis misc phdthesis
 syn keyword bibsearchType contained	proceedings techreport unpublished
 syn keyword bibsearchType contained	string
-
-syn keyword bibsearchEntryKw contained	address annote author booktitle chapter
-syn keyword bibsearchEntryKw contained	crossref edition editor howpublished
-syn keyword bibsearchEntryKw contained	institution journal key month note
-syn keyword bibsearchEntryKw contained	number organization pages publisher
-syn keyword bibsearchEntryKw contained	school series title type volume year
+syn keyword bibsearchEntryKw contained	address author booktitle annote chapter
+syn keyword bibsearchEntryKw contained	crossref edition editor issn howpublished
+syn keyword bibsearchEntryKw contained	institution fjournal journal key month mrclass 
+syn keyword bibsearchEntryKw contained	note number organization pages publisher
+syn keyword bibsearchEntryKw contained	school series type title volume year
 " Non-standard:
 syn keyword bibsearchNSEntryKw contained	abstract isbn issn keywords url
 
@@ -69,8 +68,8 @@ syn sync minlines=50
 
 " Bibsearch
 " =========
-syn region bibsearchInfo start=/\s*\d/ end=/\s@/me=e-1 contained contains=@bibsearchCommentContents 
 syn region bibsearchComment start=/./ end=/\s*@/me=e-1 contains=@bibsearchCommentContents,@bibsearchSearchInfo nextgroup=bibsearchEntry
+syn region bibsearchInfo start=/\s*\d/ end=/\s@/me=e-1 contained containedin=bibsearchComment
 
 " Highlighting defaults
 " =====================

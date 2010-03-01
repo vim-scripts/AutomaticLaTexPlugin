@@ -1683,7 +1683,7 @@ four commands for use in math mode:
 	\; - a thick space			*math;*
 	\: - a medium space			*math:*
 	\, - a thin space			*math,*
-	\! - a negative thin space		*matn!*
+	\! - a negative thin space		*math!*
 
 ==========
 Math Miscellany					*math-misc*

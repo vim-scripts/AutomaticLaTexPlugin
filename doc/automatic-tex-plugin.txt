@@ -1,10 +1,10 @@
-			      *automatic-tex-plugin* *atp* 
+			      automatic-tex-plugin* *atp* 
 			Introduction to Automatic (la)TeX Plugin
 				by Marcin Szamotulski
 			----------------------------------------
 
-If you found this plugin useful, you are cordially invited to write to me
-mszamot@gmail.com, this is my first vim plugin, and its a great pleasure 
+If you found this plugin useful, you are cordially invited to write to me:
+mszamot@gmail.com. This is my first vim plugin, and its a great pleasure 
 to get even the smallest message.
 
 
@@ -12,15 +12,25 @@ to get even the smallest message.
 					========	
 
 This is a new plugin for vim to comfortably write TeX (LaTeX, PdfLaTeX)
-documents, which provides functionality not met in other plugins.  It makes
-you FREE from compiling procedure, making this process automatic using
-autocommands. It also provides useful mappings and ways to analyse your .log
-file.  To have full functionality you need: texloganalyser (a perl program
-written by Thomas van Oudenhove) and pdffonts available in the package
+documents, which provides functionality not met in other such plugins. It
+makes you FREE from compiling procedure, making this process automatic using
+autocommands. It also provides useful mappings and other functions: analyse
+your .log file to see the table contents, to search for a label, to search in
+bib files.  To have full functionality you need: texloganalyser (a perl
+program written by Thomas van Oudenhove) and pdffonts available in the package
 app-text/poppler-utils (at least in Gentoo). Another good tool is texdoc,
-which is a part of texlive these day standard TeX distribution for Linux.
+which is a part of texlive - these days standard TeX distribution for Linux,
+and MikTeX on Windows.
 
-We provide a powerful function to search in bibliographic files (bib files).
+Features include:
+* a powerful function to search in bibliographic files (bib files):
+	See |atp-bibsearch|,
+* table of contents which allows to switch between different '.tex' files:
+	See |atp-TOC()|,
+* list of labels which allows to see the context of a label:
+	See |atp-Labels()|,
+* a command to list ToDo lines:
+	See |atp-ToDo()|.
 
                                                 		*atp-help-toc*
 |atp-installation| 	Installation								
@@ -30,21 +40,21 @@ We provide a powerful function to search in bibliographic files (bib files).
 |atp-mappings|  	Mappings and Commands
 |atp-errors|  		Error handling
 |atp-requirements|  	Requirements
-|atp-viewers| 		Note about viewers (including inverse and reverse searching)
-|atp-color-highlight|	Colors and syntaxes defined
+|atp-viewers| 		Note about viewers (including inverse and reverse searching for xdvi)
+|atp-color-highlight|	Colors and syntax files
 |atp-remarks|  		Final remarks
 |atp-copy-rights|	Copy Rights
 
 	
-Note on usage: type :help atp<CTR>d to see all the helptags. To see help tags
-for all the defined functions :help atp*()<CTR>d, mappings: :help atp-map<CTR>d
+Note on usage: type :help atp<CTRL>d to see all the helptags. To see help tags
+for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>d
 
 ================================================================================
 Installation                               			*atp-installation*
 >
-	" :filetype plugin on is required to run this plugin, see
-	" |:filetype-plugin-on| and |:filetype-indent-on| if you want to have
-	" automatic intendation for TeX files.
+	 :filetype plugin on is required to run this plugin, see
+	 |:filetype-plugin-on| and |:filetype-indent-on| if you want to have
+	 automatic indentation for TeX files.
 <
 To install you just need to copy tex.vim file to ~your ~/.vim/ftplugin/
 directory copy this help file to ~/.vim/doc and then run :helptags ~/.vim/doc
@@ -56,39 +66,41 @@ Functions                               			*atp-functions*
 
 The main function is not seen by the user (it is called s:compiler, for those
 who want to read the plugin). It executes tex compiler specified by the
-variable b:texcompiler after checking if the file has changed. It is executed
+variable b:texcompiler. It is executed
 as an autocommand by the line:
 	au! CursorHold $HOME*.tex silent call 's:auTeX()'
-where s:auTeX() is a simple function which calls s:compiler.
+where s:auTeX() is a simple function which calls s:compiler if the file written
+on the disk and the buffer differ.
 As you can see it will run if a key is not pressed during time defined by
 option 'updatetime' (see |CursorHold|) in the normal mode. If you type in
 insertmode the file wan't be compiled (and that's alright as you can be in the
 middle of your very long formula). The value of 'updatetime' which works fine
-is around 1000ms ('updatetime' is set in miliseconds). The function s:auTeX() 
-if finds a difference between what is on you hard drive and what is in your
-buffer runs tex compiler (configured in b:texcompiler) with options:
+is around 1000ms ('updatetime' is set in miliseconds). Tex compiler is run with
+two options:
 	-output-directory 
 	-jobname
 which points to a unique temporary file in vim temporary directory (using the
 function 'tempname()' (see |tempname()|. If you are concerned with security
 reasons read also: |shelltemp|.
 
-You can switch off/on the function s:auTeX by pressing <S-F5>  or by letting
+You can switch off/on the function s:auTeX by pressing <S-F5> or by letting
 the local to buffer variable b:autex=1 (on) b:autex=0 (off). It is useful in
-some situations. The key <S-F5> calls the function ToggleAuTex() which sets
-the variable b:autex and issue a message. You can also set this variable to 0
-for some files that are not supposed to be processed, for example:
-    au BufRead texmf/*.tex let b:autex0
-
-The second important variable b:texcompiler (see |b:texcompiler|) configures
+some situations turn automatic compiling off. The key <S-F5> calls the function
+ToggleAuTex() which sets the variable b:autex and issue a message. You can also
+set this variable to 0 for some files that are not supposed to be processed,
+for example:
+>
+    au BufRead texmf/*.tex let b:autex=0
+<
+The second important variable b:texcompiler (see |atp-texcompiler|) configures
 if you use TeX, PdfTeX, LaTeX, PdfLaTeX and it should point to the program
 name so please do not use capital letters.
 
-Next variable to set is b:outdir (see |b:outdir|). It configures where TeX
+Next variable to set is b:outdir (see |atp-outdir|). It configures where TeX
 will put the output and where viewer and log analyzing tools can find
 appropriate files. 
 
-The last top most important variable is |g:keep| which is a list of extensions,
+The last top most important variable is |atp-keep| which is a list of extensions,
 by default it is
 	let g:keep = ["log","aux","toc","bbl"]
 Files with this extension will be copied from b:outdir to the temporary
@@ -97,13 +109,13 @@ will be only copied after it is created, other files will be copied back and
 forth between you b:outdir and the temporary directory)
 
 There is also a variable which stores the last command which executed
-your tex compiler, see |b:texcommand|.   
+your tex compiler, see |atp-texcommand|.   
 
 The last remark is that it is convenient to see if tex is running, if you are
 using a simple window manager like DWM or WMII or some others you can do that
 in your .xinitrc file. If you are using more complex window manager (Gnome,
-KDE) you can use the command GPID (or which is mapped to \g) which returns pid
-of |b:texcompiler| if it runs. The vim status line could be used for that but
+KDE) you can use the command GPID (which is mapped to \g). It returns pid
+of |atp-texcompiler| if it runs. The vim status line could be used for that but
 it seems to be to slow and the screen gets messy (at least for me).
 
 If you have defined a function with the same name it wan't be overwritten.
@@ -115,8 +127,7 @@ Below I explain functions which are defined:
 /all of them do not have any arguments/
 
 TEX([runs])						*atp-TEX()*
-map \l,imap \ll, :TEX 
-
+map \l,imap \l, :TEX 
 	If anyway you want to run TeX yourself but you do not want to see the
 	output this is the right tool. This runs TeX in 'nonstopmode'. You can
 	specify an argument 'runs' which tells how many consecutive runs of
@@ -134,9 +145,13 @@ map \l,imap \ll, :TEX
 	package) of your article in pdf files, the tex file has to be
 	'sourced' twice. To make the bibliography you can use |atp-Bibtex()|.
 
+	If runs > 5 it will be reduced to 5, to avoid running tex for hundreds
+	(or event thousands) of times (what could happen otherwise by
+	a mistake giving the range of the command to be the current line
+	number).
+
 VTEX([runs])						*atp-VTEX()*
 map <F5>,imap <F5>, :VTEX 
-	
 	Verbose TeX, if you want to see the log file after tex compiler is
 	called. This runs TeX in the errorstop mode. 
 
@@ -151,10 +166,34 @@ map <F5>,imap <F5>, :VTEX
 	The command :2VTEX will run :call VTEX(2), :VTEX 3 do :call VTEX(3), and
 	:2VTEX3 will resolve to :call VTEX(3).
 
+ShowErrors						*atp-ShowErrors*
+:ShowErrors <flag>
+	This command shows error/warning messages. It sets the |'errorformat'|
+	variable accordingly to the flag, which is a word made of letters:
+>
+		e		- include errors
+		w		- include all warning messages
+		r		- include all reference warnings
+		c		- include all citations warnings
+		f		- include all font warnings
+<
+	If none flag is given 'e' is used.
+	Example:
+>
+		:ShowErrors rc
+<
+	will show all reference and citation warnings.
+
+	
+SetErrorFormat						*atp-SetErrorFormat* 
+:SetErrorFormat <flag> 	
+	This command has the same syntax as :ShowErrors. It only sets the
+	|'erroformat'| variable.
+	
 Bibtex([debug])						*atp-Bibtex()* 
 map \b, :Bibtex, :Bibtex v
 	This function will call bibtex to produce the bibliography file
-	(.bbl). If in |b:outdir| there is no 'aux' file it first calls tex
+	(.bbl). If in |atp-outdir| there is no 'aux' file it first calls tex
 	compiler. After the 'bbl' file is produced two consecutive runs of tex
 	compiler are called to make the bibliography.
 
@@ -169,33 +208,35 @@ map \b, :Bibtex, :Bibtex v
 
 SimpleBibtex()						*atp-SimpleBibtex()*
 map \sb, :SBibtex
-	This calls bibtex on the aux file in your |b:outdir| directory and
+	This calls bibtex on the aux file in your |atp-outdir| directory and
 	shows you the output. It is useful if you are debugging your
 	bibliography database. 
 	
 ViewOutput()						*atp-ViewOutput()*
 map \v,map <F3>, imap \v, imap <F3>  
 	You would like to see what you are editing use this function. It will
-	use the program defined in the variable b:Viewer. See |b:Viewer|,
-	|b:XpdfServer|, |b:XpdfOptions|. When there is no output file it will run
+	use the program defined in the variable b:Viewer. See |atp-Viewer|,
+	|atp-XpdfServer|, |atp-XpdfOptions|. When there is no output file it will run
 	TeX and open the file. Read more about particular viewers
 	(inverse/reverse searching) in |atp-viewers|. 
 
 BibSearch({pattern},{flag})				see |atp-BibSearch|
 :BibSearch
-	Finds bibentries in bibfiles given in yout tex file, which match the
-	pattern the output is configurable by the flag argument see
+	This function finds bib entries in bib files defined in your tex file and in the
+	variable b:bibfiles (see |atp-bibfiles|), which match the
+	pattern. The output is configurable by the flag argument, see
 	|atp-bibflags|.
 
-BibChoose({pattern},{flag})				see |atp-BibChoose|
-:BibChoose
-	Finds like BibSearch and let you copy the bib key directly to your tex
-	file (after the curent cursor position) or to a choosen register see
-	|atp-bibchoose-register|.
+BibChoose()						see |atp-BibChoose|
+:BibChoose, map c, map y, map p
+	This function is defined in the window with results of BibSearch
+	command. It is mapped to 'y' and 'c' and let you copy the bib entry key
+	to a register (see |atp-BibChoose|) or directly to last opened
+	buffer (after the last cursor position). When you paste it will close
+	the Bibsearch window.
 
 FindBibFiles({bufname})					*atp-FindBibFiles()*
 :FindBibFiles
-
 	This updates the variables s:bibfiles, s:allbibfiles,
 	s:notreadablebibfiles (showed by ShowOptions command). Finds all bib
 	files defined in all '\bibliography' commands. For more about the
@@ -203,8 +244,7 @@ FindBibFiles({bufname})					*atp-FindBibFiles()*
 	internally be the script functions BibSearch/BibChoose/ShowOptions.
 	The command :FindBibFiles finds bib files in the current buffer. 
 
-							*atp-FindInputFiles()*
-FindInputFiles([bufname])
+FindInputFiles([bufname])				*atp-FindInputFiles()*
 :FindInputFiles [bufname]
 	This function finds all the input files, i.e. files put after the
 	tex commands: '\input', '\include' or '\includeonly'. And prints the
@@ -212,11 +252,9 @@ FindInputFiles([bufname])
 	The function and the command have one optional argument - the buffer
 	name. By default it searches for input files in the current buffer.
 	The bufername complition is set, hence you can use <Tab> to choose the
-	bufername as the argument of the command.
+	bufername.
 
-
-							*atp-EditInputFile()*
-EditInputFile([bufname])
+EditInputFile([bufname])				*atp-EditInputFile()*
 :EditInputFile [bufname]
 	This function finds input files (using the function FindInputFiles()
 	in the current buffer and let you choose one to edit.
@@ -227,8 +265,8 @@ EditInputFile([bufname])
 	The input file may contain white spaces, but then has to be quoted
 	with '"' (this is a latex requirement).
 
-	Input files are searched in the |b:outdir| directory, if not found
-	there then in the directory |g:texmf|. The default value is 
+	Input files are searched in the |atp-outdir| directory, if not found
+	there then in the directory |atp-texmf|. The default value is 
 	g:texmf=$HOME/texmf, which is the default value of local texmf tree in
 	texlive.
 
@@ -243,26 +281,24 @@ map <F6>l, imap <F6>l
 Delete()						*atp-Delete()*
 map <F6>d
 	Delets the files produced by TeX wich extensions belongs to
-	g:texextensions (see |g:texextensions|). It removes not taking care
+	g:texextensions (see |atp-texextensions|). It removes not taking care
 	about the name, i.e. it runs like: rm *.out.
 
 Print()							*atp-Print()*
 map \p
-	It will run lpr command and append to it the options defined in the
-	variable g:printeroptions. It prints the pdf file if you are using
-	Pdf(La)TeX  or the dvi file if you are using (La)TeX. Depneding, what
-	you have in |b:texcompiler|.
+	It will run 'lpr' command and append to it the options defined in the
+	variable 'g:printeroptions'. It prints the pdf or dvi depending on
+	the value of 'b:texcompiler' (see |atp-texcompiler|).
 
 ShowOptions()						*atp-show-options* *atp-ShowOptions()*
 :ShowOptions, :ShowOptions v 
-	This will show values of values that you use. If you specify any
-	argument additionaly the deafult values will be shown is suqare brackets.
+	This will show values of variables that are currently set. If you specify any
+	argument the deafult values will be shown is square brackets.
 >
 		:ShowOptions v
 <		
-							*atp-TOC()*	
-TOC()
-map T, :TOC
+TOC()							*atp-TOC()*
+map \t, :TOC
 	Shows Table of Contents of your document. It do not yet support the
 	started version of chapter, section,... environemnts. It opens new
 	window in which you can use the mappings: 
@@ -272,9 +308,9 @@ map T, :TOC
 				to a register, if it exists,
 	 	'p' 	to paste it directly to your tex file (just after the
 				current cursor position), 
-		's'	to show the context of the label: it splits the window
-				with your tex source file and sets the current
-				line to the line of the label
+		's'	it splits the window with your tex source file and
+			sets the current line to the beginning of the
+			chapter/section under the cursor,
 		'q' 	to quit, and finaly, 
 		<Enter> to go to the chapter under the cursor and close ToC.
 		<space> to go to the chapter under the cursor but leave ToC
@@ -286,171 +322,241 @@ map T, :TOC
 
 	TOC() supports many eddited files. For example if you have in your
 	buffer list two files a.tex and b.tex this command will produce table
-	of contents of both files. If you have just one opened window
+	of contents of both of them. If you have just one opened window
 	(excluding the ToC window) then pressing <space>, <enter>, p and q
 	will take you to the right buffer (which will be read if is unloaded
-	or hidden): for example if you split a window then <space>, <enter>,
-	p, q will take you to the window from which you are comming. If you
-	have to windows with two different buffers loaded they will act on 
-	the window with the matching buffer name.
+	or hidden). If you split a window then <space>, <enter>,
+	p, q will take you to the window from which you are comming. However,
+	if you have two windows with two different buffers loaded they will
+	act on the window with the matching buffer name.
 
-							*atp-Labels()*
-Labels()
+	The variable t:toc_window_width sets the width of table of contents
+	window. By default t:toc_window_width=30. You can set a global
+	variable g:toc_window_width to overide the default value.
+
+CTOC()							*atp-CTOC()*
+:CTOC	
+	This function returns the name of the currently eddited chapter/
+	section/subsection/subsubsection. Use ':echo CTOC()' or just ':CTOC' to
+	see the returned value. If you added a section unit the function will
+	not update the database, run ':TOC' to do that (map \t).
+
+Labels()						*atp-Labels()*
 map \L, :Labels
 	Shows labels defined in your file. You can also use the mappings
 	'e','c','p','s','q' and <Enter> as above.
 
-	If you forget what are these mappings, write map in the TOC or LABELS
-	window.
+	If you forget what are these mappings, write ':map' in the TOC or
+	LABELS window.
 
-	For good support of multiple opened files one have to wait a moment.
-	
-							*atp-SetOutDir*	
-:SetOutDir
-	This is a command wich sets b:outdir variables and |'errorfile'| option.
-	See |b:outdir| for the default value.
+	The key 's' shows the context of the label under the cursor (your
+	current window splits).
 
-							*atp-SetErrorFile*
-:SetErrorFile
-	If you change |b:outdir| variable and you want to update the
+	The variable t:labels_window_width sets the width of labels window. By
+	default t:labels_window_width=30. You can set a global
+	variable g:labels_window_width to overide the default value.
+
+ToDo(<keyword>,<stop>,[bufname])				*atp-ToDo()*
+:ToDo [bufname]
+:Note [bufname]
+	This function list all the lines of the buffer [bufname] which match
+	for the pattern '%.*<keyword>'. The <stop> argument is the pattern to
+	before which to stop. The optional argument is the buffer
+	name (the buffer name complition is set on). If not given the
+	current buffer is assumed.
+	You can set highlighting for this command by:
+		highlight atp-Todo ctermfg=... 	guifg=...
+	The command :ToDo sets keyowrd='\c\<todo\>' and
+	stop='\s*%.*\c\<note\>', and the command :Note
+	sets keyowrd='\c\<note\>' and stop='\s*%.*\c\<todo\>'. This prevent
+	from listing ToDo lines with Notes and vice versa. 
+	 
+SpecialSpaceToggle()	 					*atp-SpecialSpaceToggle*
+:SpecialSpaceToggle, map <F2>
+	This function (command) sets, if it is undefined or removes if it is
+	defined, the mapping:
+>
+		:cmap <Space> \_s\+
+<
+	which is useful when searching by the command '/', especially if
+	|'textwidth'| or |'wrapmargin'| is non zero (and |'formatoptions'|
+	contains one of the flags 't', 'v' or 'b'). Then each <Space> will
+	match for a space which also might end of the line.
+
+:SetOutDir						*atp-SetOutDir*
+	This is a command wich sets the 'b:outdir' variable and the |'errorfile'| option.
+	See |atp-outdir| for the default value.
+
+:SetErrorFile						*atp-SetErrorFile*
+	If you change |atp-outdir| variable and you want to update the
 	|'errorfile'| option use this command. It will show you the value to
 	which |'errorfile'| was set. 
+
+ATPStatus						*atp-ATPStatus*
+:ATPStatus
+	This function (command) sets the status line, which include: the name
+	of currently eddited chapter (or section) the value of 'b:outdir' and
+	it will warn you if 'b:outdir' variable is not set. This function is
+	called at startup unless the variable 'g:atp_statusline=0' is set (for
+	example in you $VIMRC file). The status is set by the autocommand:
+>
+		au BufWinEnter *.tex :call ATPStatus()
+<
+	In this way every opened window with a '*.tex' file will get the correct
+	status line.
+
 
 ================================================================================
 Searching in bib files 		                        *atp-bibsearch*
 
-		
+		___________________________
+		Tabel of Contents:
+		|atp-BibSearch|
+		|atp-bibpatterns|
+		|atp-bibflags|
+			|atp-bibflags:default|
+			|atp-bibsearch-show-only-keys|
+			|atp-bibflags:+|
+			|atp-bibflags:output|
+			|atp-bibflags:all|
+			|atp-bibflags:last|
+			|atp-bibflags:add-flag|	
+		|atp-BibChoose|	
+		|atp-bibsearch-highlight|
+		|atp-BibSearch-command|
+		|atp-bibflags:examples|
+		|atp-bibsearch-variables|
+			|atp-bibfiles|
+
 		____________________________
 		Naming Convensions:	
+
 		@article{<label>,					\	
-			author = { .... },		<-- bibentry    | 
-			title  = { .... },				 > bibfield
+			author = { .... },		<-- bib entry    | 
+			title  = { .... },				 > bib field
 			journal= " .... ",				|
 		}							/	
 
-			article 		<-- bibfield keyword 
-			author,title,...	<-- bibentry label 	
-			<label>			<-- bibfield label 	
+			article 		<-- bib field keyword 
+			author,title,...	<-- bib entry label 	
+			<label>			<-- bib field label 	
 
-One more function is provided which searches the bib files for bibfields, 
-and for the bibfield labels for the latex command \cite{}.
+
+One more function is provided which searches the bib files for bib fields, 
+and for the bib field labels for the latex command \cite{}.
 
 BibSearch([pattern],[flags])				*atp-BibSearch* 
-BibChoose([pattern],[flags])				*atp-BibChoose*
+	The function BibSearch allows you to search for the pattern in bib
+	files and opens a new window with results. For the command, please read
+	|atp-bibsearch-command|.
 
-	The function BibChoose allows you to copy the keyword of the whole
-	bibentry directly to the file or to the register, for the useg see
-	|atp-bibchoose:input|.
-
-	Both takes two arguments (the last one is optional), first one is the
-	pattern to match against each line of the bibliographic files supplied
-	in the commands \bibliography (if there are several names,please do
-	not add a white space ' ' after ',' unless the file name begins with a
-	space. i.e.
+	The function BibSearch takes two arguments (the last one is optional).
+	The first one is the pattern to match against each line of the
+	bibliographic files supplied in the commands \bibliography (if there
+	are several names,please do not add a white space ' ' after ',' unless
+	the file name begins with a space, i.e.
 >
- "	\bibliography(Mathematics, Physics,/home/user/Bibliography)
+ 	\bibliography(Mathematics, Physics,/home/user/Bibliography)
 < 
 	then the plugin will understand that the names of the bib files are
 	'Mathematics.bib', ' Physics.bib' and '/home/user/Bibliography.bib'.
 
-								*atp-bibsearch-patterns*
-								*atp-bibsearch-examples*
+								*atp-bibpatterns*
 	Each line of every bib file found in your tex docummnet will be
-	matched against the pattern, for example 
+	matched against the pattern, for example if the pattern is:
 >
- "	if pattern='author.*Grothendieck'
+ 		'author.*Grothendieck'
 <
- 	will result in all the bibliographic positions which in one line have
-	the words 'author' and 'Grothendieck' (in most cases it means that you
-	will see only works of Grothendieck). Another example:
+	the BibSearch function will find all the bibliographic fields
+	which in one line have the words 'author' and 'Grothendieck' (in most
+	cases it means that you will see only works of Grothendieck). Another
+	example:
 >
- "	if pattern='author.*Joayl\|Galois Theory'
+ 	'^\(\s*author.*Joayl\)\|Galois Theory'
 <
-	will result in all bibfields which author is Joyal or 
+	will result in all bib fields which author is Joyal or 
 	which includes the words 'Galois Theory' (which by the way apear in
-	many article/book tiles):	
+	many article/book titles), yet another example:	
 >
- "	if pattern='author.*Joayl\|title\p*Galois Theory'
+ 	'author.*Joayl\|title\p*Galois Theory'
 <
-	This will match against all bibentries written by Joyal or which title
+	This will match against all bib entries written by Joyal or which title
 	includes the word 'Galois Theory'.
-> 	
- "		:call BibSearch('author.*Joyal\&.*Tirney')	
+>
+ 		:call BibSearch('author.*Joyal\&.*Tirney')	
 <	
-	will find all the bibentries which were written by Joyal and Tirney
+	will find all the bib entries which were written by Joyal and Tirney
 	(and maybe somebody else). 
 
 	For now, there is no possibility to filter bibliographic entries which
-	both match a pattern in separate lines, i.g. to show all bibentries
+	both match a pattern in separate lines, i.g. to show all bib entries
 	written by Joyal on 'Descent Theory'.
 
-	Before a match, all '{', and '}' are deleted from the line of the bibfile.
+	Before a match, all '{', and '}' are deleted from the line of the bib file.
 	But you will see them in the output (what can be useful for debugging
-	errors in bibfiles)
+	errors in bib files)
 
 	Note that in vim patterns should be quoted using '...' not "...".   
 
 	Further examples are supplied after the next section
-	|atp-bibflags-examples|, which describes other functionalities
+	|atp-bibflags:examples|, which describes other functionalities
 	of the BibSearch/BibChoos functions.
 
-								*atp-bibsearch-flags*
 								*atp-bibflags*
 	The first optional argument [flags] chooses what and in which order
-	you want to see the  bibentries found (entries are listed in
+	you want to see the  bib entries found (entries are listed in
 	the order they appear in bib file).  Flag is a word made of letters.
 	There are three kinds of flags: entry flags which mathes againts
-	labels of bibentries, like author, title, etc..., and keyword flags: which
-	matches agains keywords of bibfields: @article, @book, @techreport,
+	labels of bib entries, like author, title, etc..., and keyword flags: which
+	matches agains keywords of bib fields: @article, @book, @techreport,
 	etc...  and two special flags 'All' and 'L'. A flag is a word on
 	letters:
 >
- "		a  - author
- " 		e  - editor
- " 		t  - title
- " 		b  - booktitle
- " 		j  - journal
- " 		s  - series
- " 		y  - year
- " 		n  - number
- " 		v  - volume
- " 		p  - pages
- " 		P  - Publisher
- " 		N  - Note
- " 		S  - School
- " 		h  - howpublished
- " 		o  - organization
- "		u  - url	
- "		H  - Homepage	
- "any other letter - do not show anything but the first line of bibentry 
- "		@a - article 						/@article/
- "		@b - book or booklet 					/@book,@booklet/
- "		@B - Booklet 						/@booklet/	
- "		@c - incollection 					/@incollection,@inbook/
- "		@p - proceedings, inproceedings, conference   		/@proceedings,@inproceedings,@conference/
- "		@m - misc 						/@misc/
- "		@M - Manual 						/@manual/
- "		@t - master or PhD thesis  				/@masterthesis,@phdthesis/
- "		@T - Techreport 					/@techreport/
- "		@u - unpublished  					/@unpublished/		
- "		All - all flags						(see |atp-bibflags:all|)		
- "		L   - last flags					(see |atp-bibflags:last|)		
+		a  - author
+ 		e  - editor
+ 		t  - title
+ 		b  - booktitle
+ 		j  - journal
+ 		s  - series
+ 		y  - year
+ 		n  - number
+ 		v  - volume
+ 		p  - pages
+ 		P  - Publisher
+ 		N  - Note
+ 		S  - School
+ 		h  - howpublished
+ 		o  - organization
+		u  - url	
+		H  - Homepage	
+  any other letter - do not show anything but the first line of bib entry 
+		@a - article 						/@article/
+		@b - book or booklet 					/@book,@booklet/
+		@B - Booklet 						/@booklet/	
+		@c - incollection 					/@incollection,@inbook/
+		@p - proceedings, inproceedings, conference   		/@proceedings,@inproceedings,@conference/
+		@m - misc 						/@misc/
+		@M - Manual 						/@manual/
+		@t - master or PhD thesis  				/@masterthesis,@phdthesis/
+		@T - Techreport 					/@techreport/
+		@u - unpublished  					/@unpublished/		
+		All - all flags						(see |atp-bibflags:all|)		
+		L   - last flags					(see |atp-bibflags:last|)		
 <
 
 	Examples:
 >
- "		tayu@a		--> show the entries: tile, author, year, url of matching articles.
- "		baeP@b		--> show the entries: booktitle, author, editor, 
- " 							publisher of matching books (@book,@booklet).
-< 
+		tayu@a		--> show the entries: tile, author, year, url of matching articles.
+		baeP@b		--> show the entries: booktitle, author, editor, 
+ 							publisher of matching books (@book,@booklet).
+<
 	If flags '@.' are filtered out, if one do not belongs to the one above
 	then it is deleated. You can see which flags are defined using
 	ShowOptions function/command (they are listed as Available
 	KeyWordFlags).
-								*atp-g:defaultbibflags*
 								*atp-bibflags:default*
 	The default flag is stored in the global variable g:defaultbibflags and is
-	equal to 'tabejsyu'. This means that the ouput for each bibfield found 
+	equal to 'tabejsyu'. This means that the ouput for each bib field found 
 	will include the 
 		title
 		author
@@ -462,45 +568,41 @@ BibChoose([pattern],[flags])				*atp-BibChoose*
 	if title,author,... are specified in the bibliography for the given
 	position. If there are many position which match you can set flags to
 	be as simple as possible to include more lines on the screen. For
-	example 'tabe' is quite reasonable (note that all bibentries are
-	matched separately, i.e. if a bibfield has both 'title' and 'booktitle'
-	bibentries it will give you both of them.
+	example 'tabe' is quite reasonable (note that all bib entries are
+	matched separately, i.e. if a bib field has both 'title' and 'booktitle'
+	bib entries it will give you both of them.
 
 								*atp-bibsearch-show-only-keys*
-	If you just want to list just the lines with bibfields keywords:
+	If you just want to list just the lines with bib fields keywords:
 	@article{, @book{, etc. supply a flag which do not belongs to
 	'g:defaultallbibflags', for example 'X', or 'X@a'
 	
 								*atp-bibflags:+*
 	You can also specify flags with '+', for example: 
->	
- "	flags='+p'
- "	flags='+@b'
+>
+	flags='+p'
+	flags='+@b'
 <
-	This feature ADDS FLAGS TO THE DEFAULT VALUE defined in
-	|g:defaulbibflags|. The first will result in showing the default
-	entries and the page number, the second will result in showing only
-	books with the default bibentries. You can specify as many additional
-	flags as you wish. 
-								*atp-bibsearch-output*
-	Note that the function shows the line with database file name if
-		there are entries in this bibliography 
-		which match the pattern
-	thus,for example, if you specify the flag '@a' and you see the line
-	with database file name, but you do not see any bibfield under, then
-	in this database there are bibfields which match but these are not
-	articles. 	
+	This feature ADDS FLAGS TO THE DEFAULT VALUE defined in the variable
+	g:defaultbibflags (see |atp-defaulbibflags|). The first will result in
+	showing the default entries and the page number, the second will
+	result in showing only books with the default bib entries. You can
+	specify as many additional flags as you wish.  *atp-bibflags:output*
+	Note that the function shows the line with database file name if there
+	are entries in this bibliography which match the pattern thus,for
+	example, if you specify the flag '@a' and you see the line with
+	database file name, but you do not see any bib entry, then in this
+	database there are bib fields which match but these are not articles.
 	
 								*atp-bibflags:all*
-								*atp-g:defaultallbibflags*
 	The flags='All' is a synonim of flag=g:defaultallbibflags which by default is
 	equal to'tabejfsvnyPNSohiuHcp' i.e. all flags in this order. If you
 	add your own flag you should change this global variable. You can add to
-	this flag any flag which contains '@' (see |atp-bibsearch-flags|) by
+	this flag any flag which contains '@' (see |atp-bibflags|) by
 	the plus operator, i.e. All+@a@b or +@aAll will give the same result.
 
 								*atp-bibflags:last*
-								*atp-b:lastbibflags*	
+								*atp-lastbibflags*	
 	The variable 'b:lastbibflags' stores the recently used flags. The flag
 	'L' sets the flags for this search to the value of 'b:lastbibflags'.
 	You can write '+L@a', '+L@a', 'L@a' or '@aL' but not '+@La', if you
@@ -515,82 +617,72 @@ BibChoose([pattern],[flags])				*atp-BibChoose*
 	You can add your own flags but not keyword flags (i.e. @a,@b,...).
 	Just add an entry to the dictionary g:bibflagsdict. (:ShowOptions v to
 	see its current value), For example
->    
- "    let g:bibflagsdict=extend(g:bibflagsdict, { '<oneletter>' : [ '<bibentryname>': '<how to show>'] })
+>
+	let g:bibflagsdict=extend(g:bibflagsdict, { '<flags_name>' : [
+	'<bib_entry_name>': '<how_to_show>'] })
 < 
-    	where, <oneletter> is the flag to use, it must be different from the
-	dfined flags, <bibentry_name> is a lowercase bibentry name, like
-	'title', 'url', etc., <how to show> if you want to have a nice output
-	put the bibentry name and that much of white spaces to get 13 strings.
-
+	where, <flags_name> is the flag to use (it should be one letter), it
+	must be different from the defined flags, <bib_entry_name> is a
+	lowercase bib entry name, like 'title', 'url', etc., <how_to_show> if
+	you want to have a nice output put the bib entry name and that much of
+	white spaces to get 13 strings.
 		
-								*atp-bibchoose-register*
-	The function/command BibChoose ask you for the number of the biblabel to
-	copy to your file (after the current cursor position) or to a
-	specified register.
-
-	    If you give just a number, e.g. '12', then the bibfield label of this
-	    bibfield will be inserted after the cursor position, if you
-	    specify number followed by a register name, i.g. '12e', '12+',
-	    '12-', then the label will be copied to this register. Registers
-	    which you can use are [a-z*+-].
-
-	    Press <Enter> if you do not want to copy anything.
+BibChoose							*atp-BibChoose*
+map c, map y, map p
+	This function/command is only available in the window with BibSearch results
+	and allows to copy a bib entry key to a register or directly to the
+	last opened buffer (after the cursor position). It is mapped to 'c'
+	and 'y'. You will be asked to give the number of bib entry to yank:
+>
+	    <bib entry number><register name><Enter>	- to copy it to a register
+	    <bib entry number><Enter>			- to paste it to 'tex' file
+	    <Enter>					- to skip the choice
+<	
+	When you paste the bib entry key the bib search window will close.
 
 								*atp-bibsearch-highlight*
-	The colours of the output are set using 'echohl' command, the groups which
-	are in use are:
+	The colours of the output are set by the syntax file
+	'syntax/bibsearch_atp.vim'. All groups except one are the same as in
+	the syntax file for bib files ('syntax/bib.vim' in your $VIMRUNTIME
+	directory). Their names are 'bibsearchEntryKw' instead 'bibEntryKw'.
+	The one that is differently defined 'bibsearchComment'.  Which is
+	changed in that way to highlight the bib file names.  One additional
+	highlight group is: 'bibsearchInfo'. It highlights the number of
+	entry and its line number in the bib file. By default all bibsearch
+	groups are linked to the corresponding bib group, the bibsearchInfo
+	group is not set.
+	
+	In a colour file (~/.vim/color/*.vim) you can use these groups to set
+	colours.  See |highlight| or just read a colour file. For example,
+	this is a nice set of colours for dark background 
 		
- 		highlight link BibtexFileNames 		Title	
- 		highlight link BibtexLabels		ModeMsg
- 		highlight link BibtexMatch		WarningMsg
- 		highlight link BibtexGeneral		Normal
- 
-	In your colour file (~/.vim/color/*.vim) you can set other colours.
-	See |highlight| or just read a colour file. For example, this is a
-	nice set of colours for dark background 
-		
- 		highlight BibtexFileNames  cterm=none      ctermfg=161 	ctermbg=233
- 		highlight BibtexLabels	   cterm=bold	   ctermfg=90	ctermbg=233
-		highlight BibtexMatch	   cterm=none      ctermfg=40  	ctermbg=233
-		highlight BibtexGeneral    cterm=none      ctermfg=255	ctermbg=233
-
-	Note that each message is echoed using the 'echomsg' command, and thus
-	it is added to the |message-history|. And thus, previous searches are
-	available using the :mes (see |:messages|) command.
-
-	There are two commands to make the life easier:
-								*atp-BibChoose-command*
-							 	*atp-BibSearch-command*
-:BibSearch [pattern] [flag] 
-:BibChoose [pattern] [flag] 
+							 	
+:BibSearch [pattern] [flag] 					*atp-BibSearch-command*
 	which do what you expect. The arguments should not be quoted and
 	separated by a white spaces (if you want to include a white space use
 	'\ '), for more see |f-args|. If you do not provide any argument then
-	all entries of all bibfiles will be shown. Examples:
+	all entries of all bib files will be shown. Examples:
 
-								*atp-bibflags:examples*
-	Some examples:
+	Some examples:						*atp-bibflags:examples*
 >
- "	:BibSearch 
-<				this is a tip how to show all bibfields with
+ 	:BibSearch 
+<				this is a tip how to show all bib fields with
 				the default flags
 >
- "	:BibSearch @ yt	
-<				this is a tip how to show all bibfields with
+ 	:BibSearch @ yt	
+<				this is a tip how to show all bib fields with
 				different flags than the default ones, which
 				is equivalent to:
 >
- "      :call BibSearch('','yt')
-< 
->
- "	:BibSearch title[\s.]*Galois Theory  aetb
+	:call BibSearch('','yt')
+
+ 	:BibSearch title[\s.]*Galois Theory  aetb
 <
-	The next one shows all bibfileds which were written by Joyal and
+	The next one shows all bib fields which were written by Joyal and
 	Tirney (and mayby somebody else).
-> 	
- "	:BibSearch 'author.*Joyal\&.*Tirney'
-<	
+>
+	:BibSearch 'author.*Joyal\&.*Tirney'
+<
 
 								*atp-bibsearch-variables*
 								*atp-variables-bib*	
@@ -598,36 +690,36 @@ SOME VARIABLES:
 	All the values of important variables can be shown by ShowOption
 	command.
 
-								*atp-b:bibfiles*
-b:bibfiles
+								
+b:bibfiles							*atp-bibfiles*
 	This variable is a list and you can put here additional bib files.
 	They will be parsed by the BibSearch/BibChoose functions.
+
+	The following variables you can see using the ShowOptions command (see
+	|atp-ShowOptions()|).
 s:bibfiles
 	This variable is a list which stores bib files found in your tex
 	files and which are readable. It is set up when you first run of the commands:
-	BibSearch/BibChoose/ShowOptions. Its value is produced by the
+	BibSearch/BibChoose/ShowOptions. Its value is shown by the
 	functions FindBibFiles({bufname}).
 s:allbibfiles 
-	this is a sum of found bibfiles the locally defined b:bibfiles, which
+	this is a sum of found bib files the locally defined b:bibfiles, which
 	not necessarily are readable.
 s:notreadablebibfiles
 	guess what :)
 
-
-
 -----------------------------------------------------------------------------------
-								*atp-bibsearch-bugs*
+								*atp-bibsearch-comments*
 	Please do not hesitate to report any bug to me:
 	mszamot@gmail.com 							
 	
-	The algorithm will work only if all kind of bibentries of your bibfile
-	are included in the list g:bibentries. However, changing just this
-	variable is not enough. In that case the search engine (function
-	s:search) will produce correct output, but the function which
-	displays found entries, will not know how to work with the new
-	entries. One would have to also add an entry to the dictionary
-	'g:bibflagsdict'. If it is the case, please let me know:
-	mszamot@gmail.com  
+	The algorithm will work only if all kind of bib entries of your bib
+	file are included in the list g:bibentries. However, changing just
+	this variable is not enough. In that case the search engine (function
+	s:search) will produce correct output, but the function which displays
+	found entries, will not know how to work with the new entries. One
+	would have to also add an entry to the dictionary 'g:bibflagsdict'. If
+	it is the case, please let me know: mszamot@gmail.com  
 
 	As you can see entries of the type '@string' which can be used in bib
 	files are not supported (i.e. there is no function which substitutes
@@ -635,45 +727,49 @@ s:notreadablebibfiles
 			@string{ Name = Value }
 			
 ------------------------------------------------------------------------------------	
-	Comments: for a bibfile with over 16000 lines and 1675 entries, it
+	Comments: for a bib file with over 16000 lines and 1675 entries, it
 	took on my computer (AMD Core 2Duo 1.9Ghz) 25.5s to find all entries,
 	with the command ':BibSearch . All' and 1s to show results (the
 	longest loop took over 100000 times). However to find in this database
 	one entry with default flags (:BibSearch <Name>) it took 2.84s
-	(exactly 79 matching bibfields), and to display them another 0.6s. 
+	(exactly 79 matching bib fields), and to display them another 0.6s. 
 
 	If for you the algorithm is too slow, there is a way to make it more
-	efficient: the problem with when every line is matched: when
-	we are in line x we go back to find the nearest line of the form
-	@article{, @book{, etc., if we find it we go to line x+1 and do it
-	once again. We could remember previous line numbers and test if we
-	already have done the calculations. This can avoid  long loops.
+	efficient: the problem with when every line is matched: when we are in
+	line x we go back to find the nearest line of the form @article{,
+	@book{, etc., if we find it we go to line x+1 and do it once again. We
+	could remember previous line numbers and test if we already have done
+	the calculations. This can avoid  long loops.
 
 ================================================================================
 How to configure to your needs                          *atp-configure*
 							*atp-variables*
+
 There are several options you can set, and they might be set in your vimrc
-file, unless you want to use the default, which I provide below.
+file. The default values are given below.
 
-All buffer variables (see |b:var|), i.e. these which name begins with "b:" can
-be should be set in you vimrc file. The best way to do that is by using
+All buffer variables (see |b:var|), i.e. these which name begins with "b:",
+should be set in your vimrc file. The best way to do that is by using
 autocommand:
+>
 	au BufReadPre *.tex let b:texcompiler="latex"
-If you put just let b:texcompiler, this will also work but only open vim from
-terminal (not when you want to start edditing next buffer). 
+<
+If you put just let b:texcompiler, this will also work but not always: for
+example when you open a new buffer in existing vim session.
 
-let b:texcompiler="pdflatex" 					*b:texcompiler*
+let b:texcompiler="pdflatex" 					*atp-texcompiler*
 	Used by functions: TEX() (map \l, imap \l), VTEX() (map <F5>, imap <F5>)
 
 	You can set it to latex, tex, luatex, and so on and possibly to
-	lilypond. 
+	lilypond as well. 
 
 let b:texoptions=""
-	If you want to set some additional options to your texcompiler, note
-	that, -jobname, -output-directory, -mode, are already used. You can
-	use this to make reverse searching with xdvi see |atp-xdvi|.
+	If you want to set some additional options to your texcompiler you can
+	use this variable, note that, -jobname, -output-directory, -mode, are
+	already used. You can use this to make reverse searching with xdvi see
+	|atp-xdvi|.
 
-								*b:outdir*
+								*atp-outdir*
 let b:outdir=fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/"
 Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete() 
 			i.e. in all functions.
@@ -691,101 +787,108 @@ Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete()
 	White spaces and other characters should not be escaped. It will be
 	quoted in '...' using the |shellescape()| function.
 
-	You can see the current output directory in the status (it is in short
-	notation) to see it whole type
+	You can see the current output directory in the status (it is in the
+	short notation) to see it whole type:
 		:echo b:outdir
 	or use the function ShowOptions() (see |apt-ShowOptions()|).		
 
-								*atp-g:texmf*
-let g:texmf=$HOME/texmf
+let b:auruns=1							*atp-auruns*
+	This variable control how many times the automatic function calls tex
+	compiler (consecutively). It is useful if you are working with PDF
+	files and you want to have bookmarks (you can get them using hyperref
+	package with the option: bookmarks. Then set b:auruns to '2'.
+
+let g:texmf=$HOME/texmf						*atp-texmf*
 	This variable configures where input files are placed. See
 	|atp-EditInputFile()|.
 
-let g:askforoutdir=0						*g:askforoutdir*
+let g:askforoutdir=0						*atp-askforoutdir*
 	Its values are 1 and 0.  When it is set to 1 you will be asked for the
 	name of a directory where tex will put output files, note that this
 	name should end with a "/".
 
-let b:Viewer="xpdf"						*b:Viewer*
+let b:Viewer="xpdf"						*atp-Viewer*
 	it was tested with xpdf, evince, epdfviewer, kpdf, okular, xdvi and
-	they all works fine.  I'm using xpdf and the xpdf server options are
+	they all works fine. I'm using xpdf and the xpdf server options are
 	supported so that the file is automatically reloaded (other viewers,
-	except epdfview, have this functionality as well, except acroread in
-	which somehow it do not works. Read more about viewers in
-	|atp-viewers|. 
+	except epdfview, have this functionality as well. This do not works
+	for acroread. Read more about viewers in |atp-viewers|. 
 
-let b:XpdfOptions=""						*b:XpdfOptions*
+let b:XpdfOptions=""						*atp-XpdfOptions*
 	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
 
-	For example if you want to have different look of one document you can
+	For example, if you want to have different look of one document you can
 	set it to "-bg gray20". Other example:
-
-	let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue3 -papercolor SlateBlue4"
-
-	If you want this option to work in new open buffers put this in your
-	$VIMRC file:
-
-	au BufRead *.tex let b:XpdfOptions="-bg NavajoWhite4 -fg black -mattecolor burlywood"
-
-let b:XpdfServer=fnamemodify(expand("%"),":t")			*b:XpdfServer*	
+>
+ 	let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue2 -papercolor White"
+<
+	If you want this option to work in every new open buffer, use an
+	autocommand like in the following line:
+>
+ 	au BufRead *.tex let b:XpdfOptions="-bg NavajoWhite4 -fg black -mattecolor burlywood"
+<
+let b:XpdfServer=fnamemodify(expand("%"),":t")			*atp-XpdfServer*	
 	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
 
-	that is it is equal to the name of your open file. You do not need
-	escape spaces in the name (shellescape() function is used before it is
-	send to your shell).
+	It is equal to the name of the source file. You do not need escape
+	spaces in the name (shellescape() function is used before it is send
+	to the shell).
 
-let b:openviewer=1						*b:openviewer*
+let b:openviewer=1						*atp-openviewer*
 	If the function which calles TeX compiler do not see that you are
 	viewing the output file it will open it for you if b:openviewer=1.
 	Otherwise, this feature is disabled.
 
-let g:rmcommand="perltrash"					*g:rmcommand*
+let g:rmcommand="perltrash"					*atp-rmcommand*
 	Used by function: Delete() (map <F6>d imap <F6>d)	
 
-	If you have another trash can program you can use it here, if you do
-	not have it you can use "rm" (at your own risk). Now, it is used to
-	delete the files produced by (La)TeX by the function Delete() (see
-	|apt-Delete()|). It will remove all files in the output directory (see
-	|b:outdir|), which ends with
-	an extension defined in the list g:texextensions  
-	
-	If you set 
-		let g:rmcommand=""
+	If you have another 'trash can' program you can use it here, if you do
+	not have it you can use "rm" (at your own risk). It is used to delete
+	the files produced by (La)TeX (see |apt-Delete()|). The function
+	Delete() will remove all files in the output directory (see
+	|atp-outdir|), which ends with an extension defined in the list
+	|atp-texextensions|. If you set:
+>
+	let g:rmcommand=''
+<
 	then the function Delete() (see |apt-Delete()|) will use the vim
 	|delete()| command, and will delete only the files produced by the
-	current .tex file. The temporary directory is cleared by rm command.
+	current '.tex' file. The temporary directory is cleared by rm command.
 
 	The program 'perltrash' is in the package app-misc/perltrash (at least
-	for Gentoo)
+	for Gentoo).
 
-								*g:texextensions*	
+								*atp-texextensions*	
 let g:texextensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]	
-	 These list is used by the function Delete() (see |apt-Delete()|)
-	 which delets all the file with this extension in the directory
-	 b:outdir, unless g:rmcommand="" (see |g:rmcommand|) whene Delete()
-	 deletes only the output files for the current buffer.
+	 This list is used by the function Delete() (see |apt-Delete()|) which
+	 delets all the files with the specified extension in the directory
+	 b:outdir, unless g:rmcommand="" (see |atp-rmcommand|) in which case
+	 Delete() deletes only the output files for the current buffer.
 									
-let g:keep=["log","aux","toc","bbl"]				*g:keep*
-	
-	Files with this extension will be copied from 'b:outdir' to the
-	temporary directory with appropriate name to be used when (La)TeX is
-	compiling. (log file will be only copied after it is created, other
-	files will be copied back and forth between you 'b:outdir' and the
-	temporary directory). These four are essentially minimum to work with 
-	table of contents and bibtex, possibly other classes like beamer or
-	packages like theorem (produced .thm files) have more special needs.
+let g:keep=["log","aux","toc","bbl"]				*atp-keep*
+	Files with an extension belonging to this list will be copied from
+	'b:outdir' to the temporary directory with appropriate name. Then it
+	will be used by (La)TeX. (log file will be copied after it is created,
+	other files will be copied back and forth between 'b:outdir' and the
+	temporary directory). These four elements: log,aux,toc,bbl are
+	essentially minimum to work with: table of contents, pdf-bookmarks and
+	bibtex. There are possibly other classes, like beamer, or packages
+	like theorem (produce .thm files) which will need to configure this
+	variable.
+
 	You can change this variable by the command:
 		:let g:keep+=["thm","spl"]
 								
-let g:printeroptions=""						*g:printeroptions*
-	You can set the printer options. These are options for the lpr
+let g:printeroptions=""						*atp-printeroptions*
+	You can set the printer options. These are options for the 'lpr'
 	command, which will print the output file (pdf or dvi) this depends on
 	the b:texcompiler that you use.
 
-b:texcommand							*b:texcommand*
-	This variable is for debugging, it stores the last executed command to
+b:texcommand							*atp-texcommand*
+	This variable is for debugging. It stores the last executed command to
 	compile your document. This changes also when your compiler was run
-	automatically.>
+	automatically.
+>
 		:TEX
 		:echo b:texcommand
 		:TEX 2
@@ -800,23 +903,47 @@ b:bibfiles			see |atp-variables-bib|
 s:bibfiles
 s:allbibfiles
 s:notreadablebibfiles
-	For more on bib flags see |atp-bibsearch-flags|.
+	For more on bib flags see |atp-bibflags|.
 	
+let t:toc_window_width=30
+	g:toc_window_width (by default not set, if set ovverides
+	t:toc_window_width)
+	Configures the initial width of the window with table of contents.
+
+let t:labels_window_width=30
+	g:labels_window_width (by default not set, if set ovverides
+	t:labels_window_width)
+	Configures the initial width of the window with lables.
+
+g:atp_statusline
+	by default it is not set, put the line
+>
+	let g:atp_statusline=0
+<
+	in your $VIMRC file if you do not want the status line provided by this
+	plugin. (See |atp-ATPStatus|).
+
+let b:truncate_status_section=40
+	This variable sets how many characters of the section/subsection title
+	(or chapter/section titles if you write a book) should be shown in the
+	status line.  Section title and subsection title gets equal amount of
+	characters.
 
 ================================================================================
 Mappings and Commands                     		*atp-mappings*
 
-Lots mappings which are given here uses # which is in a convenient place on
+Lots of mappings which are given here uses #. This is a convenient map on
 British keyboards, but not in the US layout, you can change them for '`' or
-some other key that it is not used in vim (there are not many of them
-though). The most commonly used latex-suite plugin uses similar set of
-mappings (but there might be some differences).
+some other key that it is not used in vim (there are not many of them though).
+The most commonly used latex-suite plugin uses similar set of mappings (but
+there might be some differences).
 
 These mappings are loaded unless you set one of variables: 'no_plugin_maps' or
-'no_atp_maps'.
+'no_atp_maps' (disables maps defined in tex_atp.vim) or 'no_atp_toc_maps'
+(disables maps defined in 'toc_atp.vim'.
 
-Note: in all mappings "\" is really set to your <LocalLeader> (and thus, in
-fact, the mapping can differ).
+Note: in all mappings "\" is set to your <LocalLeader> (and thus, in fact, the
+mappings can differ).
 
 ShowOptions						*atp-map-ShowOptions()*
 :ShowOptions, :ShowOptions v
@@ -848,7 +975,7 @@ map \p
 
 							*atp-map-TOC*
 :TOC
-map T
+map \t
 	This is a mapping to the command ':TOC'
 
 							*atp-map-Labels*
@@ -861,14 +988,13 @@ map \L
 map \UL			<-- is mapped to UpdateLabels(bufname("%"))
 
 								
-
 texdoc:							*atp-map-texdoc*
 <F1> 	   
 	This is both map and imap. Then you have to type what you are looking
-	for and press enter. The option 'keywordprg' is set to 'texdoc -m', i.e
-	when your curosr is over a package name and you press 'K' key then you
-	should see the package document file (if it is named after the
-	package).
+	for and press enter. The option 'keywordprg' is set to 'texdoc -m',
+	i.e when your curosr is over a package name and you press 'K' key
+	then you should see the package document file (if it is named
+	after the package).
 
 	Note: if you are using: 
 		au! BufWinEnter *.tex silent loadview
@@ -987,7 +1113,9 @@ imap [m \[\]<Left><Left>
 Error Handling							*atp-errors*
 	
 This plugins sets the option 
+>
 	set errorfile=  log file in your b:outdir directory
+<
 This allows you to use |quickfix| commands, for example to read the error file
 use :cg (see |cg|), to jump to the first error :cf (see |cg|), to list all
 errors :cl (see |cl|), read |errorformat| if you want to change the output of
@@ -996,28 +1124,29 @@ this commands.
 								*atp-errors-bibsearch*
 A possible error which may accour using the :BibSearch commands has a simple
 cause: we count number of brackets '()', '{}' and '"' (but nor '\"') to see
-where the bibentry ends and where to join lines. The message error is echoed
+where the bib entry ends and where to join lines. The message error is echoed
 when more than 30 lines where processed and the matching bracket was not found
-(or the number of '"' is odd). Look at your bib file at the specified position.
-Syntax highlighting for bib files can help you finding where such an error is
-located. (After reading the bibfile comment lines and lines which begin with
-@string are removed, so that the brackets in comment lines do not count.)
+(or the number of '"' is odd). Look at your bib file at the specified
+position.  Syntax highlighting for bib files can help you finding where such
+an error is located. (After reading the bib file comment lines and lines which
+begin with @string are removed, so that the brackets in comment lines do not
+count.)
 
 ================================================================================
 Requirements							*atp-requirements*
 
 This plugin requires vim version higher than 7, however a some simple changes
-can make it run on older versions as well (the 'source code' uses lists /g:keep
-and let g:texextensions are the only ones). 
+can make it run on older versions as well (the 'source code' uses lists
+/g:keep and let g:texextensions are the only ones). 
 
 It is nice to have 'texdoc' program. This plugin maps <F1> to :!texdoc -m ...
 and allows to speed up your searches. Also the option 'keywordprg' has the
 value "texdoc -m", thus pressing 'K' (see |K|) over a texpackage should open
-you the package documentation. It is also a good advice to install help
-files of latex-suite, you can find there a big part of 'Non so short
-introduction to Latex' by Tobias Oetiker (copy them to your ~/.vim/doc
-document then use |:helptags| to install the helptags :helptags ~/.vim/doc and
-that's it). The same applies to this help file.
+you the package documentation. It is also a good advice to install help files
+of latex-suite, you can find there a big part of 'Non so short introduction to
+Latex' by Tobias Oetiker (copy them to your ~/.vim/doc document then use
+|:helptags| to install the helptags :helptags ~/.vim/doc and that's it). The
+same applies to this help file.
 
 Another good programs are texloganalyzer and pdffonts wchich are not required
 by there are some mappings to defined (see |texlog| and |pdffonts|).
@@ -1025,32 +1154,35 @@ by there are some mappings to defined (see |texlog| and |pdffonts|).
 ================================================================================
 Notes on Viewers                               			*atp-viewers*
 
-xpdf	
+xpdf								*atp-viewers-xpdf*
 	It is fully supported. It is configured in the way that when your tex
 	file have errors, xpdf viewer will not reload your file, which I found
 	useful. 
 
 	You can set your own options of xpdf using b:XpdfOptions, for example
-		let b:XpdfOptions="-bg grey20"
+>
+	    let b:XpdfOptions="-bg NavajoWhite4 -fg black -mattecolor burylwood"
+<
 	will make xpdf view different. This is helpfull when you edit to
-	files, and do not want to xpdf mix them. Other useful options are
-	'-papercolor' and '-mattecolot' for example
-	    let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue3 -papercolor SlateBlue4"
-	for something which is more eye friendly.	
+	files, and do not want to xpdf mix them. Another example:
+>
+	    let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue2 -papercolor White"
+<
 evince
 	Works fine.
 okular
 kpdf
 	Works fine (moves page a little bit when updates a file).
 epdfview
-	This viewer does not support automatic reloads when the file
-	changes (but it seems that the work is in progress). You have to
-	issue CTRL-R yourself when the file is changed.
+	This viewer does not support automatic reloads when the file changes
+	(but it seems that the work is in progress). You have to issue CTRL-R
+	yourself when the file is changed.
 acroread
 	As with epdfview (with the difference that it supports automatic
 	updates, but it do not works somehow)
-								*atp-xdvi*
-xdvi
+								
+xdvi							*atp-viewers-xdvi*
+							*atp-viewers-xdvi-reverse/inverse-searching*
 	Works fine. You can set reverse searching (i.e. position vim's cursor
 	after xdvi event: usually CTRL+Left Mouse)  with this options:
 
@@ -1063,24 +1195,21 @@ xdvi
 	For inverse searching (position xdvi according to the vims cursor
 	position) you can set:
 >
- "	let b:inverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
+	let b:inverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
 <
 	To make an inverse search:
 >
- "		:call system(b:inverse_search)
+		:call system(b:inverse_search)
 <
-	And xdvi will place itself where your tex file is opened.  You can
-	make a map for this. At some stage it will be included in this plugin,
-	but I want to include also inverse and reverse searching using pdf
-	viewers.
+	And xdvi will place itself at the current cursor position in the 'tex'
+	source file. You can make a map for this. 
 
-	To use this with vim rather than gvim one have to add servername. Run
+	To use this with vim one have to add servername. Run
 	vim as:
 >
- " 	vim --servername vimtex
- " 	let b:Viewer="xdvi -editor 'vim --servername " . v:servername . " --remote-wait +%l %f'"
- "
- "	let b:inverse_search="xdvi -editdor 'vim --servername " . v:servername "' -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
+ 	vim --servername vimtex
+ 	let b:Viewer="xdvi -editor 'vim --servername " . v:servername . " --remote-wait +%l %f'"
+ 	let b:inverse_search="xdvi -editdor 'vim --servername " . v:servername "' -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
 <
 
 ================================================================================
@@ -1109,10 +1238,11 @@ it. These are the highlights groups defined for various files:
     highlight atp_label_name 
 
 3) BibSearch file
-    this is very much the same as the standard syntax for bib files. Groups are
-    named bibsearch<NAME> instead of bib<NAME>. There is one more group added:
+    this is very much the same as the standard syntax for bib files. Groups
+    are named bibsearch<NAME> instead of bib<NAME>. There is one more group
+    added:
 >
- "    bibsearchInfo
+	    bibsearchInfo
 <
     which highlights the line number of the bib entry in the bib file.  All
     bibsearch groups are by default linked to the bib groups.

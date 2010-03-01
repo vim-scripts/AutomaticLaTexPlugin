@@ -1,8 +1,17 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Feb 11
+" Last Changed: 2010 Feb 14
 " URL:		
+
+function! ATP_TOC_StatusLine()
+    if expand("%") == "__ToC__"
+	return "Table of Contents"
+    elseif expand("%") == "__Labels__"
+	return "List of Labels"
+    endif
+endfunction
+setlocal statusline=%{ATP_TOC_StatusLine()}
 
 function! s:getlinenr(...)
     if a:0 == 0
@@ -38,13 +47,7 @@ endfunction
 command! File	:echo s:file()
  
 "---------------------------------------------------------------------
-" TODO 1: when I split one buffer and I have 2 files in ToC, then when I <space>
-" on the other file's ToC it changes not the window from which I came.
-" TODO 2: when I split one window it changes not the right one (in buffer list
-" and in ToC there is another file present)
-" if !exists("*GotoLine")
-" TODO 3: when I have to windows (vertically, i.e. vnew) + ToC it do not behave likt I want.
-" TODO 4: strategy:
+" Notes:
 " 		(1) choose window with matching buffer name
 " 		(2) choose among those choose the one which we eddited last
 " Solution:
@@ -67,8 +70,7 @@ function! s:gotowinnr()
     " t:winnr		were set by TOC(), they should also be set by
     " 			autocommands
     let l:buf=s:file()
-    let l:bufname=l:buf[1]
-
+    let l:bufname=l:buf[0] . "/" . l:buf[1]
 
     if t:bufname == l:bufname
 	" if t:bufname agree with that found in ToC
@@ -121,6 +123,7 @@ function! GotoLine(closebuffer)
 
     "finally, set the position
     call setpos('.',[0,l:nr,1,0])
+    
 endfunction
 " endif
 
@@ -140,10 +143,10 @@ function! s:yank(arg)
     if l:choice=="nokey"
 	" in TOC, if there is a key we will give it back if not:
 	echomsg "There is no key."
+	return ""
     else
-	if a:arg =~ '@\a'
-
-	    let l:letter=substitute(a:arg,'@','','g')
+	if a:arg == '@'
+	    let l:letter=input("To which register? <reg name><Enter> or empty for none ")
 	    silent if l:letter == 'a'
 		let @a=l:choice
 	    elseif l:letter == 'b'
@@ -227,8 +230,7 @@ command! -buffer P :call Yank("p")
 
 if !exists("*YankToReg")
 function! YankToReg()
-    let l:which=input("To which register? <reg name><Enter> or empty for none ")
-    call s:yank("@" . l:which)
+    call s:yank("@")
 endfunction
 endif
 
@@ -293,12 +295,12 @@ endif
 
 " MAPPINGS
 if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
-    map <buffer> q 		:bdelete<CR>
-    map <buffer> <CR> 		:call GotoLine(1)<CR>
-    map <buffer> <space> 	:call GotoLine(0)<CR>
-    map <buffer> c 		:call YankToReg()<CR>
-    map <buffer> y 		:call YankToReg()<CR>
-    noremap <buffer> p 	:call Paste()<CR>
-    noremap <buffer> s 	:call ShowLabelContext()<CR> 
-    noremap <buffer> e 	:call EchoLabel()<CR>
+    map <silent> <buffer> q 		:bdelete<CR>
+    map <silent> <buffer> <CR> 		:call GotoLine(1)<CR>
+    map <silent> <buffer> <space> 	:call GotoLine(0)<CR>
+    map <buffer> c 			:call YankToReg()<CR>
+    map <buffer> y 			:call YankToReg()<CR>
+    noremap <silent> <buffer> p 	:call Paste()<CR>
+    noremap <silent> <buffer> s 	:call ShowLabelContext()<CR> 
+    noremap <silent> <buffer> e 	:call EchoLabel()<CR>
 endif

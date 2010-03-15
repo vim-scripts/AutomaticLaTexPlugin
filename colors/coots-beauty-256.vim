@@ -56,7 +56,7 @@ highlight MatchParen     			ctermfg=233	ctermbg=226	guifg=#1c1c1c guibg=gold
 
 highlight SpecialKey     ctermfg=129           	ctermbg=233			guifg=DarkViolet
 
-highlight StatusLine     cterm=none     ctermfg=226 ctermbg=232		 guifg=#111111 guibg=SaddleBrown
+highlight StatusLine     cterm=none     ctermfg=226 ctermbg=232		 guifg=#111111 guibg=wheat1
 highlight StatusLineNC   cterm=none     ctermfg=245 ctermbg=232		 guifg=#111111 guibg=snow4	 
 highlight User1		 cterm=bold	ctermfg=226 ctermbg=232	gui=bold guifg=DarkOrange  guibg=#111111	 
 highlight User2		 cterm=none	ctermfg=red ctermbg=232		 guifg=DeepPink2  guibg=#111111
@@ -189,5 +189,5 @@ highlight atp_statustitle 	cterm=bold	ctermfg=grey 	ctermbg=233
 highlight atp_statussection 	cterm=bold	ctermfg=yellow 	ctermbg=233  
 highlight atp_statusoutdir 			ctermfg=grey 	ctermbg=233 
 
-highlight link atp_Todo WarningMsg
+highlight link atp_Todo Normal
 

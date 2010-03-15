@@ -206,6 +206,12 @@ map \b, :Bibtex, :Bibtex v
 	The command :Bibtex  will :call Bibtex(), while :Bibtex v
 	(and :Bibtex <anything>) will :call Bibtex(1)
 
+							*atp-BIBINPUTS*
+	Bibtex is looking for the date base files in the current directory
+	otherwise in the directory defined by $BIBINPUTS environment variable. 
+	You can set in in your environment. If it is not set it will be
+	set to g:texmf/bibtex (so the default value is $HOME/texmf/bibtex).
+
 SimpleBibtex()						*atp-SimpleBibtex()*
 map \sb, :SBibtex
 	This calls bibtex on the aux file in your |atp-outdir| directory and
@@ -219,6 +225,18 @@ map \v,map <F3>, imap \v, imap <F3>
 	|atp-XpdfServer|, |atp-XpdfOptions|. When there is no output file it will run
 	TeX and open the file. Read more about particular viewers
 	(inverse/reverse searching) in |atp-viewers|. 
+
+:SetXdvi						*atp-SetXdvi*
+	This command sets the options for xdvi viewer, which enables inverse
+	and reverse searching. It sets the command
+		:IS[earch]
+	and the map '<LocalLeader>is' for inverse searching. For reverse
+	searching hold CTRL and click with left mouse button on the text in
+	xdvi viewer.
+
+:SetXpdf						*atp-SetXpdf*
+	This command sets the options for xpdf viewer (as for now the
+	inverse/reverse searching in pdf files is not implemented)
 
 BibSearch({pattern},{flag})				see |atp-BibSearch|
 :BibSearch
@@ -244,6 +262,9 @@ FindBibFiles({bufname})					*atp-FindBibFiles()*
 	internally be the script functions BibSearch/BibChoose/ShowOptions.
 	The command :FindBibFiles finds bib files in the current buffer. 
 
+	If a readable bib file was not found in b:outdir and $BIBINPUTS
+	(see |atp-BIBINPUTS|) directories it is classified as not readable.  
+
 FindInputFiles([bufname])				*atp-FindInputFiles()*
 :FindInputFiles [bufname]
 	This function finds all the input files, i.e. files put after the
@@ -254,21 +275,27 @@ FindInputFiles([bufname])				*atp-FindInputFiles()*
 	The bufername complition is set, hence you can use <Tab> to choose the
 	bufername.
 
-EditInputFile([bufname])				*atp-EditInputFile()*
-:EditInputFile [bufname]
+EditInputFile([input_file_name],[bufname])				*atp-EditInputFile()*
+:EditInputFile [input_file_name] [bufname]
 	This function finds input files (using the function FindInputFiles()
-	in the current buffer and let you choose one to edit.
-	window. 
+	in the current buffer and let you choose one to edit.  window. 
 
-	The argument is optional and works as in |atp-FindInputFiles()|.
+	The first as well as the second argument are optional. There is
+	completion for the input file name, so that you can just press <Tab>
+	to switch between input files. If you want to list the first and then
+	choose do not pass any arguments.
 
-	The input file may contain white spaces, but then has to be quoted
+	The input file name may contain white spaces, but then has to be quoted
 	with '"' (this is a latex requirement).
 
 	Input files are searched in the |atp-outdir| directory, if not found
 	there then in the directory |atp-texmf|. The default value is 
 	g:texmf=$HOME/texmf, which is the default value of local texmf tree in
 	texlive.
+
+	The bibliographis declared are also listed. The command searches for
+	them in the b:outdir and if not found there in $BIBINPUTS directory.
+	(see: man bibtex)
 
 OpenLog()						*atp-OpenLog()*
 map <F6>l, imap <F6>l
@@ -284,11 +311,18 @@ map <F6>d
 	g:texextensions (see |atp-texextensions|). It removes not taking care
 	about the name, i.e. it runs like: rm *.out.
 
-Print()							*atp-Print()*
-map \p
+Print(<printer>,<printer_options>			*atp-Print()*
+map \p,:SshPrint
 	It will run 'lpr' command and append to it the options defined in the
-	variable 'g:printeroptions'. It prints the pdf or dvi depending on
-	the value of 'b:texcompiler' (see |atp-texcompiler|).
+	variable 'g:printeroptions' + options given in the second argument. It
+	prints the pdf or dvi depending on the value of 'b:texcompiler' (see
+	|atp-texcompiler|).  If you specify the variable
+	'g:atp_ssh=<user>@<host>' it will print via ssh on the <host> using
+	the <printer>. The command ':SshPrint' has a completion set for the
+	printers available on your local system or in the host. All the
+	arguments of the command SshPrint are |<f-agrs>|. 
+	
+	The map '\p' will print on the default printer.
 
 ShowOptions()						*atp-show-options* *atp-ShowOptions()*
 :ShowOptions, :ShowOptions v 
@@ -792,6 +826,9 @@ Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete()
 		:echo b:outdir
 	or use the function ShowOptions() (see |apt-ShowOptions()|).		
 
+	If in your environment the variable $TEXMFOUTDIR is set the value of
+	b:outdir will be set to its value.
+
 let b:auruns=1							*atp-auruns*
 	This variable control how many times the automatic function calls tex
 	compiler (consecutively). It is useful if you are working with PDF
@@ -1183,15 +1220,22 @@ acroread
 								
 xdvi							*atp-viewers-xdvi*
 							*atp-viewers-xdvi-reverse/inverse-searching*
-	Works fine. You can set reverse searching (i.e. position vim's cursor
-	after xdvi event: usually CTRL+Left Mouse)  with this options:
-
+	Works fine. The file will be updated after a click (or use the xdvi
+	options '-watchfile 1' see man xdvi for explanetions). You can set
+	inverse/reverse searching by the command |SetXdvi|. Here I discribe
+	how it is done. 
+	
+    (1) Reverse searching
+	(i.e. position vim's cursor after xdvi event:
+	usually CTRL+Left Mouse) with this options:
+>
 	let b:texcompiler="latex"
 	let b:texoptions="-src-specials"
 	let b:Viewer="xdvi -editor 'gvim --remote-wait +%l %f'"
-
+<
 	See vim tip at: http://vim.wikia.com/wiki/Vim_can_interact_with_xdvi 	
 
+    (2) Inverse searching
 	For inverse searching (position xdvi according to the vims cursor
 	position) you can set:
 >

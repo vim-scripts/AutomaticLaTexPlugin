@@ -1,9 +1,9 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Feb 26
+" Last Changed: 2010 Mar 7
 " URL:		
-" GetLatestVimScripts: 2945 7 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 8 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -15,12 +15,8 @@
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
 "
-" TODO: add g:bibtex variable which points to the directrory where are bib
-" files if not placed in the pwd directory.
 " TODO: before spell checking of the bibfile, remove '{'and '}'. But there is
 " no autocommand group to do that :(.
-" TODO: to check what happens when there are two files with the same bufname,
-" but located in different directories: ToC, Labels, BibSearch.
 "
 " TODO: to make s:maketoc and s:generatelabels read all input files between
 " \begin{document} and \end{document}, and make it recursive.
@@ -30,23 +26,12 @@
 " Comment: The time consuming part of TOC command is: openning new window
 " ('vnew') as shown by profiling.
 "
-" TODO: we can add a pid file and test agianst it (if it exists) and run some
-" commands when there is no pid file: this could be a useful way to run :cg,
-" i.e. read the log file automatically. Getpid for Windows can return 0/1 and
-" thus all the things should work on Windows.
-"
-" TODO: write a function which reads log file whenever it was modified.
-" 		solution 1: read (but when?) it to a variable and compare.	
-" 			with an autocommand loaded by s:compiler and deleted
-" 			when getpid returns an empty string.
-" 		solution 2: read it as a buffer then hide it and use checktime
-" 		to see if it was changed.
+" TODO: pid file
+" Comment: b:changedtick "HOW MANY CHANGES WERE DONE! this could be useful.
 "
 " TODO: Check against lilypond 
-" Comment: b:changedtick "HOW MANY CHANGES WERE DONE! this could be useful.
+"
 " TODO: make a split version of EditInputFile
-" TODO: errorfile make it in two ways: list just errors, list only warning
-" messages, list only warnings on references, etc.
 "
 " NOTES
 " s:tmpfile =	temporary file value of tempname()
@@ -74,6 +59,8 @@ let b:did_ftplugin = 1
 
 " Options
 setl keywordprg=texdoc\ -m
+" setl matchpairs='(:),[:],{:}' " multibyte characters are not supported yet
+" so \(:\), \[:\] want work :(. New function
 " Borrowed from tex.vim written by Benji Fisher:
     " Set 'comments' to format dashed lists in comments
     setlocal com=sO:%\ -,mO:%\ \ ,eO:%%,:%
@@ -115,21 +102,26 @@ function! s:setoutdir(arg)
     if g:askfortheoutdir == 1 
 	let b:outdir=input("Where to put output? do not escape white spaces ")
     endif
-    if get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" 
-		\ && g:askfortheoutdir != 1 || b:outdir == "" && g:askfortheoutdir == 1
+    if (get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" 
+		\ && g:askfortheoutdir != 1 || b:outdir == "" && g:askfortheoutdir == 1 )
+		\ && !exists("$TEXMFOUTPUT")
 	 let b:outdir=fnamemodify(resolve(expand("%:p")),":h") . "/"
-    "      	echomsg "DEBUG setting b:outdir to " . b:outdir
 	 echoh WarningMsg | echomsg "Output Directory "b:outdir | echoh None
-	 if bufname("") =~ ".tex$" && a:arg != 0
-	     call SetErrorFile()
-	 endif
+
+    elseif exists("$TEXMFOUTPUT")
+	 let b:outdir=$TEXMFOUTPUT 
     endif	
+
+    " if arg != 0 then set errorfile option accordingly to b:outdir
+    if bufname("") =~ ".tex$" && a:arg != 0
+	 call SetErrorFile()
+    endif
 endfunction
 
 " these are all buffer related variables:
 let s:optionsDict= { 	"texoptions" 	: "", 		"reloadonerror" : "0", 
 		\	"openviewer" 	: "1", 		"autex" 	: "1", 
-		\	"Viewer" 	: "xpdf", 	"XpdfOptions" 	: "", 
+		\	"Viewer" 	: "xpdf", 	"ViewerOptions" : "", 
 		\	"XpdfServer" 	: fnamemodify(expand("%"),":t"), 
 		\	"outdir" 	: fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/",
 		\	"texcompiler" 	: "pdflatex",	"auruns"	: "1",
@@ -150,9 +142,24 @@ endif
 if !exists("g:printingoptions")
     let g:printingoptions=''
 endif
+if !exists("g:atp_ssh")
+    let substitute(g:atp_ssh=system("whoami"),'\n','','') . "@localhost"
+endif
 " opens bibsearch results in vertically split window.
 if !exists("g:vertical")
     let g:vertical=1
+endif
+if !exists("g:matchpair")
+    let g:matchpair="(:),\\(:\\),[:],\\[:\\],{:}"
+endif
+if !exists("$BIBINPUTS")
+    let $BIBINPUTS=substitute(g:texmf,'\/\s*^','','') . "/bibtex"
+endif
+if !exists("g:atp_compare_embedded_comments")
+    let g:atp_compare_embedded_comments = 0
+endif
+if !exists("g:atp_compare_double_empty_lines")
+    let g:atp_compare_double_empty_lines = 1
 endif
 "TODO: put toc_window_with and labels_window_width into DOC file
 if !exists("t:toc_window_width")
@@ -172,129 +179,127 @@ endif
 if !exists("g:texmf")
     let g:texmf=$HOME . "/texmf"
 endif
-"TODO: to make it possible to read the log file after compilation.
-" if !exists("g:au_read_log_file")
-"     let g:au_read_log_file = 1
-" endif
-let s:COM=''
-" let b:outdir=substitute(fnameescape(resolve(expand("%:p"))),resolve(expand("%:r")) . "." . resolve(expand("%:e")) . "$","","")
 
 " This function sets options (values of buffer related variables) which were
 " not set by the user to their default values.
 function! s:setoptions()
-let s:optionsKeys=keys(s:optionsDict)
-let s:optionsinuseDict=getbufvar(bufname("%"),"")
-for l:key in s:optionsKeys
-    if get(s:optionsinuseDict,l:key,"optionnotset") == "optionnotset" && l:key != "outdir" 
-"  	    echomsg "Setting " . l:key . "=" . s:optionsDict[l:key]
-	call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
-    elseif get(s:optionsinuseDict,l:key,"optionnotset") == "optionnotset" && l:key == "outdir"
-	" set b:outdir and the value of errorfile option
-	call s:setoutdir(1)
-	let s:ask["ask"] = 1
-    endif
-endfor
+    let s:optionsKeys=keys(s:optionsDict)
+    let s:optionsinuseDict=getbufvar(bufname("%"),"")
+
+    "for each key in s:optionsKeys set the corresponding variable to its default
+    "value unless it was already set in .vimrc file.
+    for l:key in s:optionsKeys
+
+	if get(s:optionsinuseDict,l:key,"optionnotset") == "optionnotset" && l:key != "outdir" 
+	    call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
+	elseif l:key == "outdir"
+	    
+	    " set b:outdir and the value of errorfile option
+	    call s:setoutdir(1)
+	    let s:ask["ask"] = 1
+	endif
+    endfor
 endfunction
 call s:setoptions()
 
 if !exists("*ShowOptions")
 function! ShowOptions(...)
-    let s:bibfiles=FindBibFiles(bufname("%"))
-if a:0 == 0
-    echomsg "variable=local value"  
-    echohl BibResultsMatch
-    echomsg "b:texcompiler=   " . b:texcompiler 
-    echomsg "b:texoptions=    " . b:texoptions 
-    echomsg "b:autex=         " . b:autex 
-    echomsg "b:outdir=        " . b:outdir 
-    echomsg "b:Viewer=        " . b:Viewer 
-    echohl BibResultsGeneral
-    if b:Viewer == "xpdf"
-	echomsg "    b:XpdfOptions=   " . b:XpdfOptions 
-	echomsg "    b:XpdfServer=    " . b:XpdfServer 
-	echomsg "    b:reloadonerror= " . b:reloadonerror 
+    let s:bibfiles=keys(FindBibFiles(bufname("%")))
+    if a:0 == 0
+	echomsg "variable=local value"  
+	echohl BibResultsMatch
+	echomsg "b:texcompiler=   " . b:texcompiler 
+	echomsg "b:texoptions=    " . b:texoptions 
+	echomsg "b:autex=         " . b:autex 
+	echomsg "b:outdir=        " . b:outdir 
+	echomsg "b:Viewer=        " . b:Viewer 
+	echomsg "b:ViewerOptions=   " . b:ViewerOptions 
+	echohl BibResultsGeneral
+	if b:Viewer == "xpdf"
+	    echomsg "    b:XpdfServer=    " . b:XpdfServer 
+	    echomsg "    b:reloadonerror= " . b:reloadonerror 
+	endif
+	echomsg "b:openviewer=    " . b:openviewer 
+	echomsg "g:askfortheoutdir=" . g:askfortheoutdir 
+	if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
+	    echomsg "status line set by atp"
+	endif
+	echohl BibResultsMatch
+	echomsg "g:keep=          " . string(g:keep)  
+	echomsg "g:texextensions= " . string(g:texextensions)
+	echomsg "g:rmcommand=     " . g:rmcommand
+	echohl BibResultsFileNames
+	echomsg "g:defaultbibflags=     " . g:defaultbibflags
+	echomsg "g:defaultallbibflags=  " . g:defaultallbibflags
+	echomsg "Available Flags        " . string(keys(g:bibflagsdict))
+	echomsg "Available KeyWordFlags " . string(keys(g:kwflagsdict))
+	echohl BibResultsMatch
+	if exists('b:lastbibflags')
+	    echomsg "b:lastbibflags=    " . b:lastbibflags
+	endif
+	echohl None
+	echomsg "g:bibentries=    " . string(g:bibentries)
+	echohl BibResultsFileNames
+	if exists('b:bibfiles')
+	    echomsg "b:bibfiles=      " .  string(b:bibfiles)
+	endif
+	if exists('s:bibfiles')
+	    echomsg "s:bibfiles=      " .  string(s:bibfiles)	. " bibfiles used by atp."
+	endif
+	if exists('s:notreadablebibfiles')
+	    echomsg "s:notreadablebibfiles=" .  string(s:notreadablebibfiles)
+	endif
+	echohl None
+    elseif a:0>=1 
+	echohl BibResultsMatch
+	echomsg "b:texcompiler=   " . b:texcompiler . "  [" . s:optionsDict["texcompiler"] . "]" 
+	echomsg "b:texoptions=    " . b:texoptions . "  [" . s:optionsDict["texoptions"] . "]" 
+	echomsg "b:autex=         " . b:autex . "  [" . s:optionsDict["autex"] . "]" 
+	echomsg "b:outdir=        " . b:outdir . "  [" . s:optionsDict["outdir"] . "]" 
+	echomsg "b:Viewer=        " . b:Viewer . "  [" . s:optionsDict["Viewer"] . "]" 
+	echomsg "b:ViewerOptions=   " . b:ViewerOptions . "  [" . s:optionsDict["ViewerOptions"] . "]" 
+	echohl None
+	if b:Viewer == "xpdf"
+	    echomsg "    b:XpdfServer=    " . b:XpdfServer . "  [" . s:optionsDict["XpdfServer"] . "]" 
+	    echomsg "    b:reloadonerror= " . b:reloadonerror . "  [" . s:optionsDict["reloadonerror"] . "]" 
+	endif
+	echomsg "g:askfortheoutdir=" . g:askfortheoutdir . "  [" . s:optionsDict["askfortheoutdir"] . "]" 
+	echomsg "b:openviewer=    " . b:openviewer . "  [" . s:optionsDict["openviewer"] . "]" 
+	echo
+	echohl BibResultsMatch
+	echomsg "g:keep=          " . string(g:keep)  
+	echomsg "g:texextensions= " . string(g:texextensions)
+	echomsg "g:rmcommand=     " . g:rmcommand
+	echohl None
+	echohl BibResultsFileNames
+	echomsg "g:defaultbibflags=     " . g:defaultbibflags
+	echomsg "g:defaultallbibflags=  " . g:defaultallbibflags
+	echomsg " "
+	echomsg "Available Flags        "
+	echomsg "   g:bibflagsdict=     " . string(items(g:bibflagsdict))
+	echomsg " "
+	echomsg "Available KeyWordFlags "
+	echomsg "   g:kwflagsdict=      " . string(items(g:kwflagsdict))
+	echomsg " "
+	echohl BibResultsMatch
+	if exists('b:lastbibflags')
+	    echomsg "b:lastbibflags=" . b:lastbibflags
+	endif
+	echohl BibResultsLabel
+	echomsg "g:bibentries=" . string(g:bibentries) . "  ['article', 'book', 'booklet', 'conference', 'inbook', 'incollection', 'inproceedings', 'manual', 'mastertheosis', 'misc', 'phdthesis', 'proceedings', 'techreport', 'unpublished']"
+	echohl BibResultsFileNames
+	if exists('b:bibfiles')
+	    echomsg "b:bibfiles=  " .  string(b:bibfiles)
+	endif
+	if exists('s:bibfiles')
+	    echomsg "s:bibfiles=      " .  string(s:bibfiles)	. " bibfiles used by atp."
+	endif
+	if exists('s:notreadablebibfiles')
+	    echomsg "s:notreadablebibfiles=" .  string(s:notreadablebibfiles)
+	endif
+	echohl None
+	echomsg ""
     endif
-    echomsg "b:openviewer=    " . b:openviewer 
-    echomsg "g:askfortheoutdir=" . g:askfortheoutdir 
-    if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
-	echomsg "status line set by atp"
-    endif
-    echohl BibResultsMatch
-    echomsg "g:keep=          " . string(g:keep)  
-    echomsg "g:texextensions= " . string(g:texextensions)
-    echomsg "g:rmcommand=     " . g:rmcommand
-    echohl BibResultsFileNames
-    echomsg "g:defaultbibflags=     " . g:defaultbibflags
-    echomsg "g:defaultallbibflags=  " . g:defaultallbibflags
-    echomsg "Available Flags        " . string(keys(g:bibflagsdict))
-    echomsg "Available KeyWordFlags " . string(keys(g:kwflagsdict))
-    echohl BibResultsMatch
-    if exists('b:lastbibflags')
-	echomsg "b:lastbibflags=    " . b:lastbibflags
-    endif
-    echohl None
-    echomsg "g:bibentries=    " . string(g:bibentries)
-    echohl BibResultsFileNames
-    if exists('b:bibfiles')
-	echomsg "b:bibfiles=      " .  string(b:bibfiles)
-    endif
-    if exists('s:bibfiles')
-	echomsg "s:bibfiles=      " .  string(s:bibfiles)	. " bibfiles used by atp."
-    endif
-    if exists('s:notreadablebibfiles')
-	echomsg "s:notreadablebibfiles=" .  string(s:notreadablebibfiles)
-    endif
-    echohl None
-elseif a:0>=1 
-    echohl BibResultsMatch
-    echomsg "b:texcompiler=   " . b:texcompiler . "  [" . s:optionsDict["texcompiler"] . "]" 
-    echomsg "b:texoptions=    " . b:texoptions . "  [" . s:optionsDict["texoptions"] . "]" 
-    echomsg "b:autex=         " . b:autex . "  [" . s:optionsDict["autex"] . "]" 
-    echomsg "b:outdir=        " . b:outdir . "  [" . s:optionsDict["outdir"] . "]" 
-    echomsg "b:Viewer=        " . b:Viewer . "  [" . s:optionsDict["Viewer"] . "]" 
-    echohl None
-    if b:Viewer == "xpdf"
-	echomsg "    b:XpdfOptions=   " . b:XpdfOptions . "  [" . s:optionsDict["XpdfOptions"] . "]" 
-	echomsg "    b:XpdfServer=    " . b:XpdfServer . "  [" . s:optionsDict["XpdfServer"] . "]" 
-	echomsg "    b:reloadonerror= " . b:reloadonerror . "  [" . s:optionsDict["reloadonerror"] . "]" 
-    endif
-    echomsg "g:askfortheoutdir=" . g:askfortheoutdir . "  [" . s:optionsDict["askfortheoutdir"] . "]" 
-    echomsg "b:openviewer=    " . b:openviewer . "  [" . s:optionsDict["openviewer"] . "]" 
-    echo
-    echohl BibResultsMatch
-    echomsg "g:keep=          " . string(g:keep)  
-    echomsg "g:texextensions= " . string(g:texextensions)
-    echomsg "g:rmcommand=     " . g:rmcommand
-    echohl None
-    echohl BibResultsFileNames
-    echomsg "g:defaultbibflags=     " . g:defaultbibflags
-    echomsg "g:defaultallbibflags=  " . g:defaultallbibflags
-    echomsg " "
-    echomsg "Available Flags        "
-    echomsg "   g:bibflagsdict=     " . string(items(g:bibflagsdict))
-    echomsg " "
-    echomsg "Available KeyWordFlags "
-    echomsg "   g:kwflagsdict=      " . string(items(g:kwflagsdict))
-    echomsg " "
-    echohl BibResultsMatch
-    if exists('b:lastbibflags')
-	echomsg "b:lastbibflags=" . b:lastbibflags
-    endif
-    echohl BibResultsLabel
-    echomsg "g:bibentries=" . string(g:bibentries) . "  ['article', 'book', 'booklet', 'conference', 'inbook', 'incollection', 'inproceedings', 'manual', 'mastertheosis', 'misc', 'phdthesis', 'proceedings', 'techreport', 'unpublished']"
-    echohl BibResultsFileNames
-    if exists('b:bibfiles')
-	echomsg "b:bibfiles=  " .  string(b:bibfiles)
-    endif
-    if exists('s:bibfiles')
-	echomsg "s:bibfiles=      " .  string(s:bibfiles)	. " bibfiles used by atp."
-    endif
-    if exists('s:notreadablebibfiles')
-	echomsg "s:notreadablebibfiles=" .  string(s:notreadablebibfiles)
-    endif
-    echohl None
-    echomsg ""
-endif
 endfunction
 endif
 
@@ -302,11 +307,7 @@ function! ATPStatusOutDir()
 let s:status=""
 if exists("b:outdir")
     if b:outdir != "" 
-	if b:outdir =~ "\.\s*$" || b:outdir =~ "\.\/\s*$"
-	    let s:status= s:status . "Output dir: " . pathshorten(getcwd())
-	else
-	    let s:status= s:status . "Output dir: " . pathshorten(substitute(b:outdir,"\/\s*$","","")) 
-	endif
+	let s:status= s:status . "Output dir: " . pathshorten(substitute(b:outdir,"\/\s*$","","")) 
     else
 	let s:status= s:status . "Please set the Output directory, b:outdir"
     endif
@@ -357,9 +358,9 @@ function! ViewOutput()
     endif
     let l:outfile=b:outdir . (fnamemodify(expand("%"),":t:r")) . l:ext
     if b:Viewer == "xpdf"	
-	let l:viewer=b:Viewer . " -remote " . shellescape(b:XpdfServer) . " " . b:XpdfOptions 
+	let l:viewer=b:Viewer . " -remote " . shellescape(b:XpdfServer) . " " . b:ViewerOptions 
     else
-	let l:viewer=b:Viewer 
+	let l:viewer=b:Viewer  . " " . b:ViewerOptions
     endif
     let l:view=l:viewer . " " . shellescape(l:outfile)  . " &"
 		let b:outfile=l:outfile
@@ -373,7 +374,7 @@ function! ViewOutput()
 	endif
     else
 	    echomsg "Output file do not exists. Calling " . b:texcompiler
-	    call s:compiler(0,1,1,0,"AU")
+	    call s:compiler(0,1,1,0,"AU",g:mainfile)
     endif	
 endfunction
 endif
@@ -402,17 +403,128 @@ function! s:xpdfpid()
 endfunction
 endif
 "-------------------------------------------------------------------------
-function! s:compare(file,buffer)
-    let l:buffer=getbufline(bufname("%"),"1","$")
-    return a:file !=# l:buffer
-endfunction
+if g:atp_compare_embedded_comments == 1 && g:atp_compare_double_empty_lines == 1
+    function! s:compare(file,buffer)
+	let l:buffer=getbufline(bufname("%"),"1","$")
+
+       " rewrite l:buffer to remove all commands 
+	let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
+
+	" do the same with a:file
+	let l:file=filter(a:file, 'v:val !~ "^\s*%"')
+
+	return l:file !=# l:buffer
+    endfunction
+elseif g:atp_compare_embedded_comments == 1 && g:atp_compare_double_empty_lines == 0
+    function! s:compare(file,buffer)
+	let l:buffer=getbufline(bufname("%"),"1","$")
+
+        " rewrite l:buffer to remove all commands 
+	let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
+
+	    let l:i = 0
+	    while l:i < len(l:buffer)-1
+		" remove double empty lines
+		if l:i< len(l:buffer)-2
+		    if l:buffer[l:i] =~ '^\s*$' && l:buffer[l:i+1] =~ '^\s*$'
+			call remove(l:buffer,l:i)
+		    endif
+		endif
+		let l:i+=1
+	    endwhile
+	endif
+     
+	" do the same with a:file
+	let l:file=filter(a:file, 'v:val !~ "^\s*%"')
+
+	let l:i = 0
+	while l:i < len(l:file)-1
+	    " remove double empty lines
+	    if l:i< len(l:file)-2
+		if l:file[l:i] =~ '^\s*$' && l:file[l:i+1] =~ '^\s*$'
+		    call remove(l:file,l:i)
+		endif
+	    endif
+	    let l:i+=1
+	endwhile
+
+	return l:file !=# l:buffer
+    endfunction
+elseif g:atp_compare_embedded_comments == 0 && g:atp_compare_double_empty_lines == 1
+    function! s:compare(file,buffer)
+	let l:buffer=getbufline(bufname("%"),"1","$")
+
+        " rewrite l:buffer to remove all commands 
+	let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
+
+	let l:i = 0
+	while l:i < len(l:buffer)-1
+	    " remove comment lines at the end of a line
+	    let l:buffer[l:i] = substitute(l:buffer[l:i],'%.*$','','')
+	    let l:i+=1
+	endwhile
+     
+	" do the same with a:file
+	let l:file=filter(a:file, 'v:val !~ "^\s*%"')
+
+	let l:i = 0
+	while l:i < len(l:file)-1
+	    " remove comment lines at the end of a line
+	    let l:file[l:i] = substitute(a:file[l:i],'%.*$','','')
+	    let l:i+=1
+	endwhile
+
+	return l:file !=# l:buffer
+    endfunction
+elseif g:atp_compare_embedded_comments == 0 && g:atp_compare_double_empty_lines == 0
+    function! s:compare(file,buffer)
+	let l:buffer=getbufline(bufname("%"),"1","$")
+
+	" rewrite l:buffer to remove all commands 
+	let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
+
+	    let l:i = 0
+	    while l:i < len(l:buffer)-1
+		" remove comment lines at the end of a line
+		let l:buffer[l:i] = substitute(l:buffer[l:i],'%.*$','','')
+
+		" remove double empty lines
+		if l:i< len(l:buffer)-2
+		    if l:buffer[l:i] =~ '^\s*$' && l:buffer[l:i+1] =~ '^\s*$'
+			call remove(l:buffer,l:i)
+		    endif
+		endif
+		let l:i+=1
+	    endwhile
+	endif
+     
+	" do the same with a:file
+	let l:file=filter(a:file, 'v:val !~ "^\s*%"')
+
+	let l:i = 0
+	while l:i < len(l:file)-1
+	    " remove comment lines at the end of a line
+	    let l:file[l:i] = substitute(a:file[l:i],'%.*$','','')
+	    
+	    " remove double empty lines
+	    if l:i< len(l:file)-2
+		if l:file[l:i] =~ '^\s*$' && l:file[l:i+1] =~ '^\s*$'
+		    call remove(l:file,l:i)
+		endif
+	    endif
+	    let l:i+=1
+	endwhile
+
+	return l:file !=# l:buffer
+    endfunction
+endif
 "-------------------------------------------------------------------------
 function! s:copy(input,output)
 	call writefile(readfile(a:input),a:output)
 endfunction
 
 " This is the MAIN FUNCTION which sets the command and calls it.
-function! s:compiler(bibtex,start,runs,verbose,command)
+function! s:compiler(bibtex,start,runs,verbose,command,filename)
     call s:outdir()
     	" IF b:texcompiler is not compatible with the viewer
 	if b:texcompiler =~ "^\s*pdf" && b:Viewer == "xdvi" ? 1 :  b:texcompiler !~ "^\s*pdf" && (b:Viewer == "xpdf" || b:Viewer == "epdfview" || b:Viewer == "acroread" || b:Viewer == "kpdf")
@@ -488,8 +600,8 @@ function! s:compiler(bibtex,start,runs,verbose,command)
 	    let s:start = ""	
 	endif
 "	SET THE COMMAND 
-	let s:comp=b:texcompiler . " " . b:texoptions . " -interaction " . s:texinteraction . " -output-directory " . s:dir . " -jobname " . s:job . " " . shellescape(expand("%"))
-	let s:vcomp=b:texcompiler . " " . b:texoptions  . " -interaction errorstopmode -output-directory " . s:dir . " -jobname " . s:job . " " . shellescape(expand("%"))
+	let s:comp=b:texcompiler . " " . b:texoptions . " -interaction " . s:texinteraction . " -output-directory " . s:dir . " -jobname " . s:job . " " . a:filename
+	let s:vcomp=b:texcompiler . " " . b:texoptions  . " -interaction errorstopmode -output-directory " . s:dir . " -jobname " . s:job . " " . a:filename
 	if a:verbose == 0 || l:runs > 1
 	    let s:texcomp=s:comp
 	else
@@ -530,7 +642,6 @@ function! s:compiler(bibtex,start,runs,verbose,command)
 	let l:j=1
 	for l:i in g:keep 
 " ToDo: Windows compatible?
-" 	    	    let s:copycmd=" cp " . s:cpoption . " " . shellescape(s:tmpfile . "." . l:i) . " " . shellescape(b:outdir . (fnamemodify(expand("%"),":t:r")) . "." . l:i) 
 " 	    Before copy, check if the file exists (for example toc files are
 " 	    not always created) 
 	    let s:copycmd=" [[ -e " . shellescape(s:tmpfile . "." . l:i) . " ]] && cp " . s:cpoption . " " . shellescape(s:tmpfile . "." . l:i) . " " . shellescape(b:outdir . (fnamemodify(expand("%"),":t:r")) . "." . l:i) 
@@ -573,12 +684,12 @@ endfunction
 "-------------------------------------------------------------------------
 function! s:auTeX()
    if b:autex	
+    " if the file (or input file is modified) compile the document 
+"     let l:test=0
+"     let l:ifiles=FindInputFiles(bufname("%"))
     if s:compare(readfile(expand("%")),bufname("%"))
-	call s:compiler(0,0,b:auruns,0,"AU")
-" 	    echomsg "DEBUG compare: DIFFER"
+	call s:compiler(0,0,b:auruns,0,"AU",g:mainfile)
 	redraw
-"   else
-"  	    echomsg "DEBUG compare: THE SAME"
     endif
    endif
 endfunction
@@ -597,9 +708,9 @@ if a:0 >= 1
     elseif a:1 > 5
 	echomsg b:texcompiler . " will run " . s:runlimit . " times."
     endif
-    call s:compiler(0,0,a:1,0,"COM")
+    call s:compiler(0,0,a:1,0,"COM",g:mainfile)
 elseif a:0 == 0
-    call s:compiler(0,0,1,0,"COM")
+    call s:compiler(0,0,1,0,"COM",g:mainfile)
 endif
 endfunction
 endif
@@ -628,9 +739,9 @@ if a:0 >= 1
 	echomsg b:texcompiler . " will run once."
     endif
     sleep 1
-    call s:compiler(0,0,a:1,1,"COM")
+    call s:compiler(0,0,a:1,1,"COM",g:mainfile)
 else
-    call s:compiler(0,0,1,1,"COM")
+    call s:compiler(0,0,1,1,"COM",g:mainfile)
 endif
 endfunction
 endif
@@ -656,10 +767,10 @@ function! Bibtex(...)
     let s:auxf=s:bibname . ".aux"
     if a:0 == 0
 "  	    echomsg "DEBUG Bibtex"
-	call s:compiler(1,0,0,0,"COM")
+	call s:compiler(1,0,0,0,"COM",g:mainfile)
     else
 "  	    echomsg "DEBUG Bibtex verbose"
-	call s:compiler(1,0,0,1,"COM")
+	call s:compiler(1,0,0,1,"COM",g:mainfile)
     endif
 endfunction
 endif
@@ -745,29 +856,96 @@ endif
 " call s:setprintexpr()
 
 if !exists("*Print")
-function! Print(printeroptions)
+function! Print(...)
+
     call s:outdir()
+
+    " set the extension of the file to print
     if b:texcompiler == "pdftex" || b:texcompiler == "pdflatex" 
 	let l:ext = ".pdf"
-    else
-	let l:ext = ".dvi"	
     elseif b:texcompiler =~ "lua"
 	if b:texoptions == "" || b:texoptions =~ "output-format=\s*pdf"
 	    let l:ext = ".pdf"
 	else
 	    let l:ext = ".dvi"
 	endif
-    endif
-    if a:printeroptions==''
-	s:command="lpr " . b:outdir . fnameescape(fnamemodify(expand("%"),":t:r")) . l:ext
     else
-	s:command="lpr " . a:printeroptions . " " . b:outdir . fnameescape(fnamemodify(expand("%"),":p:t:r")) . ".pdf"
+	let l:ext = ".dvi"	
     endif
-    call system(s:command)
+
+    " set the file to print
+    let l:pfile=b:outdir . fnameescape(fnamemodify(expand("%"),":t:r")) . l:ext
+
+    " set the printing command
+    let l:lprcommand="lpr "
+    if a:0 >= 2
+	let l:lprcommand.= " " . a:2
+    endif
+
+    " print locally or remotely
+    " the default is to print locally (g:atp_ssh=`whoami`@localhost)
+    if exists("g:apt_ssh") 
+	let l:server=strpart(g:atp_ssh,stridx(g:atp_ssh,"@")+1)
+    else
+	let l:server='locahost'
+    endif
+    if l:server =~ 'localhost'
+	if a:0 == 0 || (a:0 != 0 && a:1 == 'default')
+	    let l:com=l:lprcommand . " " . l:pfile
+	else
+	    let l:com=l:lprcommand . " -P " . a:1 . " " . l:pfile 
+	endif
+" 	call system(l:com)
+	echo l:com
+    " print over ssh on the server g:atp_ssh with the printer a:1 (or the
+    " default system printer if a:0 == 0
+    else 
+	if a:0 == 0 || (a:0 != 0 && a:1 =~ 'default')
+	    let l:com="cat " . l:pfile . " | ssh " . g:atp_ssh . " " . l:lprcommand
+	else
+	    let l:com="cat " . l:pfile . " | ssh " . g:atp_ssh . " " . l:lprcommand . " -P " . a:1 
+	endif
+	if g:printingoptions != "" || (a:0 >= 2 && a:2 != "")
+	    if a:0 < 2
+		echo "Printing Options: " . g:printingoptions
+	    else
+		echo a:2
+	    endif
+	    let l:ok = input("Is this OK? y/n")
+	    if l:ok == 'y'
+		if a:0 < 2
+		    let l:printingoptions=g:printingoptions
+		else
+		    let l:printingoptions=a:2
+		endif
+	    else
+		let l:printingoptions=input("Give printing options ")
+	    endif
+	else
+	    let l:printingoptions=""
+	endif
+	let l:com = l:com . " " . l:printingoptions
+	echo "\n " . l:com
+	echo "Printing ..." 
+	call system(l:com)
+    endif
+
 endfunction
 endif
 
-"---------------------- SEARCH IN BIB FILES ----------------------
+" it is used for completetion of the command SshPrint
+if !exists("*ListPrinters")
+function! ListPrinters(A,L,P)
+    if exists("g:atp_ssh") && g:atp_ssh !~ '@localhost' && g:atp_ssh != ""
+	let l:com="ssh -q " . g:atp_ssh . " lpstat -a | awk '{print $1}'"
+    else
+	let l:com="lpstat -a | awk '{print $1}'"
+    endif
+    return system(l:com)
+endfunction
+endif
+
+"---------------------- SEARCH IN BIBFILES ----------------------
 " This function counts accurence of a:keyword in string a:line, 
 function! s:count(line,keyword)
     let l:line=a:line
@@ -782,6 +960,10 @@ function! s:count(line,keyword)
 endfunction
 let g:bibentries=['article', 'book', 'booklet', 'conference', 'inbook', 'incollection', 'inproceedings', 'manual', 'mastertheosis', 'misc', 'phdthesis', 'proceedings', 'techreport', 'unpublished']
 
+"------------ append / at the end of a directory name ------------
+fun! s:append(where,what)
+    return substitute(a:where,a:what . "\s*$",'','') . a:what
+endfun
 "--------------------- SEARCH ENGINE ------------------------------ 
 " ToDo should not search in comment lines.
 if !exists("*FindBibFiles")
@@ -796,6 +978,7 @@ function! FindBibFiles(...)
     let b:texfile=readfile(l:bufname)
     let s:i=0
     let s:bibline=[]
+    " find all lines which define bibliography files
     for line in b:texfile
 	if line =~ "\\\\bibliography{"
 	    let s:bibline=add(s:bibline,line) 
@@ -805,6 +988,7 @@ function! FindBibFiles(...)
     let l:nr=s:i
     let s:i=1
     let files=""
+    " make a comma separated list of bibfiles
     for l:line in s:bibline
 	if s:i==1
 	    let files=substitute(l:line,"\\\\bibliography{\\(.*\\)}","\\1","") . ","
@@ -813,29 +997,16 @@ function! FindBibFiles(...)
 	endif
 	let s:i+=1
     endfor
-    unlet l:line
-    let l:bibfs=[]
-    while len(files) > 0
-	let l:x=stridx(files,",")
-	let l:f=strpart(files,0,l:x)
-	let files=strpart(files,l:x+1)
-	let l:bibfs=add(l:bibfs,l:f)
-    endwhile
-    unlet l:f
-" this variable will store all found and user defined bibfiles:    
-    let l:allbibfiles=[]
-    for l:f in l:bibfs
-	if l:f =~ "^\s*\/" 
-	    call add(l:allbibfiles,l:f)
-	else	
-	    call add(l:allbibfiles,b:outdir . l:f)
-	endif
-    endfor
-    unlet l:f
+
+    " rewrite files into a vim list
+    let l:allbibfiles=split(files,',')
+    
+    " add the list b:bibfiles 
     if exists('b:bibfiles')
 	call extend(l:allbibfiles,b:bibfiles)
     endif
-" clear the list s:allbibfile from double entries 
+    
+    " clear the list s:allbibfile from double entries 
     let l:callbibfiles=[]
     for l:f in l:allbibfiles
 	if count(l:callbibfiles,l:f) == 0
@@ -843,34 +1014,37 @@ function! FindBibFiles(...)
 	endif
     endfor
     let l:allbibfiles=deepcopy(l:callbibfiles)
-    unlet l:f
-" this variable will store unreadable bibfiles:    
+
+    " this variable will store unreadable bibfiles:    
     let s:notreadablebibfiles=[]
-" this variable will store the final result:   
-    let s:bibfiles=[]
+
+    " this variable will store the final result:   
+    let l:bibfiles={}
+
     for l:f in l:allbibfiles
-	if filereadable(l:f . ".bib")
-	    call add(s:bibfiles,l:f)
+	if filereadable(b:outdir . s:append(l:f,'.bib')) || filereadable(s:append($BIBINPUTS,"/") . s:append(l:f,'.bib'))
+	    call extend(l:bibfiles,{l:f : [ 'bib' , fnamemodify(expand("%"),":p") ] })
 	else
+	    " echo warning if a bibfile is not readable
 	    echohl WarningMsg | echomsg "Bibfile " . l:f . ".bib is not readable." | echohl None
 	    if count(s:notreadablebibfiles,l:f) == 0 
 		call add(s:notreadablebibfiles,l:f)
 	    endif
 	endif
     endfor
-    unlet l:f
-    if s:notreadablebibfiles == l:allbibfiles
-	echoerr "All bib files are not readable."
-    endif
-    return s:bibfiles
+
+    " return the list  of readable bibfiles
+    return l:bibfiles
 endfunction
 endif
+
 " let s:bibfiles=FindBibFiles(bufname('%'))
 function! s:searchbib(pattern) 
 " 	echomsg "DEBUG pattern" a:pattern
     call s:outdir()
-    let s:bibfiles=FindBibFiles(bufname('%'))
-"   Make a pattern which will match for the elements of the list g:bibentries
+    let s:bibfiles=keys(FindBibFiles(bufname('%')))
+    
+    " Make a pattern which will match for the elements of the list g:bibentries
     let l:pattern = '^\s*@\(\%(\<article\>\)'
     for l:bibentry in g:bibentries
 	if l:bibentry != 'article'
@@ -880,15 +1054,22 @@ function! s:searchbib(pattern)
     unlet l:bibentry
     let l:pattern=l:pattern . '\)'
     let b:bibentryline={} 
-"   READ EACH BIBFILE IN TO DICTIONARY s:bibdict, WITH KEY NAME BEING THE bibfilename
+    
+    " READ EACH BIBFILE IN TO DICTIONARY s:bibdict, WITH KEY NAME BEING THE bibfilename
     let s:bibdict={}
     let l:bibdict={}
     let b:bibdict={}				" DEBUG
     for l:f in s:bibfiles
 	let s:bibdict[l:f]=[]
- 	let s:bibdict[l:f]=readfile(l:f . ".bib")	
+
+	" read the bibfile if it is in b:outdir or in $BIBINPUTS directory
+	if filereadable(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib')) 
+	    let s:bibdict[l:f]=readfile(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib'))	
+	else
+	    let s:bibdict[l:f]=readfile(fnameescape(s:append($BIBINPUTS,'/') . s:append(l:f,'.bib'))
+	endif
 	let l:bibdict[l:f]=copy(s:bibdict[l:f])
-" clear the s:bibdict values from lines which begin with %    
+	" clear the s:bibdict values from lines which begin with %    
 	let l:x=0
 	for l:line in s:bibdict[l:f]
 	    if l:line =~ '^\s*\%(%\|@\cstring\)' 
@@ -1023,9 +1204,7 @@ function! s:searchbib(pattern)
 	endfor
 	let l:bibresults[l:bibfile]=s:bibd
     endfor
-    let b:bibresults=l:bibresults
     return l:bibresults
-    unlet l:bibresults
 endfunction
 "
 "------------------------SHOW FOUND BIBFIELDS----------------------------
@@ -1054,17 +1233,26 @@ let g:kwflagsdict={ 	  '@a' : '@article', 	'@b' : '@book\%(let\)\@<!',
 			\ '@t' : '@\%(\%(master)\|\%(phd\)\)thesis', 
 			\ '@T' : '@techreport', '@u' : '@unpublished'}    
 
-highlight link BibResultsFileNames 		Title	
-highlight link BibResultEntry		ModeMsg
-highlight link BibResultsMatch		WarningMsg
-highlight link BibResultsGeneral		Normal
+" Set the g:{b:Viewer}Options as b:ViewerOptions for the current buffer
+fun! s:set_viewer_options()
+    if exists("b:Viewer") && exists("g:" . b:Viewer . "Options")
+	let b:ViewerOptions=g:{b:Viewer}Options
+    endif
+endfun
+au BufEnter *.tex :call s:set_viewer_options()
+
+" Hilighlting
+hi link BibResultsFileNames 	Title	
+hi link BibResultEntry		ModeMsg
+hi link BibResultsMatch		WarningMsg
+hi link BibResultsGeneral	Normal
 
 
-highlight link Chapter 			Normal	
-highlight link Section			Normal
-highlight link Subsection		Normal
-highlight link Subsubsection		Normal
-highlight link CurrentSection		WarningMsg
+hi link Chapter 			Normal	
+hi link Section			Normal
+hi link Subsection		Normal
+hi link Subsubsection		Normal
+hi link CurrentSection		WarningMsg
 
 function! s:comparelist(i1, i2)
    return str2nr(a:i1) == str2nr(a:i2) ? 0 : str2nr(a:i1) > str2nr(a:i2) ? 1 : -1
@@ -1225,7 +1413,7 @@ function! s:showresults(bibresults,flags,pattern)
 	
 " this goes over the entry flags:
 		for l:lflag in l:flagslist
-" we check if the entry was present in bib file:
+" we check if the entry was present in bibfile:
 		    if l:values[g:bibflagsdict[l:lflag][0]] != "no" . g:bibflagsdict[l:lflag][0]
 " 			if l:values[g:bibflagsdict[l:lflag][0]] =~ a:pattern
 			    call setline(l:ln, l:skip . g:bibflagsdict[l:lflag][1] . " = " . s:showvalue(l:values[g:bibflagsdict[l:lflag][0]]))
@@ -1979,13 +2167,19 @@ function! Labels()
 endfunction
 endif
 " ----------------- FindInputFiles ---------------
+
+" it should return in the values of the dictionary the name of the file that
 if !exists("*FindInputFiles") 
 function! FindInputFiles(...)    
 
+    let l:echo=1
     if a:0==0
 	let l:bufname=bufname("%")
     else
 	let l:bufname=a:1
+	if a:0 == 2
+	    let l:echo=0
+	endif
     endif
 
     let l:dir=fnamemodify(l:bufname,":p:h")
@@ -1993,7 +2187,7 @@ function! FindInputFiles(...)
     let s:i=0
     let l:inputlines=[]
     for l:line in l:texfile
-	if l:line =~ "\\\\\\(input\\|include\\|includeonly\\)\\s" && l:line !~ "^\s*%"
+	if l:line =~ "\\\\\\(input\\|include\\|includeonly\\)" && l:line !~ "^\s*%"
 	    "add the line but cut it before first '%', thus we should get the
 	    "file name.
 	    let l:col=stridx(l:line,"%")
@@ -2003,25 +2197,54 @@ function! FindInputFiles(...)
 	    let l:inputlines=add(l:inputlines,l:line) 
 	endif
     endfor
-    let b:inputfiles=[]
+    let b:il=l:inputlines "DEBUG
+    let b:inputfiles={}
+
+    " add files to b:inputfiles dictionary:
+    " 	if it is an input file in the preambule the value is input
+    " 	if it is an input file from the core of the document the value is include
+    " 	if it is a bib file the value is bib
     for l:line in l:inputlines
+	if l:line !~ '{'
 	    let l:inputfile=substitute(l:line,'\\\%(input\|include\|includeonly\)\s\+\(.*\)','\1','')
-	    call add(b:inputfiles,l:inputfile)
+	    call extend(b:inputfiles, { l:inputfile : [ 'input' , fnamemodify(expand("%"),":p") ] } )
+	else
+	    let l:bidx=stridx(l:line,'{')
+	    let l:eidx=stridx(l:line,'}')
+	    let l:inputfile=strpart(l:line,l:bidx+1,l:eidx-l:bidx-1)
+	    call extend(b:inputfiles, { l:inputfile : [ 'include' , fnamemodify(expand("%"),":p") ] } )
+	endif
     endfor
-    if len(b:inputfiles) > 0 
-	echohl WarningMsg | echomsg "Found input files:" 
-    else
-	echohl WarningMsg | echomsg "No input files found." | echohl None
-	return []
+    call extend(b:inputfiles,FindBibFiles(l:bufname))
+    if l:echo 
+	if len(keys(b:inputfiles)) > 0 
+	    echohl WarningMsg | echomsg "Found input files:" 
+	else
+	    echohl WarningMsg | echomsg "No input files found." | echohl None
+	    return []
+	endif
+	echohl texInput
+	let l:nr=1
+	for l:inputfile in keys(b:inputfiles)
+	    if b:inputfiles[l:inputfile][0] == 'input'
+		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
+		let l:nr+=1
+	    endif
+	endfor
+	for l:inputfile in keys(b:inputfiles)
+	    if b:inputfiles[l:inputfile][0] == 'include'
+		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
+		let l:nr+=1
+	    endif
+	endfor
+	for l:inputfile in keys(b:inputfiles)
+	    if b:inputfiles[l:inputfile][0] == 'bib'
+		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
+		let l:nr+=1
+	    endif
+	endfor
+	echohl None
     endif
-    echohl texInput
-    let l:nr=1
-    for l:inputfile in b:inputfiles
-	" before we echo the filename, we clear it from '"'.
-	echomsg l:nr . ". " . substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
-	let l:nr+=1
-    endfor
-    echohl None
     return b:inputfiles
 endfunction
 endif
@@ -2030,27 +2253,52 @@ if !exists("*EditInputFile")
 function! EditInputFile(...)
 
     if a:0==0
+	let l:inputfile=""
 	let l:bufname=bufname("%")
+	let l:opencom="edit"
+    elseif a:0==1
+	let l:inputfile=a:1
+	let l:bufname=bufname("%")
+	let l:opencom="edit"
     else
-	let l:bufname=a:1
+	let l:inputfile=a:1
+	let l:opencom=a:2
+
+	" the last argument is the bufername in which search for the input files 
+	if a:0>2
+	    let l:bufname=a:3
+	else
+	    let l:bufname=bufname("%")
+	endif
     endif
 
     let l:dir=fnamemodify(l:bufname,":p:h")
 
-    let l:inputfiles=FindInputFiles(l:bufname)
-    if ! len(l:inputfiles) > 0
+    if a:0 == 0
+	let l:inputfiles=FindInputFiles(l:bufname)
+    else
+	let l:inputfiles=FindInputFiles(l:bufname,0)
+    endif
+
+    if !len(l:inputfiles) > 0
 	return 
     endif
 
-    let l:which=input("Which file to edit? Press <Enter> for none ")
-
-    if l:which == ""
-	return
+    if index(keys(l:inputfiles),l:inputfile) == '-1'
+	let l:which=input("Which file to edit? <enter> for none ","","customlist,EI_compl")
+	if l:which == ""
+	    return
+	endif
     else
-	let l:which-=1
+	let l:which=l:inputfile
     endif
 
-    let l:ifile=l:inputfiles[l:which]
+
+    if l:which =~ '\d\+'
+	let l:ifile=keys(l:inputfiles)[l:which-1]
+    else
+	let l:ifile=l:which
+    endif
 
     "g:texmf should end with a '/', if not add it.
     if g:texmf !~ "\/$"
@@ -2061,17 +2309,79 @@ function! EditInputFile(...)
     " this make the function work with lines like: '\\input "file name with spaces.tex"'
     let l:ifile=substitute(l:ifile,'^\s*\"\|\"\s*$','','g')
     " add .tex extension if it was not present
-    let l:ifile=substitute(l:ifile,'\(.tex\)\?\s*$','.tex','')
-    if filereadable(l:dir . "/" . l:ifile) 
-	exe "edit " . fnameescape(b:outdir . l:ifile)
-	let b:autex=0
+    if l:inputfiles[l:ifile][0] == 'input' || l:inputfiles[l:ifile][0] == 'include'
+	let l:ifilename=s:append(l:ifile,'.tex')
     else
-	let l:ifile=findfile(l:ifile,g:texmf . '**')
-	exe "edit " . fnameescape(l:ifile)
-	let b:autex=0
+	let l:ifilename=s:append(l:ifile,'.bib')
+    endif
+    if l:ifile !~ '\s*\/'
+	if filereadable(l:dir . "/" . l:ifilename) 
+	    exe "edit " . fnameescape(b:outdir . l:ifilename)
+	    let b:autex=0
+	else
+	    if l:inputfiles[l:ifile][0] == 'input' || l:inputfiles[l:ifile][0] == 'include'
+		let l:ifilename=findfile(l:ifile,g:texmf . '**')
+		exe l:opencom . " " . fnameescape(l:ifilename)
+		let b:autex=0
+	    else
+		exe l:opencom . " " . fnameescape(s:append($BIBINPUTS,'/') . l:ifilename)
+		let b:autex=0
+	    endif
+	endif
+    else
+	exe l:opencom . " " . fnameescape(l:ifilename)
     endif
 endfunction
 endif
+
+if !exists("*EI_compl")
+fun! EI_compl(A,P,L)
+    let l:inputfiles=FindInputFiles()
+    " rewrite the keys of FindInputFiles the order: input files, bibfiles
+    let l:oif=[]
+    for l:key in keys(l:inputfiles)
+	if l:inputfiles[l:key][0] == 'input'
+	    call add(l:oif,l:key)
+	endif
+    endfor
+    for l:key in keys(l:inputfiles)
+	if l:inputfiles[l:key][0] == 'include'
+	    call add(l:oif,l:key)
+	endif
+    endfor
+    for l:key in keys(l:inputfiles)
+	if l:inputfiles[l:key][0] == 'bib'
+	    call add(l:oif,l:key)
+	endif
+    endfor
+
+    let b:oif=l:oif
+    return l:oif
+endfun
+endif
+
+"--------------------SET THE PROJECT NAME----------------------------
+" store a list of all input files associated to some file
+fun! s:setprojectname()
+    if !exists("g:inputfiles")
+	let g:inputfiles=FindInputFiles(expand("%"),0)
+    else
+	call extend(g:inputfiles,FindInputFiles(bufname("%"),0))
+    endif
+
+    if !exists("g:atp_project")
+	" the main file is not an input file
+	let l:get=index(keys(g:inputfiles),fnamemodify(bufname("%"),":p:r"))
+	if l:get == '-1'
+	    let g:mainfile=fnamemodify(expand("%"),":p")
+	endif
+    elseif exists("g:atp_project")
+	let g:mainfile=g:atp_project
+    endif
+endfun
+
+au BufEnter *.tex :call s:setprojectname()
+
 " TODO if the file was not found ask to make one.
 "--------- ToDo -----------------------------------------------------------
 "
@@ -2194,7 +2504,8 @@ function! s:SetErrorFormat(...)
 	else
 	    let &l:errorformat= &l:errorformat . ",%E!\ LaTeX\ %trror:\ %m,\%E!\ %m"
 	endif
-    elseif a:0>0 && a:1 =~ 'w'
+    endif
+    if a:0>0 && a:1 =~ 'w'
 	if &l:errorformat == ""
 	    let &l:errorformat="%+WLaTeX\ %.%#Warning:\ %.%#line\ %l%.%#,
 			\%+W%.%#\ at\ lines\ %l--%*\\d,
@@ -2204,25 +2515,29 @@ function! s:SetErrorFormat(...)
 			\%+W%.%#\ at\ lines\ %l--%*\\d,
 			\%WLaTeX\ %.%#Warning:\ %m"
 	endif
-    elseif a:0>0 && a:1 =~ 'c'
+    endif
+    if a:0>0 && a:1 =~ 'c'
 	if &l:errorformat == ""
 	    let &l:errorformat = "%+WLaTeX\ %.%#Warning:\ Citation\ %.%#line\ %l%.%#"
 	else
 	    let &l:errorformat = &l:errorformat . ",%+WLaTeX\ %.%#Warning:\ Citation\ %.%#line\ %l%.%#"
 	endif
-    elseif a:0>0 && a:1 =~ 'c'
+    endif
+    if a:0>0 && a:1 =~ 'c'
 	if &l:errorformat == ""
 	    let &l:errorformat = "%+WLaTeX\ %.%#Warning:\ Citation\ %.%#line\ %l%.%#"
 	else
 	    let &l:errorformat = &l:errorformat . ",%+WLaTeX\ %.%#Warning:\ Citation\ %.%#line\ %l%.%#"
 	endif
-    elseif a:0>0 && a:1 =~ 'r'
+    endif
+    if a:0>0 && a:1 =~ 'r'
 	if &l:errorformat == ""
 	    let &l:errorformat = "%+WLaTeX\ %.%#Warning:\ Reference\ %.%#line\ %l%.%#"
 	else
 	    let &l:errorformat = &l:errorformat . ",%+WLaTeX\ %.%#Warning:\ Reference\ %.%#line\ %l%.%#"
 	endif
-    elseif a:0>0 && a:1 =~ 'f'
+    endif
+    if a:0>0 && a:1 =~ 'f'
 	if &l:errorformat == ""
 	    let &l:errorformat = "%+WLaTeX\ Font\ Warning:\ %.%#"
 	else
@@ -2254,14 +2569,22 @@ function! s:SetErrorFormat(...)
 			    \%+Q%*[^()])%r,
 			    \%+Q[%\\d%*[^()])%r"
     endif
-    cg
 endfunction
 
 function! s:ShowErrors(...)
 
     " set errorformat 
     if a:0 > 0
-	call s:SetErrorFormat(a:1)
+
+	" if one uses completeion to set different flags, they will be in
+	" different variables, so we concatenate them first.
+	let l:arg=''
+	let l:i=1 
+	while l:i<=a:0
+	    let l:arg.=a:{l:i}
+	    let l:i+=1
+	endwhile
+	call s:SetErrorFormat(l:arg)
     else
 	call s:SetErrorFormat()
     endif
@@ -2271,7 +2594,13 @@ function! s:ShowErrors(...)
     " list errors
     cl
 endfunction
-"--------- Special Space --------------------------------------------------
+
+if !exists("*ListErrorsFlags")
+function! ListErrorsFlags(A,L,P)
+	return "e\nw\nc\nr\ncr\nf"
+endfunction
+endif
+"--------- Special Space -----------------------------------------------------
 if !exists("*SpecialSpaceToggle")
 function! SpecialSpaceToggle()
     if maparg('<space>','c') == ""
@@ -2283,153 +2612,316 @@ function! SpecialSpaceToggle()
     endif
 endfunction
 endif
-"--------- DVISearch ------------------------------------------------------
+"--------- Set Viewers  ------------------------------------------------------
 "
 fun! SetXdvi()
     let b:texcompiler="latex"
     let b:texoptions="-src-specials"
     let b:Viewer="xdvi -editor 'gvim --remote-wait +%l %f'"
+    if exists("g:xdviOptions")
+	let b:ViewerOptions=g:xdviOptions
+    endif
     if !exists("*ISearch")
     function ISearch()
-	let b:xdvi_inverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
-	call system(b:xdvi_inverse_search)
+	let l:xdvi_inverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
+	call system(l:xdvi_inverse_search)
     endfunction
-    command! -buffer ISearch	:call ISearch()
-    map <buffer> \is		:call ISearch()<CR>
     endif
-" ToDo: there is no way to define mapping like that?
-"     if !exists("no_plugin_maps") && !exists("no_atp_maps")
-" 	map! <LocalLeader>s  	:call ISearch()<CR>
-"     endif
+    command! -buffer ISearch	:call ISearch()
     command! -buffer IS 	:call ISearch()
+    map <buffer> <LocalLeader>is		:call ISearch()<CR>
 endfun
+fun! SetXpdf()
+    let b:texcompiler="pdflatex"
+    let b:texoptions=""
+    let b:Viewer="xpdf"
+    if exists("g:XdviOptions")
+	let b:ViewerOptions=g:xpdfOptions
+    else
+	let b:ViewerOptions=''
+    endif
+    if hasmapto("ISearch()",'n')
+	unmap <buffer> <LocalLeader>is
+    endif
+    if exists("IS")
+	delcommand IS
+    endif
+    if exists("ISearch")
+	delcommand ISearch
+    endif
+endfun
+
+"--------- Search for Matching Pair  -----------------------------------------
+"This is a tiny modification of the function defined in matchparent.vim to
+"handle multibyte characters
+"
+" The function that is invoked (very often) to define a ":match" highlighting
+" for any matching paren.
+" function! s:Highlight_Matching_Pair()
+"   " Remove any previous match.
+"   if exists('w:paren_hl_on') && w:paren_hl_on
+"     3match none
+"     let w:paren_hl_on = 0
+"   endif
+" 
+"   " Avoid that we remove the popup menu.
+"   " Return when there are no colors (looks like the cursor jumps).
+"   if pumvisible() || (&t_Co < 8 && !has("gui_running"))
+"     return
+"   endif
+" 
+"   " Get the character under the cursor and check if it's in 'matchpairs'.
+"   let c_lnum = line('.')
+"   let c_col = col('.')
+"   let before = 0
+" 
+" 
+"   let plist = split(g:matchpairs, '.\zs[:,]')
+"   let i = index(plist, c)
+"   if i < 0
+"     " not found, in Insert mode try character before the cursor
+"     if c_col > 1 && (mode() == 'i' || mode() == 'R')
+"       let before = 1
+"       let c = getline(c_lnum)[c_col - 2]
+"       let i = index(plist, c)
+"     endif
+"     if i < 0
+"       " not found, nothing to do
+"       return
+"     endif
+"   endif
+" 
+"   " Figure out the arguments for searchpairpos().
+"   if i % 2 == 0
+"     let s_flags = 'nW'
+"     let c2 = plist[i + 1]
+"   else
+"     let s_flags = 'nbW'
+"     let c2 = c
+"     let c = plist[i - 1]
+"   endif
+"   if c == '['
+"     let c = '\['
+"     let c2 = '\]'
+"   endif
+" 
+"   " Find the match.  When it was just before the cursor move it there for a
+"   " moment.
+"   if before > 0
+"     let save_cursor = winsaveview()
+"     call cursor(c_lnum, c_col - before)
+"   endif
+" 
+"   " When not in a string or comment ignore matches inside them.
+"   let s_skip ='synIDattr(synID(line("."), col("."), 0), "name") ' .
+" 	\ '=~?  "string\\|character\\|singlequote\\|comment"'
+"   execute 'if' s_skip '| let s_skip = 0 | endif'
+" 
+"   " Limit the search to lines visible in the window.
+"   let stoplinebottom = line('w$')
+"   let stoplinetop = line('w0')
+"   if i % 2 == 0
+"     let stopline = stoplinebottom
+"   else
+"     let stopline = stoplinetop
+"   endif
+" 
+"   try
+"     " Limit the search time to 300 msec to avoid a hang on very long lines.
+"     " This fails when a timeout is not supported.
+"     let [m_lnum, m_col] = searchpairpos(c, '', c2, s_flags, s_skip, stopline, 300)
+"   catch /E118/
+"     " Can't use the timeout, restrict the stopline a bit more to avoid taking
+"     " a long time on closed folds and long lines.
+"     " The "viewable" variables give a range in which we can scroll while
+"     " keeping the cursor at the same position.
+"     " adjustedScrolloff accounts for very large numbers of scrolloff.
+"     let adjustedScrolloff = min([&scrolloff, (line('w$') - line('w0')) / 2])
+"     let bottom_viewable = min([line('$'), c_lnum + &lines - adjustedScrolloff - 2])
+"     let top_viewable = max([1, c_lnum-&lines+adjustedScrolloff + 2])
+"     " one of these stoplines will be adjusted below, but the current values are
+"     " minimal boundaries within the current window
+"     if i % 2 == 0
+"       if has("byte_offset") && has("syntax_items") && &smc > 0
+" 	let stopbyte = min([line2byte("$"), line2byte(".") + col(".") + &smc * 2])
+" 	let stopline = min([bottom_viewable, byte2line(stopbyte)])
+"       else
+" 	let stopline = min([bottom_viewable, c_lnum + 100])
+"       endif
+"       let stoplinebottom = stopline
+"     else
+"       if has("byte_offset") && has("syntax_items") && &smc > 0
+" 	let stopbyte = max([1, line2byte(".") + col(".") - &smc * 2])
+" 	let stopline = max([top_viewable, byte2line(stopbyte)])
+"       else
+" 	let stopline = max([top_viewable, c_lnum - 100])
+"       endif
+"       let stoplinetop = stopline
+"     endif
+"     let [m_lnum, m_col] = searchpairpos(c, '', c2, s_flags, s_skip, stopline)
+"   endtry
+" 
+"   if before > 0
+"     call winrestview(save_cursor)
+"   endif
+" 
+"   " If a match is found setup match highlighting.
+"   if m_lnum > 0 && m_lnum >= stoplinetop && m_lnum <= stoplinebottom 
+"     exe '3match MatchParen /\(\%' . c_lnum . 'l\%' . (c_col - before) .
+" 	  \ 'c\)\|\(\%' . m_lnum . 'l\%' . m_col . 'c\)/'
+"     let w:paren_hl_on = 1
+"   endif
+" endfunction
+
+"--------- MOVING FUNCTIONS ----------------------------------------------- 
+
+function! NextEnv(envname)
+    call search('\\begin{' . a:envname . '}','W')
+endfunction
+
+function! PrevEnv(envname)
+    call search('\\begin{' . a:envname . '}','bW')
+endfunction
+
+function! Env_compl(A,P,L)
+    let l:envlist=sort(['definition', 'equation', 'proposition', 'theorem', 'lemma', 'array', 'tikzpicture', 'tabular', 'table', 'align\*\?', 'alignat\*\?', 'proof', 'corollary', 'enumerate', 'examples\?', 'itemize', 'remark', 'notation', 'center', 'quotation', 'quote', 'tabbing', 'picture', 'minipage', 'list', 'flushright', 'flushleft', 'figure', 'eqnarray', 'description', 'thebibliography', 'titlepage', 'verbatim', 'verse' ])
+    let l:returnlist=[]
+    for l:env in l:envlist
+	if l:env =~ '^' . a:A 
+	    call add(l:returnlist,l:env)
+	endif
+    endfor
+    return l:returnlist
+endfunction
 "--------- MAPPINGS -------------------------------------------------------
 " Add mappings, unless the user didn't want this.
 if !exists("no_plugin_maps") && !exists("no_atp_maps")
 
-map  <buffer> <LocalLeader>v		:call ViewOutput() <CR><CR>
-map  <buffer> <F2> 			:SpecialSpaceToggle<CR>
-map  <buffer> <F3>        		:call ViewOutput() <CR><CR>
-imap <buffer> <F3> <Esc> 		:call ViewOutput() <CR><CR>
-map  <buffer> <LocalLeader>g 		:call Getpid()<CR>
-map  <buffer> <LocalLeader>t		:TOC<CR>
-map  <buffer> <LocalLeader>L		:Labels<CR>
-map  <buffer> <LocalLeader>l 		:TEX<CR>	
-map  <buffer> 2<LocalLeader>l 		:2TEX<CR>	 
-" imap <buffer> <LocalLeader>l	<Left><ESC>:TEX<CR>a
-" imap <buffer> 2<LocalLeader>l	<Left><ESC>:2TEX<CR>a
-map  <buffer> <F5> 			:call VTEX() <CR>	
-map  <buffer> <S-F5> 			:call ToggleAuTeX()<CR>
-imap <buffer> <F5> <Left><ESC> 		:call VTEX() <CR>a
-map  <buffer> <LocalLeader>sb		:call SimpleBibtex()<CR>
-map  <buffer> <LocalLeader>b		:call Bibtex()<CR>
-map  <buffer> <F6>d 			:call Delete() <CR>
-imap <buffer> <silent> <F6>l 		:call OpenLog() <CR>
-map  <buffer> <silent> <F6>l 		:call OpenLog() <CR>
-map  <buffer> <LocalLeader>e 		:cf<CR> 
-map  <buffer> <F6>w 			:call TexLog("-w")<CR>
-imap <buffer> <F6>w 			:call TexLog("-w")<CR>
-map  <buffer> <F6>r 			:call TexLog("-r")<CR>
-imap <buffer> <F6>r 			:call TexLog("-r")<CR>
-map  <buffer> <F6>f 			:call TexLog("-f")<CR>
-imap <buffer> <F6>f 			:call TexLog("-f")<CR>
-map  <buffer> <F6>g 			:call Pdffonts()<CR>
-map  <buffer> <F1> 	   		:!clear;texdoc -m 
-imap <buffer> <F1> <Esc> 		:!clear;texdoc -m  
-map  <buffer> <LocalLeader>p 		:call Print(g:printeroptions)<CR>
+    map  <buffer> <LocalLeader>v		:call ViewOutput() <CR><CR>
+    map  <buffer> <F2> 				:SpecialSpaceToggle<CR>
+    map  <buffer> <F3>        			:call ViewOutput() <CR><CR>
+    imap <buffer> <F3> <Esc> 			:call ViewOutput() <CR><CR>
+    map  <buffer> <LocalLeader>g 		:call Getpid()<CR>
+    map  <buffer> <LocalLeader>t		:TOC<CR>
+    map  <buffer> <LocalLeader>L		:Labels<CR>
+    map  <buffer> <LocalLeader>l 		:TEX<CR>	
+    map  <buffer> 2<LocalLeader>l 		:2TEX<CR>	 
+    " imap <buffer> <LocalLeader>l	<Left><ESC>:TEX<CR>a
+    " imap <buffer> 2<LocalLeader>l	<Left><ESC>:2TEX<CR>a
+    " todo: this is nice idea but it do not works as it should: 
+    " map  <buffer> <f4> [d:let nr = input("which one: ")<bar>exe "normal " . nr . "[\t"<cr> 
+    map  <buffer> <f5> 				:call VTEX() <cr>	
+    map  <buffer> <s-f5> 			:call ToggleAuTeX()<cr>
+    imap <buffer> <f5> <left><esc> 		:call VTEX() <cr>a
+    map  <buffer> <localleader>sb		:call SimpleBibtex()<cr>
+    map  <buffer> <localleader>b		:call Bibtex()<cr>
+    map  <buffer> <f6>d 			:call Delete() <cr>
+    imap <buffer> <silent> <f6>l 		:call OpenLog() <cr>
+    map  <buffer> <silent> <f6>l 		:call OpenLog() <cr>
+    map  <buffer> <localleader>e 		:cf<cr> 
+    map  <buffer> <f6>w 			:call texlog("-w")<cr>
+    imap <buffer> <f6>w 			:call texlog("-w")<cr>
+    map  <buffer> <f6>r 			:call texlog("-r")<cr>
+    imap <buffer> <f6>r 			:call texlog("-r")<cr>
+    map  <buffer> <f6>f 			:call texlog("-f")<cr>
+    imap <buffer> <f6>f 			:call texlog("-f")<cr>
+    map  <buffer> <f6>g 			:call pdffonts()<cr>
+    map  <buffer> <f1> 	   			:!clear;texdoc -m 
+    imap <buffer> <f1> <esc> 			:!clear;texdoc -m  
+    map  <buffer> <localleader>p 		:call print('','')<cr>
 
-" FONT MAPPINGS
-imap <buffer> ##rm \textrm{}<Left>
-imap <buffer> ##it \textit{}<Left>
-imap <buffer> ##sl \textsl{}<Left>
-imap <buffer> ##sf \textsf{}<Left>
-imap <buffer> ##bf \textbf{}<Left>
-	
-imap <buffer> ##mit \mathit{}<Left>
-imap <buffer> ##mrm \mathrm{}<Left>
-imap <buffer> ##msf \mathsf{}<Left>
-imap <buffer> ##mbf \mathbf{}<Left>
+    " FONT MAPPINGS
+    imap <buffer> ##rm \textrm{}<Left>
+    imap <buffer> ##it \textit{}<Left>
+    imap <buffer> ##sl \textsl{}<Left>
+    imap <buffer> ##sf \textsf{}<Left>
+    imap <buffer> ##bf \textbf{}<Left>
+	    
+    imap <buffer> ##mit \mathit{}<Left>
+    imap <buffer> ##mrm \mathrm{}<Left>
+    imap <buffer> ##msf \mathsf{}<Left>
+    imap <buffer> ##mbf \mathbf{}<Left>
 
-" GREEK LETTERS
-imap <buffer> #a \alpha
-imap <buffer> #b \beta
-imap <buffer> #c \chi
-imap <buffer> #d \delta
-imap <buffer> #e \epsilon
-imap <buffer> #f \phi
-imap <buffer> #y \psi
-imap <buffer> #g \gamma
-imap <buffer> #h \eta
-imap <buffer> #k \kappa
-imap <buffer> #l \lambda
-imap <buffer> #i \iota
-imap <buffer> #m \mu
-imap <buffer> #n \nu
-imap <buffer> #p \pi
-imap <buffer> #o \theta
-imap <buffer> #r \rho
-imap <buffer> #s \sigma
-imap <buffer> #t \tau
-imap <buffer> #u \upsilon
-imap <buffer> #vs \varsigma
-imap <buffer> #vo \vartheta
-imap <buffer> #w \omega
-imap <buffer> #x \xi
-imap <buffer> #z \zeta
+    " GREEK LETTERS
+    imap <buffer> #a \alpha
+    imap <buffer> #b \beta
+    imap <buffer> #c \chi
+    imap <buffer> #d \delta
+    imap <buffer> #e \epsilon
+    imap <buffer> #f \phi
+    imap <buffer> #y \psi
+    imap <buffer> #g \gamma
+    imap <buffer> #h \eta
+    imap <buffer> #k \kappa
+    imap <buffer> #l \lambda
+    imap <buffer> #i \iota
+    imap <buffer> #m \mu
+    imap <buffer> #n \nu
+    imap <buffer> #p \pi
+    imap <buffer> #o \theta
+    imap <buffer> #r \rho
+    imap <buffer> #s \sigma
+    imap <buffer> #t \tau
+    imap <buffer> #u \upsilon
+    imap <buffer> #vs \varsigma
+    imap <buffer> #vo \vartheta
+    imap <buffer> #w \omega
+    imap <buffer> #x \xi
+    imap <buffer> #z \zeta
 
-imap <buffer> #D \Delta
-imap <buffer> #Y \Psi
-imap <buffer> #F \Phi
-imap <buffer> #G \Gamma
-imap <buffer> #L \Lambda
-imap <buffer> #M \Mu
-imap <buffer> #N \Nu
-imap <buffer> #P \Pi
-imap <buffer> #O \Theta
-imap <buffer> #S \Sigma
-imap <buffer> #T \Tau
-imap <buffer> #U \Upsilon
-imap <buffer> #V \Varsigma
-imap <buffer> #W \Omega
+    imap <buffer> #D \Delta
+    imap <buffer> #Y \Psi
+    imap <buffer> #F \Phi
+    imap <buffer> #G \Gamma
+    imap <buffer> #L \Lambda
+    imap <buffer> #M \Mu
+    imap <buffer> #N \Nu
+    imap <buffer> #P \Pi
+    imap <buffer> #O \Theta
+    imap <buffer> #S \Sigma
+    imap <buffer> #T \Tau
+    imap <buffer> #U \Upsilon
+    imap <buffer> #V \Varsigma
+    imap <buffer> #W \Omega
 
-imap <buffer> [b \begin{}<Left>
-imap <buffer> [e \end{}<Left>
-imap [s \begin{}<CR>\end{}<Up><Right>
+    imap <buffer> [b \begin{}<Left>
+    imap <buffer> [e \end{}<Left>
+    imap [s \begin{}<CR>\end{}<Up><Right>
 
-imap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
-imap <buffer> [c \begin{corollary}<Cr>\end{corollary}<Esc>O
-imap <buffer> [d \begin{definition}<Cr>\end{definition}<Esc>O
-imap <buffer> ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
-imap <buffer> [q \begin{equation}<Cr>\end{equation}<Esc>O
-imap <buffer> [a \begin{align}<Cr>\end{align}<Esc>O
-imap <buffer> [x \begin{example}<Cr>\end{example}<Esc>O
-imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
-imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
-imap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
-imap <buffer> [i \item
-imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
-imap <buffer> [l \begin{lemma}<Cr>\end{lemma}<Esc>O
-imap <buffer> [n \begin{note}<Cr>\end{note}<Esc>O
-imap <buffer> [o \begin{observation}<Cr>\end{observation}<Esc>O
-imap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
-imap <buffer> [p \begin{proposition}<Cr>\end{proposition}<Esc>O
-imap <buffer> [r \begin{remark}<Cr>\end{remark}<Esc>O
-imap <buffer> [t \begin{theorem}<Cr>\end{theorem}<Esc>O
-imap <buffer> ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
+    imap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
+    imap <buffer> [c \begin{corollary}<Cr>\end{corollary}<Esc>O
+    imap <buffer> [d \begin{definition}<Cr>\end{definition}<Esc>O
+    imap <buffer> ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
+    imap <buffer> [q \begin{equation}<Cr>\end{equation}<Esc>O
+    imap <buffer> [a \begin{align}<Cr>\end{align}<Esc>O
+    imap <buffer> [x \begin{example}<Cr>\end{example}<Esc>O
+    imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
+    imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
+    imap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
+    imap <buffer> [i \item
+    imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
+    imap <buffer> [l \begin{lemma}<Cr>\end{lemma}<Esc>O
+    imap <buffer> [n \begin{note}<Cr>\end{note}<Esc>O
+    imap <buffer> [o \begin{observation}<Cr>\end{observation}<Esc>O
+    imap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
+    imap <buffer> [p \begin{proposition}<Cr>\end{proposition}<Esc>O
+    imap <buffer> [r \begin{remark}<Cr>\end{remark}<Esc>O
+    imap <buffer> [t \begin{theorem}<Cr>\end{theorem}<Esc>O
+    imap <buffer> ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
 
-" imap {c \begin{corollary*}<Cr>\end{corollary*}<Esc>O
-" imap {d \begin{definition*}<Cr>\end{definition*}<Esc>O
-" imap {x \begin{example*}\normalfont<Cr>\end{example*}<Esc>O
-" imap {l \begin{lemma*}<Cr>\end{lemma*}<Esc>O
-" imap {n \begin{note*}<Cr>\end{note*}<Esc>O
-" imap {o \begin{observation*}<Cr>\end{observation*}<Esc>O
-" imap {p \begin{proposition*}<Cr>\end{proposition*}<Esc>O
-" imap {r \begin{remark*}<Cr>\end{remark*}<Esc>O
-" imap {t \begin{theorem*}<Cr>\end{theorem*}<Esc>O
+    " imap {c \begin{corollary*}<Cr>\end{corollary*}<Esc>O
+    " imap {d \begin{definition*}<Cr>\end{definition*}<Esc>O
+    " imap {x \begin{example*}\normalfont<Cr>\end{example*}<Esc>O
+    " imap {l \begin{lemma*}<Cr>\end{lemma*}<Esc>O
+    " imap {n \begin{note*}<Cr>\end{note*}<Esc>O
+    " imap {o \begin{observation*}<Cr>\end{observation*}<Esc>O
+    " imap {p \begin{proposition*}<Cr>\end{proposition*}<Esc>O
+    " imap {r \begin{remark*}<Cr>\end{remark*}<Esc>O
+    " imap {t \begin{theorem*}<Cr>\end{theorem*}<Esc>O
 
-imap <buffer> __ _{}<Left>
-imap <buffer> ^^ ^{}<Left>
-imap <buffer> [m \[\]<Left><Left>
+    imap <buffer> __ _{}<Left>
+    imap <buffer> ^^ ^{}<Left>
+    imap <buffer> [m \[\]<Left><Left>
 endif
 
 " This is an additional syntax group for enironment provided by the TIKZ
@@ -2443,10 +2935,10 @@ command! -buffer -nargs=? ShowOptions 	:call ShowOptions(<f-args>)
 command! -buffer GPID 			:call Getpid()
 command! -buffer CXPDF 			:echo s:xpdfpid()
 command! -buffer -nargs=? -count=1 TEX  :call TEX(<count>,<f-args>)
-command! -buffer -nargs=? -count=1 VTEX	:call  VTEX(<count>,<f-args>)
+command! -buffer -nargs=? -count=1 VTEX	:call VTEX(<count>,<f-args>)
 command! -buffer SBibtex 		:call SimpleBibtex()
 command! -buffer -nargs=? Bibtex 	:call Bibtex(<f-args>)
-command! -buffer -nargs=? -complete=buffer FindBibFiles 	:echo FindBibFiles(<f-args>)
+command! -buffer -nargs=? -complete=buffer FindBibFiles 	:echo keys(FindBibFiles(<f-args>))
 command! -buffer -nargs=* BibSearch	:call BibSearch(<f-args>)
 command! -buffer TOC 			:call TOC()
 command! -buffer CTOC 			:call CTOC()
@@ -2454,10 +2946,15 @@ command! -buffer Labels			:call Labels()
 command! -buffer SetOutDir 		:call s:setoutdir(1)
 command! -buffer ATPStatus 		:call ATPStatus() 
 command! -buffer -nargs=? SetErrorFormat 	:call s:SetErrorFormat(<f-args>)
-command! -buffer -nargs=? ShowErrors 	:call s:ShowErrors(<f-args>)
-command! -buffer -nargs=?	-complete=buffer	 FindInputFiles		:call FindInputFiles(<f-args>)
-command! -buffer -nargs=?	-complete=buffer	 EditInputFile 		:call EditInputFile(<f-args>)
-command! -buffer -nargs=?	-complete=buffer	 ToDo 			:call ToDo('\c\<todo\>','\s*%\c.*\<note\>',<f-args>)
-command! -buffer -nargs=?	-complete=buffer	 Note			:call ToDo('\c\<note\>','\s*%\c.*\<todo\>',<f-args>)
+command! -buffer -nargs=? -complete=custom,ListErrorsFlags ShowErrors 	:call s:ShowErrors(<f-args>)
+command! -buffer -nargs=? -complete=buffer	 FindInputFiles		:call FindInputFiles(<f-args>)
+command! -buffer -nargs=* -complete=customlist,EI_compl	 EditInputFile 		:call EditInputFile(<f-args>)
+command! -buffer -nargs=? -complete=buffer	 ToDo 			:call ToDo('\c\<todo\>','\s*%\c.*\<note\>',<f-args>)
+command! -buffer -nargs=? -complete=buffer	 Note			:call ToDo('\c\<note\>','\s*%\c.*\<todo\>',<f-args>)
 command! -buffer SpecialSpaceToggle	:call SpecialSpaceToggle()
 command! -buffer SetXdvi		:call SetXdvi()
+command! -buffer SetXpdf		:call SetXpdf()	
+command! -complete=custom,ListPrinters  -buffer -nargs=* SshPrint	:call Print(<f-args>)
+
+command! -buffer -nargs=1 -complete=customlist,Env_compl NEnv			:call NextEnv(<f-args>)
+command! -buffer -nargs=1 -complete=customlist,Env_compl PEnv			:call PrevEnv(<f-args>)

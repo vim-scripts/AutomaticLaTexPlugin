@@ -3,7 +3,7 @@
 " Maintainer:	Marcin Szamotulski
 " Last Changed: 2010 Mar 7
 " URL:		
-" GetLatestVimScripts: 2945 8 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 9 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -14,6 +14,17 @@
 " 		damages resulting from the use of this software. 
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
+"
+" TODO: bibtex is not processing right (after tex+bibtex+tex+tex, +\l gives
+" the citation numbers)
+"
+" TODO: project is not working, it sets but when I change arrow file tex is
+" not run.
+"
+" TODO: g:mainfile is not working with b:outdir, (b:outdir should not be
+" changed for intput files)
+"
+" TODO: ViewOutput() seems not to be integrated with projects.
 "
 " TODO: before spell checking of the bibfile, remove '{'and '}'. But there is
 " no autocommand group to do that :(.
@@ -97,24 +108,51 @@ function! SetErrorFile()
     set errorfile?
 endfunction
 endif
+
 " This options are set also when editing .cls files.
 function! s:setoutdir(arg)
-    if g:askfortheoutdir == 1 
-	let b:outdir=input("Where to put output? do not escape white spaces ")
-    endif
-    if (get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" 
-		\ && g:askfortheoutdir != 1 || b:outdir == "" && g:askfortheoutdir == 1 )
-		\ && !exists("$TEXMFOUTPUT")
-	 let b:outdir=fnamemodify(resolve(expand("%:p")),":h") . "/"
-	 echoh WarningMsg | echomsg "Output Directory "b:outdir | echoh None
+    " first we have to check if this is not a project file
+    if exists("g:atp_project") || exists("g:inputfiles") && 
+		\ ( index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1' || 
+		\ index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) != '-1' )
+	    " if we are in a project input/include file take the correct value of b:outdir from the s:outdir_dict dictionary.
+	    
+	    if index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
+		let b:outdir=g:outdir_dict[g:inputfiles[fnamemodify(bufname("%"),":t:r")][1]]
+	    elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
+		let b:outdir=g:outdir_dict[g:inputfiles[fnamemodify(bufname("%"),":t")][1]]
+	    endif
+    else
+	
+	    " if we are not in a project input/include file set the b:outdir
+	    " variable	
 
-    elseif exists("$TEXMFOUTPUT")
-	 let b:outdir=$TEXMFOUTPUT 
-    endif	
+	    " if the user want to be asked for b:outdir
+	    if g:askfortheoutdir == 1 
+		let b:outdir=input("Where to put output? do not escape white spaces ")
+	    endif
 
-    " if arg != 0 then set errorfile option accordingly to b:outdir
-    if bufname("") =~ ".tex$" && a:arg != 0
-	 call SetErrorFile()
+	    if ( get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" 
+			\ && g:askfortheoutdir != 1 
+			\ || b:outdir == "" && g:askfortheoutdir == 1 )
+			\ && !exists("$TEXMFOUTPUT")
+		 let b:outdir=fnamemodify(resolve(expand("%:p")),":h") . "/"
+		 echoh WarningMsg | echomsg "Output Directory "b:outdir | echoh None
+
+	    elseif exists("$TEXMFOUTPUT")
+		 let b:outdir=$TEXMFOUTPUT 
+	    endif	
+
+	    " if arg != 0 then set errorfile option accordingly to b:outdir
+	    if bufname("") =~ ".tex$" && a:arg != 0
+		 call SetErrorFile()
+	    endif
+
+	    if exists("g:outdir_dict")
+		let g:outdir_dict=extend(g:outdir_dict, {fnamemodify(bufname("%"),":p") : b:outdir })
+	    else
+		let g:outdir_dict={ fnamemodify(bufname("%"),":p") : b:outdir }
+	    endif
     endif
 endfunction
 
@@ -348,6 +386,7 @@ function! s:outdir()
 	let b:outdir=b:outdir . "/"
     endif
 endfunction
+
 if !exists("*ViewOutput")
 function! ViewOutput()
     call s:outdir()
@@ -404,11 +443,11 @@ endfunction
 endif
 "-------------------------------------------------------------------------
 if g:atp_compare_embedded_comments == 1 && g:atp_compare_double_empty_lines == 1
-    function! s:compare(file,buffer)
+    function! s:compare(file)
 	let l:buffer=getbufline(bufname("%"),"1","$")
 
        " rewrite l:buffer to remove all commands 
-	let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
+	let ':buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
 
 	" do the same with a:file
 	let l:file=filter(a:file, 'v:val !~ "^\s*%"')
@@ -416,7 +455,7 @@ if g:atp_compare_embedded_comments == 1 && g:atp_compare_double_empty_lines == 1
 	return l:file !=# l:buffer
     endfunction
 elseif g:atp_compare_embedded_comments == 1 && g:atp_compare_double_empty_lines == 0
-    function! s:compare(file,buffer)
+    function! s:compare(file)
 	let l:buffer=getbufline(bufname("%"),"1","$")
 
         " rewrite l:buffer to remove all commands 
@@ -451,7 +490,7 @@ elseif g:atp_compare_embedded_comments == 1 && g:atp_compare_double_empty_lines 
 	return l:file !=# l:buffer
     endfunction
 elseif g:atp_compare_embedded_comments == 0 && g:atp_compare_double_empty_lines == 1
-    function! s:compare(file,buffer)
+    function! s:compare(file)
 	let l:buffer=getbufline(bufname("%"),"1","$")
 
         " rewrite l:buffer to remove all commands 
@@ -477,7 +516,7 @@ elseif g:atp_compare_embedded_comments == 0 && g:atp_compare_double_empty_lines 
 	return l:file !=# l:buffer
     endfunction
 elseif g:atp_compare_embedded_comments == 0 && g:atp_compare_double_empty_lines == 0
-    function! s:compare(file,buffer)
+    function! s:compare(file)
 	let l:buffer=getbufline(bufname("%"),"1","$")
 
 	" rewrite l:buffer to remove all commands 
@@ -687,13 +726,15 @@ function! s:auTeX()
     " if the file (or input file is modified) compile the document 
 "     let l:test=0
 "     let l:ifiles=FindInputFiles(bufname("%"))
-    if s:compare(readfile(expand("%")),bufname("%"))
+    if s:compare(readfile(expand("%")))
 	call s:compiler(0,0,b:auruns,0,"AU",g:mainfile)
 	redraw
     endif
    endif
 endfunction
-au! CursorHold $HOME*.tex call s:auTeX()
+if !exists('#CursorHold#' . $HOME . '/*.tex')
+    au CursorHold $HOME/*.tex call s:auTeX()
+endif
 "-------------------------------------------------------------------------
 if !exists("*TEX")
 function! TEX(...)
@@ -1063,10 +1104,10 @@ function! s:searchbib(pattern)
 	let s:bibdict[l:f]=[]
 
 	" read the bibfile if it is in b:outdir or in $BIBINPUTS directory
-	if filereadable(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib')) 
+	if filereadable(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib'))) 
 	    let s:bibdict[l:f]=readfile(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib'))	
 	else
-	    let s:bibdict[l:f]=readfile(fnameescape(s:append($BIBINPUTS,'/') . s:append(l:f,'.bib'))
+	    let s:bibdict[l:f]=readfile(fnameescape(s:append($BIBINPUTS,'/') . s:append(l:f,'.bib')))
 	endif
 	let l:bibdict[l:f]=copy(s:bibdict[l:f])
 	" clear the s:bibdict values from lines which begin with %    
@@ -2265,6 +2306,7 @@ function! EditInputFile(...)
 	let l:opencom=a:2
 
 	" the last argument is the bufername in which search for the input files 
+	" TODO: to DOC
 	if a:0>2
 	    let l:bufname=a:3
 	else
@@ -2293,8 +2335,7 @@ function! EditInputFile(...)
 	let l:which=l:inputfile
     endif
 
-
-    if l:which =~ '\d\+'
+    if l:which =~ '^\s*\d\+\s*$'
 	let l:ifile=keys(l:inputfiles)[l:which-1]
     else
 	let l:ifile=l:which
@@ -2317,15 +2358,15 @@ function! EditInputFile(...)
     if l:ifile !~ '\s*\/'
 	if filereadable(l:dir . "/" . l:ifilename) 
 	    exe "edit " . fnameescape(b:outdir . l:ifilename)
-	    let b:autex=0
+" 	    let b:autex=0
 	else
 	    if l:inputfiles[l:ifile][0] == 'input' || l:inputfiles[l:ifile][0] == 'include'
 		let l:ifilename=findfile(l:ifile,g:texmf . '**')
 		exe l:opencom . " " . fnameescape(l:ifilename)
-		let b:autex=0
+" 		let b:autex=0
 	    else
 		exe l:opencom . " " . fnameescape(s:append($BIBINPUTS,'/') . l:ifilename)
-		let b:autex=0
+" 		let b:autex=0
 	    endif
 	endif
     else
@@ -2336,7 +2377,7 @@ endif
 
 if !exists("*EI_compl")
 fun! EI_compl(A,P,L)
-    let l:inputfiles=FindInputFiles()
+    let l:inputfiles=FindInputFiles(bufname("%"),1)
     " rewrite the keys of FindInputFiles the order: input files, bibfiles
     let l:oif=[]
     for l:key in keys(l:inputfiles)
@@ -2355,8 +2396,15 @@ fun! EI_compl(A,P,L)
 	endif
     endfor
 
-    let b:oif=l:oif
-    return l:oif
+    " check what is already written, if it matches something return only the
+    " matching strings
+    let l:return_oif=[]
+    for l:i in l:oif
+	if l:i =~ '^' . a:A 
+	    call add(l:return_oif,l:i)
+	endif
+    endfor
+    return l:return_oif
 endfun
 endif
 
@@ -2371,9 +2419,18 @@ fun! s:setprojectname()
 
     if !exists("g:atp_project")
 	" the main file is not an input file
-	let l:get=index(keys(g:inputfiles),fnamemodify(bufname("%"),":p:r"))
-	if l:get == '-1'
+	if index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) == '-1' && index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) == '-1'
 	    let g:mainfile=fnamemodify(expand("%"),":p")
+	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
+	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":t")][1]
+	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
+		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
+	    endif
+	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
+	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":t:r")][1]
+	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
+		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
+	    endif
 	endif
     elseif exists("g:atp_project")
 	let g:mainfile=g:atp_project

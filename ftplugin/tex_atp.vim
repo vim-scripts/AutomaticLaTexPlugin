@@ -1,9 +1,9 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Mar 7
+" Last Changed: 2010 Mar 17
 " URL:		
-" GetLatestVimScripts: 2945 9 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 10 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -97,17 +97,217 @@ setl includeexpr=substitute(v:fname,'\\%(.tex\\)\\?$','.tex','')
 " TODO set define and work on the abve settings, these settings work with [i
 " command but not with [d, [D and [+CTRL D (jump to first macro definition)
 
+"------------ append / at the end of a directory name ------------
+fun! s:append(where,what)
+    return substitute(a:where,a:what . "\s*$",'','') . a:what
+endfun
+" ----------------- FindInputFiles ---------------
+" it should return in the values of the dictionary the name of the file that
+if !exists("*FindInputFiles") 
+function! FindInputFiles(...)    
+
+    let l:echo=1
+    if a:0==0
+	let l:bufname=bufname("%")
+    else
+	let l:bufname=a:1
+	if a:0 == 2
+	    let l:echo=0
+	endif
+    endif
+
+    let l:dir=fnamemodify(l:bufname,":p:h")
+    let l:texfile=readfile(fnamemodify(l:bufname,":p"))
+    let s:i=0
+    let l:inputlines=[]
+    for l:line in l:texfile
+	if l:line =~ "\\\\\\(input\\|include\\|includeonly\\)" && l:line !~ "^\s*%"
+	    "add the line but cut it before first '%', thus we should get the
+	    "file name.
+	    let l:col=stridx(l:line,"%")
+	    if l:col != -1
+		let l:line=strpart(l:line,0,l:col)
+	    endif
+	    let l:inputlines=add(l:inputlines,l:line) 
+	endif
+    endfor
+    let b:il=l:inputlines "DEBUG
+    let b:inputfiles={}
+
+    " add files to b:inputfiles dictionary:
+    " 	if it is an input file in the preambule the value is input
+    " 	if it is an input file from the core of the document the value is include
+    " 	if it is a bib file the value is bib
+    for l:line in l:inputlines
+	if l:line !~ '{'
+	    let l:inputfile=substitute(l:line,'\\\%(input\|include\|includeonly\)\s\+\(.*\)','\1','')
+	    call extend(b:inputfiles, { l:inputfile : [ 'input' , fnamemodify(expand("%"),":p") ] } )
+	else
+	    let l:bidx=stridx(l:line,'{')
+	    let l:eidx=stridx(l:line,'}')
+	    let l:inputfile=strpart(l:line,l:bidx+1,l:eidx-l:bidx-1)
+	    call extend(b:inputfiles, { l:inputfile : [ 'include' , fnamemodify(expand("%"),":p") ] } )
+	endif
+    endfor
+    call extend(b:inputfiles,FindBibFiles(l:bufname))
+    if l:echo 
+	if len(keys(b:inputfiles)) > 0 
+	    echohl WarningMsg | echomsg "Found input files:" 
+	else
+	    echohl WarningMsg | echomsg "No input files found." | echohl None
+	    return []
+	endif
+	echohl texInput
+	let l:nr=1
+	for l:inputfile in keys(b:inputfiles)
+	    if b:inputfiles[l:inputfile][0] == 'input'
+		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
+		let l:nr+=1
+	    endif
+	endfor
+	for l:inputfile in keys(b:inputfiles)
+	    if b:inputfiles[l:inputfile][0] == 'include'
+		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
+		let l:nr+=1
+	    endif
+	endfor
+	for l:inputfile in keys(b:inputfiles)
+	    if b:inputfiles[l:inputfile][0] == 'bib'
+		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
+		let l:nr+=1
+	    endif
+	endfor
+	echohl None
+    endif
+    return b:inputfiles
+endfunction
+endif
+" ----------------- FIND BIB FILES ----------------------------------	
+if !exists("*FindBibFiles")
+function! FindBibFiles(...)
+
+    if a:0==0
+	let l:bufname=bufname("%")
+    else
+	let l:bufname=a:1
+    endif
+
+    let b:texfile=readfile(l:bufname)
+    let s:i=0
+    let s:bibline=[]
+    " find all lines which define bibliography files
+    for line in b:texfile
+	if line =~ "\\\\bibliography{"
+	    let s:bibline=add(s:bibline,line) 
+	    let s:i+=1
+	endif
+    endfor
+    let l:nr=s:i
+    let s:i=1
+    let files=""
+    " make a comma separated list of bibfiles
+    for l:line in s:bibline
+	if s:i==1
+	    let files=substitute(l:line,"\\\\bibliography{\\(.*\\)}","\\1","") . ","
+	else
+	    let files=files . substitute(l:line,"\\\\bibliography{\\(.*\\)}","\\1","") . "," 
+	endif
+	let s:i+=1
+    endfor
+
+    " rewrite files into a vim list
+    let l:allbibfiles=split(files,',')
+    
+    " add the list b:bibfiles 
+    if exists('b:bibfiles')
+	call extend(l:allbibfiles,b:bibfiles)
+    endif
+    
+    " clear the list s:allbibfile from double entries 
+    let l:callbibfiles=[]
+    for l:f in l:allbibfiles
+	if count(l:callbibfiles,l:f) == 0
+	    call add(l:callbibfiles,l:f)
+	endif
+    endfor
+    let l:allbibfiles=deepcopy(l:callbibfiles)
+
+    " this variable will store unreadable bibfiles:    
+    let s:notreadablebibfiles=[]
+
+    " this variable will store the final result:   
+    let l:bibfiles={}
+
+    for l:f in l:allbibfiles
+	if filereadable(b:outdir . s:append(l:f,'.bib')) || filereadable(s:append($BIBINPUTS,"/") . s:append(l:f,'.bib'))
+	    call extend(l:bibfiles,{l:f : [ 'bib' , fnamemodify(expand("%"),":p") ] })
+	else
+	    " echo warning if a bibfile is not readable
+	    echohl WarningMsg | echomsg "Bibfile " . l:f . ".bib is not readable." | echohl None
+	    if count(s:notreadablebibfiles,l:f) == 0 
+		call add(s:notreadablebibfiles,l:f)
+	    endif
+	endif
+    endfor
+
+    " return the list  of readable bibfiles
+    return l:bibfiles
+endfunction
+endif
+
+"--------------------SET THE PROJECT NAME----------------------------
+" store a list of all input files associated to some file
+fun! s:setprojectname()
+    if !exists("g:inputfiles")
+	let g:inputfiles=FindInputFiles(expand("%"),0)
+    else
+	call extend(g:inputfiles,FindInputFiles(bufname("%"),0))
+    endif
+
+    if !exists("g:atp_project")
+	" the main file is not an input file
+	if index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) == '-1' && index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) == '-1'
+	    let g:mainfile=fnamemodify(expand("%"),":p")
+	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
+	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":t")][1]
+	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
+		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
+	    endif
+	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
+	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":t:r")][1]
+	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
+		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
+	    endif
+	endif
+    elseif exists("g:atp_project")
+	let g:mainfile=g:atp_project
+    endif
+"     echomsg "DEBUG PNAME " . g:mainfile
+endfun
+
+au BufEnter *.tex :call s:setprojectname()
+
 " let &l:errorfile=b:outdir . fnameescape(fnamemodify(expand("%"),":t:r")) . ".log"
 if !exists("*SetErrorFile")
 function! SetErrorFile()
+
+    " set b:outdir if it is not set
     if !exists("b:outdir")
 	call s:setoutdir(0)
     endif
-    let l:ef=b:outdir . fnamemodify(expand("%"),":t:r") . ".log"
+
+    " set the g:mainfile varibale if it is not set (the project name)
+    if !exists("g:mainfile")
+	call s:setprojectname()
+    endif
+
+"     let l:ef=b:outdir . fnamemodify(expand("%"),":t:r") . ".log"
+    let l:ef=b:outdir . fnamemodify(g:mainfile,":t:r") . ".log"
     let &l:errorfile=l:ef
-    set errorfile?
 endfunction
 endif
+
+au BufEnter *.tex call SetErrorFile()
 
 " This options are set also when editing .cls files.
 function! s:setoutdir(arg)
@@ -155,6 +355,7 @@ function! s:setoutdir(arg)
 	    endif
     endif
 endfunction
+
 
 " these are all buffer related variables:
 let s:optionsDict= { 	"texoptions" 	: "", 		"reloadonerror" : "0", 
@@ -590,9 +791,10 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 	else
 	    let l:ext = ".dvi"	
 	endif
-	let l:outfile=b:outdir . (fnamemodify(expand("%"),":t:r")) . l:ext
-	let l:outaux=b:outdir . (fnamemodify(expand("%"),":t:r")) . ".aux"
-	let l:outlog=b:outdir . (fnamemodify(expand("%"),":t:r")) . ".log"
+
+	let l:outfile = b:outdir . fnamemodify(a:filename,":t:r") . l:ext
+	let l:outaux  = b:outdir . fnamemodify(a:filename,":t:r") . ".aux"
+	let l:outlog  = b:outdir . fnamemodify(a:filename,":t:r") . ".log"
 "	COPY IMPORTANT FILES TO TEMP DIRECTORY WITH CORRECT NAME 
 	let l:list=filter(copy(g:keep),'v:val != "log"')
 	for l:i in l:list
@@ -1001,83 +1203,9 @@ function! s:count(line,keyword)
 endfunction
 let g:bibentries=['article', 'book', 'booklet', 'conference', 'inbook', 'incollection', 'inproceedings', 'manual', 'mastertheosis', 'misc', 'phdthesis', 'proceedings', 'techreport', 'unpublished']
 
-"------------ append / at the end of a directory name ------------
-fun! s:append(where,what)
-    return substitute(a:where,a:what . "\s*$",'','') . a:what
-endfun
+
 "--------------------- SEARCH ENGINE ------------------------------ 
 " ToDo should not search in comment lines.
-if !exists("*FindBibFiles")
-function! FindBibFiles(...)
-
-    if a:0==0
-	let l:bufname=bufname("%")
-    else
-	let l:bufname=a:1
-    endif
-
-    let b:texfile=readfile(l:bufname)
-    let s:i=0
-    let s:bibline=[]
-    " find all lines which define bibliography files
-    for line in b:texfile
-	if line =~ "\\\\bibliography{"
-	    let s:bibline=add(s:bibline,line) 
-	    let s:i+=1
-	endif
-    endfor
-    let l:nr=s:i
-    let s:i=1
-    let files=""
-    " make a comma separated list of bibfiles
-    for l:line in s:bibline
-	if s:i==1
-	    let files=substitute(l:line,"\\\\bibliography{\\(.*\\)}","\\1","") . ","
-	else
-	    let files=files . substitute(l:line,"\\\\bibliography{\\(.*\\)}","\\1","") . "," 
-	endif
-	let s:i+=1
-    endfor
-
-    " rewrite files into a vim list
-    let l:allbibfiles=split(files,',')
-    
-    " add the list b:bibfiles 
-    if exists('b:bibfiles')
-	call extend(l:allbibfiles,b:bibfiles)
-    endif
-    
-    " clear the list s:allbibfile from double entries 
-    let l:callbibfiles=[]
-    for l:f in l:allbibfiles
-	if count(l:callbibfiles,l:f) == 0
-	    call add(l:callbibfiles,l:f)
-	endif
-    endfor
-    let l:allbibfiles=deepcopy(l:callbibfiles)
-
-    " this variable will store unreadable bibfiles:    
-    let s:notreadablebibfiles=[]
-
-    " this variable will store the final result:   
-    let l:bibfiles={}
-
-    for l:f in l:allbibfiles
-	if filereadable(b:outdir . s:append(l:f,'.bib')) || filereadable(s:append($BIBINPUTS,"/") . s:append(l:f,'.bib'))
-	    call extend(l:bibfiles,{l:f : [ 'bib' , fnamemodify(expand("%"),":p") ] })
-	else
-	    " echo warning if a bibfile is not readable
-	    echohl WarningMsg | echomsg "Bibfile " . l:f . ".bib is not readable." | echohl None
-	    if count(s:notreadablebibfiles,l:f) == 0 
-		call add(s:notreadablebibfiles,l:f)
-	    endif
-	endif
-    endfor
-
-    " return the list  of readable bibfiles
-    return l:bibfiles
-endfunction
-endif
 
 " let s:bibfiles=FindBibFiles(bufname('%'))
 function! s:searchbib(pattern) 
@@ -2196,7 +2324,7 @@ function! s:showlabels(labels)
     let l:number+=1
     endfor
 endfunction
-" -------------------- Labels -------------------
+" -------------------- Labels ---------------------------------------
 if !exists("*Labels")
 function! Labels()
     let t:bufname=bufname("%")
@@ -2207,89 +2335,7 @@ function! Labels()
     call s:showlabels(t:labels[l:bufname])
 endfunction
 endif
-" ----------------- FindInputFiles ---------------
-
-" it should return in the values of the dictionary the name of the file that
-if !exists("*FindInputFiles") 
-function! FindInputFiles(...)    
-
-    let l:echo=1
-    if a:0==0
-	let l:bufname=bufname("%")
-    else
-	let l:bufname=a:1
-	if a:0 == 2
-	    let l:echo=0
-	endif
-    endif
-
-    let l:dir=fnamemodify(l:bufname,":p:h")
-    let l:texfile=readfile(fnamemodify(l:bufname,":p"))
-    let s:i=0
-    let l:inputlines=[]
-    for l:line in l:texfile
-	if l:line =~ "\\\\\\(input\\|include\\|includeonly\\)" && l:line !~ "^\s*%"
-	    "add the line but cut it before first '%', thus we should get the
-	    "file name.
-	    let l:col=stridx(l:line,"%")
-	    if l:col != -1
-		let l:line=strpart(l:line,0,l:col)
-	    endif
-	    let l:inputlines=add(l:inputlines,l:line) 
-	endif
-    endfor
-    let b:il=l:inputlines "DEBUG
-    let b:inputfiles={}
-
-    " add files to b:inputfiles dictionary:
-    " 	if it is an input file in the preambule the value is input
-    " 	if it is an input file from the core of the document the value is include
-    " 	if it is a bib file the value is bib
-    for l:line in l:inputlines
-	if l:line !~ '{'
-	    let l:inputfile=substitute(l:line,'\\\%(input\|include\|includeonly\)\s\+\(.*\)','\1','')
-	    call extend(b:inputfiles, { l:inputfile : [ 'input' , fnamemodify(expand("%"),":p") ] } )
-	else
-	    let l:bidx=stridx(l:line,'{')
-	    let l:eidx=stridx(l:line,'}')
-	    let l:inputfile=strpart(l:line,l:bidx+1,l:eidx-l:bidx-1)
-	    call extend(b:inputfiles, { l:inputfile : [ 'include' , fnamemodify(expand("%"),":p") ] } )
-	endif
-    endfor
-    call extend(b:inputfiles,FindBibFiles(l:bufname))
-    if l:echo 
-	if len(keys(b:inputfiles)) > 0 
-	    echohl WarningMsg | echomsg "Found input files:" 
-	else
-	    echohl WarningMsg | echomsg "No input files found." | echohl None
-	    return []
-	endif
-	echohl texInput
-	let l:nr=1
-	for l:inputfile in keys(b:inputfiles)
-	    if b:inputfiles[l:inputfile][0] == 'input'
-		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
-		let l:nr+=1
-	    endif
-	endfor
-	for l:inputfile in keys(b:inputfiles)
-	    if b:inputfiles[l:inputfile][0] == 'include'
-		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
-		let l:nr+=1
-	    endif
-	endfor
-	for l:inputfile in keys(b:inputfiles)
-	    if b:inputfiles[l:inputfile][0] == 'bib'
-		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
-		let l:nr+=1
-	    endif
-	endfor
-	echohl None
-    endif
-    return b:inputfiles
-endfunction
-endif
-
+" ------------- Edit Input Files  -----------------------------------
 if !exists("*EditInputFile")
 function! EditInputFile(...)
 
@@ -2407,37 +2453,6 @@ fun! EI_compl(A,P,L)
     return l:return_oif
 endfun
 endif
-
-"--------------------SET THE PROJECT NAME----------------------------
-" store a list of all input files associated to some file
-fun! s:setprojectname()
-    if !exists("g:inputfiles")
-	let g:inputfiles=FindInputFiles(expand("%"),0)
-    else
-	call extend(g:inputfiles,FindInputFiles(bufname("%"),0))
-    endif
-
-    if !exists("g:atp_project")
-	" the main file is not an input file
-	if index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) == '-1' && index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) == '-1'
-	    let g:mainfile=fnamemodify(expand("%"),":p")
-	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
-	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":t")][1]
-	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
-		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
-	    endif
-	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
-	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":t:r")][1]
-	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
-		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
-	    endif
-	endif
-    elseif exists("g:atp_project")
-	let g:mainfile=g:atp_project
-    endif
-endfun
-
-au BufEnter *.tex :call s:setprojectname()
 
 " TODO if the file was not found ask to make one.
 "--------- ToDo -----------------------------------------------------------

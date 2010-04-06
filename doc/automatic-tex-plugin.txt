@@ -718,6 +718,10 @@ map c, map y, map p
 	:BibSearch 'author.*Joyal\&.*Tirney'
 <
 
+:DefiSearch [pattern]						*atp-DefiSearch-command*
+	Finds all definiitons which matches the pattern. It looks in all the
+	input files (except bib files).
+
 								*atp-bibsearch-variables*
 								*atp-variables-bib*	
 SOME VARIABLES:

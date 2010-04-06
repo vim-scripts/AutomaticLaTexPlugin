@@ -1,9 +1,9 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Mar 17
+" Last Changed: 2010 Apr 06
 " URL:		
-" GetLatestVimScripts: 2945 10 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 11 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -15,19 +15,17 @@
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
 "
+" TODO: write on ISearch in doc file
+"
+" Done: modify EditInputFiles so that it finds file in the g:mainfile
+"
+" Done: make a function which list all definitions
+"
 " TODO: bibtex is not processing right (after tex+bibtex+tex+tex, +\l gives
 " the citation numbers)
 "
-" TODO: project is not working, it sets but when I change arrow file tex is
-" not run.
-"
 " TODO: g:mainfile is not working with b:outdir, (b:outdir should not be
 " changed for intput files)
-"
-" TODO: ViewOutput() seems not to be integrated with projects.
-"
-" TODO: before spell checking of the bibfile, remove '{'and '}'. But there is
-" no autocommand group to do that :(.
 "
 " TODO: to make s:maketoc and s:generatelabels read all input files between
 " \begin{document} and \end{document}, and make it recursive.
@@ -42,7 +40,10 @@
 "
 " TODO: Check against lilypond 
 "
-" TODO: make a split version of EditInputFile
+" Done: make a split version of EditInputFile
+"
+" TODO: for input files which filetype=plaintex (for example hyphenation
+" files), the variable b:autex is not set.  
 "
 " NOTES
 " s:tmpfile =	temporary file value of tempname()
@@ -103,6 +104,7 @@ fun! s:append(where,what)
 endfun
 " ----------------- FindInputFiles ---------------
 " it should return in the values of the dictionary the name of the file that
+" FindInputFile([bufname],[echo])
 if !exists("*FindInputFiles") 
 function! FindInputFiles(...)    
 
@@ -131,27 +133,26 @@ function! FindInputFiles(...)
 	    let l:inputlines=add(l:inputlines,l:line) 
 	endif
     endfor
-    let b:il=l:inputlines "DEBUG
-    let b:inputfiles={}
 
-    " add files to b:inputfiles dictionary:
-    " 	if it is an input file in the preambule the value is input
-    " 	if it is an input file from the core of the document the value is include
-    " 	if it is a bib file the value is bib
+   " this is the dictionary that will be returned, its format is:
+   " { input file name (as appear in tex file : [ input/include/bib, name of the main tex file ] }
+    let l:inputfiles={}
+
     for l:line in l:inputlines
 	if l:line !~ '{'
 	    let l:inputfile=substitute(l:line,'\\\%(input\|include\|includeonly\)\s\+\(.*\)','\1','')
-	    call extend(b:inputfiles, { l:inputfile : [ 'input' , fnamemodify(expand("%"),":p") ] } )
+	    call extend(l:inputfiles, { l:inputfile : [ 'input' , fnamemodify(expand("%"),":p") ] } )
 	else
 	    let l:bidx=stridx(l:line,'{')
-	    let l:eidx=stridx(l:line,'}')
+" 	    let l:eidx=stridx(l:line,'}')
+	    let l:eidx=len(l:line)-stridx(join(reverse(split(l:line,'\zs')),''),'}')-1
 	    let l:inputfile=strpart(l:line,l:bidx+1,l:eidx-l:bidx-1)
-	    call extend(b:inputfiles, { l:inputfile : [ 'include' , fnamemodify(expand("%"),":p") ] } )
+	    call extend(l:inputfiles, { l:inputfile : [ 'include' , fnamemodify(expand("%"),":p") ] } )
 	endif
     endfor
-    call extend(b:inputfiles,FindBibFiles(l:bufname))
+    call extend(l:inputfiles,FindBibFiles(l:bufname))
     if l:echo 
-	if len(keys(b:inputfiles)) > 0 
+	if len(keys(l:inputfiles)) > 0 
 	    echohl WarningMsg | echomsg "Found input files:" 
 	else
 	    echohl WarningMsg | echomsg "No input files found." | echohl None
@@ -159,27 +160,27 @@ function! FindInputFiles(...)
 	endif
 	echohl texInput
 	let l:nr=1
-	for l:inputfile in keys(b:inputfiles)
-	    if b:inputfiles[l:inputfile][0] == 'input'
+	for l:inputfile in keys(l:inputfiles)
+	    if l:inputfiles[l:inputfile][0] == 'input'
 		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
 		let l:nr+=1
 	    endif
 	endfor
-	for l:inputfile in keys(b:inputfiles)
-	    if b:inputfiles[l:inputfile][0] == 'include'
+	for l:inputfile in keys(l:inputfiles)
+	    if l:inputfiles[l:inputfile][0] == 'include'
 		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
 		let l:nr+=1
 	    endif
 	endfor
-	for l:inputfile in keys(b:inputfiles)
-	    if b:inputfiles[l:inputfile][0] == 'bib'
+	for l:inputfile in keys(l:inputfiles)
+	    if l:inputfiles[l:inputfile][0] == 'bib'
 		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
 		let l:nr+=1
 	    endif
 	endfor
 	echohl None
     endif
-    return b:inputfiles
+    return l:inputfiles
 endfunction
 endif
 " ----------------- FIND BIB FILES ----------------------------------	
@@ -254,7 +255,126 @@ function! FindBibFiles(...)
     return l:bibfiles
 endfunction
 endif
+"--------------------SHOW ALL DEFINITIONS----------------------------
 
+function! s:make_defi_dict()
+    "dictionary: { input_file : [[ begining_line,end_line],...] }
+    let l:defi_dict={}
+
+
+    let l:inputfiles=FindInputFiles(bufname("%"),"0")
+    let b:if=l:inputfiles
+    let l:input_files=[]
+
+    for l:inputfile in keys(l:inputfiles)
+	if l:inputfiles[l:inputfile][0] != "bib"
+	    let l:input_file=s:append(l:inputfile,'.tex')
+	    if filereadable(b:outdir . '/' . l:input_file)
+		let l:input_file=b:outdir . '/' . l:input_file
+	    else
+		let l:input_file=findfile(l:inputfile,g:texmf . '**')
+	    endif
+	    call add(l:input_files, l:input_file)
+	endif
+    endfor
+
+    for l:inputfile in l:input_files
+	let l:defi_dict[l:inputfile]=[]
+	" do not search for definitions in bib files 
+	"TODO: it skips lines somehow. 
+	let l:ifile=readfile(l:inputfile)
+	
+	" search for definitions
+	let l:lnr=1
+	while l:lnr <= len(l:ifile)
+
+	    let l:match=0
+
+	    let l:line=l:ifile[l:lnr-1]
+	    if substitute(l:line,'%.*','','') =~ '\\def'
+
+		let l:b_line=l:lnr
+		let l:open=s:count(l:line,'{')    
+		let l:close=s:count(l:line,'}')
+
+		let l:lnr+=1	
+		while l:open != l:close
+		    "go to next line and count if the definition ends at
+		    "this line
+		    let l:line=l:ifile[l:lnr-1]
+		    let l:open+=s:count(l:line,'{')    
+		    let l:close+=s:count(l:line,'}')
+		    let l:lnr+=1	
+		endwhile
+		let l:e_line=l:lnr-1
+		call add(l:defi_dict[l:inputfile], [ l:b_line, l:e_line ])
+	    else
+		let l:lnr+=1
+	    endif
+	endwhile
+    endfor
+    let b:dd=l:defi_dict " DEBUG
+    return l:defi_dict
+endfunction
+
+if !exists("*DefiSearch")
+function! DefiSearch(...)
+
+    if a:0 == 0
+	let l:pattern=""
+    else
+	let l:pattern=a:1
+    endif
+
+    let l:ddict=s:make_defi_dict()
+    let b:dd=l:ddict
+
+    " open new buffer
+    let l:openbuffer=" +setl\\ buftype=nofile\\ nospell " . fnameescape("Definitions:" . l:pattern )
+    if g:vertical ==1
+	let l:openbuffer="vsplit " . l:openbuffer 
+    else
+	let l:openbuffer="split " . l:openbuffer 
+    endif
+
+    " remove the old buffer and open new one instead
+    if bufexists("Definitions:" . l:pattern)
+	exe "bd " . bufnr("Definitions:" . l:pattern) 
+    endif
+    silent exe l:openbuffer
+    map <buffer> q	:bd<CR>
+
+    for l:inputfile in keys(l:ddict)
+	let l:ifile=readfile(l:inputfile)
+	for l:range in l:ddict[l:inputfile]
+
+	    if l:ifile[l:range[0]-1] =~ l:pattern
+		" print the lines into the buffer
+		let l:i=0
+		let l:c=0
+		" add an empty line if the definition is longer than one line
+		if l:range[0] != l:range[1]
+		    call setline(line('$')+1,'')
+		    let l:i+=1
+		endif
+		while l:c <= l:range[1]-l:range[0] 
+		    let l:line=l:range[0]+l:c
+		    call setline(line('$')+1,l:ifile[l:line-1])
+		    let l:i+=1
+		    let l:c+=1
+		endwhile
+	    endif
+
+	endfor
+    endfor
+    try
+	setl filetype=tex
+    catch /Cannot redefine function DefiSearch/
+    finally
+	setl filetype=tex
+    endtry
+endfunction
+endif
 "--------------------SET THE PROJECT NAME----------------------------
 " store a list of all input files associated to some file
 fun! s:setprojectname()
@@ -266,7 +386,10 @@ fun! s:setprojectname()
 
     if !exists("g:atp_project")
 	" the main file is not an input file
-	if index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) == '-1' && index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) == '-1'
+	if index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) == '-1' &&
+	 \ index(keys(g:inputfiles),fnamemodify(bufname("%"),":t"))   == '-1' &&
+	 \ index(keys(g:inputfiles),fnamemodify(bufname("%"),":p:r")) == '-1' &&
+	 \ index(keys(g:inputfiles),fnamemodify(bufname("%"),":p"))   == '-1' 
 	    let g:mainfile=fnamemodify(expand("%"),":p")
 	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
 	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":t")][1]
@@ -275,6 +398,16 @@ fun! s:setprojectname()
 	    endif
 	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
 	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":t:r")][1]
+	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
+		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
+	    endif
+	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":p:r")) != '-1' 
+	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":p:r")][1]
+	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
+		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
+	    endif
+	elseif index(keys(g:inputfiles),fnamemodify(bufname("%"),":p"))   != '-1' 
+	    let g:mainfile=g:inputfiles[fnamemodify(bufname("%"),":p")][1]
 	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
 		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
 	    endif
@@ -382,7 +515,7 @@ if !exists("g:printingoptions")
     let g:printingoptions=''
 endif
 if !exists("g:atp_ssh")
-    let substitute(g:atp_ssh=system("whoami"),'\n','','') . "@localhost"
+    let g:atp_ssh=substitute(system("whoami"),'\n','','') . "@localhost"
 endif
 " opens bibsearch results in vertically split window.
 if !exists("g:vertical")
@@ -391,13 +524,16 @@ endif
 if !exists("g:matchpair")
     let g:matchpair="(:),\\(:\\),[:],\\[:\\],{:}"
 endif
+if !exists("g:texmf")
+    let g:texmf=$HOME . "/texmf"
+endif
 if !exists("$BIBINPUTS")
     let $BIBINPUTS=substitute(g:texmf,'\/\s*^','','') . "/bibtex"
 endif
-if !exists("g:atp_compare_embedded_comments")
+if !exists("g:atp_compare_embedded_comments") || g:atp_compare_embedded_comments != 1
     let g:atp_compare_embedded_comments = 0
 endif
-if !exists("g:atp_compare_double_empty_lines")
+if !exists("g:atp_compare_double_empty_lines") || g:atp_compare_double_empty_lines != 0
     let g:atp_compare_double_empty_lines = 1
 endif
 "TODO: put toc_window_with and labels_window_width into DOC file
@@ -414,9 +550,6 @@ if !exists("t:labels_window_width")
     else
 	let t:labels_window_width=30
     endif
-endif
-if !exists("g:texmf")
-    let g:texmf=$HOME . "/texmf"
 endif
 
 " This function sets options (values of buffer related variables) which were
@@ -643,121 +776,67 @@ function! s:xpdfpid()
 endfunction
 endif
 "-------------------------------------------------------------------------
-if g:atp_compare_embedded_comments == 1 && g:atp_compare_double_empty_lines == 1
-    function! s:compare(file)
-	let l:buffer=getbufline(bufname("%"),"1","$")
+function! s:compare(file)
+    let l:buffer=getbufline(bufname("%"),"1","$")
 
-       " rewrite l:buffer to remove all commands 
-	let ':buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
+    " rewrite l:buffer to remove all commands 
+    let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
 
-	" do the same with a:file
-	let l:file=filter(a:file, 'v:val !~ "^\s*%"')
-
-	return l:file !=# l:buffer
-    endfunction
-elseif g:atp_compare_embedded_comments == 1 && g:atp_compare_double_empty_lines == 0
-    function! s:compare(file)
-	let l:buffer=getbufline(bufname("%"),"1","$")
-
-        " rewrite l:buffer to remove all commands 
-	let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
-
-	    let l:i = 0
-	    while l:i < len(l:buffer)-1
-		" remove double empty lines
-		if l:i< len(l:buffer)-2
-		    if l:buffer[l:i] =~ '^\s*$' && l:buffer[l:i+1] =~ '^\s*$'
-			call remove(l:buffer,l:i)
-		    endif
-		endif
-		let l:i+=1
-	    endwhile
-	endif
-     
-	" do the same with a:file
-	let l:file=filter(a:file, 'v:val !~ "^\s*%"')
-
-	let l:i = 0
-	while l:i < len(l:file)-1
-	    " remove double empty lines
-	    if l:i< len(l:file)-2
-		if l:file[l:i] =~ '^\s*$' && l:file[l:i+1] =~ '^\s*$'
-		    call remove(l:file,l:i)
-		endif
-	    endif
-	    let l:i+=1
-	endwhile
-
-	return l:file !=# l:buffer
-    endfunction
-elseif g:atp_compare_embedded_comments == 0 && g:atp_compare_double_empty_lines == 1
-    function! s:compare(file)
-	let l:buffer=getbufline(bufname("%"),"1","$")
-
-        " rewrite l:buffer to remove all commands 
-	let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
-
-	let l:i = 0
-	while l:i < len(l:buffer)-1
-	    " remove comment lines at the end of a line
+    let l:i = 0
+    if g:atp_compare_double_empty_lines == 0 || g:atp_compare_embedded_comments == 0
+    while l:i < len(l:buffer)-1
+	let l:rem=0
+	" remove comment lines at the end of a line
+	if g:atp_compare_embedded_comments == 0
 	    let l:buffer[l:i] = substitute(l:buffer[l:i],'%.*$','','')
-	    let l:i+=1
-	endwhile
-     
-	" do the same with a:file
-	let l:file=filter(a:file, 'v:val !~ "^\s*%"')
-
-	let l:i = 0
-	while l:i < len(l:file)-1
-	    " remove comment lines at the end of a line
-	    let l:file[l:i] = substitute(a:file[l:i],'%.*$','','')
-	    let l:i+=1
-	endwhile
-
-	return l:file !=# l:buffer
-    endfunction
-elseif g:atp_compare_embedded_comments == 0 && g:atp_compare_double_empty_lines == 0
-    function! s:compare(file)
-	let l:buffer=getbufline(bufname("%"),"1","$")
-
-	" rewrite l:buffer to remove all commands 
-	let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
-
-	    let l:i = 0
-	    while l:i < len(l:buffer)-1
-		" remove comment lines at the end of a line
-		let l:buffer[l:i] = substitute(l:buffer[l:i],'%.*$','','')
-
-		" remove double empty lines
-		if l:i< len(l:buffer)-2
-		    if l:buffer[l:i] =~ '^\s*$' && l:buffer[l:i+1] =~ '^\s*$'
-			call remove(l:buffer,l:i)
-		    endif
-		endif
-		let l:i+=1
-	    endwhile
 	endif
-     
-	" do the same with a:file
-	let l:file=filter(a:file, 'v:val !~ "^\s*%"')
 
-	let l:i = 0
-	while l:i < len(l:file)-1
-	    " remove comment lines at the end of a line
-	    let l:file[l:i] = substitute(a:file[l:i],'%.*$','','')
-	    
-	    " remove double empty lines
-	    if l:i< len(l:file)-2
-		if l:file[l:i] =~ '^\s*$' && l:file[l:i+1] =~ '^\s*$'
-		    call remove(l:file,l:i)
-		endif
+	" remove double empty lines (i.e. from two conecutive empty lines
+	" the first one is deleted, the second remains), if the line was
+	" removed we do not need to add 1 to l:i (this is the role of
+	" l:rem).
+	if g:atp_compare_double_empty_lines == 0 && l:i< len(l:buffer)-2
+	    if l:buffer[l:i] =~ '^\s*$' && l:buffer[l:i+1] =~ '^\s*$'
+		call remove(l:buffer,l:i)
+		let l:rem=1
 	    endif
+	endif
+	if l:rem == 0
 	    let l:i+=1
-	endwhile
+	endif
+    endwhile
+    endif
+ 
+    " do the same with a:file
+    let l:file=filter(a:file, 'v:val !~ "^\s*%"')
 
-	return l:file !=# l:buffer
-    endfunction
-endif
+    let l:i = 0
+    if g:atp_compare_double_empty_lines == 0 || g:atp_compare_embedded_comments == 0
+    while l:i < len(l:file)-1
+	let l:rem=0
+	" remove comment lines at the end of a line
+	if g:atp_compare_embedded_comments == 0
+	    let l:file[l:i] = substitute(a:file[l:i],'%.*$','','')
+	endif
+	
+	" remove double empty lines (i.e. from two conecutive empty lines
+	" the first one is deleted, the second remains), if the line was
+	" removed we do not need to add 1 to l:i (this is the role of
+	" l:rem).
+	if g:atp_compare_double_empty_lines == 0 && l:i < len(l:file)-2
+	    if l:file[l:i] =~ '^\s*$' && l:file[l:i+1] =~ '^\s*$'
+		call remove(l:file,l:i)
+		let l:rem=1
+	    endif
+	endif
+	if l:rem == 0
+	    let l:i+=1
+	endif
+    endwhile
+    endif
+
+    return l:file !=# l:buffer
+endfunction
 "-------------------------------------------------------------------------
 function! s:copy(input,output)
 	call writefile(readfile(a:input),a:output)
@@ -832,11 +911,12 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 		let s:xpdfreload = ""
 	    endif	
 	endif
-"  				echomsg "DEBUG xpdfreload="s:xpdfreload
-" 	IF OPENINIG NON EXISTENT OUTPUT FILE
-"	only xpdf needs to be run before (above we are going to reload it!)
+"  	echomsg "DEBUG xpdfreload="s:xpdfreload
+" 	IF OPENINIG NON EXISTING OUTPUT FILE
+"	only xpdf needs to be run before (we are going to reload it)
+"	TODO THIS DO NOT WORKS!!!
 	if a:start == 1 && b:Viewer == "xpdf"
-	    let s:start = b:Viewer . " -remote " . shellescape(b:XpdfServer) . " & "
+	    let s:start = b:Viewer . " -remote " . shellescape(b:XpdfServer) . " " . b:ViewerOptions . " & "
 	else
 	    let s:start = ""	
 	endif
@@ -926,8 +1006,6 @@ endfunction
 function! s:auTeX()
    if b:autex	
     " if the file (or input file is modified) compile the document 
-"     let l:test=0
-"     let l:ifiles=FindInputFiles(bufname("%"))
     if s:compare(readfile(expand("%")))
 	call s:compiler(0,0,b:auruns,0,"AU",g:mainfile)
 	redraw
@@ -1651,6 +1729,7 @@ function! s:setwindow()
  	setlocal winfixwidth
 	setlocal noswapfile	
 	setlocal window
+	setlocal nobuflisted
 	if &filetype == "bibsearch_atp"
 " 	    setlocal winwidth=30
 	    setlocal nospell
@@ -2278,7 +2357,8 @@ function! s:showlabels(labels)
     let l:lines=sort(keys(a:labels),"s:comparelist")
     " Open new window or jump to the existing one.
     let l:bufname=bufname("")
-    let l:bufpath=fnamemodify(bufname(""),":p:h")
+"     let l:bufpath=fnamemodify(bufname(""),":p:h")
+    let l:bufpath=fnamemodify(resolve(fnamemodify(bufname("%"),":p")),":h")
     let l:bname="__Labels__"
     let l:labelswinnr=bufwinnr("^" . l:bname . "$")
 	let b:labelswinnr=l:labelswinnr		"DEBUG
@@ -2341,11 +2421,11 @@ function! EditInputFile(...)
 
     if a:0==0
 	let l:inputfile=""
-	let l:bufname=bufname("%")
+	let l:bufname=g:mainfile
 	let l:opencom="edit"
     elseif a:0==1
 	let l:inputfile=a:1
-	let l:bufname=bufname("%")
+	let l:bufname=g:mainfile
 	let l:opencom="edit"
     else
 	let l:inputfile=a:1
@@ -2356,7 +2436,7 @@ function! EditInputFile(...)
 	if a:0>2
 	    let l:bufname=a:3
 	else
-	    let l:bufname=bufname("%")
+	    let l:bufname=g:mainfile
 	endif
     endif
 
@@ -2403,16 +2483,19 @@ function! EditInputFile(...)
     endif
     if l:ifile !~ '\s*\/'
 	if filereadable(l:dir . "/" . l:ifilename) 
+	    let s:ft=&filetype
 	    exe "edit " . fnameescape(b:outdir . l:ifilename)
-" 	    let b:autex=0
+	    let &l:filetype=s:ft
 	else
 	    if l:inputfiles[l:ifile][0] == 'input' || l:inputfiles[l:ifile][0] == 'include'
 		let l:ifilename=findfile(l:ifile,g:texmf . '**')
+		let s:ft=&filetype
 		exe l:opencom . " " . fnameescape(l:ifilename)
-" 		let b:autex=0
+	    let &l:filetype=s:ft
 	    else
+		let s:ft=&filetype
 		exe l:opencom . " " . fnameescape(s:append($BIBINPUTS,'/') . l:ifilename)
-" 		let b:autex=0
+		let &l:filetype=s:ft
 	    endif
 	endif
     else
@@ -2423,7 +2506,8 @@ endif
 
 if !exists("*EI_compl")
 fun! EI_compl(A,P,L)
-    let l:inputfiles=FindInputFiles(bufname("%"),1)
+"     let l:inputfiles=FindInputFiles(bufname("%"),1)
+    let l:inputfiles=FindInputFiles(g:mainfile,1)
     " rewrite the keys of FindInputFiles the order: input files, bibfiles
     let l:oif=[]
     for l:key in keys(l:inputfiles)
@@ -3012,6 +3096,7 @@ command! -buffer SBibtex 		:call SimpleBibtex()
 command! -buffer -nargs=? Bibtex 	:call Bibtex(<f-args>)
 command! -buffer -nargs=? -complete=buffer FindBibFiles 	:echo keys(FindBibFiles(<f-args>))
 command! -buffer -nargs=* BibSearch	:call BibSearch(<f-args>)
+command! -buffer -nargs=? DefiSearch	:call DefiSearch(<f-args>)
 command! -buffer TOC 			:call TOC()
 command! -buffer CTOC 			:call CTOC()
 command! -buffer Labels			:call Labels() 

@@ -59,7 +59,7 @@ highlight SpecialKey     ctermfg=129           	ctermbg=233			guifg=DarkViolet
 highlight StatusLine     cterm=none     ctermfg=226 ctermbg=232		 guifg=#111111 guibg=wheat1
 highlight StatusLineNC   cterm=none     ctermfg=245 ctermbg=232		 guifg=#111111 guibg=snow4	 
 highlight User1		 cterm=bold	ctermfg=226 ctermbg=232	gui=bold guifg=DarkOrange  guibg=#111111	 
-highlight User2		 cterm=none	ctermfg=red ctermbg=232		 guifg=DeepPink2  guibg=#111111
+highlight User2		 cterm=none	ctermfg=red ctermbg=232		 guifg=Khaki1  guibg=#111111
 highlight User3		 cterm=none	ctermfg=226 ctermbg=232		 guifg=Goldenrod2   guibg=#111111
 highlight VertSplit      cterm=none     ctermfg=green   ctermbg=233	 guifg=#1c1c1c	  guibg=DeepSkyBlue4
 highlight WildMenu       cterm=bold     ctermfg=0   ctermbg=118
@@ -191,3 +191,14 @@ highlight atp_statusoutdir 			ctermfg=grey 	ctermbg=233
 
 highlight link atp_Todo Normal
 
+highlight ywtxt_todo	guifg=yellow gui=bold
+highlight ywtxt_note	guifg=yellow gui=bold
+
+highlight ywtxt_heading1 guifg=slateblue1 gui=bold 
+highlight ywtxt_heading2 guifg=slateblue gui=bold 
+highlight ywtxt_heading3 guifg=slateblue4 gui=bold 
+highlight ywtxt_heading4 guifg=darkslateblue gui=bold 
+highlight ywtxt_bold 		cterm=bold 	gui=bold
+highlight ywtxt_italic 		cterm=italic  	gui=italic
+highlight ywtxt_underline 	cterm=underline gui=underline
+highlight ywtxt_comment guifg=honeydew4

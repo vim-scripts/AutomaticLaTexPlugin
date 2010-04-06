@@ -103,10 +103,10 @@ function! GotoLine(closebuffer)
     " remember the ToC window number
     let l:tocbufnr=bufnr("")
 
-    " line to which we go
+    " line to go to
     let l:nr=s:getlinenr()
 
-    " window to which we go
+    " window to go to
     let l:gotowinnr=s:gotowinnr()
 
     if l:gotowinnr != -1
@@ -123,6 +123,7 @@ function! GotoLine(closebuffer)
 
     "finally, set the position
     call setpos('.',[0,l:nr,1,0])
+    exe "normal zt"
     
 endfunction
 " endif
@@ -133,6 +134,7 @@ function! s:yank(arg)
     let l:buf=s:file()
     let l:bufname=l:buf[1]
     let l:filename=l:buf[0] . "/" . l:buf[1]
+    let b:fn=l:filename
 
     if exists("t:labels")
 	let l:choice=get(t:labels[l:filename],s:getlinenr())

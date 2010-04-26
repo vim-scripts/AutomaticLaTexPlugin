@@ -15,9 +15,9 @@
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
 "
-" TODO: write on ISearch in doc file
-"
 " Done: modify EditInputFiles so that it finds file in the g:mainfile
+" TODO: EditInputFile if running from a input file a main file should be
+" added. Or there shuld be a function to come back.
 "
 " Done: make a function which list all definitions
 "
@@ -753,8 +753,8 @@ endfunction
 endif
 "-------------------------------------------------------------------------
 function! s:getpid()
-	let s:command="ps -ef | grep -v " . $SHELL  . " | grep " . b:texcompiler . " | grep -v grep | grep " . fnameescape(expand("%")) . " | awk '{print $2}'"
-	let s:var=substitute(system(s:command),'\D',' ','')
+	let s:command="ps -ef | grep -v " . $SHELL  . " | grep " . b:texcompiler . " | grep -v grep | grep " . fnameescape(expand("%")) . " | awk 'BEGIN {ORS=\" \"} {print $2}'" 
+	let s:var=system(s:command)
 	return s:var
 endfunction
 
@@ -965,7 +965,7 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 " ToDo: Windows compatible?
 " 	    Before copy, check if the file exists (for example toc files are
 " 	    not always created) 
-	    let s:copycmd=" [[ -e " . shellescape(s:tmpfile . "." . l:i) . " ]] && cp " . s:cpoption . " " . shellescape(s:tmpfile . "." . l:i) . " " . shellescape(b:outdir . (fnamemodify(expand("%"),":t:r")) . "." . l:i) 
+	    let s:copycmd=" [[ -e " . shellescape(s:tmpfile . "." . l:i) . " ]] && cp " . s:cpoption . " " . shellescape(s:tmpfile . "." . l:i) . " " . shellescape(b:outdir . (fnamemodify(l:outfile,":t:r")) . "." . l:i) 
 "   		echomsg "DEBUG 2 copycmd"s:copycmd
 	    if l:j == 1
 		let s:copy=s:copycmd
@@ -2361,7 +2361,6 @@ function! s:showlabels(labels)
     let l:bufpath=fnamemodify(resolve(fnamemodify(bufname("%"),":p")),":h")
     let l:bname="__Labels__"
     let l:labelswinnr=bufwinnr("^" . l:bname . "$")
-	let b:labelswinnr=l:labelswinnr		"DEBUG
     let t:labelswinnr=winnr()
     let t:labelsbufnr=bufnr("^" . l:bname . "$") 
     let l:labelswinnr=bufwinnr(t:labelsbufnr)
@@ -2648,10 +2647,13 @@ endfunction
 " this functions sets errorformat according to the flag given in the argument,
 " possible flags:
 " e	- errors (or empty flag)
-" w	- all warnings
-" c	- citasion warnings
-" r	- reference warnings
-" f	- font warnings
+" w	- all warning messages
+" c	- citasion warning messages
+" r	- reference warning messages
+" f	- font warning messages
+" fi	- font warning and info messages
+" F	- files
+" p	- package info messages
 function! s:SetErrorFormat(...)
     let &l:errorformat=""
     if a:0 == 0 || a:0 > 0 && a:1 =~ 'e'
@@ -2663,52 +2665,82 @@ function! s:SetErrorFormat(...)
     endif
     if a:0>0 && a:1 =~ 'w'
 	if &l:errorformat == ""
-	    let &l:errorformat="%+WLaTeX\ %.%#Warning:\ %.%#line\ %l%.%#,
-			\%+W%.%#\ at\ lines\ %l--%*\\d,
-			\%WLaTeX\ %.%#Warning:\ %m"
+	    let &l:errorformat='%WLaTeX\ %tarning:\ %m\ on\ input\ line\ %l%.,
+			\%WLaTeX\ %.%#Warning:\ %m,
+	    		\%Z(Font) %m\ on\ input\ line\ %l%.,
+			\%+W%.%#\ at\ lines\ %l--%*\\d'
 	else
-	    let &l:errorformat= &l:errorformat . ",%+WLaTeX\ %.%#Warning:\ %.%#line\ %l%.%#,
-			\%+W%.%#\ at\ lines\ %l--%*\\d,
-			\%WLaTeX\ %.%#Warning:\ %m"
+	    let &l:errorformat= &l:errorformat . ',%WLaTeX\ %tarning:\ %m\ on\ input\ line\ %l%.,
+			\%WLaTeX\ %.%#Warning:\ %m,
+	    		\%Z(Font) %m\ on\ input\ line\ %l%.,
+			\%+W%.%#\ at\ lines\ %l--%*\\d'
+" 	    let &l:errorformat= &l:errorformat . ',%+WLaTeX\ %.%#Warning:\ %.%#line\ %l%.%#,
+" 			\%WLaTeX\ %.%#Warning:\ %m,
+" 			\%+W%.%#\ at\ lines\ %l--%*\\d'
 	endif
     endif
-    if a:0>0 && a:1 =~ 'c'
+    if a:0>0 && a:1 =~ '\Cc'
+" NOTE:
+" I would like to include 'Reference/Citation' as an error message (into %m)
+" but not include the 'LaTeX Warning:'. I don't see how to do that actually. 
+" The only solution, that I'm aware of, is to include the whole line using
+" '%+W' but then the error messages are long and thus not readable.
 	if &l:errorformat == ""
-	    let &l:errorformat = "%+WLaTeX\ %.%#Warning:\ Citation\ %.%#line\ %l%.%#"
+	    let &l:errorformat = "%WLaTeX\ Warning:\ Citation\ %m\ on\ input\ line\ %l%.%#"
 	else
-	    let &l:errorformat = &l:errorformat . ",%+WLaTeX\ %.%#Warning:\ Citation\ %.%#line\ %l%.%#"
+	    let &l:errorformat = &l:errorformat . ",%WLaTeX\ Warning:\ Citation\ %m\ on\ input\ line\ %l%.%#"
 	endif
     endif
-    if a:0>0 && a:1 =~ 'c'
+    if a:0>0 && a:1 =~ '\Cr'
 	if &l:errorformat == ""
-	    let &l:errorformat = "%+WLaTeX\ %.%#Warning:\ Citation\ %.%#line\ %l%.%#"
+	    let &l:errorformat = "%WLaTeX\ Warning:\ Reference %m on\ input\ line\ %l%.%#,%WLaTeX\ %.%#Warning:\ Reference %m,%C %m on input line %l%.%#"
 	else
-	    let &l:errorformat = &l:errorformat . ",%+WLaTeX\ %.%#Warning:\ Citation\ %.%#line\ %l%.%#"
+	    let &l:errorformat = &l:errorformat . ",%WLaTeX\ Warning:\ Reference %m on\ input\ line\ %l%.%#,%WLaTeX\ %.%#Warning:\ Reference %m,%C %m on input line %l%.%#"
 	endif
     endif
-    if a:0>0 && a:1 =~ 'r'
+    if a:0>0 && a:1 =~ '\Cf'
 	if &l:errorformat == ""
-	    let &l:errorformat = "%+WLaTeX\ %.%#Warning:\ Reference\ %.%#line\ %l%.%#"
+	    let &l:errorformat = "%WLaTeX\ Font\ Warning:\ %m,%Z(Font) %m on input line %l%.%#"
 	else
-	    let &l:errorformat = &l:errorformat . ",%+WLaTeX\ %.%#Warning:\ Reference\ %.%#line\ %l%.%#"
+	    let &l:errorformat = &l:errorformat . ",%WLaTeX\ Font\ Warning:\ %m,%Z(Font) %m on input line %l%.%#"
 	endif
     endif
-    if a:0>0 && a:1 =~ 'f'
+    if a:0>0 && a:1 =~ '\Cfi'
 	if &l:errorformat == ""
-	    let &l:errorformat = "%+WLaTeX\ Font\ Warning:\ %.%#"
+	    let &l:errorformat = '%ILatex\ Font\ Info:\ %m on input line %l%.%#,
+			\%ILatex\ Font\ Info:\ %m,
+			\%Z(Font) %m\ on input line %l%.%#,
+			\%C\ %m on input line %l%.%#'
 	else
-	    let &l:errorformat = &l:errorformat . ",%+WLaTeX\ Font\ Warning:\ %.%#"
+	    let &l:errorformat = &l:errorformat . ',%ILatex\ Font\ Info:\ %m on input line %l%.%#,
+			\%ILatex\ Font\ Info:\ %m,
+			\%Z(Font) %m\ on input line %l%.%#,
+			\%C\ %m on input line %l%.%#'
 	endif
     endif
-    if &l:errorformat != ""
+    if a:0>0 && a:1 =~ '\CF'
+	if &l:errorformat == ""
+	    let &l:errorformat = 'File: %m'
+	else
+	    let &l:errorformat = &l:errorformat . ',File: %m'
+	endif
+    endif
+    if a:0>0 && a:1 =~ '\Cp'
+	if &l:errorformat == ""
+	    let &l:errorformat = 'Package: %m'
+	else
+	    let &l:errorformat = &l:errorformat . ',Package: %m'
+	endif
+    endif
+    if &l:errorformat != "" && &l:errorformat !~ "FI"
 	let &l:errorformat = &l:errorformat . ",%Cl.%l\ %m,
-			    \%+C\ \ %m.,
+			    \%+C\ \ %m%.%#,
 			    \%+C%.%#-%.%#,
 			    \%+C%.%#[]%.%#,
 			    \%+C[]%.%#,
 			    \%+C%.%#%[{}\\]%.%#,
 			    \%+C<%.%#>%.%#,
-			    \%C\ \ %m,
+			    \%+C%m,
 			    \%-GSee\ the\ LaTeX%m,
 			    \%-GType\ \ H\ <return>%m,
 			    \%-G\ ...%.%#,
@@ -2716,19 +2748,33 @@ function! s:SetErrorFormat(...)
 			    \%-G(see\ the\ transcript%.%#),
 			    \%-G\\s%#,
 			    \%+O(%*[^()])%r,
-			    \%+O%*[^()](%*[^()])%r,
-			    \%+P(%f%r,
-			    \%+P\ %\\=(%f%r,
-			    \%+P%*[^()](%f%r,
-			    \%+P[%\\d%[^()]%#(%f%r,
-			    \%+Q)%r,
-			    \%+Q%*[^()])%r,
-			    \%+Q[%\\d%*[^()])%r"
+			    \%+O%*[^()](%*[^()])%r"
+" this defines wrong file name and I think this is not that important in TeX. 			    
+" 			    \%+P(%f%r,
+" 			    \%+P\ %\\=(%f%r,
+" 			    \%+P%*[^()](%f%r,
+" 			    \%+P[%\\d%[^()]%#(%f%r,
+" 			    \%+Q)%r,
+" 			    \%+Q%*[^()])%r,
+" 			    \%+Q[%\\d%*[^()])%r"
     endif
 endfunction
 
 function! s:ShowErrors(...)
 
+    " read the log file and merge warning lines 
+    let l:log=readfile(&errorfile)
+    let l:nr=1
+    for l:line in l:log
+	if l:line =~ "LaTeX Warning:" && l:log[l:nr] !~ "^$" 
+	    let l:newline=l:line . l:log[l:nr]
+	    let l:log[l:nr-1]=l:newline
+	    call remove(l:log,l:nr)
+	endif
+	let l:nr+=1
+    endfor
+    call writefile(l:log,&errorfile)
+    
     " set errorformat 
     if a:0 > 0
 
@@ -2753,7 +2799,7 @@ endfunction
 
 if !exists("*ListErrorsFlags")
 function! ListErrorsFlags(A,L,P)
-	return "e\nw\nc\nr\ncr\nf"
+	return "e\nw\nc\nr\ncr\nf\nFI"
 endfunction
 endif
 "--------- Special Space -----------------------------------------------------
@@ -2773,25 +2819,25 @@ endif
 fun! SetXdvi()
     let b:texcompiler="latex"
     let b:texoptions="-src-specials"
-    let b:Viewer="xdvi -editor 'gvim --remote-wait +%l %f'"
     if exists("g:xdviOptions")
 	let b:ViewerOptions=g:xdviOptions
     endif
+    let b:Viewer="xdvi " . b:ViewerOptions . " -editor 'gvim --servername " . v:servername . " --remote-wait +%l %f'"
     if !exists("*ISearch")
     function ISearch()
-	let l:xdvi_inverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
+	let l:xdvi_inverse_search="xdvi " . b:ViewerOptions . " -editor 'gvim --servername " . v:servername . " --remote-wait +%l %f' -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
 	call system(l:xdvi_inverse_search)
     endfunction
     endif
-    command! -buffer ISearch	:call ISearch()
     command! -buffer IS 	:call ISearch()
     map <buffer> <LocalLeader>is		:call ISearch()<CR>
 endfun
+
 fun! SetXpdf()
     let b:texcompiler="pdflatex"
     let b:texoptions=""
     let b:Viewer="xpdf"
-    if exists("g:XdviOptions")
+    if exists("g:xpdfOptions")
 	let b:ViewerOptions=g:xpdfOptions
     else
 	let b:ViewerOptions=''
@@ -2962,6 +3008,8 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     map  <buffer> <LocalLeader>L		:Labels<CR>
     map  <buffer> <LocalLeader>l 		:TEX<CR>	
     map  <buffer> 2<LocalLeader>l 		:2TEX<CR>	 
+    map  <buffer> 3<LocalLeader>l		:3TEX<CR>
+    map  <buffer> 4<LocalLeader>l		:4TEX<CR>
     " imap <buffer> <LocalLeader>l	<Left><ESC>:TEX<CR>a
     " imap <buffer> 2<LocalLeader>l	<Left><ESC>:2TEX<CR>a
     " todo: this is nice idea but it do not works as it should: 
@@ -3054,6 +3102,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
     imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
     imap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
+    imap <buffer> [f \begin{frame}<Cr>\end{frame}<Esc>O
     imap <buffer> [i \item
     imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
     imap <buffer> [l \begin{lemma}<Cr>\end{lemma}<Esc>O

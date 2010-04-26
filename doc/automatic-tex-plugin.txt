@@ -14,10 +14,10 @@ to get even the smallest message.
 This is a new plugin for vim to comfortably write TeX (LaTeX, PdfLaTeX)
 documents, which provides functionality not met in other such plugins. It
 makes you FREE from compiling procedure, making this process automatic using
-autocommands. It also provides useful mappings and other functions: analyse
-your .log file to see the table contents, to search for a label, to search in
-bib files.  To have full functionality you need: texloganalyser (a perl
-program written by Thomas van Oudenhove) and pdffonts available in the package
+autocommands. It also provides useful mappings and other functions: to analyse
+your .log file, to see the table contents, to search for a label, to search in
+bib files or to find a macro definition matching a pattern. To have full
+functionality you need: pdffonts available in the package
 app-text/poppler-utils (at least in Gentoo). Another good tool is texdoc,
 which is a part of texlive - these days standard TeX distribution for Linux,
 and MikTeX on Windows.
@@ -31,6 +31,8 @@ Features include:
 	See |atp-Labels()|,
 * a command to list ToDo lines:
 	See |atp-ToDo()|.
+* a command to search for a macro definition:
+ 	See |atp-DefiSearch()|
 
                                                 		*atp-help-toc*
 |atp-installation| 	Installation								
@@ -176,6 +178,13 @@ ShowErrors						*atp-ShowErrors*
 		r		- include all reference warnings
 		c		- include all citations warnings
 		f		- include all font warnings
+		fi		- include font info massages
+		F		- show files listed in the log
+				    (messages which start with 'File: ')
+				    shows the files loaded by tex
+					for example fd files that LaTeX is using
+		p		- show packages loaded by tex 
+				    (messages which start with 'Package: ')
 <
 	If none flag is given 'e' is used.
 	Example:
@@ -232,11 +241,14 @@ map \v,map <F3>, imap \v, imap <F3>
 		:IS[earch]
 	and the map '<LocalLeader>is' for inverse searching. For reverse
 	searching hold CTRL and click with left mouse button on the text in
-	xdvi viewer.
+	xdvi viewer. It will read the xdvi options from the variable
+	g:xdviOptions (to the variable b:ViewerOptions).
 
 :SetXpdf						*atp-SetXpdf*
 	This command sets the options for xpdf viewer (as for now the
 	inverse/reverse searching in pdf files is not implemented)
+	It will read the xpdf viewer options from the variable g:xpdfOptions
+	(to the varaible b:ViewerOptions).
 
 BibSearch({pattern},{flag})				see |atp-BibSearch|
 :BibSearch
@@ -718,7 +730,7 @@ map c, map y, map p
 	:BibSearch 'author.*Joyal\&.*Tirney'
 <
 
-:DefiSearch [pattern]						*atp-DefiSearch-command*
+:DefiSearch [pattern]						*atp-DefiSearch()*
 	Finds all definiitons which matches the pattern. It looks in all the
 	input files (except bib files).
 
@@ -1226,8 +1238,22 @@ xdvi							*atp-viewers-xdvi*
 							*atp-viewers-xdvi-reverse/inverse-searching*
 	Works fine. The file will be updated after a click (or use the xdvi
 	options '-watchfile 1' see man xdvi for explanetions). You can set
-	inverse/reverse searching by the command |SetXdvi|. Here I discribe
-	how it is done. 
+	inverse/reverse searching by the command |SetXdvi|. It is recommended
+	to use gvim rather than vim, if you want to use vim you have to run it
+	with the command:
+>
+ "	vim --servername xdvi <file>
+<
+	You can pick any server name.
+	
+	The command SetXdvi defines a new function:
+
+ISearch()							*atp-ISearch()*
+map \is, :IS
+	Which makes an inverse search (sets the xdvi position according to the
+	cursor position in gvim).
+
+	Here I discribe how inverse/reverse searching is done. 
 	
     (1) Reverse searching
 	(i.e. position vim's cursor after xdvi event:
@@ -1240,10 +1266,10 @@ xdvi							*atp-viewers-xdvi*
 	See vim tip at: http://vim.wikia.com/wiki/Vim_can_interact_with_xdvi 	
 
     (2) Inverse searching
-	For inverse searching (position xdvi according to the vims cursor
+	For inverse searching (position xdvi according to the vim's cursor
 	position) you can set:
 >
-	let b:inverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
+	let b:inverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
 <
 	To make an inverse search:
 >
@@ -1257,8 +1283,25 @@ xdvi							*atp-viewers-xdvi*
 >
  	vim --servername vimtex
  	let b:Viewer="xdvi -editor 'vim --servername " . v:servername . " --remote-wait +%l %f'"
- 	let b:inverse_search="xdvi -editdor 'vim --servername " . v:servername "' -sourceposition " . line(".") . ":" . col(".") . expand("%") . " " . fnamemodify(expand("%"),":r") . ".dvi"
+ 	let b:inverse_search="xdvi -editdor 'vim --servername " . v:servername
+	"' -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
 <
+
+	In case of trubles:
+
+	Inverse Searching:
+	    If inverse searching do not works for you, and you get an error, that
+	    there is no reference to your tex file in the dvi file, then open
+	    your dvi file in an editor (vim :) and check what is the name after
+	    'src:<line number>' (this are the source specials put by 'latex
+	    -src-specials' command). It should refer to your tex file. Xdvi
+	    will not recognize if you specify the full name of the tex file (i.e.
+	    with path) in the b:inverse_search (as we do above using the
+	    modifier :p and the function fnamemodify in
+	    'fnamemodify(expand("%"),":p")' the other one with ":p:r" is OK!)
+	    and in the dvi file there is written just the name without the
+	    path (and vice versa, if you give just the name in
+	    b:inverse_search and in the file there is full path).
 
 ================================================================================
 Color highliting and syntax groups				*atp-color-highlight*

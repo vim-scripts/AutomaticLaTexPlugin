@@ -58,9 +58,9 @@ highlight SpecialKey     ctermfg=129           	ctermbg=233			guifg=DarkViolet
 
 highlight StatusLine     cterm=none     ctermfg=226 ctermbg=232		 guifg=#111111 guibg=wheat1
 highlight StatusLineNC   cterm=none     ctermfg=245 ctermbg=232		 guifg=#111111 guibg=snow4	 
-highlight User1		 cterm=bold	ctermfg=226 ctermbg=232	gui=bold guifg=DarkOrange  guibg=#111111	 
-highlight User2		 cterm=none	ctermfg=red ctermbg=232		 guifg=Khaki1  guibg=#111111
-highlight User3		 cterm=none	ctermfg=226 ctermbg=232		 guifg=Goldenrod2   guibg=#111111
+highlight default User1		 cterm=bold	ctermfg=226 ctermbg=232	gui=bold guifg=DarkOrange  guibg=#111111	 
+highlight default User2		 cterm=none	ctermfg=red ctermbg=232		 guifg=Khaki1  guibg=#111111
+highlight default User3		 cterm=none	ctermfg=226 ctermbg=232		 guifg=Goldenrod2   guibg=#111111
 highlight VertSplit      cterm=none     ctermfg=green   ctermbg=233	 guifg=#1c1c1c	  guibg=DeepSkyBlue4
 highlight WildMenu       cterm=bold     ctermfg=0   ctermbg=118
 
@@ -122,7 +122,7 @@ highlight Ignore         ctermfg=67
 "highlight SpellRare      ctermfg=18           	ctermbg=233
 "highlight SpellLocal     ctermfg=17           	ctermbg=233
 
-highlight Todo           ctermfg=21           ctermbg=233	guifg=red guibg=#1c1c1c	gui=underline,bold
+highlight Todo           ctermfg=21           ctermbg=233	guifg=DeepPink guibg=#1c1c1c	gui=underline,bold
 
 highlight TabLine	cterm=none	ctermfg=white 	ctermbg=240
 highlight TabLineFill 	cterm=none	ctermfg=white 	ctermbg=240

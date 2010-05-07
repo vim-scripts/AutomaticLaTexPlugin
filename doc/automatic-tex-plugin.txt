@@ -402,6 +402,24 @@ map \L, :Labels
 	default t:labels_window_width=30. You can set a global
 	variable g:labels_window_width to overide the default value.
 
+NextEnv(<environment>)
+:NEnv <environment>
+	Move to next environment, for example ':NEnv definition'. Complition
+	is set, which finds environemts defined in current tex source file.
+
+PrevEnv(<environment>)
+:PEnv <environment>
+	Move to previous environment, for example ':NEnv definition'. Complition
+	is set, which finds environemts defined in current tex source file.
+
+NextSection(<section>)
+:NPart, :NChap, NSec
+	Goes to next <section>, the commands need not to be explained.
+
+PrevSection(<section>)
+:PPart, :PChap, PSec
+	Goes to previous <section>.
+
 ToDo(<keyword>,<stop>,[bufname])				*atp-ToDo()*
 :ToDo [bufname]
 :Note [bufname]
@@ -731,8 +749,11 @@ map c, map y, map p
 <
 
 :DefiSearch [pattern]						*atp-DefiSearch()*
-	Finds all definiitons which matches the pattern. It looks in all the
-	input files (except bib files).
+	Finds all definitons which matches the pattern. It looks in the main
+	file and all the input files (except bib files). The pattern is case
+	sensitive (i.e. the functions appends '\C' at the beginning of the
+	pattern by default, if you want to make case insensitive matching put '\c'
+	at the beginning of your pattern).
 
 								*atp-bibsearch-variables*
 								*atp-variables-bib*	

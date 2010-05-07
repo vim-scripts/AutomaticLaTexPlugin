@@ -3,7 +3,7 @@
 " Maintainer:	Marcin Szamotulski
 " Last Changed: 2010 Apr 06
 " URL:		
-" GetLatestVimScripts: 2945 11 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 12 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -258,12 +258,11 @@ endif
 "--------------------SHOW ALL DEFINITIONS----------------------------
 
 function! s:make_defi_dict()
-    "dictionary: { input_file : [[ begining_line,end_line],...] }
+    "dictionary: { input_file : [[begining_line,end_line],...] }
     let l:defi_dict={}
 
 
     let l:inputfiles=FindInputFiles(bufname("%"),"0")
-    let b:if=l:inputfiles
     let l:input_files=[]
 
     for l:inputfile in keys(l:inputfiles)
@@ -278,6 +277,10 @@ function! s:make_defi_dict()
 	endif
     endfor
 
+    let l:input_files=filter(l:input_files, 'v:val != ""')
+    call extend(l:input_files,[ g:mainfile ])
+
+    if len(l:input_files) > 0
     for l:inputfile in l:input_files
 	let l:defi_dict[l:inputfile]=[]
 	" do not search for definitions in bib files 
@@ -313,6 +316,8 @@ function! s:make_defi_dict()
 	    endif
 	endwhile
     endfor
+    endif
+
     let b:dd=l:defi_dict " DEBUG
     return l:defi_dict
 endfunction
@@ -321,52 +326,61 @@ if !exists("*DefiSearch")
 function! DefiSearch(...)
 
     if a:0 == 0
-	let l:pattern=""
+	let l:pattern=''
     else
-	let l:pattern=a:1
+	let l:pattern='\C' . a:1
     endif
+    let g:debug=l:pattern
 
     let l:ddict=s:make_defi_dict()
     let b:dd=l:ddict
 
     " open new buffer
-    let l:openbuffer=" +setl\\ buftype=nofile\\ nospell " . fnameescape("Definitions:" . l:pattern )
+    let l:openbuffer=" +setl\\ buftype=nofile\\ nospell " . fnameescape("DefiSearch")
     if g:vertical ==1
 	let l:openbuffer="vsplit " . l:openbuffer 
     else
 	let l:openbuffer="split " . l:openbuffer 
     endif
 
-    " remove the old buffer and open new one instead
-    if bufexists("Definitions:" . l:pattern)
-	exe "bd " . bufnr("Definitions:" . l:pattern) 
-    endif
-    silent exe l:openbuffer
-    map <buffer> q	:bd<CR>
+    if len(l:ddict) > 0
+	" wipe out the old buffer and open new one instead
+	if bufexists("DefiSearch")
+	    exe "silent bw! " . bufnr("DefiSearch") 
+	endif
+	silent exe l:openbuffer
+	map <buffer> q	:bd<CR>
 
-    for l:inputfile in keys(l:ddict)
-	let l:ifile=readfile(l:inputfile)
-	for l:range in l:ddict[l:inputfile]
+	for l:inputfile in keys(l:ddict)
+	    let l:ifile=readfile(l:inputfile)
+	    for l:range in l:ddict[l:inputfile]
 
-	    if l:ifile[l:range[0]-1] =~ l:pattern
-		" print the lines into the buffer
-		let l:i=0
-		let l:c=0
-		" add an empty line if the definition is longer than one line
-		if l:range[0] != l:range[1]
-		    call setline(line('$')+1,'')
-		    let l:i+=1
+		if l:ifile[l:range[0]-1] =~ l:pattern
+		    " print the lines into the buffer
+		    let l:i=0
+		    let l:c=0
+		    " add an empty line if the definition is longer than one line
+		    if l:range[0] != l:range[1]
+			call setline(line('$')+1,'')
+			let l:i+=1
+		    endif
+		    while l:c <= l:range[1]-l:range[0] 
+			let l:line=l:range[0]+l:c
+			call setline(line('$')+1,l:ifile[l:line-1])
+			let l:i+=1
+			let l:c+=1
+		    endwhile
 		endif
-		while l:c <= l:range[1]-l:range[0] 
-		    let l:line=l:range[0]+l:c
-		    call setline(line('$')+1,l:ifile[l:line-1])
-		    let l:i+=1
-		    let l:c+=1
-		endwhile
-	    endif
-
+	    endfor
 	endfor
-    endfor
+
+	if getbufline("DefiSearch",'1','$') == ['']
+	    :bw
+	    echomsg "Definition not found."
+	endif
+    else
+	echomsg "Definition not found."
+    endif
     try
 	setl filetype=tex
     catch /Cannot redefine function DefiSearch/
@@ -415,7 +429,9 @@ fun! s:setprojectname()
     elseif exists("g:atp_project")
 	let g:mainfile=g:atp_project
     endif
-"     echomsg "DEBUG PNAME " . g:mainfile
+
+    " we need to escape white spaces in g:mainfile but not in all places so
+    " this is not done here
 endfun
 
 au BufEnter *.tex :call s:setprojectname()
@@ -843,6 +859,7 @@ function! s:copy(input,output)
 endfunction
 
 " This is the MAIN FUNCTION which sets the command and calls it.
+" NOTE: the filename argument is not escaped!
 function! s:compiler(bibtex,start,runs,verbose,command,filename)
     call s:outdir()
     	" IF b:texcompiler is not compatible with the viewer
@@ -921,8 +938,8 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 	    let s:start = ""	
 	endif
 "	SET THE COMMAND 
-	let s:comp=b:texcompiler . " " . b:texoptions . " -interaction " . s:texinteraction . " -output-directory " . s:dir . " -jobname " . s:job . " " . a:filename
-	let s:vcomp=b:texcompiler . " " . b:texoptions  . " -interaction errorstopmode -output-directory " . s:dir . " -jobname " . s:job . " " . a:filename
+	let s:comp=b:texcompiler . " " . b:texoptions . " -interaction " . s:texinteraction . " -output-directory " . s:dir . " -jobname " . s:job . " " . fnameescape(a:filename)
+	let s:vcomp=b:texcompiler . " " . b:texoptions  . " -interaction errorstopmode -output-directory " . s:dir . " -jobname " . s:job . " " . fnameescape(a:filename)
 	if a:verbose == 0 || l:runs > 1
 	    let s:texcomp=s:comp
 	else
@@ -2977,12 +2994,33 @@ endfun
 
 "--------- MOVING FUNCTIONS ----------------------------------------------- 
 
+" Move to next environment which name is given as the argument. Do not wrap
+" around the end of the file.
 function! NextEnv(envname)
     call search('\\begin{' . a:envname . '}','W')
 endfunction
 
 function! PrevEnv(envname)
     call search('\\begin{' . a:envname . '}','bW')
+endfunction
+
+" Move to next section, the extra argument is a pattern to match for the
+" section title. The first, obsolete argument stands for:
+" part,chapter,section,subsection,etc.
+" This commands wrap around the end of the file.
+function! NextSection(secname,...)
+    if a:0==0
+	call search('\\' . a:secname . '\>','w')
+    else
+	call search('\\' . a:secname . '\>' . '\s*{.*' . a:1,'w') 
+    endif
+endfunction
+function! PrevSection(secname,...)
+    if a:0==0
+	call search('\\' . a:secname . '\>','bw')
+    else
+	call search('\\' . a:secname . '\>' . '\s*{.*' . a:1,'bw') 
+    endif
 endfunction
 
 function! Env_compl(A,P,L)
@@ -3164,3 +3202,9 @@ command! -complete=custom,ListPrinters  -buffer -nargs=* SshPrint	:call Print(<f
 
 command! -buffer -nargs=1 -complete=customlist,Env_compl NEnv			:call NextEnv(<f-args>)
 command! -buffer -nargs=1 -complete=customlist,Env_compl PEnv			:call PrevEnv(<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl NSec			:call NextSection('section',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl PSec			:call PrevSection('section',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl NChap			:call NextSection('chapter',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl PChap			:call PrevSection('chapter',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl NPart			:call NextSection('part',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl PPart			:call PrevSection('part',<f-args>)

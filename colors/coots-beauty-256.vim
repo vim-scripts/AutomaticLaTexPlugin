@@ -29,10 +29,10 @@ highlight CursorIM       cterm=bold           ctermfg=15  ctermbg=93	guifg=#0000
 
 highlight Directory      			ctermfg=5   ctermbg=233	guifg=DarkViolet	guibg=#1c1c1c
 
-highlight DiffAdd        cterm=none           	ctermfg=15  ctermbg=22
-highlight DiffChange     cterm=none           	ctermfg=207 ctermbg=39
-highlight DiffDelete     cterm=none           	ctermfg=19  ctermbg=17
-highlight DiffText       cterm=bold           	ctermfg=226 ctermbg=39
+highlight DiffAdd        cterm=none           	ctermfg=15  ctermbg=56  guifg=white	guibg=SlateBlue4 gui=bold
+highlight DiffDelete     cterm=none           	ctermfg=19  ctermbg=56	guifg=VioletRed	guibg=SlateBlue4
+highlight DiffChange     cterm=none           	ctermfg=173 ctermbg=125	guifg=salmon	guibg=DeepPink4
+highlight DiffText       cterm=bold           	ctermfg=white ctermbg=125  guifg=white	guibg=DeepPink4
 
 highlight Question       cterm=bold           	ctermfg=33  ctermbg=233 guifg=#0087ff	guibg=#1c1c1c
 highlight ErrorMsg       cterm=bold            	ctermfg=160 ctermbg=233 guifg=#d70000	guibg=#1c1c1c
@@ -41,7 +41,7 @@ highlight MoreMsg        	           	ctermfg=39  ctermbg=233 guifg=#00afff	guib
 highlight WarningMsg    cterm=bold           	ctermfg=161 ctermbg=233 guifg=#d7005f	guibg=#1c1c1c
 
 highlight LineNr                              	ctermfg=57 ctermbg=233	guifg=#837598	guibg=#1c1c1c
-highlight Folded  				ctermfg=57 ctermbg=233	guifg=#837598	guibg=#1c1c1c
+highlight Folded  				ctermfg=57 ctermbg=233	guifg=#837598	guibg=#1a1a1a
 highlight FoldColumn     cterm=none           	ctermfg=green ctermbg=233 guifg=#5CB80C guibg=#1c1c1c
 "highlight SignColumn
 
@@ -54,13 +54,13 @@ highlight MatchParen     			ctermfg=233	ctermbg=226	guifg=#1c1c1c guibg=gold
 "highlight PMenuSel
 "highlight PMenuThumb
 
-highlight SpecialKey     ctermfg=129           	ctermbg=233			guifg=DarkViolet
-
+highlight SpecialKey     ctermfg=129    ctermbg=233			 guifg=DarkViolet
 highlight StatusLine     cterm=none     ctermfg=226 ctermbg=232		 guifg=#111111 guibg=wheat1
 highlight StatusLineNC   cterm=none     ctermfg=245 ctermbg=232		 guifg=#111111 guibg=snow4	 
-highlight default User1		 cterm=bold	ctermfg=226 ctermbg=232	gui=bold guifg=DarkOrange  guibg=#111111	 
-highlight default User2		 cterm=none	ctermfg=red ctermbg=232		 guifg=Khaki1  guibg=#111111
-highlight default User3		 cterm=none	ctermfg=226 ctermbg=232		 guifg=Goldenrod2   guibg=#111111
+highlight default User1		 cterm=bold	ctermfg=226 ctermbg=232	gui=bold guifg=DeepPink4  	guibg=#111111	 
+highlight default User2		 cterm=none	ctermfg=red ctermbg=232		 guifg=Khaki1  		guibg=#111111
+highlight default User3		 cterm=none	ctermfg=226 ctermbg=232		 guifg=BlueViolet   	guibg=#111111
+
 highlight VertSplit      cterm=none     ctermfg=green   ctermbg=233	 guifg=#1c1c1c	  guibg=DeepSkyBlue4
 highlight WildMenu       cterm=bold     ctermfg=0   ctermbg=118
 

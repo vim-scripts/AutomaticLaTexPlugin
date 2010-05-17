@@ -435,8 +435,8 @@ ToDo(<keyword>,<stop>,[bufname])				*atp-ToDo()*
 	sets keyowrd='\c\<note\>' and stop='\s*%.*\c\<todo\>'. This prevent
 	from listing ToDo lines with Notes and vice versa. 
 	 
-SpecialSpaceToggle()	 					*atp-SpecialSpaceToggle*
-:SpecialSpaceToggle, map <F2>
+SpaceToggle()	 					*atp-SpaceToggle*
+:SpaceToggle, map <F2>
 	This function (command) sets, if it is undefined or removes if it is
 	defined, the mapping:
 >
@@ -1083,7 +1083,7 @@ texdoc:							*atp-map-texdoc*
 		:bufdo %s/setlocal keywordprg=\p*/setlocal keywordprg=texdoc\ -m/g | w
 		
 
-texloganalyzer mappings:				*atp-texlog* *atp-texloganalyzer*			
+log analyzer mappings:				*atp-texlog* 
 <F6>+w			to see all warnings
 <F6>+r			to see warnings coming from references 
 <F6>+f			to see font warnings
@@ -1094,6 +1094,7 @@ this is not a texloganalyzer mapping but it is a good place to mention it:
 
 								
 pdffonts is mapped to <F6>+g				*atp-pdffonts*
+There is also a command ':PdfFonts' which does the same. 
 
 " FONT COMMANDS
 imap ##rm \textrm{}<Left>
@@ -1269,14 +1270,14 @@ xdvi							*atp-viewers-xdvi*
 	
 	The command SetXdvi defines a new function:
 
-ISearch()							*atp-ISearch()*
-map \is, :IS
-	Which makes an inverse search (sets the xdvi position according to the
+RevSearch()							*atp-ISearch()*
+map \is, :RevSearch
+	Which makes an reverse search (sets the xdvi position according to the
 	cursor position in gvim).
 
 	Here I discribe how inverse/reverse searching is done. 
 	
-    (1) Reverse searching
+    (1) Inverse searching
 	(i.e. position vim's cursor after xdvi event:
 	usually CTRL+Left Mouse) with this options:
 >
@@ -1286,15 +1287,15 @@ map \is, :IS
 <
 	See vim tip at: http://vim.wikia.com/wiki/Vim_can_interact_with_xdvi 	
 
-    (2) Inverse searching
-	For inverse searching (position xdvi according to the vim's cursor
+    (2) Reverse searching
+	For reverse searching (position xdvi according to the vim's cursor
 	position) you can set:
 >
-	let b:inverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
+	let b:reverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
 <
-	To make an inverse search:
+	To make an reverse search:
 >
-		:call system(b:inverse_search)
+		:call system(b:reverse_search)
 <
 	And xdvi will place itself at the current cursor position in the 'tex'
 	source file. You can make a map for this. 
@@ -1304,25 +1305,25 @@ map \is, :IS
 >
  	vim --servername vimtex
  	let b:Viewer="xdvi -editor 'vim --servername " . v:servername . " --remote-wait +%l %f'"
- 	let b:inverse_search="xdvi -editdor 'vim --servername " . v:servername
+ 	let b:reverse_search="xdvi -editdor 'vim --servername " . v:servername
 	"' -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
 <
 
 	In case of trubles:
 
-	Inverse Searching:
-	    If inverse searching do not works for you, and you get an error, that
+	Reverse Searching:
+	    If reverse searching do not works for you, and you get an error, that
 	    there is no reference to your tex file in the dvi file, then open
 	    your dvi file in an editor (vim :) and check what is the name after
 	    'src:<line number>' (this are the source specials put by 'latex
 	    -src-specials' command). It should refer to your tex file. Xdvi
 	    will not recognize if you specify the full name of the tex file (i.e.
-	    with path) in the b:inverse_search (as we do above using the
+	    with path) in the b:reverse_search (as we do above using the
 	    modifier :p and the function fnamemodify in
 	    'fnamemodify(expand("%"),":p")' the other one with ":p:r" is OK!)
 	    and in the dvi file there is written just the name without the
 	    path (and vice versa, if you give just the name in
-	    b:inverse_search and in the file there is full path).
+	    b:reverse_search and in the file there is full path).
 
 ================================================================================
 Color highliting and syntax groups				*atp-color-highlight*

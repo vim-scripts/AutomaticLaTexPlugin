@@ -1,9 +1,9 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Apr 06
+" Last Changed: 2010 May 17
 " URL:		
-" GetLatestVimScripts: 2945 12 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 14 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -15,8 +15,21 @@
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
 "
+" Todo: write commands to help choose nice fonts! (Integrate my bash script).
+"
+" Todo: update mappings <F6>+w r f (see :h atp-texlog). 
+"
+" Todo: check complition for previous/next environment with MCNw.tex there are
+" some ambiguities.
+"
+" Done: using a symbolic link, run \v it will use the name of symbolic name
+" not the target. Also the name of the xpdfserver is taken from the actually
+" opend file (for example input file) and not the target name of the link. 
+" Look intfor b:texcommand.
+"
 " Done: modify EditInputFiles so that it finds file in the g:mainfile
-" TODO: EditInputFile if running from a input file a main file should be
+"
+" Done: EditInputFile if running from an input file a main file should be
 " added. Or there shuld be a function to come back.
 "
 " Done: make a function which list all definitions
@@ -24,7 +37,7 @@
 " TODO: bibtex is not processing right (after tex+bibtex+tex+tex, +\l gives
 " the citation numbers)
 "
-" TODO: g:mainfile is not working with b:outdir, (b:outdir should not be
+" Done: g:mainfile is not working with b:outdir, (b:outdir should not be
 " changed for intput files)
 "
 " TODO: to make s:maketoc and s:generatelabels read all input files between
@@ -42,8 +55,9 @@
 "
 " Done: make a split version of EditInputFile
 "
-" TODO: for input files which filetype=plaintex (for example hyphenation
-" files), the variable b:autex is not set.  
+" Done: for input files which filetype=plaintex (for example hyphenation
+" files), the variable b:autex is not set. Just added plaintex_atp.vim file
+" which sources tex_atp.vim file.  
 "
 " NOTES
 " s:tmpfile =	temporary file value of tempname()
@@ -105,6 +119,8 @@ endfun
 " ----------------- FindInputFiles ---------------
 " it should return in the values of the dictionary the name of the file that
 " FindInputFile([bufname],[echo])
+
+" ToDo: this function should have a mode to find input files recursively.
 if !exists("*FindInputFiles") 
 function! FindInputFiles(...)    
 
@@ -120,6 +136,7 @@ function! FindInputFiles(...)
 
     let l:dir=fnamemodify(l:bufname,":p:h")
     let l:texfile=readfile(fnamemodify(l:bufname,":p"))
+    let b:texfile=l:texfile
     let s:i=0
     let l:inputlines=[]
     for l:line in l:texfile
@@ -144,15 +161,22 @@ function! FindInputFiles(...)
 	    call extend(l:inputfiles, { l:inputfile : [ 'input' , fnamemodify(expand("%"),":p") ] } )
 	else
 	    let l:bidx=stridx(l:line,'{')
-" 	    let l:eidx=stridx(l:line,'}')
 	    let l:eidx=len(l:line)-stridx(join(reverse(split(l:line,'\zs')),''),'}')-1
 	    let l:inputfile=strpart(l:line,l:bidx+1,l:eidx-l:bidx-1)
 	    call extend(l:inputfiles, { l:inputfile : [ 'include' , fnamemodify(expand("%"),":p") ] } )
 	endif
     endfor
     call extend(l:inputfiles,FindBibFiles(l:bufname))
+    " this function is used to set g:mainfile, but at this stage there is no
+    " need to add g:mainfile to the list of input files (this is also
+    " a requirement for the function s:setprojectname.
+    if exists("g:mainfile")
+	call extend(l:inputfiles, { fnamemodify(g:mainfile,":t") : ['main file', g:mainfile]}, "error") 
+    endif
+    let l:inputfiless=deepcopy(l:inputfiles)
+    call filter(l:inputfiless, 'v:key !~ fnamemodify(bufname("%"),":t:r")')
     if l:echo 
-	if len(keys(l:inputfiles)) > 0 
+	if len(keys(l:inputfiless)) > 0 
 	    echohl WarningMsg | echomsg "Found input files:" 
 	else
 	    echohl WarningMsg | echomsg "No input files found." | echohl None
@@ -160,20 +184,26 @@ function! FindInputFiles(...)
 	endif
 	echohl texInput
 	let l:nr=1
-	for l:inputfile in keys(l:inputfiles)
-	    if l:inputfiles[l:inputfile][0] == 'input'
+	for l:inputfile in keys(l:inputfiless)
+	    if l:inputfiless[l:inputfile][0] == 'main file'
+		echomsg fnamemodify(l:inputfile,":t") 
+		let l:nr+=1
+	    endif
+	endfor
+	for l:inputfile in keys(l:inputfiless)
+	    if l:inputfiless[l:inputfile][0] == 'input'
 		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
 		let l:nr+=1
 	    endif
 	endfor
-	for l:inputfile in keys(l:inputfiles)
-	    if l:inputfiles[l:inputfile][0] == 'include'
+	for l:inputfile in keys(l:inputfiless)
+	    if l:inputfiless[l:inputfile][0] == 'include'
 		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
 		let l:nr+=1
 	    endif
 	endfor
-	for l:inputfile in keys(l:inputfiles)
-	    if l:inputfiles[l:inputfile][0] == 'bib'
+	for l:inputfile in keys(l:inputfiless)
+	    if l:inputfiless[l:inputfile][0] == 'bib'
 		echomsg substitute(l:inputfile,'^\s*\"\|\"\s*$','','g') 
 		let l:nr+=1
 	    endif
@@ -318,7 +348,6 @@ function! s:make_defi_dict()
     endfor
     endif
 
-    let b:dd=l:defi_dict " DEBUG
     return l:defi_dict
 endfunction
 
@@ -330,7 +359,6 @@ function! DefiSearch(...)
     else
 	let l:pattern='\C' . a:1
     endif
-    let g:debug=l:pattern
 
     let l:ddict=s:make_defi_dict()
     let b:dd=l:ddict
@@ -399,7 +427,7 @@ fun! s:setprojectname()
     endif
 
     if !exists("g:atp_project")
-	" the main file is not an input file
+	" the main file is not an input file (at this stage!)
 	if index(keys(g:inputfiles),fnamemodify(bufname("%"),":t:r")) == '-1' &&
 	 \ index(keys(g:inputfiles),fnamemodify(bufname("%"),":t"))   == '-1' &&
 	 \ index(keys(g:inputfiles),fnamemodify(bufname("%"),":p:r")) == '-1' &&
@@ -517,6 +545,14 @@ let s:optionsDict= { 	"texoptions" 	: "", 		"reloadonerror" : "0",
 let s:ask={ "ask" : "0" }
 if !exists("g:rmcommand") && executable("perltrash")
     let g:rmcommand="perltrash"
+elseif !exists("g:rmcommand")
+    let g:rmcommand="rm"
+endif
+if !exists("g:atp_amsmath")
+    let g:atp_amsmath=0
+endif
+if !exists("g:atp_no_math_command_completion")
+    let g:atp_no_math_command_completion=0
 endif
 if !exists("g:askfortheoutdir")
     let g:askfortheoutdir=0
@@ -592,6 +628,7 @@ call s:setoptions()
 
 if !exists("*ShowOptions")
 function! ShowOptions(...)
+    redraw!
     let s:bibfiles=keys(FindBibFiles(bufname("%")))
     if a:0 == 0
 	echomsg "variable=local value"  
@@ -745,7 +782,13 @@ function! ViewOutput()
     else
 	let l:ext = ".dvi"	
     endif
-    let l:outfile=b:outdir . (fnamemodify(expand("%"),":t:r")) . l:ext
+
+    let l:link=system("readlink " . g:mainfile)
+    if l:link != ""
+	let l:outfile=fnamemodify(l:link,":r") . l:ext
+    else
+	let l:outfile=fnamemodify(g:mainfile,":r"). l:ext 
+    endif
     if b:Viewer == "xpdf"	
 	let l:viewer=b:Viewer . " -remote " . shellescape(b:XpdfServer) . " " . b:ViewerOptions 
     else
@@ -882,25 +925,39 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 	let s:tmpfile=tempname()
 	let s:dir=fnamemodify(s:tmpfile,":h")
 	let s:job=fnamemodify(s:tmpfile,":t")
+
+	" SET THE NAME OF OUTPUT FILES
+	" first set the extension pdf/dvi
 	if b:texcompiler == "pdftex" || b:texcompiler == "pdflatex"
 	    let l:ext = ".pdf"
 	else
 	    let l:ext = ".dvi"	
 	endif
 
-	let l:outfile = b:outdir . fnamemodify(a:filename,":t:r") . l:ext
-	let l:outaux  = b:outdir . fnamemodify(a:filename,":t:r") . ".aux"
-	let l:outlog  = b:outdir . fnamemodify(a:filename,":t:r") . ".log"
+	" check if the file is a symbolic link, if it is then use the target
+	" name.
+	let l:link=system("readlink " . a:filename)
+	if l:link != ""
+	    let l:basename=fnamemodify(l:link,":r")
+	else
+	    let l:basename=a:filename
+	endif
+
+	" finaly, set the the output file names. 
+	let l:outfile = b:outdir . fnamemodify(l:basename,":t:r") . l:ext
+	let l:outaux  = b:outdir . fnamemodify(l:basename,":t:r") . ".aux"
+	let l:outlog  = b:outdir . fnamemodify(l:basename,":t:r") . ".log"
+
 "	COPY IMPORTANT FILES TO TEMP DIRECTORY WITH CORRECT NAME 
 	let l:list=filter(copy(g:keep),'v:val != "log"')
 	for l:i in l:list
-"   		echomsg "DEBUG extensions" l:i
-	    let l:ftc=b:outdir . fnamemodify(expand("%"),":t:r") . "." . l:i
-"  		echomsg "DEBUG file to copy"l:ftc
+" 	    let l:ftc=b:outdir . fnamemodify(expand("%"),":t:r") . "." . l:i
+	    let l:ftc=b:outdir . fnamemodify(l:basename,":t:r") . "." . l:i
 	    if filereadable(l:ftc)
 		call s:copy(l:ftc,s:tmpfile . "." . l:i)
 	    endif
 	endfor
+
 " 	HANDLE XPDF RELOAD 
 	if b:Viewer == "xpdf"
 	    if a:start == 1
@@ -931,12 +988,13 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 "  	echomsg "DEBUG xpdfreload="s:xpdfreload
 " 	IF OPENINIG NON EXISTING OUTPUT FILE
 "	only xpdf needs to be run before (we are going to reload it)
-"	TODO THIS DO NOT WORKS!!!
+"	Check: THIS DO NOT WORKS!!!
 	if a:start == 1 && b:Viewer == "xpdf"
 	    let s:start = b:Viewer . " -remote " . shellescape(b:XpdfServer) . " " . b:ViewerOptions . " & "
 	else
 	    let s:start = ""	
 	endif
+
 "	SET THE COMMAND 
 	let s:comp=b:texcompiler . " " . b:texoptions . " -interaction " . s:texinteraction . " -output-directory " . s:dir . " -jobname " . s:job . " " . fnameescape(a:filename)
 	let s:vcomp=b:texcompiler . " " . b:texoptions  . " -interaction errorstopmode -output-directory " . s:dir . " -jobname " . s:job . " " . fnameescape(a:filename)
@@ -1169,8 +1227,8 @@ function! TexLog(options)
 endfunction
 endif
 
-if !exists("*Pdffonts")
-function! Pdffonts()
+if !exists("*PdfFonts")
+function! PdfFonts()
     if b:outdir !~ "\/$"
 	b:outdir=b:outdir . "/"
     endif
@@ -1328,7 +1386,7 @@ function! s:searchbib(pattern)
 
 	" read the bibfile if it is in b:outdir or in $BIBINPUTS directory
 	if filereadable(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib'))) 
-	    let s:bibdict[l:f]=readfile(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib'))	
+	    let s:bibdict[l:f]=readfile(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib')))	
 	else
 	    let s:bibdict[l:f]=readfile(fnameescape(s:append($BIBINPUTS,'/') . s:append(l:f,'.bib')))
 	endif
@@ -1468,6 +1526,7 @@ function! s:searchbib(pattern)
 	endfor
 	let l:bibresults[l:bibfile]=s:bibd
     endfor
+    let g:bibresults=l:bibresults
     return l:bibresults
 endfunction
 "
@@ -2435,11 +2494,11 @@ endif
 if !exists("*EditInputFile")
 function! EditInputFile(...)
 
-    if a:0==0
+    if a:0 == 0
 	let l:inputfile=""
 	let l:bufname=g:mainfile
 	let l:opencom="edit"
-    elseif a:0==1
+    elseif a:0 == 1
 	let l:inputfile=a:1
 	let l:bufname=g:mainfile
 	let l:opencom="edit"
@@ -2448,15 +2507,14 @@ function! EditInputFile(...)
 	let l:opencom=a:2
 
 	" the last argument is the bufername in which search for the input files 
-	" TODO: to DOC
-	if a:0>2
+	if a:0 > 2
 	    let l:bufname=a:3
 	else
 	    let l:bufname=g:mainfile
 	endif
     endif
 
-    let l:dir=fnamemodify(l:bufname,":p:h")
+    let l:dir=fnamemodify(g:mainfile,":p:h")
 
     if a:0 == 0
 	let l:inputfiles=FindInputFiles(l:bufname)
@@ -2483,10 +2541,16 @@ function! EditInputFile(...)
 	let l:ifile=l:which
     endif
 
+    "if the choosen file is the main file put the whole path.
+"     if l:ifile == fnamemodify(g:mainfile,":t")
+" 	let l:ifile=g:mainfile
+"     endif
+
     "g:texmf should end with a '/', if not add it.
     if g:texmf !~ "\/$"
 	let g:texmf=g:texmf . "/"
     endif
+    let b:debug=deepcopy(l:inputfiles)
 
     " remove all '"' from the line (latex do not supports file names with '"')
     " this make the function work with lines like: '\\input "file name with spaces.tex"'
@@ -2494,8 +2558,10 @@ function! EditInputFile(...)
     " add .tex extension if it was not present
     if l:inputfiles[l:ifile][0] == 'input' || l:inputfiles[l:ifile][0] == 'include'
 	let l:ifilename=s:append(l:ifile,'.tex')
-    else
+    elseif l:inputfiles[l:ifile][0] == 'bib'
 	let l:ifilename=s:append(l:ifile,'.bib')
+    elseif  l:inputfiles[l:ifile][0] == 'main file'
+	let l:ifilename=g:mainfile
     endif
     if l:ifile !~ '\s*\/'
 	if filereadable(l:dir . "/" . l:ifilename) 
@@ -2507,11 +2573,13 @@ function! EditInputFile(...)
 		let l:ifilename=findfile(l:ifile,g:texmf . '**')
 		let s:ft=&filetype
 		exe l:opencom . " " . fnameescape(l:ifilename)
-	    let &l:filetype=s:ft
-	    else
+		let &l:filetype=s:ft
+	    elseif l:inputfiles[l:ifile][0] == 'bib' 
 		let s:ft=&filetype
 		exe l:opencom . " " . fnameescape(s:append($BIBINPUTS,'/') . l:ifilename)
 		let &l:filetype=s:ft
+	    elseif  l:inputfiles[l:ifile][0] == 'main file' 
+		exe l:opencom . " " . g:mainfile
 	    endif
 	endif
     else
@@ -2523,9 +2591,15 @@ endif
 if !exists("*EI_compl")
 fun! EI_compl(A,P,L)
 "     let l:inputfiles=FindInputFiles(bufname("%"),1)
-    let l:inputfiles=FindInputFiles(g:mainfile,1)
+
+    let l:inputfiles=filter(FindInputFiles(g:mainfile,1), 'v:key !~ fnamemodify(bufname("%"),":t:r")')
     " rewrite the keys of FindInputFiles the order: input files, bibfiles
     let l:oif=[]
+    for l:key in keys(l:inputfiles)
+	if l:inputfiles[l:key][0] == 'main file'
+	    call add(l:oif,fnamemodify(l:key,":t"))
+	endif
+    endfor
     for l:key in keys(l:inputfiles)
 	if l:inputfiles[l:key][0] == 'input'
 	    call add(l:oif,l:key)
@@ -2749,7 +2823,7 @@ function! s:SetErrorFormat(...)
 	    let &l:errorformat = &l:errorformat . ',Package: %m'
 	endif
     endif
-    if &l:errorformat != "" && &l:errorformat !~ "FI"
+    if &l:errorformat != "" && &l:errorformat !~ "fi"
 	let &l:errorformat = &l:errorformat . ",%Cl.%l\ %m,
 			    \%+C\ \ %m%.%#,
 			    \%+C%.%#-%.%#,
@@ -2780,6 +2854,12 @@ endfunction
 function! s:ShowErrors(...)
 
     " read the log file and merge warning lines 
+    if !filereadable(&errorfile)
+	echohl WarningMsg
+	echomsg "No error file: " . &errorfile  
+	echohl Normal
+	return
+    endif
     let l:log=readfile(&errorfile)
     let l:nr=1
     for l:line in l:log
@@ -2816,19 +2896,7 @@ endfunction
 
 if !exists("*ListErrorsFlags")
 function! ListErrorsFlags(A,L,P)
-	return "e\nw\nc\nr\ncr\nf\nFI"
-endfunction
-endif
-"--------- Special Space -----------------------------------------------------
-if !exists("*SpecialSpaceToggle")
-function! SpecialSpaceToggle()
-    if maparg('<space>','c') == ""
-	echomsg "special space on"
-	cmap <Space> \_s\+
-    else
-	echomsg "special space off"
- 	cunmap <Space>
-    endif
+	return "e\nw\nc\nr\ncr\nf\nfi\nF"
 endfunction
 endif
 "--------- Set Viewers  ------------------------------------------------------
@@ -2840,14 +2908,15 @@ fun! SetXdvi()
 	let b:ViewerOptions=g:xdviOptions
     endif
     let b:Viewer="xdvi " . b:ViewerOptions . " -editor 'gvim --servername " . v:servername . " --remote-wait +%l %f'"
-    if !exists("*ISearch")
-    function ISearch()
-	let l:xdvi_inverse_search="xdvi " . b:ViewerOptions . " -editor 'gvim --servername " . v:servername . " --remote-wait +%l %f' -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
-	call system(l:xdvi_inverse_search)
+    if !exists("*RevSearch")
+    function RevSearch()
+	let l:xdvi_reverse_search="xdvi " . b:ViewerOptions . " -editor 'gvim --servername " . v:servername . " --remote-wait +%l %f' -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
+	call system(l:xdvi_reverse_search)
     endfunction
     endif
-    command! -buffer IS 	:call ISearch()
-    map <buffer> <LocalLeader>is		:call ISearch()<CR>
+    command! -buffer RevSearch 					:call RevSearch()
+    map <buffer> <LocalLeader>rs				:call RevSearch()<CR>
+    amenu 550.65 &LaTeX.Reverse\ Search<Tab>:map\ <LocalLeader>rs	:RevSearch<CR>
 endfun
 
 fun! SetXpdf()
@@ -2859,15 +2928,16 @@ fun! SetXpdf()
     else
 	let b:ViewerOptions=''
     endif
-    if hasmapto("ISearch()",'n')
-	unmap <buffer> <LocalLeader>is
+    if hasmapto("RevSearch()",'n')
+	unmap <buffer> <LocalLeader>rs
     endif
-    if exists("IS")
-	delcommand IS
+    if exists("RevSearch")
+	delcommand RevSearch
     endif
-    if exists("ISearch")
-	delcommand ISearch
+    if exists("RevSearch")
+	delcommand RevSearch
     endif
+    aunmenu LaTeX.Reverse\ Search
 endfun
 
 "--------- Search for Matching Pair  -----------------------------------------
@@ -3024,7 +3094,14 @@ function! PrevSection(secname,...)
 endfunction
 
 function! Env_compl(A,P,L)
-    let l:envlist=sort(['definition', 'equation', 'proposition', 'theorem', 'lemma', 'array', 'tikzpicture', 'tabular', 'table', 'align\*\?', 'alignat\*\?', 'proof', 'corollary', 'enumerate', 'examples\?', 'itemize', 'remark', 'notation', 'center', 'quotation', 'quote', 'tabbing', 'picture', 'minipage', 'list', 'flushright', 'flushleft', 'figure', 'eqnarray', 'description', 'thebibliography', 'titlepage', 'verbatim', 'verse' ])
+    let l:envlist=sort(['definition', 'equation', 'proposition', 
+		\ 'theorem', 'lemma', 'array', 'tikzpicture', 
+		\ 'tabular', 'table', 'align\*\?', 'alignat\*\?', 'proof', 
+		\ 'corollary', 'enumerate', 'examples\?', 'itemize', 'remark', 
+		\ 'notation', 'center', 'quotation', 'quote', 'tabbing', 
+		\ 'picture', 'minipage', 'list', 'flushright', 'flushleft', 
+		\ 'figure', 'eqnarray', 'thebibliography', 'titlepage', 
+		\ 'verbatim', 'verse' ])
     let l:returnlist=[]
     for l:env in l:envlist
 	if l:env =~ '^' . a:A 
@@ -3033,12 +3110,471 @@ function! Env_compl(A,P,L)
     endfor
     return l:returnlist
 endfunction
+
+"--------- Special Space for Searching  ----------------------------------
+let s:special_space="[off]"
+" if !exists("*ToggleSpace")
+function! ToggleSpace()
+    if maparg('<space>','c') == ""
+	echomsg "special space is on"
+	cmap <Space> \_s\+
+	let s:special_space="[on]"
+	aunmenu LaTeX.Toggle\ Space\ [off]
+	amenu 550.78 &LaTeX.&Toggle\ Space\ [on]	:ToggleSpace<CR>
+	tmenu &LaTeX.&Toggle\ Space\ [on] cmap <space> \_s\+ is curently on
+    else
+	echomsg "special space is off"
+ 	cunmap <Space>
+	let s:special_space="[off]"
+	aunmenu LaTeX.Toggle\ Space\ [on]
+	amenu 550.78 &LaTeX.&Toggle\ Space\ [off]	:ToggleSpace<CR>
+	tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
+    endif
+endfunction
+" endif
+"
+"--------- TAB COMPLETION ----------------------------------------------------
+"
+" This function searches if the package in question is declared or not.
+" Returns 1 if it is and 0 if it is not.
+" It was inspired by autex function written by Carl Mueller, math at carlm e4ward c o m
+function! s:Search_Package(name)
+    let l:n=1
+    let l:line=join(getbufline(fnamemodify(g:mainfile,":t"),l:n))
+    let l:len=len(getbufline(fnamemodify(g:mainfile,":t"),1,'$'))
+    while l:line !~ '\\begin\s*{document}' &&  l:n <= l:len
+	if l:line =~ '^[^%]*\\usepackage\s*{.*' . a:name
+	    return 1
+	endif
+	let l:n+=1
+	let l:line=join(getbufline(fnamemodify(g:mainfile,":t"),l:n))
+    endwhile
+    return 0
+endfunction
+" DEBUG
+command! -nargs=1 SearchPackage 	:echo s:Search_Package(<f-args>)
+
+function! s:Document_Class()
+    let l:n=1
+    let l:line=join(getbufline(fnamemodify(g:mainfile,":t"),l:n))
+    if l:line =~ '\\documentclass'
+	let b:line=l:line " DEBUG
+	return substitute(l:line,'.*\\documentclass\s*\%(\[.*\]\)\?{\(.*\)}.*','\1','')
+    endif
+    while l:line !~ '\\documentclass'
+	if l:line =~ '\\documentclass'
+	    return substitute(l:line,'.*\\documentclass\s*\%(\[.*\]\)\?{\(.*\)}.*','\1','')
+	endif
+	let l:n+=1
+	let l:line=join(getbufline(fnamemodify(g:mainfile,":t"),l:n))
+    endwhile
+endfunction
+
+" ToDo: make list of complition commands from the input files.
+" ToDo: make complition fot \cite, and for \ref and \eqref commands.
+
+	let g:environment_list=['definition', 'proposition', 
+		\ 'theorem', 'lemma', 'array', 'tikzpicture', 
+		\ 'tabular', 'table', 'proof', 'corollary', 
+		\ 'enumerate', 'example', 'itemize', 'remark', 
+		\ 'notation', 'center', 'quotation', 'quote',
+		\ 'tabbing', 'picture', 'minipage', 'list', 
+		\ 'flushright', 'flushleft', 'figure', 'eqnarray', 
+		\ 'verbatim', 'verse', 'thebibliography',
+		\ 'document', 'titlepage' ]
+
+	let g:amsmath_environmets=['align', 'alignat', 'equation', 'gather',
+		\ 'multiline', 'split', 'substack', 'flalign']
+
+	let g:env_shortnames_dict = { 'theorem' : 'thm', 
+		    \ 'proposition' : 'prop', 	'definition' : 'defi',
+		    \ 'lemma' : 'lem',		'array' : 'ar',
+		    \ 'tikzpicture' : 'tikz',	'tabular' : 'table',
+		    \ 'table' : 'table', 	'proof' : 'pr',
+		    \ 'corollary' : 'cor',	'enumerate' : 'enum',
+		    \ 'example' : 'ex',		'itemize' : 'it',
+		    \ 'remark' : 'rem',		'notation' : 'not',
+		    \ 'center' : '', 		'flushright' : '',
+		    \ 'flushleft' : '', 	'quotation' : 'quot',
+		    \ 'quot' : 'quot',		'tabbing' : '',
+		    \ 'picture' : 'pic',	'minipage' : '',	
+		    \ 'list' : 'list',		'figure' : 'fig',
+		    \ 'verbatim' : 'verb', 	'verse' : 'verse',
+		    \ 'thebibliography' : '',	'document' : '',
+		    \ 'titlepave' : '', 	'align' : 'eq',
+		    \ 'alignat' : 'eq',		'equation' : 'eq',
+		    \ 'gather'  : 'eq', 	'multiline' : '',
+		    \ 'split'	: 'eq', 	'substack' : '',
+		    \ 'flalign' : 'eq' }
+
+	" ToDo: Doc.
+	" Usage: \label{l:shorn_env_name . g:atp_separator
+	if !exists("g:atp_separator")
+	    let g:atp_separator=':'
+	endif
+	if !exists("g:atp_no_separator")
+	    let g:atp_no_separator = 0
+	endif
+	" the separator will not be put after the environments in this list:  
+	let g:no_separator_list=['titlepage']
+
+	let g:package_list=sort(['amsmath', 'amssymb', 'amsthm', 'amstex', 
+	\ 'babel', 'booktabs', 'bookman', 'color', 'colorx', 'chancery', 'charter', 'courier',
+	\ 'enumerate', 'euro', 'fancyhdr', 'fancyheadings', 'fontinst', 
+	\ 'geometry', 'graphicx', 'graphics',
+	\ 'hyperref', 'helvet', 'layout', 'longtable',
+	\ 'newcent', 'nicefrac', 'ntheorem', 'palatino', 'stmaryrd', 'showkeys', 'tikz',
+	\ 'qpalatin', 'qbookman', 'qcourier', 'qswiss', 'qtimes', 'verbatim', 'wasysym'])
+
+	" the command \label is added at the end.
+	let g:command_list=['begin{', 'end{', 
+	\ 'cite{', 'nocite{', 'ref{', 'pageref{', 'eqref{', 'bibitem', 'item',
+	\ 'emph{', 'documentclass{', 'usepackage{',
+	\ 'section{', 'subsection{', 'subsubsection{', 'part{', 
+	\ 'chapter{', 'appendix ', 'subparagraph ', 'paragraph ',
+	\ 'textbf{', 'textsf{', 'textrm{', 'textit{', 'texttt{', 
+	\ 'textsc{', 'textsl{', 'textup{', 'textnormal ', 
+	\ 'tiny ', 'scriptsize ', 'footnotesize ', 'small ',
+	\ 'normal ', 'large ', 'Large ', 'LARGE ', 'huge ', 'HUGE ',
+	\ 'usefont{', 'fontsize{', 'selectfont ',
+	\ 'addcontentsline{', 'addtocontents ',
+	\ 'input ', 'include ', 'includeonly ', 
+	\ 'savebox', 'sbox', 'usebox ', 'rule ', 'raisebox{', 
+	\ 'parbox{', 'mbox{', 'makebox{', 'framebox{', 'fbox{',
+	\ 'bigskip ', 'medskip ', 'smallskip ', 'vfill ', 'vspace{', 
+	\ 'hspace ', 'hrulefill ', 'hfill ', 'dotfill ',
+	\ 'thispagestyle ', 'markright ', 'pagestyle ', 'pagenumbering ',
+	\ 'author{', 'date{', 'thanks{', 'title{',
+	\ 'maketitle ', 'overbrace{', 'underbrace{',
+	\ 'marginpar ', 'indent ', 'noindent ', 'par ', 'sloppy ', 'pagebreak[', 'nopagebreak[',
+	\ 'newpage ', 'newline ', 'linebreak[', 'hyphenation{', 'fussy ',
+	\ 'enlagrethispage{', 'clearpage ', 'cleardoublepage ',
+	\ 'opening{', 'name{', 'makelabels{', 'location{', 'closing{', 'address{', 
+	\ 'signature{', 'stopbreaks ', 'startbreaks ',
+	\ 'newcounter{', 'refstepcounter{', 
+	\ 'roman{', 'Roman{', 'stepcounter{', 'setcounter{', 
+	\ 'usecounter{', 'value{', 'newtheorem{', 'newfont{', 
+	\ 'newlength{', 'setlength{', 'addtolength{', 'settodepth{', 
+	\ 'settoheight{', 'settowidth{', 
+	\ 'width', 'height', 'depth', 'totalheight',
+	\ 'footnote{', 'footnotemark ', 'footnotetetext', 
+	\ 'bibliographystyle{', 'bibliography{', 'linethickness', 'line', 'circle',
+	\ 'frame', 'multiput', 'oval', 'put', 'shortstack', 'vector', 'dashbox',
+	\ 'flushbottom', 'onecolumn', 'raggedbottom', 'twocolumn',  
+	\ 'alph{', 'Alph{', 'arabic{', 'fnsymbol{', 'reversemarginpar']
+
+	let g:math_command_list=['forall', 'exists', 'emptyset', 'aleph', 'partial',
+	\ 'nabla', 'triangle', 'Box', 'Diamond', 'bot', 'top', 'flat', 'sharp',
+	\ 'mathbf{', 'mathsf{', 'mathrm{', 'mathit{', 'mathbb{', 'mathtt{', 'mathcal{', 
+	\ 'mathop', 'limits', 'text', 'leq', 'geq',
+	\ 'rightarrow', 'Rightarrow', 'leftarrow', 'Leftarrow', 'iff', 
+	\ 'leftrightarrow', 'Leftrightarrow', 'downarrow', 'Downarrow', 
+	\ 'Longleftarrow', 'longleftarrow', 'Longrightarrow', 'longrightarrow',
+	\ 'overrightarrow{', 'overleftarrow{', 'underrightarrow{', 'underleftarrow{',
+	\ 'uparrow', 'Uparrow', 'nearrow',
+	\ 'searrow', 'swarrow', 'nwarrow', 
+	\ 'sum', 'bigsum', 'cup', 'bigcup', 'cap', 'bigcap', 
+	\ 'prod', 'coprod', 'bigvee', 'bigwedge', 'wedge',  
+	\ 'int', 'oint', 'bigodot', 'odot', 'bigotimes', 'times', 'bigoplus', 'oplus',
+	\ 'smile', 'frown', 'subset', 'subseteq', 'supset', 'supseteq',
+	\ 'dashv', 'vdash', 'models', 'sim', 'simeq', 'prec', 'preceq',
+	\ 'succ', 'succeq', 'approx', 'conq', 'bullet', 
+	\ 'lhd', 'unlhd', 'rhd', 'unrhd', 'dagger', 'ddager', 'dag', 'ddag', 
+	\ 'ldots', 'cdots', 'vdots', 'ddots', 
+	\ 'copyright', 'textregistered', 'puonds',
+	\ 'big', 'Big', 'Bigg', 'huge', 
+	\ 'sqrt', 'frac{', 'cline', 'vline', 'hline', 'multicolumn{', 
+	\ 'nouppercase']
+
+	" ToDo: add amsmath commands.
+	
+	let g:fancyhdr_commands=['lfoot{', 'rfoot{', 'rhead{', 'lhead{', 
+		    \ 'cfoot{', 'chead{', 'fancyhead{', 'fancyfoot{',
+		    \ 'fancypagestyle{', 'fancyhf{}', 'headrulewidth ', 'footrulewidth ',
+		    \ 'rightmark', 'leftmark', 'markboth', 
+		    \ 'chaptermark', 'sectionmark', 'subsectionmark',
+		    \ 'fancyheadoffset', 'fancyfootoffset', 'fancyhfoffset']
+
+	
+
+	" ToDo:
+	let g:tikz_commands=['node', 'draw', 'tikzset', 'usetikzlibrary', 'tikzset', 'matrix']
+
+" this function looks for an input file: in the list of buffers, under a path if
+" it is given, then in the b:outdir.
+" directory. The last argument if equal to 1, then look also
+" under g:texmf.
+function! s:Read_Input_File(ifile,check_texmf)
+
+    let l:input_file = []
+
+    " read the buffer or read file if the buffer is not listed.
+    if buflisted(fnamemodify(a:ifile,":t"))
+	let l:input_file=getbufline(fnamemodify(a:ifile,":t"),1,'$')
+    " if the ifile is given with a path it should be tried to reaad from there
+    elseif filereadable(a:ifile)
+	let l:input_file=readfile(a:ifile)
+    " if not then try to read it from b:outdir
+    elseif filereadable(b:outdir . fnamemodify(a:ifile,":t"))
+	let l:input_file=readfile(filereadable(b:outdir . fnamemodify(a:ifile,":t")))
+    " the last chance is to look for it in the g:texmf directory
+    elseif a:check_texmf && filereadable(findfile(a:ifile,g:texmf . '**'))
+	let l:input_file=readfile(findfile(a:ifile,g:texmf . '**'))
+    endif
+
+    return l:input_file
+endfunction
+ 
+function! s:Add_to_List(list,what)
+
+    let l:new=[] 
+    for l:el in a:list
+	call add(l:new,l:el . a:what)
+    endfor
+    return l:new
+endfunction
+
+" the argument should be g:mainfile but in any case it is made in this way.
+" it specifies in which file to search for include files.
+function! s:Search_Bib_Items(name)
+
+    " we are going to make a dictionary { citekey : label } (see :h \bibitem) 
+    let l:citekey_label_dict={}
+
+    " make a list of include files.
+    let l:inputfile_dict=FindInputFiles(a:name,0)
+    let l:includefile_list=[]
+    for l:key in keys(l:inputfile_dict)
+	if l:inputfile_dict[l:key][0] =~ '^\%(include\|input\|includeonly\)$'
+	    call add(l:includefile_list,s:append(l:key,'.tex'))
+	endif
+    endfor
+    call add(l:includefile_list,g:mainfile) 
+    let b:ifl=l:includefile_list
+
+    " search for bibitems in all include files.
+    for l:ifile in l:includefile_list
+
+	let l:input_file = s:Read_Input_File(l:ifile,0)
+
+	    " search for bibitems and make a dictionary of labels and citekeys
+	    for l:line in l:input_file
+		if l:line =~ '\\bibitem'
+		    let l:label=substitute(l:line,'.*\\bibitem\s*\[\(.*\)\].*$','\1','')
+		    if l:label =~ 'bibitem'
+			let l:label=''
+		    endif
+		    call extend(l:citekey_label_dict,
+			\ { substitute(l:line,'.*\\bibitem\s*\%(\[.*\]\)\?\s*{\(.*\)}.*$','\1','') : l:label },
+			\ 'error') 
+		endif
+	    endfor
+    endfor
+	
+    return l:citekey_label_dict
+endfunction
+command! SearchBibItems 	:echo s:Search_Bib_Items(g:mainfile)
+
+function! Tab_Completion()
+    let l:pos=getpos(".")
+    let l:rawline=getbufline("%",l:pos[1])
+    let l:line=join(l:rawline)
+    let l:l=strpart(l:line,0,l:pos[2]-1)
+"     let l:b=l:l	"DEBUG
+    let l:n=strridx(l:l,'{')
+    let l:m=strridx(l:l,',')
+    let l:o=strridx(l:l,'\')
+
+    let l:nr=max([l:n,l:m,l:o])
+    let l:begin=strpart(l:l,l:nr+1)
+    let b:begin=l:begin "DEBUG
+    " what we are trying to complete: usepackage, environment.
+    let l:pline=strpart(l:l,0,l:nr)
+    let b:pline=l:pline	"DEBUG
+    if l:pline =~ '\\usepackage\%([.*]\)\?\s*'
+	let l:completion_method='package'
+	let b:comp_method='package' "DEBUG
+    elseif l:pline =~ '\%(\\begin\|\\end\)\s*$' && l:begin !~ '}\s*$'
+	let l:completion_method='begin'
+	let b:comp_method='begin' "DEBUG
+    elseif l:pline =~ '\%(\\begin\|\\end\)\s*$' && l:begin =~ '}\s*$'
+	let l:completion_method='end'
+	let b:comp_method='end' "DEBUG
+    elseif l:o > l:n " in this case we are completeing a command
+	let l:completion_method='command'
+	let b:comp_method='command' "DEBUG
+    elseif l:pline =~ '\\\%(eq\)\?ref\s*$'
+	let l:completion_method='labels'
+	let b:comp_method='label'  "DEBUG	
+    elseif l:pline =~ '\\\%(no\)\?cite'
+	let l:completion_method='bibitems'
+	let b:comp_method='bibitems'  "DEBUG	
+    else
+	let b:comp_method='none' "DEBUG
+	return ''
+    endif
+
+    " generate the pull of completion names
+    if l:completion_method == 'begin'
+	let l:end=strpart(l:line,l:pos[2]-1)
+	if l:end !~ '\s*}'
+	    let l:completion_list=s:Add_to_List(g:environment_list,'}')
+	else
+	    let l:completion_list=g:environment_list	
+	endif
+		    " TIKZ
+		    if s:Search_Package('tikz')
+			if l:end !~ '\s*}'
+			    call extend(l:completion_list,['tikzpicture}'])
+			else
+			    call extend(l:completion_list,['tikzpicture'])
+			endif
+		    endif
+		    " AMSMATH
+		    if s:Search_Package('amsmath') || g:atp_amsmath == 1 || s:Document_Class() =~ '^ams'
+			if l:end !~ '\s*}'
+			    call extend(l:completion_list,s:Add_to_List(g:amsmath_environmets,'}'),0)
+			else
+			    call extend(l:completion_list,g:amsmath_environmets,0)
+			endif
+		    endif
+    elseif l:completion_method == 'package'
+	let l:completion_list=g:package_list    
+    elseif l:completion_method == 'command'
+	let l:completion_list=deepcopy(g:command_list)
+	let l:obegin=strpart(l:l,l:o+1)
+	
+		" add commands if thier  package is declared.
+		" TIKZ 
+		if s:Search_Package('tikz')
+		    call extend(l:completion_list,g:tikz_commands)
+		endif
+		" NICEFRAC
+		if s:Search_Package('nicefrac')
+		    call add(l:completion_list,'nicefrac')
+		endif
+		if g:atp_no_math_command_completion != 1
+		    call extend(l:completion_list,g:math_command_list)
+		endif
+		" FANCYHDR
+		if s:Search_Package('fancyhdr')
+		    call extend(l:completion_list,g:fancyhdr_commands)
+		endif
+		" ToDo: LAYOUT and many more packages.
+		
+	" change the \label{ to \label{short_env_name:
+	let l:env_name=substitute(l:pline,'.*\\\%(begin\|end\){\(.*\)}.*','\1','') 
+	if has_key(g:env_shortnames_dict,l:env_name)
+	    let l:short_env_name=g:env_shortnames_dict[l:env_name]
+	else
+	    let l:short_env_name=l:env_name
+	endif
+
+	if index(g:no_separator_list,l:env_name) != -1
+	    let l:no_separator = 1
+	else 
+	    let l:no_separator = 0
+	endif
+
+	if l:no_separator == 0 || g:atp_no_separator == 1
+	    let l:short_env_name=l:short_env_name . g:atp_separator
+	endif
+	call extend(l:completion_list, [ 'label{' . l:short_env_name ],0)
+
+    elseif l:completion_method == 'labels'
+	let l:completion_list=values(s:generatelabels(fnamemodify(bufname("%"),":p"))[fnamemodify(bufname("%"),":p")])
+
+    elseif l:completion_method == 'bibitems'
+	let l:bibitems_list=values(s:searchbib(''))
+	let b:bibitems_list=l:bibitems_list
+	let l:pre_completion_list=[]
+	let l:completion_list=[]
+	for l:dict in l:bibitems_list
+	    for l:key in keys(l:dict)
+		call add(l:pre_completion_list,l:dict[l:key]['KEY']) 
+	    endfor
+	endfor
+	for l:key in l:pre_completion_list
+	    call add(l:completion_list,substitute(strpart(l:key,stridx(l:key,'{')+1),',\s*','',''))
+	endfor
+
+	" add the \bibitems found in include files
+	call extend(l:completion_list,keys(s:Search_Bib_Items(g:mainfile)))
+    endif
+    if exists("l:completion_list")
+	let b:completion_list=l:completion_list	" DEBUG
+    endif
+
+    " make the list of matching items
+    if l:completion_method != 'end'
+	let l:completions=[]
+	for l:env in l:completion_list 
+	    " Packages, environments, labels must match at the beginning.
+	    if (l:completion_method == 'package' ||
+			\ l:completion_method == 'begin' ||
+			\ l:completion_method == 'labels' ) &&
+			\ l:env =~ '^' . l:begin
+		call add(l:completions,l:env)
+	    " Bibitems match not only in the beginning!!! 
+	    elseif l:completion_method == 'bibitems' && l:env =~ l:begin
+		call add(l:completions,l:env)
+	    " Commands must match at the beginning.
+	    elseif l:completion_method == 'command' && l:env =~ '\C^' . l:obegin
+		call add(l:completions, '\' . l:env)
+	    endif
+	endfor
+    else
+	call append(line("."),'\end{' . l:begin)
+	return ''
+    endif
+
+    " if the list is long it is better if it is sorted, if it short it is
+    " better if the more used things are at the begining.
+    if len(l:completions) > 5 && l:completion_method != 'labels'
+	let l:completions=sort(l:completions)
+    endif
+
+    if l:completion_method == 'begin' || l:completion_method == 'package' 
+		\ || l:completion_method == 'labels' || l:completion_method == 'bibitems'
+	call complete(l:nr+2,l:completions)
+    elseif l:completion_method == 'command'
+	call complete(l:o+1,l:completions)
+    endif
+
+"  Move one step after completion is done (see the condition).
+"     let b:check=0
+"     if l:completion_method == 'begin' && l:end =~ '\s*}'
+" 	let b:check=1
+" 	let l:pos=getpos(".")
+" 	let l:pos[2]+=1
+" 	call setpos(".",l:pos) 
+"     endif
+"
+" automatically complete the \end{} in next line or in the same line (todo) if it is
+" there. What do not works is that when there are many matches it inserts the
+" first one.
+"     if l:completion_method == 'begin'
+" 	let l:nline=join(getbufline(".",l:pos[1]+1))
+" 	if l:nline =~ '\\end{}'
+" 	    let l:comp=substitute(join(getbufline(".",l:pos[1])),'.*\\begin{\(.*\)}.*','\1','')
+" 	    let l:nline=substitute(l:nline,'\\end{}','\\end{' . l:comp . '}','')
+" 	    call setline(l:pos[1]+1,l:nline)
+" 	endif
+"     endif
+    return ''
+endfunction
+" ToDo to doc.
+if exists("g:atp_no_tab_map") && g:atp_no_tab_map == 1
+    inoremap <F7> <C-R>=Tab_Completion()<CR>
+else
+    inoremap <Tab> <C-R>=Tab_Completion()<CR>
+endif
 "--------- MAPPINGS -------------------------------------------------------
 " Add mappings, unless the user didn't want this.
 if !exists("no_plugin_maps") && !exists("no_atp_maps")
 
     map  <buffer> <LocalLeader>v		:call ViewOutput() <CR><CR>
-    map  <buffer> <F2> 				:SpecialSpaceToggle<CR>
+    map  <buffer> <F2> 				:ToggleSpace<CR>
     map  <buffer> <F3>        			:call ViewOutput() <CR><CR>
     imap <buffer> <F3> <Esc> 			:call ViewOutput() <CR><CR>
     map  <buffer> <LocalLeader>g 		:call Getpid()<CR>
@@ -3067,7 +3603,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     imap <buffer> <f6>r 			:call texlog("-r")<cr>
     map  <buffer> <f6>f 			:call texlog("-f")<cr>
     imap <buffer> <f6>f 			:call texlog("-f")<cr>
-    map  <buffer> <f6>g 			:call pdffonts()<cr>
+    map  <buffer> <f6>g 			:call PdfFonts()<cr>
     map  <buffer> <f1> 	   			:!clear;texdoc -m 
     imap <buffer> <f1> <esc> 			:!clear;texdoc -m  
     map  <buffer> <localleader>p 		:call print('','')<cr>
@@ -3173,6 +3709,7 @@ endif
 syn match texTikzCoord '\(|\)\?([A-Za-z0-9]\{1,3})\(|\)\?\|\(|\)\?(\d\d)|\(|\)\?'
 
 " COMMANDS
+command! -buffer ViewOutput		:call ViewOutput()
 command! -buffer SetErrorFile 		:call SetErrorFile()
 command! -buffer -nargs=? ShowOptions 	:call ShowOptions(<f-args>)
 command! -buffer GPID 			:call Getpid()
@@ -3189,13 +3726,13 @@ command! -buffer CTOC 			:call CTOC()
 command! -buffer Labels			:call Labels() 
 command! -buffer SetOutDir 		:call s:setoutdir(1)
 command! -buffer ATPStatus 		:call ATPStatus() 
-command! -buffer -nargs=? SetErrorFormat 	:call s:SetErrorFormat(<f-args>)
-command! -buffer -nargs=? -complete=custom,ListErrorsFlags ShowErrors 	:call s:ShowErrors(<f-args>)
-command! -buffer -nargs=? -complete=buffer	 FindInputFiles		:call FindInputFiles(<f-args>)
-command! -buffer -nargs=* -complete=customlist,EI_compl	 EditInputFile 		:call EditInputFile(<f-args>)
+command! -buffer PdfFonts		:call PdfFonts()
+command! -buffer -nargs=? 					SetErrorFormat 	:call s:SetErrorFormat(<f-args>)
+command! -buffer -nargs=? -complete=custom,ListErrorsFlags 	ShowErrors 	:call s:ShowErrors(<f-args>)
+command! -buffer -nargs=? -complete=buffer	 		FindInputFiles	:call FindInputFiles(<f-args>)
+command! -buffer -nargs=* -complete=customlist,EI_compl	 	EditInputFile 	:call EditInputFile(<f-args>)
 command! -buffer -nargs=? -complete=buffer	 ToDo 			:call ToDo('\c\<todo\>','\s*%\c.*\<note\>',<f-args>)
 command! -buffer -nargs=? -complete=buffer	 Note			:call ToDo('\c\<note\>','\s*%\c.*\<todo\>',<f-args>)
-command! -buffer SpecialSpaceToggle	:call SpecialSpaceToggle()
 command! -buffer SetXdvi		:call SetXdvi()
 command! -buffer SetXpdf		:call SetXpdf()	
 command! -complete=custom,ListPrinters  -buffer -nargs=* SshPrint	:call Print(<f-args>)
@@ -3208,3 +3745,86 @@ command! -buffer -nargs=? -complete=customlist,Env_compl NChap			:call NextSecti
 command! -buffer -nargs=? -complete=customlist,Env_compl PChap			:call PrevSection('chapter',<f-args>)
 command! -buffer -nargs=? -complete=customlist,Env_compl NPart			:call NextSection('part',<f-args>)
 command! -buffer -nargs=? -complete=customlist,Env_compl PPart			:call PrevSection('part',<f-args>)
+command! -buffer ToggleSpace   :call ToggleSpace()
+
+" MENU
+if !exists("no_plugin_menu") && !exists("no_atp_menu")
+amenu 550.10 &LaTeX.&Make<Tab>:TEX		:TEX<CR>
+amenu 550.10 &LaTeX.Make\ &twice<Tab>:2TEX	:2TEX<CR>
+amenu 550.10 &LaTeX.Make\ verbose<Tab>:VTEX	:VTEX<CR>
+amenu 550.10 &LaTeX.&Bibtex<Tab>:Bibtex	:Bibtex<CR>
+" amenu 550.10 &LaTeX.&Bibtex\ (bibtex)<Tab>:SBibtex		:SBibtex<CR>
+amenu 550.10 &LaTeX.&View<Tab>:ViewOutput 	:ViewOutput<CR>
+"
+amenu 550.20 &LaTeX.&Log.&Open\ Log\ File<Tab>:map\ <F6>l		:call OpenLog()<CR>
+amenu 550.20 &LaTeX.&Log.-ShowErrors-	:
+amenu 550.20 &LaTeX.&Log.&Errors<Tab>:ShowErrors			:ShowErrors<CR>
+amenu 550.20 &LaTeX.&Log.&Warnings<Tab>:ShowErrors\ w 			:ShowErrors w<CR>
+amenu 550.20 &LaTeX.&Log.&Citation\ Warnings<Tab>:ShowErrors\ c		:ShowErrors c<CR>
+amenu 550.20 &LaTeX.&Log.&Reference\ Warnings<Tab>:ShowErrors\ r		:ShowErrors r<CR>
+amenu 550.20 &LaTeX.&Log.&Font\ Warnings<Tab>ShowErrors\ f			:ShowErrors f<CR>
+amenu 550.20 &LaTeX.&Log.Font\ Warnings\ &&\ Info<Tab>:ShowErrors\ fi	:ShowErrors fi<CR>
+amenu 550.20 &LaTeX.&Log.&Show\ Files<Tab>:ShowErrors\ F			:ShowErrors F<CR>
+"
+amenu 550.20 &LaTeX.&Log.-PdfFotns- :
+amenu 550.20 &LaTeX.&Log.&Pdf\ Fonts<Tab>:PdfFonts		:PdfFonts<CR>
+"
+amenu 550.20 &LaTeX.&Log.-Delete-	:
+amenu 550.20 &LaTeX.&Log.&Delete\ Tex\ Output\ Files<Tab>:map\ <F6>d		:call Delete()<CR>
+amenu 550.20 &LaTeX.&Log.Set\ Error\ File<Tab>:SetErrorFile	:SetErrorFile<CR> 
+"
+amenu 550.30 &LaTeX.-TOC- :
+amenu 550.30 &LaTeX.&Table\ of\ Contents<Tab>:TOC		:TOC<CR>
+amenu 550.30 &LaTeX.L&abels<Tab>:Labels			:Labels<CR>
+"
+amenu 550.40 &LaTeX.&Go\ to.&EditInputFile<Tab>:EditInputFile		:EditInputFile<CR>
+"
+amenu 550.40 &LaTeX.&Go\ to.-Environment- :
+amenu 550.40 &LaTeX.&Go\ to.Next\ Definition<Tab>:NEnv\ definition	:NEnv definition<CR>
+amenu 550.40 &LaTeX.&Go\ to.Previuos\ Definition<Tab>:PEnv\ definition	:PEnv definition<CR>
+amenu 550.40 &LaTeX.&Go\ to.Next\ Environment<Tab>:NEnv\ <arg>		:NEnv 
+amenu 550.40 &LaTeX.&Go\ to.Previuos\ Environment<Tab>:PEnv\ <arg>	:PEnv 
+"
+amenu 550.40 &LaTeX.&Go\ to.-Section- :
+amenu 550.40 &LaTeX.&Go\ to.&Next\ Section<Tab>:NSec			:NSec<CR>
+amenu 550.40 &LaTeX.&Go\ to.&Previuos\ Section<Tab>:PSec		:PSec<CR>
+amenu 550.40 &LaTeX.&Go\ to.Next\ Chapter<Tab>:NChap			:NChap<CR>
+amenu 550.40 &LaTeX.&Go\ to.Previous\ Chapter<Tab>:PChap		:PChap<CR>
+amenu 550.40 &LaTeX.&Go\ to.Next\ Part<Tab>:NPart			:NPart<CR>
+amenu 550.40 &LaTeX.&Go\ to.Previuos\ Part<Tab>:PPart			:PPart<CR>
+"
+amenu 550.50 &LaTeX.-Bib-			:
+amenu 550.50 &LaTeX.Bib\ Search<Tab>:Bibsearch\ <arg>			:BibSearch 
+amenu 550.50 &LaTeX.Find\ Bib\ Files<Tab>:FindBibFiles			:FindBibFiles<CR> 
+amenu 550.50 &LaTeX.Find\ Input\ Files<Tab>:FindInputFiles			:FindInputFiles<CR>
+"
+amenu 550.60 &LaTeX.-Viewer-			:
+amenu 550.60 &LaTeX.Set\ &XPdf<Tab>:SetXpdf					:SetXpdf<CR>
+amenu 550.60 &LaTeX.Set\ X&Dvi\ (inverse\/reverse\ search)<Tab>:SetXdvi	:SetXdvi<CR>
+"
+amenu 550.70 &LaTeX.-Editting-			:
+"
+" ToDo: show options doesn't work from the menu (it disappears immediately, but at
+" some point I might change it completely)
+amenu 550.70 &LaTeX.&Options.&Show\ Options<Tab>:ShowOptions		:ShowOptions<CR> 
+amenu 550.70 &LaTeX.&Options.-set\ options- :
+amenu 550.70 &LaTeX.&Options.Automatic\ TeX\ Processing<Tab>b:autex	:let b:autex=
+amenu 550.70 &LaTeX.&Options.Set\ Runs<Tab>b:auruns			:let b:auruns=
+amenu 550.70 &LaTeX.&Options.Set\ TeX\ Compiler<Tab>b:texcompiler	:let b:texcompiler="
+amenu 550.70 &LaTeX.&Options.Set\ Viewer<Tab>b:Viewer			:let b:Viewer="
+amenu 550.70 &LaTeX.&Options.Set\ Viewer\ Options<Tab>b:ViewerOptions	:let b:ViewerOptions="
+amenu 550.70 &LaTeX.&Options.Set\ Output\ Directory<Tab>b:outdir	:let b:ViewerOptions="
+amenu 550.70 &LaTeX.&Options.Set\ Output\ Directory\ to\ the\ default\ value<Tab>:SetOutDir	:SetOutDir<CR> 
+amenu 550.70 &LaTeX.&Options.Ask\ for\ the\ Output\ Directory<Tab>g:askfortheoutdir		:let g:askfortheoutdir="
+amenu 550.70 &LaTeX.&Options.Open\ Viewer<Tab>b:openviewer		:let b:openviewer="
+amenu 550.70 &LaTeX.&Options.Open\ Viewer<Tab>b:openviewer		:let b:openviewer="
+amenu 550.70 &LaTeX.&Options.Set\ Error\ File<Tab>:SetErrorFile		:SetErrorFile<CR> 
+amenu 550.70 &LaTeX.&Options.Which\ TeX\ files\ to\ copy<Tab>g:keep	:let g:keep="
+amenu 550.70 &LaTeX.&Options.Tex\ extensions<Tab>g:texextensions	:let g:texextensions="
+amenu 550.70 &LaTeX.&Options.Remove\ Command<Tab>g:rmcommand		:let g:rmcommand="
+amenu 550.70 &LaTeX.&Options.Default\ Bib\ Flags<Tab>g:defaultbibflags	:let g:defaultbibflags="
+"
+amenu 550.78 &LaTeX.&Toggle\ Space\ [off]				:ToggleSpace<CR>
+tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
+" ToDo: add menu for printing.
+endif

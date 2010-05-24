@@ -49,10 +49,10 @@ highlight Search         cterm=bold           	ctermfg=black  	ctermbg=226	guifg
 highlight IncSearch      cterm=bold        	ctermfg=black  	ctermbg=red	guifg=gold guibg=#1c1c1c
 highlight MatchParen     			ctermfg=233	ctermbg=226	guifg=#1c1c1c guibg=gold
 
-"highlight PMenu
-"highlight PMenuSBar
-"highlight PMenuSel
-"highlight PMenuThumb
+highlight PMenu          ctermbg=18 ctermfg=39  
+highlight PMenuSel       ctermbg=39 ctermfg=18
+highlight PMenuSBar      ctermbg=white ctermfg=33
+highlight PMenuThumb     ctermbg=white ctermfg=33
 
 highlight SpecialKey     ctermfg=129    ctermbg=233			 guifg=DarkViolet
 highlight StatusLine     cterm=none     ctermfg=226 ctermbg=232		 guifg=#111111 guibg=wheat1

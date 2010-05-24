@@ -271,7 +271,45 @@ function! EchoLabel()
 	let t:labels[l:bufname]=UpdateLabels(l:bufname)[l:bufname]
     endif
     let l:line=s:getlinenr()
-    echo getbufline(l:bufname,l:line)
+    let l:sec_line=join(getbufline(l:bufname,l:line))
+    let l:sec_type=""
+    if l:sec_line =~ '\\subparagraph[^\*]'
+	let l:sec_type="subparagraph"
+    elseif l:sec_line =~ '\\subparagraph\*'
+	let l:sec_type="subparagraph*"
+    elseif l:sec_line =~ '\\paragraph[^\*]'
+	let l:sec_type="paragraph"
+    elseif l:sec_line =~ '\\paragraph\*'
+	let l:sec_type="paragraph*"
+    elseif l:sec_line =~ '\\subsubsection[^\*]'
+	let l:sec_type="subsubsection"
+    elseif l:sec_line =~ '\\subsubsection\*'
+	let l:sec_type="subsubsection*"
+    elseif l:sec_line =~ '\\subsection[^\*]'
+	let l:sec_type="subsection"
+    elseif l:sec_line =~ '\\subsection\*'
+	let l:sec_type="subsection*"
+    elseif l:sec_line =~ '\\section[^\*]'
+	let l:sec_type="section"
+    elseif l:sec_line =~ '\\section\*'
+	let l:sec_type="section*"
+    elseif l:sec_line =~ '\\chapter[^\*]'
+	let l:sec_type="chapter"
+    elseif l:sec_line =~ '\\chapter\*'
+	let l:sec_type="chapter*"
+    elseif l:sec_line =~ '\\part[^\*]'
+	let l:sec_type="part"
+    elseif l:sec_line =~ '\\part\*'
+	let l:sec_type="part*"
+    elseif l:sec_line =~ '\\bibliography'
+	let l:sec_type="bibliography"
+    elseif l:sec_line =~ '\\abstract'
+	let l:sec_type="abstract"
+    endif
+
+    echo l:sec_type . " : " . strpart(l:sec_line,stridx(l:sec_line,'{')+1,stridx(l:sec_line,'}')-stridx(l:sec_line,'{')-1)
+
+
 endfunction
 endif
 
@@ -294,15 +332,33 @@ endif
 "     endif
 " endfunction
 
+" To DoC
+function! Help()
+    echo "Available Mappings:"
+    echo "q 		close ToC window"
+    echo "<CR>  		go to and close"
+    echo "<space>		go to"
+    echo "c or y		yank the label to a register"
+    echo "p		yank and paste the label (in the source file)"
+    echo "e		echo the title to command line"
+    echo "h		this help message"
+endfunction
 
 " MAPPINGS
 if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
     map <silent> <buffer> q 		:bdelete<CR>
     map <silent> <buffer> <CR> 		:call GotoLine(1)<CR>
     map <silent> <buffer> <space> 	:call GotoLine(0)<CR>
+" This does not work: 
+"   noremap <silent> <buffer> <LeftMouse> :call GotoLine(0)<CR>
+"   when the cursor is in another buffer (and the option mousefocuse is not
+"   set) it calles the command instead of the function, I could add a check if
+"   mouse is over the right buffer. With mousefocuse it also do not works very
+"   well.
     map <buffer> c 			:call YankToReg()<CR>
     map <buffer> y 			:call YankToReg()<CR>
     noremap <silent> <buffer> p 	:call Paste()<CR>
     noremap <silent> <buffer> s 	:call ShowLabelContext()<CR> 
     noremap <silent> <buffer> e 	:call EchoLabel()<CR>
+    noremap <silent> <buffer> <F1>	:call Help()<CR>
 endif

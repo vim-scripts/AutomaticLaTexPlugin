@@ -38,6 +38,7 @@ Features include:
 |atp-installation| 	Installation								
 |atp-functions| 	Functions
 |atp-bibsearch|		Searching in bib files
+|atp-completion|        How to use and configure completion	(*NEW*)
 |atp-configure| 	How to configure to your needs 
 |atp-mappings|  	Mappings and Commands
 |atp-errors|  		Error handling
@@ -50,6 +51,18 @@ Features include:
 	
 Note on usage: type :help atp<CTRL>d to see all the helptags. To see help tags
 for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>d
+
+================================================================================
+News:
+The new feature:  
+
+Wrap selection (thanks to D.Munger):
+vmap <buffer> <silent> <F7> <Esc>:call <SID>WrapSelection('')<CR>i
+(i.e. select a piece of text and press F7, the selected text will be put
+inside \{ ... }, and the cursor will be placed just after "\". (Then you can
+use completion to chose which command, or environment to put). Contributed by
+D. Munger.
+
 
 ================================================================================
 Installation                               			*atp-installation*
@@ -75,12 +88,11 @@ where s:auTeX() is a simple function which calls s:compiler if the file written
 on the disk and the buffer differ.
 As you can see it will run if a key is not pressed during time defined by
 option 'updatetime' (see |CursorHold|) in the normal mode. If you type in
-insertmode the file wan't be compiled (and that's alright as you can be in the
+insert mode the file won't be compiled (and that's alright as you can be in the
 middle of your very long formula). The value of 'updatetime' which works fine
-is around 1000ms ('updatetime' is set in miliseconds). Tex compiler is run with
-two options:
+is around 1000ms ('updatetime' is set in milliseconds). Tex compiler is run with
+one options:
 	-output-directory 
-	-jobname
 which points to a unique temporary file in vim temporary directory (using the
 function 'tempname()' (see |tempname()|. If you are concerned with security
 reasons read also: |shelltemp|.
@@ -813,6 +825,222 @@ s:notreadablebibfiles
 	the calculations. This can avoid  long loops.
 
 ================================================================================
+Completion			                        *atp-completion*
+
+The completion is by default mapped to <Tab>. For example if you type
+\math<Tab> you will get a list of choices which completes this command. (See
+':h popupmenu-completion' and ':h completion' for more).
+
+There are two completion algorithm: expert mode  and non expert mode: the
+keyword for completion in expert mode must match at the beginning, in non
+expert mode any where. Also in expert mode the list of possible completions is
+smaller (for example there is no '\lneqq', there is only '\lneq').
+
+If you prefer to not map <Tab> key (you can use '>' '<' to make the tabulation
+in visual mode - see ':h >') then you can define g:atp_no_tab_map=1 in your
+vimrc file. 
+
+You can switch a completion mode adjusting the variable
+'g:atp_completion_active_modes', all names of completion modes are stored in the
+variable 'g:atp_tab_completoin_modes'.
+
+Completion works for:
+	commands
+		if g:atp_check_if_math_mode = 1 then the pull of commands
+		contains math commands only if there you are inside a math
+		environment. This works perfectly if you switch from $:$ and
+		$$:$$ to their equivalent (and more up-to-date) \(:\) and \[:\].
+		The list of math environment in which ATP will think you are
+		editing in a math mode is stored in the variable:
+		'g:atp_math_modes'.
+	
+		If you add a package (like tikz or amsmath, or amssymb) then
+		the pull of completions will contain extra
+		commands/environment names defined in these packages.  
+		Because some classes calls amsmath package silently you can
+		setting the variable 'g:atp_amsmath=1' will ensure that the
+		you will get completions for these commands. The algorithm
+		checks if you have this package declared or if you use some of
+		the standard ams class (actually checks if the document class
+		name matches '^ams'). 
+
+		If you do not want math commands completions at all define
+		':let g:atp_no_math_command_completion=1' (you can put it in your
+		~/.vimrc, or define while writing, both will work, so you can
+		switch off the math completions temporarily)
+
+		If you want math commands to be shown at the end rather than at the
+		beginning then define ':let g:atp_math_commands_first=0' (the
+		default is 1, first go math commands).
+
+
+		The label commands completes in a special way: for example in
+		a line like:
+			\begin{theorem}\lab<Tab>
+		will complete to 
+			\begin{theorem}\label{thm:
+		The dictionary of short names is 'g:atp_shortname_dict'. If
+		you do not likes this idea (however it can help you to
+		correctly write \ref{ - to avoid referring to lemmas as
+		propositions, and also it makes completion for \ref{ nicer
+		- you can list only labels for theorems), so if you do not
+		want it anyway: 'let g:atp_no_short_names=1' will make the
+		work.
+
+	environments
+		Completes after '\begin{' and '\end{'. For example
+		'\begin{cen<Tab>' will give '\begin{center}' 
+		But '\begin{thoerem}<Tab>' or
+		'\begin{theorem}\label{thm:1}<Tab> will close the environment.
+		The algorithm tries to colose environment in many natural
+		situations: for example when it did found less than one command
+		completion. It closes the right environment when they are
+		nested (however not in right place!) and it preserves the
+		indention. When after \begin{center}\label{...} XXX is
+		something (in place of XXX) it will close the environment in
+		after the cursor position otherwise in next line.
+
+	ref/label/cite
+		for label completion puts short names, for ref and eqref
+		commands the completions are the labels found in all files
+		associated to the main file (the plugin searches the input
+		and include files for them). The same for cite: which searches
+		also in bib files defined in the main file.
+
+These are all variables which can help to customise the completion:
+(if the value is given it is the default, if it is not means it is too long to
+put it here).
+
+g:atp_close_after_last_closed	= 1
+				If set to one it will close opened environments after
+				last closed environemnt:
+>
+ 				\begin{theorem}
+ 					\begin{enumerate}
+ 					\item .....
+ 					\item .....
+ 					    \begin{minipage} 	
+ 						......
+ 					    \end{minipage}
+ 						XXXXXX
+ 				\end{theorem}<Tab>
+<
+				will close enumerate just after \end{flushright},
+				However, 	
+>
+ 				\begin{theorem}
+ 					\begin{enumerate}
+ 					\item .....
+ 					\item .....
+ 					    \begin{minipage} 	
+ 						XXXXXX
+ 						......
+ 					\end{enumerate} 
+ 				\end{theorem}<Tab>
+<
+				will put \end{minipage} below \begin{minipage}.
+				Furthermore, if:
+>
+ 				\begin{theorem}
+ 					\begin{enumerate}
+ 					\item .....
+ 					\item .....
+ 					    \begin{minipage} 	
+ 						......
+ 						\begin{itemize}
+ 							......
+ 						\end{itemize}
+ 						XXXXXX
+ 						......
+ 					\end{enumerate} 
+ 				\end{theorem}<Tab>
+<
+ 				Then '\begin{minipage}' will be closed just after
+				'\end{itemize}'.
+
+				If this option is set to '0' then colosing is put in
+				the line below the current line. The default is '1'.
+
+				Furthermore, this option is in use only if the
+				environments are in seprate lines, and
+				\begin{<env_name>} is at most followed by '[...]' or
+				'\label{}'. Otherwise the closing will put
+				\end{env_name} just before the cursor position.
+
+>
+ g:atp_completion_limits		= [ '40', '160', '160' ]
+<
+				The above variable specifies how long should
+				atp plugin search for unclosed environments:
+				the first value	 - search for \(:\)  [ inline math ]
+				the second	 - search for \[:\]  [ displayed math ]
+				the third	 - search for \begin{<env>:\end{<env>	
+
+				You can also put "-1" as the value, then the
+				search forward/backward will last till
+				first/last line. However, this makes it run slower.
+				
+>
+  g:atp_completion_modes		= [ 
+				\ 'commands', 		'inline_math', 
+				\ 'displayed_math', 	'package_names', 
+				\ 'tikz_libraries', 	'environment_names', 
+				\ 'close_environments' ,'labels', 
+				\ 'bibitems', 		'input_files',
+				\ 'bibfiles' ] 	
+<				
+				This is the list of completion modes.
+
+g:atp_completion_active_modes	= g:atp_completion_modes
+				This is the list of completion modes which are
+				active, by default all modes are active. Remove
+				a value from this list to make it inactive (You can
+				use remove() command, see ':h remove()').  
+>
+    g:atp_environments
+    g:atp_amsmath_environments
+    g:atp_shortname_dict
+    g:atp_separator			= ':'
+    g:atp_no_separator 		= 0
+    g:atp_env_short_names 		= 1
+    g:atp_no_separator_list		= ['', 'titlepage']
+    g:atp_package_list
+    g:atp_commands
+    g:atp_math_commands
+    g:atp_math_commands_non_expert_mode
+    g:atp_ams_negations
+    g:atp_ams_negations_non_expert_mode
+    g:atp_amsmath_commands
+    g:atp_fancyhdr_commands
+    g:atp_tikz_environments
+    g:atp_tikz_libraries
+    g:atp_tikz_commands
+    g:atp_check_if_opened		= 1     
+<
+   					 (this checks if your are in some
+					environments, for example inside
+					\begin{tikzpicture} or \tikz{}, if 1 then the
+					tikz commands will be available only inside
+					this environments)
+
+>
+ g:atp_math_opened		
+<
+				(the default is 1 if in your tex file there was no
+				$ or $$ exluding \$, thus it will be one in any newly
+				edited file!)
+
+g:atp_math_modes		List of math modes.
+g:atp_no_tab_map
+g:atp_no_complete		=['document']
+				List of environments which is not closed by
+				Tab_Completion. (The document environment in longer
+				documents can be not seen by the algorithm as closed,
+				because it searches only in a part of the text, see
+				g:atp_completion_limits variable above).
+
+
+================================================================================
 How to configure to your needs                          *atp-configure*
 							*atp-variables*
 
@@ -1012,9 +1240,12 @@ some other key that it is not used in vim (there are not many of them though).
 The most commonly used latex-suite plugin uses similar set of mappings (but
 there might be some differences).
 
-These mappings are loaded unless you set one of variables: 'no_plugin_maps' or
-'no_atp_maps' (disables maps defined in tex_atp.vim) or 'no_atp_toc_maps'
-(disables maps defined in 'toc_atp.vim'.
+These mappings are loaded unless you set one of variables: 'g:no_plugin_maps' or
+'g:no_atp_maps' (disables maps defined in tex_atp.vim), 'g:no_atp_toc_maps'
+(disables maps defined in 'toc_atp.vim'),  'g:atp_no_env_maps' (disables the
+environment mapps '[*', ']*') or 'g:atp_no_tab_map' (disables the tab mappsing
+for completion, then comption is mapped to F7 but there is not mapping for
+'WrapSelection()', you have to provide one by your self).
 
 Note: in all mappings "\" is set to your <LocalLeader> (and thus, in fact, the
 mappings can differ).

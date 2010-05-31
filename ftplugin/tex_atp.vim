@@ -1,9 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 May 23
+" Last Changed: 2010 May 31
 " URL:		
-" GetLatestVimScripts: 2945 16 :AutoInstall: tex_atp.vim
+" Email:	mszamot [AT] gmail [DOT] com
+" GetLatestVimScripts: 2945 18 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -15,13 +16,16 @@
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
 "
+" Idea: write a diff function wich compares two files ignoring new lines, but
+" using the structure of \begin:\end \(:\), etc... .
+"
 " ToDo: tikz commands showup in ordinary math environment \(:\).
 "
 " Todo: make small Help functions with list of most important mappings and
 " commands for each window (this can help at the begining) make it possible to
 " turn it off.
 "
-" Todo: write commands to help choose nice fonts! (Integrate my bash script).
+" DONE: write commands to help choose nice fonts! (Integrate my bash script).
 "
 " Todo: update mappings <F6>+w r f (see :h atp-texlog). 
 "
@@ -33,7 +37,7 @@
 " opend file (for example input file) and not the target name of the link. 
 " Look intfor b:texcommand.
 "
-" Done: modify EditInputFiles so that it finds file in the g:mainfile
+" Done: modify EditInputFiles so that it finds file in the b:atp_mainfile
 "
 " Done: EditInputFile if running from an input file a main file should be
 " added. Or there should be a function to come back.
@@ -43,7 +47,7 @@
 " TODO: bibtex is not processing right (after tex+bibtex+tex+tex, +\l gives
 " the citation numbers)
 "
-" Done: g:mainfile is not working with b:outdir, (b:outdir should not be
+" Done: b:atp_mainfile is not working with b:outdir, (b:outdir should not be
 " changed for input files)
 "
 " TODO: to make s:maketoc and s:generatelabels read all input files between
@@ -53,9 +57,6 @@
 "
 " Comment: The time consuming part of TOC command is: opening new window
 " ('vnew') as shown by profiling.
-"
-" TODO: pid file
-" Comment: b:changedtick "HOW MANY CHANGES WERE DONE! this could be useful.
 "
 " TODO: Check against lilypond 
 "
@@ -68,6 +69,9 @@
 " NOTES
 " s:tmpfile =	temporary file value of tempname()
 " b:texfile =	readfile(bunfname("%")
+
+if exists("b:did_ftplugin") | finish | endif
+let b:did_ftplugin = 1
 
 " We need to know bufnumber and bufname in a tabpage.
 let t:bufname=bufname("")
@@ -86,8 +90,6 @@ au WinEnter *.tex let t:winnr=winnr("#")
 au WinEnter __ToC__ 	let t:winnr=winnr("#")
 au WinEnter __Labels__ 	let t:winnr=winnr("#")
 
-if exists("b:did_ftplugin") | finish | endif
-let b:did_ftplugin = 1
 
 " Options
 setl keywordprg=texdoc\ -m
@@ -177,11 +179,11 @@ function! FindInputFiles(...)
 	endif
     endfor
     call extend(l:inputfiles,FindBibFiles(l:bufname))
-    " this function is used to set g:mainfile, but at this stage there is no
-    " need to add g:mainfile to the list of input files (this is also
+    " this function is used to set b:atp_mainfile, but at this stage there is no
+    " need to add b:atp_mainfile to the list of input files (this is also
     " a requirement for the function s:setprojectname.
-    if exists("g:mainfile")
-	call extend(l:inputfiles, { fnamemodify(g:mainfile,":t") : ['main file', g:mainfile]}, "error") 
+    if exists("b:atp_mainfile")
+	call extend(l:inputfiles, { fnamemodify(b:atp_mainfile,":t") : ['main file', b:atp_mainfile]}, "error") 
     endif
     let l:inputfiless=deepcopy(l:inputfiles)
     call filter(l:inputfiless, 'v:key !~ fnamemodify(bufname("%"),":t:r")')
@@ -225,6 +227,24 @@ function! FindInputFiles(...)
 endfunction
 endif
 " ----------------- FIND BIB FILES ----------------------------------	
+"
+" this function is for complition of \bibliography and \input commands it returns a list
+" of all files under a:dir and in g:outdir with a given extension.
+function! s:Find_files(dir,in_current_dir,ext)
+	let l:raw_files=split(globpath(s:append(a:dir,'/'),'**'))
+	if a:in_current_dir
+	    call extend(l:raw_files,split(globpath(b:outdir,'*')))
+	endif
+" 	let b:raw=l:raw_files " DEBUG
+	let l:file_list=[]
+	for l:key in l:raw_files
+	    if l:key =~ a:ext . '$'
+		call add(l:file_list,l:key)
+	    endif
+	endfor
+	return l:file_list
+endfunction
+
 if !exists("*FindBibFiles")
 function! FindBibFiles(...)
 
@@ -238,7 +258,7 @@ function! FindBibFiles(...)
     if buflisted(fnamemodify(l:bufname,":p"))
 	let b:texfile=getbufline(l:bufname,1,'$')
     else
-	let b:texfile=readfile(l:bufname,":p")
+	let b:texfile=readfile(fnameescape(fnamemodify(l:bufname,":p")))
     endif
     let s:i=0
     let s:bibline=[]
@@ -279,42 +299,70 @@ function! FindBibFiles(...)
 	endif
     endfor
     let l:allbibfiles=deepcopy(l:callbibfiles)
+    let b:abf=deepcopy(l:allbibfiles)
 
     " this variable will store unreadable bibfiles:    
     let s:notreadablebibfiles=[]
 
     " this variable will store the final result:   
-    let l:bibfiles={}
+"     let l:bibfiles={}
+    let l:bibfiles_dict={}
+    let b:bibfiles_dict=l:bibfiles_dict
+
+    " Make a list of all bib files which tex can find.
+    let l:bibfiles_list=[]
+    let b:bibfiles_list=l:bibfiles_list " DEBUG
+    for l:dir in g:atp_bibinputs
+	let l:bibfiles_list=extend(l:bibfiles_list,s:Find_files(l:dir,0,".bib"))
+    endfor
 
     for l:f in l:allbibfiles
-	" ToDo: change this to find in any directory under g:bibinputs. 
+	" ToDo: change this to find in any directory under g:atp_bibinputs. 
 	" also change in the line 1406 ( s:searchbib )
-	if filereadable(b:outdir . s:append(l:f,'.bib')) 
-" 		    || filereadable(s:append(g:bibinputs,"/") . s:append(l:f,'.bib'))
-	    call extend(l:bibfiles,{l:f : [ 'bib' , fnamemodify(expand("%"),":p") ] })
-	elseif filereadable(findfile(s:append(l:f,'.bib'),s:append(g:bibinputs,"/") . "**"))
-	    call extend(l:bibfiles,{l:f : [ 'bib' , fnamemodify(expand("%"),":p") ] })
-	else
-	    " echo warning if a bibfile is not readable
-	    echohl WarningMsg | echomsg "Bibfile " . l:f . ".bib not found." | echohl None
-	    if count(s:notreadablebibfiles,l:f) == 0 
-		call add(s:notreadablebibfiles,l:f)
+	for l:bibfile in l:bibfiles_list
+	    if count(l:allbibfiles,fnamemodify(l:bibfile,":t:r"))
+		if filereadable(l:bibfile) 
+		call extend(l:bibfiles_dict, 
+		    \ {fnamemodify(l:bibfile,":t:r") : [ 'bib' , fnamemodify(expand("%"),":p"), l:bibfile ] })
+		else
+		" echo warning if a bibfile is not readable
+		    echohl WarningMsg | echomsg "Bibfile " . l:f . ".bib not found." | echohl None
+		    if count(s:notreadablebibfiles,fnamemodify(l:f,":t:r")) == 0 
+			call add(s:notreadablebibfiles,fnamemodify(l:f,":t:r"))
+		    endif
+		endif
 	    endif
-	endif
+	endfor
     endfor
 
     " return the list  of readable bibfiles
-    return l:bibfiles
+    return l:bibfiles_dict
 endfunction
 endif
 "--------------------SHOW ALL DEFINITIONS----------------------------
 
-function! s:make_defi_dict()
-    "dictionary: { input_file : [[beginning_line,end_line],...] }
+" make a dictionary: { input_file : [[beginning_line,end_line],...] }
+" if a:1 is given it is the name of the buffer in which to search for input
+" files.
+function! s:make_defi_dict(...)
+
+    if a:0 > 0
+	let l:bufname=a:1
+    else
+	let l:bufname=bufname("%")
+    endif
+
+    " pattern to match the definitions this function is also used to fine
+    " \newtheorem, and \newenvironment commands  
+    if a:0 > 1	
+	let l:pattern = a:2
+    else
+	let l:pattern = '\\def\|\\newcommand'
+    endif
+
     let l:defi_dict={}
 
-
-    let l:inputfiles=FindInputFiles(bufname("%"),"0")
+    let l:inputfiles=FindInputFiles(l:bufname,"0")
     let l:input_files=[]
 
     for l:inputfile in keys(l:inputfiles)
@@ -330,7 +378,7 @@ function! s:make_defi_dict()
     endfor
 
     let l:input_files=filter(l:input_files, 'v:val != ""')
-    call extend(l:input_files,[ g:mainfile ])
+    call extend(l:input_files,[ b:atp_mainfile ])
 
     if len(l:input_files) > 0
     for l:inputfile in l:input_files
@@ -346,7 +394,7 @@ function! s:make_defi_dict()
 	    let l:match=0
 
 	    let l:line=l:ifile[l:lnr-1]
-	    if substitute(l:line,'%.*','','') =~ '\\def'
+	    if substitute(l:line,'%.*','','') =~ l:pattern
 
 		let l:b_line=l:lnr
 		let l:open=s:count(l:line,'{')    
@@ -383,7 +431,7 @@ function! DefiSearch(...)
     endif
 
     let l:ddict=s:make_defi_dict()
-    let b:dd=l:ddict
+"     let b:dd=l:ddict
 
     " open new buffer
     let l:openbuffer=" +setl\\ buftype=nofile\\ nospell " . fnameescape("DefiSearch")
@@ -439,9 +487,23 @@ function! DefiSearch(...)
     endtry
 endfunction
 endif
+
 "--------------------SET THE PROJECT NAME----------------------------
 " store a list of all input files associated to some file
 fun! s:setprojectname()
+    " if the project name was already set do not set it for the second time
+    " (which sets then b:atp_mainfile to wrong value!)  
+    if &filetype == "fd_atp"
+	let b:atp_mainfile=fnamemodify(expand("%"),":p")
+	let b:atp_projectname_is_set=1
+    endif
+    if exists("b:atp_projectname_is_set")
+	let b:pn_return.=" exists"
+	return b:pn_return
+    else
+	let b:atp_projectname_is_set=1
+    endif
+
     if !exists("s:inputfiles")
 	let s:inputfiles=FindInputFiles(expand("%"),0)
     else
@@ -454,42 +516,50 @@ fun! s:setprojectname()
 	 \ index(keys(s:inputfiles),fnamemodify(bufname("%"),":t"))   == '-1' &&
 	 \ index(keys(s:inputfiles),fnamemodify(bufname("%"),":p:r")) == '-1' &&
 	 \ index(keys(s:inputfiles),fnamemodify(bufname("%"),":p"))   == '-1' 
-	    let g:mainfile=fnamemodify(expand("%"),":p")
+	    let b:atp_mainfile=fnamemodify(expand("%"),":p")
+	    let b:pn_return="not an input file"
+" 	    let b:atp_mainfile=s:append(b:outdir,'/') . expand("%")
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
-	    let g:mainfile=s:inputfiles[fnamemodify(bufname("%"),":t")][1]
+	    let b:atp_mainfile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":t")][1],":p")
+	    let b:pn_return="input file 1"
 	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
 		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
 	    endif
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
-	    let g:mainfile=s:inputfiles[fnamemodify(bufname("%"),":t:r")][1]
+	    let b:atp_mainfile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":t:r")][1],":p")
+	    let b:pn_return="input file 2"
 	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
 		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
 	    endif
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":p:r")) != '-1' 
-	    let g:mainfile=s:inputfiles[fnamemodify(bufname("%"),":p:r")][1]
+	    let b:atp_mainfile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":p:r")][1],":p")
+" 	    let b:pn_return="input file 3"
 	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
 		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
 	    endif
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":p"))   != '-1' 
-	    let g:mainfile=s:inputfiles[fnamemodify(bufname("%"),":p")][1]
+	    let b:atp_mainfile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":p")][1],":p")
+" 	    let b:pn_return="input file 3"
 	    if !exists('#CursorHold#' . fnamemodify(bufname("%"),":p"))
 		exe "au CursorHold " . fnamemodify(bufname("%"),":p") . " call s:auTeX()"
 	    endif
 	endif
     elseif exists("g:atp_project")
-	let g:mainfile=g:atp_project
+	let b:atp_mainfile=g:atp_project
+	let b:pn_return="set from g:atp_project"
     endif
 
-    " we need to escape white spaces in g:mainfile but not in all places so
+    " we need to escape white spaces in b:atp_mainfile but not in all places so
     " this is not done here
-    return 0
+    return b:pn_return
 endfun
 " DEBUG
-" command! SetProjectName	:call s:setprojectname()
+command! SetProjectName	:call s:setprojectname()
 " DEBUG
 " command! InputFiles 		:echo s:inputfiles
 
 au BufEnter *.tex :call s:setprojectname()
+au BufEnter *.fd  :call s:setprojectname()
 
 " let &l:errorfile=b:outdir . fnameescape(fnamemodify(expand("%"),":t:r")) . ".log"
 if !exists("*SetErrorFile")
@@ -500,13 +570,13 @@ function! SetErrorFile()
 	call s:setoutdir(0)
     endif
 
-    " set the g:mainfile varibale if it is not set (the project name)
-    if !exists("g:mainfile")
+    " set the b:atp_mainfile varibale if it is not set (the project name)
+    if !exists("b:atp_mainfile")
 	call s:setprojectname()
     endif
 
 "     let l:ef=b:outdir . fnamemodify(expand("%"),":t:r") . ".log"
-    let l:ef=b:outdir . fnamemodify(g:mainfile,":t:r") . ".log"
+    let l:ef=b:outdir . fnamemodify(b:atp_mainfile,":t:r") . ".log"
     let &l:errorfile=l:ef
 endfunction
 endif
@@ -560,6 +630,7 @@ function! s:setoutdir(arg)
     endif
 endfunction
 
+" ________________GLOBAL_AND_LOCAL_VARIABLES________________________
 
 " these are all buffer related variables:
 let s:optionsDict= { 	"texoptions" 	: "", 		"reloadonerror" : "0", 
@@ -601,18 +672,16 @@ if !exists("g:vertical")
     let g:vertical=1
 endif
 if !exists("g:matchpair")
-    let g:matchpair="(:),\\(:\\),[:],\\[:\\],{:}"
+    let g:matchpair="(:),[:],{:}"
 endif
 if !exists("g:texmf")
     let g:texmf=$HOME . "/texmf"
 endif
-if exists("g:bibinputs")
-    let $BIBINPUTS=g:bibinputs
-elseif exists("$BIBINPUTS")
-    let g:bibinputs=$BIBINPUTS
-else
-    let $BIBINPUTS=substitute(g:texmf,'\/\s*$','','') . '/bibtex//'
-    let g:bibinputs=$BIBINPUTS
+" a list where tex looks for bib files
+if !exists("g:atp_bibinputs")
+    let g:atp_bibinputs=split(substitute(substitute(
+		\ system("kpsewhich -show-path bib")
+		\ ,'\/\/\+','\/','g'),'!\|\n','','g'),':')
 endif
 if !exists("g:atp_compare_embedded_comments") || g:atp_compare_embedded_comments != 1
     let g:atp_compare_embedded_comments = 0
@@ -641,8 +710,14 @@ endif
 if !exists("g:atp_no_complete")
      let g:atp_no_complete=['document']
 endif
-if !exists("g:atp_close_after_last_closed")
-    let g:atp_close_after_last_closed=1
+" if !exists("g:atp_close_after_last_closed")
+"     let g:atp_close_after_last_closed=1
+" endif
+if !exists("g:atp_no_env_maps")
+    let g:atp_no_env_maps=0
+endif
+if !exists("g:atp_extra_env_maps")
+    let g:atp_extra_env_maps=0
 endif
 
 " This function sets options (values of buffer related variables) which were
@@ -792,22 +867,22 @@ hi link atp_statusoutdir String
 if !exists("g:atp_status_notification")
     let g:atp_status_notification=0
 endif
-if !exists("g:atp_callback")
+if !exists("b:atp_callback")
     if exists("g:atp_status_notification") && g:atp_status_notification == 1
-	let g:atp_callback=1
+	let b:atp_callback=1
     else
-	let g:atp_callback=0
+	let b:atp_callback=0
     endif
 endif
 let g:atp_running=0
 " ToDo: to doc.
 " this shows errors as ShowErrors better use of call back mechnism is :copen!
-if !exists("g:atp_show_errors")
-    let g:atp_show_errors=0
+if !exists("g:atp_debug_mode")
+    let g:atp_debug_mode=0
 endif
 if !exists("*ATPRunnig")
 function! ATPRunning()
-    if g:atp_running && g:atp_callback
+    if g:atp_running && b:atp_callback
 	redrawstatus
 	return b:texcompiler
     endif
@@ -860,12 +935,13 @@ function! ViewOutput()
 	let l:ext = ".dvi"	
     endif
 
-    let l:link=system("readlink " . g:mainfile)
+    let l:link=system("readlink " . shellescape(b:atp_mainfile))
     if l:link != ""
 	let l:outfile=fnamemodify(l:link,":r") . l:ext
     else
-	let l:outfile=fnamemodify(g:mainfile,":r"). l:ext 
+	let l:outfile=fnamemodify(b:atp_mainfile,":r"). l:ext 
     endif
+    let b:outfile=l:outfile
     if b:Viewer == "xpdf"	
 	let l:viewer=b:Viewer . " -remote " . shellescape(b:XpdfServer) . " " . b:ViewerOptions 
     else
@@ -873,6 +949,7 @@ function! ViewOutput()
     endif
     let l:view=l:viewer . " " . shellescape(l:outfile)  . " &"
 		let b:outfile=l:outfile
+		let b:viewcommand=l:view " DEBUG
     if filereadable(l:outfile)
 	if b:Viewer == "xpdf"	
 	    let b:view=l:view
@@ -882,8 +959,8 @@ function! ViewOutput()
 	    redraw!
 	endif
     else
-	    echomsg "Output file do not exists. Calling " . b:texcompiler
-	    call s:compiler(0,1,1,0,"AU",g:mainfile)
+	echomsg "Output file do not exists. Calling " . b:texcompiler
+	call s:compiler(0,1,1,0,"AU",b:atp_mainfile)
     endif	
 endfunction
 endif
@@ -907,7 +984,7 @@ endif
 
 if !exists("*s:xpdfpid")
 function! s:xpdfpid() 
-    let s:checkxpdf="ps -ef | grep -v grep | grep '-remote '" . shellescape(b:XpdfServer) . " | awk '{print $2}'"
+    let s:checkxpdf="ps -ef | grep -v grep | grep xpdf | grep '-remote '" . shellescape(b:XpdfServer) . " | awk '{print $2}'"
     return substitute(system(s:checkxpdf),'\D','','')
 endfunction
 endif
@@ -1105,7 +1182,7 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 	endif
 	
 	" add g:atp_running
-	if has('clientserver') && v:servername != "" && g:atp_callback == 1
+	if has('clientserver') && v:servername != "" && b:atp_callback == 1
 	    let s:texcomp = s:texcomp . ' ; vim --servername ' . v:servername . 
 			\ ' --remote-send "<ESC>:let g:atp_running=0<CR>"'
 	endif
@@ -1143,15 +1220,15 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 	    let l:j+=1
 	endfor
 	    let s:command=s:command . " ; " . s:copy
-	if has('clientserver') && v:servername != "" && g:atp_callback == 1
+	if has('clientserver') && v:servername != "" && b:atp_callback == 1
 " 	    let s:command = s:command . ' ; vim --servername ' . v:servername . 
 " 			\ ' --remote-send "<ESC>echomsg &errorfile<CR>"'
 	    let s:command = s:command . ' ; vim --servername ' . v:servername . 
 			\ ' --remote-send "<ESC>:cg<CR>"'
-	    if  g:atp_show_errors == 1
-		let s:command = s:command . ' ; vim --servername ' . v:servername . 
-			    \ ' --remote-send "<ESC>:ShowErrors<CR>"'
-	    endif
+" 	    if  g:atp_debug_mode == 1
+" 		let s:command = s:command . ' ; vim --servername ' . v:servername . 
+" 			    \ ' --remote-send "<ESC>:ShowErrors<CR>"'
+" 	    endif
 	endif
  	let s:rmtmp="rm -r " . s:tmpdir 
 	let s:command=s:command . " ; " . s:rmtmp . ")&"
@@ -1184,11 +1261,11 @@ function! s:auTeX()
 	" if the file (or input file is modified) compile the document 
 	if filereadable(expand("%"))
 	    if s:compare(readfile(expand("%")))
-		call s:compiler(0,0,b:auruns,0,"AU",g:mainfile)
+		call s:compiler(0,0,b:auruns,0,"AU",b:atp_mainfile)
 		redraw
 	    endif
 	else
-	    call s:compiler(0,0,b:auruns,0,"AU",g:mainfile)
+	    call s:compiler(0,0,b:auruns,0,"AU",b:atp_mainfile)
 	    redraw
 	endif
    endif
@@ -1210,9 +1287,9 @@ if a:0 >= 1
     elseif a:1 > 5
 	echomsg b:texcompiler . " will run " . s:runlimit . " times."
     endif
-    call s:compiler(0,0,a:1,0,"COM",g:mainfile)
+    call s:compiler(0,0,a:1,0,"COM",b:atp_mainfile)
 elseif a:0 == 0
-    call s:compiler(0,0,1,0,"COM",g:mainfile)
+    call s:compiler(0,0,1,0,"COM",b:atp_mainfile)
 endif
 endfunction
 endif
@@ -1241,9 +1318,9 @@ if a:0 >= 1
 	echomsg b:texcompiler . " will run once."
     endif
     sleep 1
-    call s:compiler(0,0,a:1,1,"COM",g:mainfile)
+    call s:compiler(0,0,a:1,1,"COM",b:atp_mainfile)
 else
-    call s:compiler(0,0,1,1,"COM",g:mainfile)
+    call s:compiler(0,0,1,1,"COM",b:atp_mainfile)
 endif
 endfunction
 endif
@@ -1269,10 +1346,10 @@ function! Bibtex(...)
     let s:auxf=s:bibname . ".aux"
     if a:0 == 0
 "  	    echomsg "DEBUG Bibtex"
-	call s:compiler(1,0,0,0,"COM",g:mainfile)
+	call s:compiler(1,0,0,0,"COM",b:atp_mainfile)
     else
 "  	    echomsg "DEBUG Bibtex verbose"
-	call s:compiler(1,0,0,1,"COM",g:mainfile)
+	call s:compiler(1,0,0,1,"COM",b:atp_mainfile)
     endif
 endfunction
 endif
@@ -1357,6 +1434,9 @@ endif
 " endfunction
 " call s:setprintexpr()
 
+fun! YesNoCompletion(A,P,L)
+    return ['yes','no']
+endfun
 if !exists("*Print")
 function! Print(...)
 
@@ -1377,6 +1457,7 @@ function! Print(...)
 
     " set the file to print
     let l:pfile=b:outdir . fnameescape(fnamemodify(expand("%"),":t:r")) . l:ext
+    let b:pfile=l:pfile
 
     " set the printing command
     let l:lprcommand="lpr "
@@ -1389,51 +1470,91 @@ function! Print(...)
     if exists("g:apt_ssh") 
 	let l:server=strpart(g:atp_ssh,stridx(g:atp_ssh,"@")+1)
     else
-	let l:server='locahost'
+	let l:server='localhost'
     endif
+    let b:server=l:server
     if l:server =~ 'localhost'
-	if a:0 == 0 || (a:0 != 0 && a:1 == 'default')
-	    let l:com=l:lprcommand . " " . l:pfile
-	else
-	    let l:com=l:lprcommand . " -P " . a:1 . " " . l:pfile 
-	endif
-" 	call system(l:com)
-	echo l:com
-    " print over ssh on the server g:atp_ssh with the printer a:1 (or the
-    " default system printer if a:0 == 0
-    else 
-	if a:0 == 0 || (a:0 != 0 && a:1 =~ 'default')
-	    let l:com="cat " . l:pfile . " | ssh " . g:atp_ssh . " " . l:lprcommand
-	else
-	    let l:com="cat " . l:pfile . " | ssh " . g:atp_ssh . " " . l:lprcommand . " -P " . a:1 
-	endif
 	if g:printingoptions != "" || (a:0 >= 2 && a:2 != "")
 	    if a:0 < 2
-		echo "Printing Options: " . g:printingoptions
+		let l:message=g:printingoptions
 	    else
-		echo a:2
+		let l:message=a:2
 	    endif
-	    let l:ok = input("Is this OK? y/n")
-	    if l:ok == 'y'
-		if a:0 < 2
+	    " TODO: write completion :).
+	    let l:ok = confirm("Are the printing options set right?\n".l:message,"&Yes\n&No\n&Cancel")
+	    if l:ok == "1" 
+		if a:0 <= 1
 		    let l:printingoptions=g:printingoptions
 		else
 		    let l:printingoptions=a:2
 		endif
-	    else
+	    elseif l:ok == "2"
 		let l:printingoptions=input("Give printing options ")
+	    elseif l:ok == "3"
+		return 0
+	    endif
+	else
+	    let l:printingoptions=""
+	endif
+	if a:0 == 0 || (a:0 != 0 && a:1 == 'default')
+	    let l:com=l:lprcommand . " " . l:printingoptions . " " .  fnameescape(l:pfile)
+	else
+	    let l:com=l:lprcommand . " " . l:printingoptions . " -P " . a:1 . " " . fnameescape(l:pfile) 
+	endif
+	redraw!
+	echomsg "Printing ...  " . l:com
+" 	let b:com=l:com " DEBUG
+	call system(l:com)
+    " print over ssh on the server g:atp_ssh with the printer a:1 (or the
+    " default system printer if a:0 == 0
+    else 
+	if a:0 == 0 || (a:0 != 0 && a:1 =~ 'default')
+	    let l:com="cat " . fnameescape(l:pfile) . " | ssh " . g:atp_ssh . " " . l:lprcommand
+	else
+	    let l:com="cat " . fnameescape(l:pfile) . " | ssh " . g:atp_ssh . " " . l:lprcommand . " -P " . a:1 
+	endif
+	if g:printingoptions != "" || (a:0 >= 2 && a:2 != "")
+	    if a:0 < 2
+		let l:message=g:printingoptions
+	    else
+		let l:message=a:2
+	    endif
+	    " TODO: write completion :).
+	    let l:ok = confirm("Are the printing options set right?\n".l:message,"&Yes\n&No\n&Cancel")
+	    if l:ok == "1" 
+		if a:0 <= 1
+		    let l:printingoptions=g:printingoptions
+		else
+		    let l:printingoptions=a:2
+		endif
+	    elseif l:ok == "2"
+		let l:printingoptions=input("Give printing options ")
+	    elseif l:ok == "3"
+		return 0
 	    endif
 	else
 	    let l:printingoptions=""
 	endif
 	let l:com = l:com . " " . l:printingoptions
-	echo "\n " . l:com
-	echo "Printing ..." 
+	redraw!
+	echomsg "Printing ...  " . l:com
 	call system(l:com)
     endif
-
 endfunction
 endif
+
+fun! Lpstat()
+    if exists("g:apt_ssh") 
+	let l:server=strpart(g:atp_ssh,stridx(g:atp_ssh,"@")+1)
+    else
+	let l:server='locahost'
+    endif
+    if l:server == 'localhost'
+	echo system("lpstat -l")
+    else
+	echo system("ssh " . g:atp_ssh . " lpstat -l ")
+    endif
+endfunction
 
 " it is used for completetion of the command SshPrint
 if !exists("*ListPrinters")
@@ -1487,6 +1608,7 @@ let g:bibentries=['article', 'book', 'booklet', 'conference', 'inbook', 'incolle
 "--------------------- SEARCH ENGINE ------------------------------ 
 " ToDo should not search in comment lines.
 
+" To make it work afet kpsewhich is searching for bib path.
 " let s:bibfiles=FindBibFiles(bufname('%'))
 function! s:searchbib(pattern) 
 " 	echomsg "DEBUG pattern" a:pattern
@@ -1511,14 +1633,14 @@ function! s:searchbib(pattern)
     for l:f in s:bibfiles
 	let s:bibdict[l:f]=[]
 
-	" read the bibfile if it is in b:outdir or in g:bibinputs directory
-	" ToDo: change this to look in directories under g:bibinputs. 
+	" read the bibfile if it is in b:outdir or in g:atp_bibinputs directory
+	" ToDo: change this to look in directories under g:atp_bibinputs. 
 	" (see also ToDo in FindBibFiles 284)
-	if filereadable(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib'))) 
-	    let s:bibdict[l:f]=readfile(fnameescape(s:append(b:outdir,'/') . s:append(l:f,'.bib')))	
-	else
-" 	    let s:bibdict[l:f]=readfile(fnameescape(s:append(g:bibinputs,'/') . s:append(l:f,'.bib')))
-	    let s:bibdict[l:f]=readfile(fnameescape(findfile(s:append(l:f,'.bib'),s:append(g:bibinputs,"/") . "**")))
+	for l:path in g:atp_bibinputs 
+	    " it might be problem when there are multiple libraries with the
+	    " same name under different locations (only the last one will
+	    " survive)
+	    let s:bibdict[l:f]=readfile(fnameescape(findfile(s:append(l:f,'.bib'),s:append(l:path,"/") . "**")))
 	endif
 	let l:bibdict[l:f]=copy(s:bibdict[l:f])
 	" clear the s:bibdict values from lines which begin with %    
@@ -2364,11 +2486,16 @@ function! s:nearestsection(section)
 endfunction
 
 function! s:CTOC()
-    if &filetype != 'tex'    
-	echomsg "CTOC: Wrong 'filetype'. This function works only for latex documents."
+    if &filetype != 'tex' 
+" TO DO:
+" 	if  exists(g:tex_flavor)
+" 	    if g:tex_flavor != "latex"
+" 		echomsg "CTOC: Wrong 'filetype'. This function works only for latex documents."
+" 	    endif
+" 	endif
 	" Set the status line once more, to remove the CTOC() function.
 	call ATPStatus()
-	return ""
+	return []
     endif
     " resolve the full path:
     let t:bufname=resolve(fnamemodify(bufname("%"),":p"))
@@ -2391,7 +2518,8 @@ function! s:CTOC()
 	
     " if we are before the '\\begin{document}' line: 
     if line(".") <= l:i
-	return ['Preambule']
+	let l:return=['Preambule']
+	return l:return
     endif
 
     let l:chapter={}
@@ -2455,6 +2583,7 @@ if !exists("*CTOC")
 	" characters of the the whole titles.
 	let l:names=s:CTOC()
 	let b:names=l:names
+" 	echo " DEBUG CTOC " . join(l:names)
 	let l:chapter_name=get(l:names,0,'')
 	let l:section_name=get(l:names,1,'')
 	let l:subsection_name=get(l:names,2,'')
@@ -2469,38 +2598,43 @@ if !exists("*CTOC")
 	    
 	elseif l:chapter_name != ""
 	    if l:section_name != ""
-		if a:0 == '0'
-		    echo "XXX" . l:chapter_name . "/" . l:section_name 
-		else
+" 		if a:0 == '0'
+" 		    echo "XXX" . l:chapter_name . "/" . l:section_name 
+" 		else
+		if a:0 != 0
 		    return substitute(strpart(l:chapter_name,0,b:truncate_status_section/2), '\_s*$', '','') . "/" . substitute(strpart(l:section_name,0,b:truncate_status_section/2), '\_s*$', '','')
 		endif
 	    else
-		if a:0 == '0'
-		    echo "XXX" . l:chapter_name
-		else
+" 		if a:0 == '0'
+" 		    echo "XXX" . l:chapter_name
+" 		else
+		if a:0 != 0
 		    return substitute(strpart(l:chapter_name,0,b:truncate_status_section), '\_s*$', '','')
 		endif
 	    endif
 
 	elseif l:chapter_name == "" && l:section_name != ""
 	    if l:subsection_name != ""
-		if a:0 == '0'
-		    echo "XXX" . l:section_name . "/" . l:subsection_name 
-		else
+" 		if a:0 == '0'
+" 		    echo "XXX" . l:section_name . "/" . l:subsection_name 
+" 		else
+		if a:0 != 0
 		    return substitute(strpart(l:section_name,0,b:truncate_status_section/2), '\_s*$', '','') . "/" . substitute(strpart(l:subsection_name,0,b:truncate_status_section/2), '\_s*$', '','')
 		endif
 	    else
-		if a:0 == '0'
-		    echo "XXX" . l:section_name
-		else
+" 		if a:0 == '0'
+" 		    echo "XXX" . l:section_name
+" 		else
+		if a:0 != 0
 		    return substitute(strpart(l:section_name,0,b:truncate_status_section), '\_s*$', '','')
 		endif
 	    endif
 
 	elseif l:chapter_name == "" && l:section_name == "" && l:subsection_name != ""
-	    if a:0 == '0'
-		echo "XXX" . l:subsection_name
-	    else
+" 	    if a:0 == '0'
+" 		echo "XXX" . l:subsection_name
+" 	    else
+	    if a:0 != 0
 		return substitute(strpart(l:subsection_name,0,b:truncate_status_section), '\_s*$', '','')
 	    endif
 	endif
@@ -2623,15 +2757,15 @@ endif
 if !exists("*EditInputFile")
 function! EditInputFile(...)
 
-    let l:mainfile=g:mainfile
+    let l:mainfile=b:atp_mainfile
 
     if a:0 == 0
 	let l:inputfile=""
-	let l:bufname=g:mainfile
+	let l:bufname=b:atp_mainfile
 	let l:opencom="edit"
     elseif a:0 == 1
 	let l:inputfile=a:1
-	let l:bufname=g:mainfile
+	let l:bufname=b:atp_mainfile
 	let l:opencom="edit"
     else
 	let l:inputfile=a:1
@@ -2641,11 +2775,11 @@ function! EditInputFile(...)
 	if a:0 > 2
 	    let l:bufname=a:3
 	else
-	    let l:bufname=g:mainfile
+	    let l:bufname=b:atp_mainfile
 	endif
     endif
 
-    let l:dir=fnamemodify(g:mainfile,":p:h")
+    let l:dir=fnamemodify(b:atp_mainfile,":p:h")
 
     if a:0 == 0
 	let l:inputfiles=FindInputFiles(l:bufname)
@@ -2673,8 +2807,8 @@ function! EditInputFile(...)
     endif
 
     "if the choosen file is the main file put the whole path.
-"     if l:ifile == fnamemodify(g:mainfile,":t")
-" 	let l:ifile=g:mainfile
+"     if l:ifile == fnamemodify(b:atp_mainfile,":t")
+" 	let l:ifile=b:atp_mainfile
 "     endif
 
     "g:texmf should end with a '/', if not add it.
@@ -2691,7 +2825,7 @@ function! EditInputFile(...)
     elseif l:inputfiles[l:ifile][0] == 'bib'
 	let l:ifilename=s:append(l:ifile,'.bib')
     elseif  l:inputfiles[l:ifile][0] == 'main file'
-	let l:ifilename=g:mainfile
+	let l:ifilename=b:atp_mainfile
     endif
     if l:ifile !~ '\s*\/'
 	if filereadable(l:dir . "/" . l:ifilename) 
@@ -2704,20 +2838,20 @@ function! EditInputFile(...)
 		let s:ft=&filetype
 		exe l:opencom . " " . fnameescape(l:ifilename)
 		let &l:filetype=s:ft
-		let g:mainfile=l:mainfile
+		let b:atp_mainfile=l:mainfile
 	    elseif l:inputfiles[l:ifile][0] == 'bib' 
 		let s:ft=&filetype
-		exe l:opencom . " " . fnameescape(s:append(g:bibinputs,'/') . l:ifilename)
+		exe l:opencom . " " . l:inputfiles[l:ifile][2]
 		let &l:filetype=s:ft
-		let g:mainfile=l:mainfile
+		let b:atp_mainfile=l:mainfile
 	    elseif  l:inputfiles[l:ifile][0] == 'main file' 
-		exe l:opencom . " " . g:mainfile
-		let g:mainfile=l:mainfile
+		exe l:opencom . " " . b:atp_mainfile
+		let b:atp_mainfile=l:mainfile
 	    endif
 	endif
     else
 	exe l:opencom . " " . fnameescape(l:ifilename)
-	let g:mainfile=l:mainfile
+	let b:atp_mainfile=l:mainfile
     endif
 endfunction
 endif
@@ -2726,7 +2860,7 @@ if !exists("*EI_compl")
 fun! EI_compl(A,P,L)
 "     let l:inputfiles=FindInputFiles(bufname("%"),1)
 
-    let l:inputfiles=filter(FindInputFiles(g:mainfile,1), 'v:key !~ fnamemodify(bufname("%"),":t:r")')
+    let l:inputfiles=filter(FindInputFiles(b:atp_mainfile,1), 'v:key !~ fnamemodify(bufname("%"),":t:r")')
     " rewrite the keys of FindInputFiles the order: input files, bibfiles
     let l:oif=[]
     for l:key in keys(l:inputfiles)
@@ -3044,8 +3178,12 @@ fun! SetXdvi()
     let b:Viewer="xdvi " . b:ViewerOptions . " -editor 'gvim --servername " . v:servername . " --remote-wait +%l %f'"
     if !exists("*RevSearch")
     function RevSearch()
-	let l:xdvi_reverse_search="xdvi " . b:ViewerOptions . " -editor 'gvim --servername " . v:servername . " --remote-wait +%l %f' -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
-	call system(l:xdvi_reverse_search)
+	let b:xdvi_reverse_search="xdvi " . b:ViewerOptions . 
+		\ " -editor 'gvim --servername " . v:servername . 
+		\ " --remote-wait +%l %f' -sourceposition " . 
+		\ line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . 
+		\ " " . fnamemodify(expand("%"),":p:r") . ".dvi"
+	call system(b:xdvi_reverse_search)
     endfunction
     endif
     command! -buffer RevSearch 					:call RevSearch()
@@ -3281,6 +3419,50 @@ function! ToggleCheckMathOpened()
     endif
     let g:atp_math_opened=!g:atp_math_opened
 endfunction
+
+function! ToggleCallBack()
+    if b:atp_callback
+	echomsg "call back is off"
+	aunmenu LaTeX.Toggle\ Call\ Back\ [on]
+	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>b:atp_callback	
+		    \ :call ToggleCallBack()<CR>
+    else
+	echomsg "call back is on"
+	aunmenu LaTeX.Toggle\ Call\ Back\ [off]
+	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>b:atp_callback
+		    \ :call ToggleCallBack()<CR>
+    endif
+    let b:atp_callback=!b:atp_callback
+endfunction
+" ToDo: to doc.
+" describe DEBUG MODE in doc properly.
+function! ToggleDebugMode()
+    call ToggleCallBack()
+    if g:atp_debug_mode
+	echomsg "debug mode is off"
+	aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]
+	nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>g:atp_debug_mode			
+		    \ :call ToggleDebugMode()<CR>
+	let g:atp_debug_mode=0
+	let g:atp_status_notification=0
+	if g:atp_statusline
+	    call ATPStatus()
+	endif
+	silent cclose
+    else
+	echomsg "debug mode is on"
+	aunmenu 550.20.5 LaTeX.Log.Toggle\ Debug\ Mode\ [off]
+	nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>g:atp_debug_mode
+		    \ :call ToggleDebugMode()<CR>
+	let b:atp_callback=1
+	let g:atp_debug_mode=1
+	let g:atp_status_notification=1
+	if g:atp_statusline
+	    call ATPStatus()
+	endif
+	silent copen
+    endif
+endfunction
 "
 "--------- TAB COMPLETION ----------------------------------------------------
 "
@@ -3289,23 +3471,29 @@ endfunction
 " It was inspired by autex function written by Carl Mueller, math at carlm e4ward c o m
 function! s:Search_Package(name)
     let l:n=1
-    let l:line=join(getbufline(fnamemodify(g:mainfile,":t"),l:n))
-    let l:len=len(getbufline(fnamemodify(g:mainfile,":t"),1,'$'))
+    let l:bufnr=bufnr(b:atp_mainfile)
+    let l:line=join(getbufline(l:bufnr,l:n))
+"     echo "DEBUG SEARCH PACKAGE " . l:line  . " bufnr " . l:bufnr
+    let l:len=len(getbufline(l:bufnr,1,'$'))
     while l:line !~ '\\begin\s*{document}' &&  l:n <= l:len
 	if l:line =~ '^[^%]*\\usepackage\s*{.*' . a:name
 	    return 1
 	endif
 	let l:n+=1
-	let l:line=join(getbufline(fnamemodify(g:mainfile,":t"),l:n))
+	let l:line=join(getbufline(l:bufnr,l:n))
     endwhile
     return 0
 endfunction
 " DEBUG
-" command! -nargs=1 SearchPackage 	:echo s:Search_Package(<f-args>)
+command! -nargs=1 SearchPackage 	:echo s:Search_Package(<f-args>)
 
 function! s:Document_Class()
+
+    let l:bufnr=bufnr(b:atp_mainfile)
+
     let l:n=1
-    let l:line=join(getbufline(fnamemodify(g:mainfile,":t"),l:n))
+    let l:line=join(getbufline(l:bufnr,l:n))
+
     if l:line =~ '\\documentclass'
 " 	let b:line=l:line " DEBUG
 	return substitute(l:line,'.*\\documentclass\s*\%(\[.*\]\)\?{\(.*\)}.*','\1','')
@@ -3315,7 +3503,7 @@ function! s:Document_Class()
 	    return substitute(l:line,'.*\\documentclass\s*\%(\[.*\]\)\?{\(.*\)}.*','\1','')
 	endif
 	let l:n+=1
-	let l:line=join(getbufline(fnamemodify(g:mainfile,":t"),l:n))
+	let l:line=join(getbufline(l:bufnr,l:n))
     endwhile
 endfunction
 
@@ -3462,7 +3650,9 @@ endfunction
 	\ 'vartriangleright', 'vartriangleleft', 'trianglerighteq', 'trianglelefteq',
 	\ 'copyright', 'textregistered', 'puonds',
 	\ 'big', 'Big', 'Bigg', 'huge', 
-	\ 'sqrt', 'frac{', 'cline', 'vline', 'hline', 'multicolumn{', 
+	\ 'left', 'right', 'bigr', 'Bigr', 'biggr', 'Biggr',
+	\ 'bigl', 'Bigl', 'biggl', 'Biggl',
+	\ 'sqrt', 'frac{', 'binom{', 'cline', 'vline', 'hline', 'multicolumn{', 
 	\ 'nouppercase', 'sqsubset', 'sqsupset', 'square', 'blacksqaure', 'triangledown', 'triangle', 
 	\ 'diagdown', 'diagup', 'nexists', 'varnothing', 'Bbbk', 'circledS', 'complement', 'hslash', 'hbar', 
 	\ 'eth', 'rightrightarrows', 'leftleftarrows', 'rightleftarrows', 'leftrighrarrows', 
@@ -3471,7 +3661,77 @@ endfunction
 	\ 'bullet', 'bigtriangledown', 'bigtriangleup', 'ominus', 'bigcirc', 'amalg', 
 	\ 'setminus', 'sqcup', 'sqcap', 
 	\ 'notin', 'neq', 'smile', 'frown', 'equiv', 'perp',
-	\ 'quad', 'qquad' ]
+	\ 'quad', 'qquad', 'stackrel', 'displaystyle', 'textstyle', 'scriptstyle', 'scriptscriptstyle',
+	\ 'langle', 'rangle' ]
+
+	" commands defined by the user in input files.
+	" ToDo: to doc.
+	" ToDo: this doesn't work with input files well enough. 
+	
+	" Returns a list of two lists:  [ commanad_names, enironment_names ]
+
+    	if !exists("*LocalCommands")
+	function! LocalCommands()
+	    call s:setprojectname()
+	    let l:command_names=[]
+	    let l:environment_names=[]
+
+	    let l:ddict=s:make_defi_dict(b:atp_mainfile,'\\def\>\|\\newcommand\>\|\\newenvironment\|\\newtheorem')
+" 	    echomsg " LocalCommands DEBUG " . b:atp_mainfile
+	    let b:ddict=l:ddict
+		for l:inputfile in keys(l:ddict)
+		    let l:ifile=readfile(l:inputfile)
+		    for l:range in l:ddict[l:inputfile]
+			if l:ifile[l:range[0]-1] =~ '\\def\|\\newcommand'
+			    " check only definitions which starts at 0 column
+			    let l:name=matchstr(l:ifile[l:range[0]-1],
+					\ '^\%(\\def\\\zs[^{#]*\ze[{#]\|\\newcommand{\?\\\zs[^\[{]*\ze[\[{}]}\?\)')
+			    if l:name != ""
+				call add(l:command_names,l:name)
+" 				echomsg l:name
+			    endif
+			endif
+			if l:ifile[l:range[0]-1] =~ '\\newenvironment\|\\newtheorem'
+			    " check only definitions which starts at 0 column
+			    let l:name=matchstr(l:ifile[l:range[0]-1],
+					\ '^\\\%(newtheorem\*\?\|newenvironment\){\zs[^}]*\ze}')
+			    if l:name != ""
+				call add(l:environment_names,l:name)
+			    endif
+			endif
+		    endfor
+		endfor
+	    let b:atp_local_commands		= []
+	    let b:atp_local_environments	= []
+
+	    " remove double entries
+	    for l:type in ['command', 'environment']
+" 		echomsg l:type
+		for l:item in l:{l:type}_names
+" 		    if l:type == 'environment'
+" 			echomsg l:item . "  " . index(g:atp_{l:type}s,l:item)
+" 		    endif
+		    if index(g:atp_{l:type}s,l:item) == '-1'
+			call add(b:atp_local_{l:type}s,l:item)
+		    endif
+		endfor
+	    endfor
+	    return [ b:atp_local_environments, b:atp_local_commands ]
+	endfunction
+	endif
+	" The BufEnter augroup doesn't work with EditInputFile, but at least it works
+	" when entering. Debuging shows that when entering new buffer it uses
+	" wrong b:atp_mainfile, it is still equal to the bufername and not the
+	" real main file. Maybe it is better to use s:mainfile variable.
+	if !exists("g:atp_local_completion_lists")
+	    let g:atp_local_completion_lists = 1
+	endif
+	if g:atp_local_completion_lists == 1
+	    call LocalCommands()
+	elseif g:atp_local_completion_lists == 2 
+	    au BufEnter *.tex call LocalCommands()
+	endif
+
 
 	let g:atp_math_commands_non_expert_mode=[ 'leqq', 'geqq', 'succeqq', 'preceqq', 
 		    \ 'subseteqq', 'supseteqq', 'gtrapprox', 'lessapprox' ]
@@ -3490,11 +3750,26 @@ endfunction
 		    \ 'nsupseteqq', 'subsetneqq', 'supsetneqq', 'nsucceqq', 'precneqq', 'succneqq' ] 
 
 	" ToDo: add more amsmath commands.
-	let g:atp_amsmath_commands=[ 'inserttext', 'multiligngap', 'shoveleft', 'shoveright', 'notag', 'tag', 
+	let g:atp_amsmath_commands=[ 'boxed', 'inserttext', 'multiligngap', 'shoveleft', 'shoveright', 'notag', 'tag', 
 		    \ 'raistag{', 'displaybreak', 'allowdisplaybreaks', 'numberwithin{',
 		    \ 'hdotsfor{' , 'mspace{',
-		    \ 'negthinspace', 'negmedspace', 'negthickspace', 'thinspace', 'medspace', 'thickspace' ]
+		    \ 'negthinspace', 'negmedspace', 'negthickspace', 'thinspace', 'medspace', 'thickspace',
+		    \ 'leftroot{', 'uproot{', 'overset{', 'underset{', 'sideset{', 
+		    \ 'dfrac{', 'tfrac{', 'cfrac{', 'dbinom{', 'tbinom{', 'smash',
+		    \ 'lvert', 'rvert', 'lVert', 'rVert', '\DeclareMatchOperator{',
+		    \ 'arccos', 'arcsin', 'arg', 'cos', 'cosh', 'cot', 'coth', 'csc', 'deg', 'det',
+		    \ 'dim', 'exp', 'gcd', 'hom', 'inf', 'injlim', 'ker', 'lg', 'lim', 'liminf', 'limsup',
+		    \ 'ln', 'log', 'min', 'max', 'Pr', 'projlim', 'sec', 'sin', 'sinh', 'sup', 'tan', 'tanh',
+		    \ 'varlimsup', 'varliminf', 'varinjlim', 'varprojlim', 'mod', 'bmod', 'pmod', 'pod', 'sideset',
+		    \ 'iint', 'iiint', 'iiiint', 'idotsint',
+		    \ 'varGamma', 'varDelta', 'varTheta', 'varLambda', 'varXi', 'varPi', 'varSigma', 
+		    \ 'varUpsilon', 'varPhi', 'varPsi', 'varOmega' ]
 	
+	" ToDo: integrate in Tab_Completion (amsfonts, euscript packages).
+	let g:atp_amsfonts=[ 'mathfrak', 'mathscr' ]
+
+	" not yet supported: in Tab_Completion:
+	let g:atp_amsxtra_commands=[ 'sphat', 'sptilde' ]
 	let g:atp_fancyhdr_commands=['lfoot{', 'rfoot{', 'rhead{', 'lhead{', 
 		    \ 'cfoot{', 'chead{', 'fancyhead{', 'fancyfoot{',
 		    \ 'fancypagestyle{', 'fancyhf{}', 'headrulewidth ', 'footrulewidth ',
@@ -3545,7 +3820,7 @@ if !exists("g:atp_math_opened")
     if search('\%([^\\]\|^\)\$\$\?','wnc') != 0
 	let g:atp_math_opened=0
     else
-	let g:atp_check_if_math_opend=1
+	let g:atp_math_opened=1
     endif
 endif
 " ToDo: Think about even better math modes patterns.
@@ -3554,10 +3829,11 @@ endif
 " that's maybe good.) 
 " How to deal with $:$ (they are usually in one line, we could count them)  and $$:$$ 
 " matchpair
-let g:atp_math_modes=[['[^\\]\\(','\[^\\]\)'], ['\[^\\]\\[','\[^\\]\\]'], 	['\begin{equation', '\end{equation'],
+let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\))'],
+	    \ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)\[','\%([^\\]\|^\)\%(\\\|\\\{3}\)\]'], 	
 	    \ ['\\begin{align', '\end{align'], 		['\\begin{gather', '\\end{gather'], 
 	    \ ['\\begin{flign', '\\end{flagin'], 	['\\begin[multiline', '\\end{multiline'],
-	    \ ['\\begin{tikz', '\\end{tikz']]
+	    \ ['\\begin{tikz', '\\end{tikz'],		['\begin{equation', '\end{equation'] ]
 " ToDo: user command list, env list g:atp_commands, g:atp_environments, 
 "
 " this function looks for an input file: in the list of buffers, under a path if
@@ -3586,7 +3862,6 @@ function! s:Read_Input_File(ifile,check_texmf)
 endfunction
  
 function! s:Add_to_List(list,what)
-
     let l:new=[] 
     for l:el in a:list
 	call add(l:new,l:el . a:what)
@@ -3594,7 +3869,7 @@ function! s:Add_to_List(list,what)
     return l:new
 endfunction
 
-" the argument should be g:mainfile but in any case it is made in this way.
+" the argument should be b:atp_mainfile but in any case it is made in this way.
 " it specifies in which file to search for include files.
 function! s:Search_Bib_Items(name)
 
@@ -3609,7 +3884,7 @@ function! s:Search_Bib_Items(name)
 	    call add(l:includefile_list,s:append(l:key,'.tex'))
 	endif
     endfor
-    call add(l:includefile_list,g:mainfile) 
+    call add(l:includefile_list,b:atp_mainfile) 
     let b:ifl=l:includefile_list
 
     " search for bibitems in all include files.
@@ -3634,24 +3909,8 @@ function! s:Search_Bib_Items(name)
     return l:citekey_label_dict
 endfunction
 
-" this function is for complition of \bibliography and \input commands it returns a list
-" of all files under a:dir dir and in g:outdir with a given xtension.
-function! s:Find_files(dir,in_current_dir,ext)
-	let l:raw_bibfiles=split(globpath(s:append(a:dir,'/'),'**'))
-	if a:in_current_dir
-	    call extend(l:raw_bibfiles,split(globpath(b:outdir,'*')))
-	endif
-	let b:raw=l:raw_bibfiles
-	let l:bibfiles=[]
-	for l:key in l:raw_bibfiles
-	    if l:key =~ a:ext . '$'
-		call add(l:bibfiles,l:key)
-	    endif
-	endfor
-	return l:bibfiles
-endfunction
 
-command! SearchBibItems 	:echo s:Search_Bib_Items(g:mainfile)
+command! SearchBibItems 	:echo s:Search_Bib_Items(b:atp_mainfile)
 
 " ToDo: \ref{<Tab> do not closes the '}', its by purpose, as sometimes one
 " wants to add more than one reference. But this is not allowed by this
@@ -3690,6 +3949,13 @@ endfunction
 " the same line (if starts in seprate lines the only thing to change is to
 " move the cursor to the end of inserted closing).
 " ToDo: add closing of other pairs {:},[:],\{:\} , \left:\right 
+" ToDo: the mechanism closes:
+" \begin{theorem}
+"       .....
+"       <Tab>
+" just under \begin{theorem}
+" ToDo: Ad a highlight to messages!!! AND MAKE IT NOT DISAPEAR SOME HOW?
+" (redrawing doesn't help). 
 function! CloseLastEnv(...)
 
     if a:0 == 0 
@@ -3716,8 +3982,8 @@ function! CloseLastEnv(...)
 
     if l:env_name == "0"
 	let l:begin_line_env 	= searchpair('\\begin\s*{', '', '\\end\s*{', 'bnW')
-	let l:begin_line_dmath 	= searchpair('[^\\]\\\[','','[^\\]\\\]', 'bnW')
-	let l:begin_line_imath 	= searchpair('[^\\]\\(','','[^\\]\\)', 'bnW')
+	let l:begin_line_dmath 	= searchpair(g:atp_math_modes[1][0],'',g:atp_math_modes[1][1], 'bnW')
+	let l:begin_line_imath 	= searchpair(g:atp_math_modes[0][0],'',g:atp_math_modes[0][1], 'bnW')
     else
 	let l:begin_line 	= searchpair('\\begin\s*{' . l:env_name , '', '\\end\s*{' . l:env_name, 'bnW')
     endif
@@ -3736,7 +4002,7 @@ function! CloseLastEnv(...)
 	let l:begin_line = l:begin_line_imath
     endif
 
-    if a:0 <= 2
+    if a:0 < 2
 	if l:begin_line_env >= l:begin_line_dmath && l:begin_line_env >= l:begin_line_imath
 	    let l:close='environment'
 	elseif l:begin_line_dmath > l:begin_line_env && l:begin_line_dmath > l:begin_line_imath
@@ -3750,8 +4016,8 @@ function! CloseLastEnv(...)
     if a:0 == 3
 	let l:close='environment'
     endif
-"     let b:close=l:close " DEBUG
-"     let b:begin_line=l:begin_line "DEBUG
+    let b:close=l:close " DEBUG
+    let b:begin_line=l:begin_line "DEBUG
 
     if l:begin_line
 	let l:line=getline(l:begin_line)
@@ -3770,44 +4036,46 @@ function! CloseLastEnv(...)
 	let l:eindent=s:Copy_Indentation(l:line)
 
 	" Rules:
-	" env & \[ \]: close in the same line unless it starts in a seprate
-	" line,
-	" \( \): close in the same line 
-" 	if (l:close == 'environment' && l:line !~ '^\s*\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\|\\label{[^}]*}\)*\s*$' 
-" 		    \ && l:line !~ '^\s*\\begin\s*{\%(array\|tabular\)}\s*{[^}]*}\s*$' ) ||
-" 		    \ (l:close == 'displayed_math' && l:line !~ '^\s*\\\[\s*$' ) ||
-" 		    \ (l:close == 'inline_math' && (l:line !~ '^\s*\\(\s*$' || l:begin_line == line(".") )) 
+	" env & \[ \]: close in the same line 
+	" unless it starts in a seprate line,
+	" \( \): close in the same line. 
 	if (l:close == 'environment' 
-		    \ && l:line !~ '^\s*\%(\$\|\$\$\|[^\\]\\(\|[^\\]\\\[\)\?\s*\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\|\\label{[^}]*}\)*\s*$' 
+		    \ && l:line !~ '^\s*\%(\$\|\$\$\|[^\\]\\(\|[^\\]\\\[\)\?\s*\\begin\s*{[^}]*}\s*\%(\[.*]*\]\|\\label{[^}]*}\)*\s*$' 
 		    \ && l:line !~ '^\s*\%(\$\|\$\$\|[^\\]\\(\|[^\\]\\\[\)\?\s*\\begin\s*{\%(array\|tabular\)}\%(\s*{[^}]*}\)\?\s*$' ) ||
 		    \ (l:close == 'displayed_math' && l:line !~ '^\s*[^\\]\\\[\s*$' ) ||
 		    \ (l:close == 'inline_math' && (l:line !~ '^\s*[^\\]\\(\s*$' || l:begin_line == line(".") )) 
 	    " the above condition matches for the situations when we have to
 	    " complete in the same line in three cases:
 	    " l:close == environment, displayd_math or inline_math. 
-	    if l:close == 'environment' && index(g:atp_no_complete,l:env) == '-1' 
-		let b:d=1
-" 		exec 'normal ' . l:com . '\end{'.l:env.'}'
+	    if l:close == 'environment' && index(g:atp_no_complete,l:env) == '-1' &&
+		\ !s:Check_if_Closed('\\begin\s*{' . l:env,'\\end\s*{' . l:env,line("."),g:atp_completion_limits[2])
+" 		let l:env_name=matchstr(l:line,'\%(\\begin.*\)*\\begin{\zs[^}]*\ze}') 
+		let b:d=1 
 		if l:com == 'a'
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]) . '\end{'.l:env.'}' . strpart(l:cline,getpos(".")[2]))
+		    let l:pos=getpos(".")
+		    let l:pos[2]=len(strpart(l:cline,0,getpos(".")[2]) . '\end{'.l:env.'}')+1
+		    keepjumps call setpos(".",l:pos)
 		else
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]-1) . '\end{'.l:env.'}' . strpart(l:cline,getpos(".")[2]-1))
+		    let l:pos=getpos(".")
+		    let l:pos[2]=len(strpart(l:cline,0,getpos(".")[2]-1) . '\end{'.l:env.'}')+1
+		    keepjumps call setpos(".",l:pos)
 		endif
-	    elseif l:close == 'displayed_math'
+	    elseif l:close == 'displayed_math' && !s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line("."),g:atp_completion_limits[1])
 		let b:d=2
-" 		exec 'normal ' . l:com . '\]'
 		if l:com == 'a'
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]) . '\]'. strpart(l:cline,getpos(".")[2]))
 		else
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]-1) . '\]'. strpart(l:cline,getpos(".")[2]-1))
 " TODO: This could be optional: (but the option rather
-" should be on the argument of this function rather than
+" should be an argument of this function rather than
 " here!
 		    let l:pos=getpos(".")
 		    let l:pos[2]+=2
-		    call setpos(("."),l:pos)
+		    keepjumps call setpos(("."),l:pos)
 		endif
-	    elseif l:close == 'inline_math'
+	    elseif l:close == 'inline_math' && !s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line("."),g:atp_completion_limits[1])
 		let b:d=2
 " 		exec "normal " . l:com  . "\\)"
 		if l:com == 'a'
@@ -3816,7 +4084,7 @@ function! CloseLastEnv(...)
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]-1) . '\)'. strpart(l:cline,getpos(".")[2]-1))
 		    let l:pos=getpos(".")
 		    let l:pos[2]+=2
-		    call setpos(("."),l:pos)
+		    keepjumps call setpos(("."),l:pos)
 		endif
 	    endif
 " 	    let b:debug=1 " DEBUG
@@ -3826,7 +4094,6 @@ function! CloseLastEnv(...)
 	    let l:line_nr=line(".")
 
 	    "Debug:
-	    "redraw!
 	    if l:close == 'environment'
 	    " NESTING
 		let l:error=0
@@ -3837,19 +4104,20 @@ function! CloseLastEnv(...)
 		" l:line_nr number of line which we complete
 		" l:cenv_lines list of closed environments (we complete after
 		" line number maximum of these numbers.
-		echomsg "DEBUG ----------"
+" 		echomsg "DEBUG ----------"
 
-		if g:atp_close_after_last_closed == 1	
+" 		if g:atp_close_after_last_closed == 1	
 		    let l:pos=getpos(".")
-		endif
+" 		endif
+		let l:pos_saved=deepcopy(l:pos)
 
-		while 1
-		    if g:atp_close_after_last_closed == 1	
+		while l:line_nr >= 0
+" 		    if g:atp_close_after_last_closed == 1	
 			let l:line_nr=search('\\begin\s*{','bW')
-		    else
-			let l:line_nr=s:Check_if_Opened('\\begin\s*{', '\\end\s*{',
-				\ l:line_nr,g:atp_completion_limits[2],1)
-		    endif
+" 		    else
+" 			let l:line_nr=s:Check_if_Opened('\\begin\s*{', '\\end\s*{',
+" 				\ l:line_nr,g:atp_completion_limits[2],1)
+" 		    endif
 		    " match last environment openned in this line.
 		    " ToDo: afterwards we can make it works for multiple openned
 		    " envs.
@@ -3857,7 +4125,7 @@ function! CloseLastEnv(...)
 		    let l:close_line_nr=s:Check_if_Closed('\\begin\s*{' . l:env_name, 
 				\ '\\end\s*{' . l:env_name,
 				\ l:line_nr,g:atp_completion_limits[2],1)
-		    echomsg "CLE line_nr " . l:line_nr . " close_line_nr " . l:close_line_nr . " env_name " . l:env_name
+" 		    echomsg "CLE line_nr " . l:line_nr . " close_line_nr " . l:close_line_nr . " env_name " . l:env_name
 
 " 			let l:bis_close_line_nr=s:Check_if_Closed('\\begin\s*{', '\\end\s*{',
 " 				    \ l:line_nr,g:atp_completion_limits[2],1)
@@ -3871,11 +4139,12 @@ function! CloseLastEnv(...)
 			break
 		    endif
 		    let l:line_nr-=1
+" 		    echo "CLE DEBUG l:line_nr " . l:line_nr
 		endwhile
 
-		if g:atp_close_after_last_closed == 1	
-		    call setpos(".",l:pos)
-		endif
+" 		if g:atp_close_after_last_closed == 1	
+		    keepjumps call setpos(".",l:pos)
+" 		endif
 		    
 		let b:cenv_lines=deepcopy(l:cenv_lines)
 
@@ -3890,18 +4159,18 @@ function! CloseLastEnv(...)
 		    let l:cenv_len=len(l:cenv_name)
 		    let l:line=strpart(l:line,l:cenv_begins+l:cenv_len)
 		    call add(l:env_names,l:cenv_name)
-			" DEBUG
-" 			let b:env_names=l:env_names
-" 			let b:line=l:line
-" 			let b:cenv_begins=l:cenv_begins
-" 			let b:cenv_name=l:cenv_name
+			" DEBUG:
+			let b:env_names=l:env_names
+			let b:line=l:line
+			let b:cenv_begins=l:cenv_begins
+			let b:cenv_name=l:cenv_name
 		endwhile
 		" thus we have a list of env names.
 		
 		" make a dictionary of lines where they closes. 
 		" this is a list of pairs (I need the order!)
 		let l:env_dict=[]
-" 		let b:env_dict=l:env_dict
+		let b:env_dict=l:env_dict " DEBUG
 		" list of closed environments
 		let l:cenv_names=[]
 " 		let b:cenv_names=l:cenv_names
@@ -3914,7 +4183,7 @@ function! CloseLastEnv(...)
 		    endif
 		endfor
 		
-		" close unclosed environments
+		" close unclosed environment
 
 		" check if at least one of them is closed
 		if len(l:cenv_names) == 0
@@ -3932,63 +4201,107 @@ function! CloseLastEnv(...)
 		    endif
 " 		    let b:str=l:str
 		    let l:eindent=s:Copy_Indentation(getline(l:line_nr))
+		    let l:pos=getpos(".")
 		    if len(l:cenv_lines) > 0 
-			call append(max(l:cenv_lines), l:eindent . l:str)
+" 			call append(max(l:cenv_lines), l:eindent . l:str)
+
+			let l:max=max(l:cenv_lines)
+			let l:pos[1]=l:max+1
+			" find the first closed item below the last closed
+			" pair (below l:pos[1]). (I assume every env is in
+			" a seprate line!
+" 			let l:end=s:Check_if_Closed('\\begin\s*{','\\end\s*{',max(l:cenv_lines)+1,g:atp_completion_limits[2],1)
+			let l:end=s:Check_if_Closed('\\begin\s*{','\\end\s*{',l:line_nr,g:atp_completion_limits[2],1)
+			let b:info= " l:max " .  l:max . " l:end " . l:end . " line('.') " . line(".")
+			" if the line was found append just befor it.
+			echohl WarningMsg 
+			if l:end != 0 
+				if line(".") <= l:max
+				    if line(".") <= l:end
+					call append(l:max, l:eindent . l:str)
+					echomsg l:str . " appneded after line " . l:end
+					let b:cle_return="append cenv_lines 1.1.1 before line " . l:max 
+				    else
+					call append(l:end-1, l:eindent . l:str)
+					echomsg l:str . " appneded after line " . l:end
+					let b:cle_return="append cenv_lines 1.1.2 before line " . l:max 
+				    endif
+				elseif line(".") < l:end
+				    call append(line("."), l:eindent . l:str)
+				    echomsg l:str . " appneded after line " . line(".")
+				    let b:cle_return="append cenv_lines 1.2 before line " . line(".")
+				elseif line(".") >= l:end
+				    call append(l:end-1, l:eindent . l:str)
+				    echomsg l:str . " appneded after line " . (l:end-1)
+				    let b:cle_return="append cenv_lines 1.3 before line " . (l:end-1)
+				endif
+			else
+			    if line(".") >= l:max
+				call append(l:pos_saved[1], l:eindent . l:str)
+				keepjumps call setpos(".",l:pos_saved)
+				echomsg l:str . " appneded after line " . line(".")
+				let b:cle_return="append cenv_lines 2.1 after line " . line(".")
+			    elseif line(".") < l:max
+				call append(l:max, l:eindent . l:str)
+				keepjumps call setpos(".",l:pos_saved)
+				echomsg l:str . " appneded after line " . l:max
+				let b:cle_return="append cenv_lines 2.2 after line " . l:max
+" 			    elseif line(".") >= l:end
+"				If we are to far				
+" 				call append(l:end-1, l:eindent . l:str)
+" 				echomsg l:str . " appneded after line " . (l:end-1)
+" 				let b:cle_return="append cenv_lines 2.3 before line " . (l:end-1)
+			    endif
+			endif
+			echohl None 
 		    else
-" NEW CODE:
-			" save to position and set go to l:line_nr (where
-			" '\begin{' is not closed.
-			let l:pos=getpos(".")
-			let l:pos_saved=l:pos
+			" REVIEW THIS CODE: it seems that I only need: 'append else 2'
+			"			echomsg "CLE saved position "  . join(l:pos_saved)
 			let l:pos[1]=l:line_nr
 			let l:pos[2]=1
-			call setpos(".",l:pos)
-			
-			" go from the line l:line_nr up and find first
-			" \end{line} which is not in l:cenv_lines.
-			while 1
-			    let l:end_line=search('\\end{','bW',l:pos_saved[1])
-			    if index(l:cenv_lines,l:end_line) != '-1'
-				let l:pos[1]=l:end_line
-				call setpos(".",l:pos)
-			    else
-				break
-			    endif
-			endwhile 
-			if l:end_line != 0
-			    call append(l:end_line-1, l:eindent . l:str)
-			else	
-" OLD LINE: 
-			    call append(line("."), l:eindent . l:str)
+			keepjumps call setpos(".",l:pos)
+			keepjumps let l:eline_nr=search('\\end\s*{','nW',l:pos_saved[1])
+			if l:eline_nr <= l:pos_saved[1] && l:eline_nr > 0
+			    call append(l:eline_nr-1, l:eindent . l:str)
+			    echomsg l:str . " appneded after line " . (l:eline_nr-1)
+			    let b:cle_return="append if 1 str " . l:str . " before line " . l:eline_nr 
+			    keepjumps call setpos(".",l:pos_saved)
+			    return 1
+			elseif l:eline_nr >= 0
+			    call append(l:pos_saved[1], l:eindent . l:str)
+			    echomsg l:str . " appneded after line " . l:pos_saved[1]
+			    let b:cle_return="append if 2 str " . l:str . " after line " . l:pos_saved[1] 
+			    keepjumps call setpos(".",l:pos_saved)
+			    return 1
 			endif
 		    endif
-" END OF NEW CODE.
 		else
 		    return "this is too hard?"
-" 		    for l:cenv in l:cenv_names
-" 			let l:n=match(l:env_dict, [l:cenv,'0'])
-" 			for l:m < l:n
-" 		    endfor
 		endif
-		unlet l:env_names
-		unlet l:env_dict
-		unlet l:cenv_names
-		unlet l:cenv_lines
+		unlet! l:env_names
+		unlet! l:env_dict
+		unlet! l:cenv_names
+		unlet! l:pos 
+		unlet! l:pos_saved
 " 		if getline('.') =~ '^\s*$'
 " 		    exec "normal dd"
 " 		endif
 	    elseif  l:close == 'displayed_math'
 		call append(l:iline, l:eindent . '\]')
+		echomsg "\[ closed in line " . l:iline
+		let b:cle_return=2 . " dispalyed math " . l:iline  " DEBUG
 	    elseif l:close == 'inline_math'
 		call append(l:iline, l:eindent . '\)')
+		echomsg "\( closed in line " . l:iline
+		let b:cle_return=2 . " inline math " . l:iline  " DEBUG
 	    endif
-" 	    let b:debug=2 " DEBUG
 	    return ''
 	endif
-	" preserve the intendation
-	if getline(line(".")) =~ '^\s\+\\end{'
-	    call setline(line("."),substitute(getline(line(".")),'^\s*',l:eindent,''))
-	endif
+" 	" preserve the intendation
+" 	if getline(line(".")) =~ '^\s\+\\end{'
+" 	    call setline(line("."),substitute(getline(line(".")),'^\s*',l:eindent,''))
+" 	    echomsg "DEBUG: WHAT's THAT?"
+" 	endif
     endif
 endfunction
 " imap <F7> <Esc>:call CloseLastEnv()<CR>
@@ -4000,13 +4313,19 @@ endfunction
 
 " ToDo: the two function should only check not commented lines!
 " ToDo: this do not works well with nested envs.
+" Method 0 makes mistakes if the pattern is \begin:\end, if
+" \begin{env_name}:\end{env_names} rather no (unless there are nested
+" environments of the same name.
+" Mechod 1 doesn't make mistakes and thus is preferable.
+" after testing I shall remove method 0
 function! s:Check_if_Closed(bpat,epat,line,limit,...)
 
     if a:0 == 0 || a:1 == 0
 	let l:method = 0
-    elseif a:1 == 1
-	let l:method = 1
+    else
+	let l:method = a:1
     endif
+"     echomsg "DEBUG METHOD " . l:method
 
     let l:len=len(getbufline(bufname("%"),1,'$'))
     let l:nr=a:line
@@ -4020,60 +4339,48 @@ function! s:Check_if_Closed(bpat,epat,line,limit,...)
     if l:method==0
 	while l:nr <= a:line+l:limit
 	    let l:line=getline(l:nr)
-    " 	echomsg "line " . l:nr . " " . l:line
-    " 	echomsg " match A " . l:match_a . " match B " . l:match_b . " match C " . l:match_c
+" 	    echomsg "CC line " . l:nr . " " . l:line
 	" Check if Closed
 	    if l:nr == a:line
-		if strpart(l:line,getpos(".")[2]) =~ '\%(' . a:bpat . '.*\)\@<!' . a:epat
+		if strpart(l:line,getpos(".")[2]-1) =~ '\%(' . a:bpat . '.*\)\@<!' . a:epat
+" " 		    echo "CC 1 l:nr " . l:nr
 		    return l:nr
 		endif
 	    else
 		if l:line =~ '\%(' . a:epat . '.*\)\@<!' . a:bpat
 		    return 0
 		elseif l:line =~ '\%(' . a:bpat . '.*\)\@<!' . a:epat 
-    " 	    if l:line =~ a:epat 
+"     	    if l:line =~ a:epat 
 		    return l:nr
 		endif
 	    endif
 	    let l:nr+=1
 	endwhile
-	elseif l:method==1
-	    " FIX:
-	    " There is small issue with position and empty lines, this is
-	    " a fix for some situtations (but not for empty lines):
-" 	    let l:pos=getpos(".")
-" 	    let l:pos_new=l:pos
-" 	    if l:pos[2]<=1
-" 		let l:pos_new[2]+=1
-" 		call setpos(".",l:pos_new)
-" 	    endif
-	    " the position is restored at the end. END of FIX. 	
 
-	    let l:bpat_count=0
-	    let l:epat_count=0
-	    let l:begin_line=getline(a:line)
-	    let l:begin_line_nr=line(a:line)
-" 	    echomsg "CC DEBUG ------------"
-	    while l:nr <= a:line+l:limit
-		let l:line=getline(l:nr)
-	    " I assume that the env is opened in the line before!
-		let l:bpat_count+=s:count(l:line,a:bpat,1)
-		let l:epat_count+=s:count(l:line,a:epat,1)
-" 		echomsg "cc line nr " . l:nr . " bpat " . l:bpat_count . " epat " . l:epat_count
-		if (l:bpat_count+1) == l:epat_count && l:begin_line !~ a:bpat
-" 		    echomsg "A"
-		    return l:nr
-		elseif l:bpat_count == l:epat_count && l:begin_line =~ a:bpat
-" 		    echomsg "B"
-		    return l:nr
-		endif 
-		let l:nr+=1
-	    endwhile
-" 	    if l:pos != l:pos_new
-" 		call setpos(".",l:pos_new)
-" 	    endif
-	    return 0
-	endif
+    elseif l:method==1
+
+	let l:bpat_count=0
+	let l:epat_count=0
+	let l:begin_line=getline(a:line)
+	let l:begin_line_nr=line(a:line)
+" 	echomsg "CC DEBUG ------------"
+	while l:nr <= a:line+l:limit
+	    let l:line=getline(l:nr)
+	" I assume that the env is opened in the line before!
+	    let l:bpat_count+=s:count(l:line,a:bpat,1)
+	    let l:epat_count+=s:count(l:line,a:epat,1)
+" 	    echomsg "cc line nr " . l:nr . " bpat " . l:bpat_count . " epat " . l:epat_count
+	    if (l:bpat_count+1) == l:epat_count && l:begin_line !~ a:bpat
+" 		echomsg "A"
+		return l:nr
+	    elseif l:bpat_count == l:epat_count && l:begin_line =~ a:bpat
+" 		echomsg "B"
+		return l:nr
+	    endif 
+	    let l:nr+=1
+	endwhile
+	return 0
+    endif
 endfunction
 
 " Usage: By default (a:0 == 0 || a:1 == 0 ) it returns line number where the
@@ -4109,11 +4416,13 @@ function! s:Check_if_Opened(bpat,epat,line,limit,...)
     if l:check_mode == 0 || l:check_mode == 1
 	while l:nr >= a:line-l:limit && l:nr >= 1
 	    let l:line=getline(l:nr)
-    " 	echo "DEBUG A " . l:nr . " " . l:line
+" 	echo "DEBUG A " . l:nr . " " . l:line
 		if l:nr == a:line
+" 		    let l:x= a:bpat . '.\{-}' . a:epat
+" 		    echomsg " DEBUG CifO " . l:x
 			if substitute(strpart(l:line,0,getpos(".")[2]), a:bpat . '.\{-}' . a:epat,'','g')
 				    \ =~ a:bpat
-			    let b:ret=1
+			    let b:cifo_return=1
 			    return l:nr
 			endif
 		else
@@ -4125,7 +4434,7 @@ function! s:Check_if_Opened(bpat,epat,line,limit,...)
 			    " b a seprate call in Tab_Completion.
 			    if !s:Check_if_Closed(a:bpat,a:epat,l:nr,a:limit,0)
 					    " LAST CHANGE 1->0 above
-				let b:ret=2 . " " . l:nr 
+				let b:cifo_return=2 . " " . l:nr 
 				return l:nr
 			    endif
 			endif
@@ -4133,10 +4442,10 @@ function! s:Check_if_Opened(bpat,epat,line,limit,...)
 			if substitute(l:line, a:bpat . '.\{-}' . a:epat,'','g')
 				    \ =~ a:bpat
 			    let l:check=s:Check_if_Closed(a:bpat,a:epat,l:nr,a:limit)
-    " 		    echo "DEBUG line nr: " l:nr . " line: " . l:line . " check: " . l:check
+" 		    echo "DEBUG line nr: " l:nr . " line: " . l:line . " check: " . l:check
 			    " if env is not closed or is closed after a:line
 			    if  l:check == 0 || l:check >= a:line
-				let b:ret=2 . " " . l:nr 
+				let b:cifo_return=2 . " " . l:nr 
 				return l:nr
 			    endif
 			endif
@@ -4177,12 +4486,12 @@ endfunction
 command -buffer -nargs=* CheckIfOpened	:echo s:Check_if_Opened(<args>)
 command -buffer -nargs=* CheckIfClosed	:echo s:Check_if_Closed(<args>)
 " usage:
-command -buffer CheckA	:echo s:Check_if_Closed('[^\\]\\(','[^\\]\\)',line('.'),"$")
-command -buffer CheckB	:echo s:Check_if_Closed('\[^\\]\\[','[^\\]\\\]',line('.'),"$")
-command -buffer CheckC	:echo s:Check_if_Closed('\\begin{','\\end{',line('.'),"$")
-command -buffer OCheckA	:echo s:Check_if_Opened('[^\\]\\(','[^\\]\\)',line('.'),"^")
-command -buffer OCheckB	:echo s:Check_if_Opened('[^\\]\\\[','[^\\]\\\]',line('.'),"^")
-command -buffer OCheckC	:echo s:Check_if_Opened('\\begin{','\\end{',line('.'),"^")
+command -buffer CheckA	:echomsg "CheckA " . s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line('.'),g:atp_completion_limits[0])
+command -buffer CheckB	:echomsg "CheckB " .  s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
+command -buffer CheckC	:echomsg "CheckC " .  s:Check_if_Closed('\\begin{','\\end{',line('.'),g:atp_completion_limits[2])
+command -buffer OCheckA	:echomsg "OCheckA " .  s:Check_if_Opened(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line('.'),g:atp_completion_limits[0])
+command -buffer OCheckB	:echomsg "OCheckB " .  s:Check_if_Opened(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
+command -buffer OCheckC	:echomsg "OCheckC " .  s:Check_if_Opened('\\begin{','\\end{',line('.'),g:atp_completion_limits[2])
 
 " ToDo: to doc.
 " I switched this off.
@@ -4235,6 +4544,26 @@ let g:atp_completion_modes=[
 if !exists("g:atp_completion_active_modes")
     let g:atp_completion_active_modes=g:atp_completion_modes
 endif
+
+
+" arguments are the same as for extend(), but it adds only the entries which
+" are not present.
+function! s:extend(list_a,list_b,...)
+    let l:list_a=deepcopy(a:list_a)
+    let l:diff=[]
+
+    for l:b in a:list_b
+	if index(a:list_a,l:b) == '-1'
+	    call add(l:diff, l:b)
+	endif
+    endfor
+    if a:0 == 0
+	return extend(deepcopy(l:list_a),l:diff)
+    else
+	return extend(deepcopy(l:list_a),l:diff,a:1)
+    endif
+endfunction
+
 " CHECK: l:completion_method=end ?
 function! Tab_Completion(expert_mode)
 
@@ -4243,14 +4572,18 @@ function! Tab_Completion(expert_mode)
     let b:append='i'
 
     let l:pos=getpos(".")
-    let l:rawline=getbufline("%",l:pos[1])
-    let l:line=join(l:rawline)
+    let l:line=join(getbufline("%",l:pos[1]))
+    let l:nchar=strpart(l:line,l:pos[2]-1,1)
     let l:l=strpart(l:line,0,l:pos[2]-1)
     let b:l=l:l	"DEBUG
     let l:n=strridx(l:l,'{')
     let l:m=strridx(l:l,',')
     let l:o=strridx(l:l,'\')
     let l:s=strridx(l:l,' ')
+     
+    let b:n=l:n
+    let b:o=l:o
+    let b:s=l:s
 
     let l:nr=max([l:n,l:m,l:o,l:s])
     let l:begin=strpart(l:l,l:nr+1)
@@ -4272,7 +4605,7 @@ function! Tab_Completion(expert_mode)
 	else
 	    return ''
 	endif
-    elseif l:pline =~ '\%(\\begin\|\\end\)\s*$' && l:begin !~ '}\s*$'
+    elseif l:pline =~ '\%(\\begin\|\\end\)\s*$' && l:begin !~ '}.*$'
 	if index(g:atp_completion_active_modes, 'environment_names') != '-1'
 	    let l:completion_method='environment_names'
 	    let b:comp_method='begin' "DEBUG
@@ -4280,7 +4613,6 @@ function! Tab_Completion(expert_mode)
 	    return ''
 	endif
     elseif (l:pline =~ '\\begin\s*$' && l:begin =~ '}\s*$') || ( l:pline =~ '\\begin\s*{[^}]*}\s*\\label' )
-" CHECK THIS:
 	if index(g:atp_completion_active_modes, 'close_environments') != '-1'
 	    let l:completion_method='end'
 	    let b:comp_method='end' "DEBUG
@@ -4288,12 +4620,16 @@ function! Tab_Completion(expert_mode)
 	    return ''
 	endif
     elseif l:o > l:n && l:o > l:s && 
-		\ l:pline !~ '\%(input\|include\%(only\)\?\)' && 
-		\ l:begin !~ '{\|}\|,\|-\|\^\|\$\|(\|)\|&\|-\|+\|=\|#\|:\|;\|\.\|,\||\|?$' &&
+	\ l:pline !~ '\%(input\|include\%(only\)\?\|[^\\]\\\\[^\\]$\)' &&
+	\ l:begin !~ '{\|}\|,\|-\|\^\|\$\|(\|)\|&\|-\|+\|=\|#\|:\|;\|\.\|,\||\|?$' &&
 		\ l:begin !~ '^\[\|\]\|-\|{\|}\|(\|)'
 	" in this case we are completeing a command
 	" the last match are the things which for sure do not ends any
-	" command.
+	" command. The pattern '[^\\]\\\\[^\\]$' do not matches "\" and "\\\",
+	" in which case the line contains "\\" and "\\\\" ( = line ends!)
+	" (here "\" is one character \ not like in magic patterns '\\')
+	" but matches "" and "\\" (i.e. when completing "\" or "\\\" [end line
+	" + command].
 	if index(g:atp_completion_active_modes, 'commands') != '-1'
 	    let l:completion_method='command'
 	    let b:comp_method='command' "DEBUG
@@ -4325,26 +4661,28 @@ function! Tab_Completion(expert_mode)
 	endif
 	if index(g:atp_completion_active_modes, 'input_files') != '-1'
 	    let l:completion_method='inputfiles'
-	    let b:comp_method='inputfiles' " DEBUG
+	    " DEBUG:
+	    let b:comp_method='inputfiles'
 	else
 	    return ''
 	endif
     elseif l:pline =~ '\\bibliography'
 	if index(g:atp_completion_active_modes, 'bibitems') != '-1'
 	    let l:completion_method='bibfiles'
-	    let b:comp_method='bibfiles' " DEBUG
+	    " DEBUG:
+	    let b:comp_method='bibfiles'
 	else
 	    return ''
 	endif
     else
 	if index(g:atp_completion_active_modes, 'close_environments') != '-1'
 	    let l:completion_method='close_env'
-	    let b:comp_method='close_env' "DEBUG
+	    "DEBUG:
+	    let b:comp_method='close_env' 
 	else
 	    return ''
 	endif
     endif
-
 
     " if the \[ is not closed we prefer to first close it and then to complete
     " the commands, it is better as then automatic tex will have better file
@@ -4375,18 +4713,18 @@ function! Tab_Completion(expert_mode)
 	let l:env_closed=1
 	let l:env_name=0 	" this is compatible with CloseLastEnv() function (argument for a:3).
     endif
-    let l:imath_closed	= s:Check_if_Closed('[^\\]\\(','[^\\]\\)',line('.'),g:atp_completion_limits[0])
-    let l:imath_opened	= s:Check_if_Opened('[^\\]\\(','[^\\]\\)',line('.'),g:atp_completion_limits[0])
-    let l:dmath_closed	= s:Check_if_Closed('[^\\]\\\[','[^\\]\\\]',line('.'),g:atp_completion_limits[1])
-    let l:dmath_opened	= s:Check_if_Opened('[^\\]\\\[','[^\\]\\\]',line('.'),g:atp_completion_limits[1])
+    let l:imath_closed	= s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line('.'),g:atp_completion_limits[0])
+    let l:imath_opened	= s:Check_if_Opened(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line('.'),g:atp_completion_limits[0])
+    let l:dmath_closed	= s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
+    let l:dmath_opened	= s:Check_if_Opened(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
     " DEBUG:
 "     echomsg "ic " l:imath_closed 		. " io " . l:imath_opened . 
 " 		\ " dc " . l:dmath_closed 	. " do " . l:dmath_opened . 
 " 		\ " ec " . l:env_closed 	. " eo " . l:env_opened
-"     let b:imath_closed=l:imath_closed
-"     let b:imath_opened=l:imath_opened
-"     let b:dmath_closed=l:dmath_closed
-"     let b:dmath_opened=l:dmath_opened
+    let b:imath_closed=l:imath_closed
+    let b:imath_opened=l:imath_opened
+    let b:dmath_closed=l:dmath_closed
+    let b:dmath_opened=l:dmath_opened
     let b:env_closed = l:env_closed " DEBUG
     let b:env_opened = l:env_opened " DEBUG
 
@@ -4404,34 +4742,36 @@ function! Tab_Completion(expert_mode)
 " 	 endif
 "     endif
 
+" echomsg "TAB_COMPLETION DEBUG " .  l:completion_method
     if l:completion_method=='close_env'
+" 	    echomsg " DEBUG OK " 
+" 	    echomsg "imath closed:open " . l:imath_closed . ":" . l:imath_opened 
+" 	    echomsg "dmath closed:open " . l:dmath_closed . ":" . l:dmath_opened
+" 	    echomsg "env   closed:open " . l:env_closed	  . ":" . l:env_opened
 " 	let b:debugg = !l:env_closed || !l:imath_closed || !l:dmath_closed
 	if !l:env_closed || !l:imath_closed || !l:dmath_closed
-	    " ToDo: to make this work only if env is not closed every environment
-	    " has to be called separatly, thus CloseLastEnv must be changed.
-" 	    echomsg l:imath_closed . l:imath_opened 
-" 	    echomsg l:dmath_closed . l:dmath_opened
-" 	    echomsg l:env_closed . l:env_opened
 	    if !l:imath_closed && l:imath_opened 
-		let b:return="colse_env inl"
+		let b:tc_return="close_env inl"
 		call CloseLastEnv(b:append,'inline_math')
+		return ''
 	    elseif !l:dmath_closed && l:dmath_opened
-		let b:return="colse_env disp"
+		let b:tc_return="close_env disp"
 		call CloseLastEnv(b:append,'displayed_math')
+		return ''
 	    else
 "           elseif !l:env_closed && l:env_opened	
-" DEBUG:
-		let b:return="colse_env env_name "  . l:env_name . " closed:" . l:env_closed . " opened:" . l:env_opened 
 		" the env name above might be not the one because it is looked
 		" using '\\begin' and '\\end' this might be not enough,
 		" however the function CloseLastEnv works prefectly and this
 		" should be save:
 		call CloseLastEnv(b:append,'environment')
+		let b:tc_return="close_env env_name "  . l:env_name . " closed:" . l:env_closed . " opened:" . l:env_opened 
+		return ''
 	    endif
 	endif
-" 	if !exists("b:return")
+" 	if !exists("b:tc_return")
 " 	    call CloseLastEnv(b:append,'environment')
-" 	    let b:return="close_env XY"
+" 	    let b:tc_return="close_env XY"
 " 	endif
 
 	" unlet variables if there were defined.
@@ -4449,9 +4789,16 @@ function! Tab_Completion(expert_mode)
     if l:completion_method == 'environment_names'
 	let l:end=strpart(l:line,l:pos[2]-1)
 	if l:end !~ '\s*}'
-	    let l:completion_list=deepcopy(s:Add_to_List(g:atp_environments,'}'))
+	    let l:completion_list=deepcopy(g:atp_environments)
+	    if g:atp_local_completion_lists
+		let l:completion_list=s:extend(l:completion_list,b:atp_local_environments)
+	    endif
+	    let l:completion_list=s:Add_to_List(l:completion_list,'}')
 	else
 	    let l:completion_list=deepcopy(g:atp_environments)
+	    if g:atp_local_completion_lists
+		call s:extend(l:completion_list, b:atp_local_environments)
+	    endif
 	endif
 		    " TIKZ
 		    if s:Search_Package('tikz') && 
@@ -4491,6 +4838,7 @@ function! Tab_Completion(expert_mode)
 		    for l:key in g:atp_math_modes
 			if s:Check_if_Opened(l:key[0],l:key[1],line("."),g:atp_completion_limits[2])
 			    let l:math_is_opened=1
+			    let b:math_is_opened=l:key
 			    break
 			endif
 		    endfor
@@ -4508,15 +4856,6 @@ function! Tab_Completion(expert_mode)
 		if g:atp_no_math_command_completion != 1 &&  ( !g:atp_math_opened || l:math_is_opened )
 " 		    let b:adebug=1
 		    " add commands if thier package is declared.
-		    " TIKZ 
-		    if s:Search_Package('tikz')
-			call deepcopy(extend(l:completion_list,g:atp_tikz_commands))
-		    endif
-		    " NICEFRAC
-		    if s:Search_Package('nicefrac')
-			call add(l:completion_list,'nicefrac')
-		    endif
-
 		    " AMSMATH
 		    let b:debug="no amsmath commands"
 		    if g:atp_amsmath == 1 || s:Search_Package('amsmath') || 
@@ -4539,12 +4878,25 @@ function! Tab_Completion(expert_mode)
 			    call deepcopy(extend(l:completion_list,g:atp_ams_negations_non_expert_mode))
 			endif
 		    endif
+		    " TIKZ 
+		    if s:Search_Package('tikz')
+			call deepcopy(extend(l:completion_list,g:atp_tikz_commands))
+		    endif
+		    " NICEFRAC
+		    if s:Search_Package('nicefrac')
+			call add(l:completion_list,'nicefrac')
+		    endif
+		    " FANCYHDR
+		    if s:Search_Package('fancyhdr')
+			call deepcopy(extend(l:completion_list,g:atp_fancyhdr_commands))
+		    endif
+		    " LOCAL COMMNADS
+		    if g:atp_local_completion_lists
+			call deepcopy(extend(l:completion_list,b:atp_local_commands))
+		    endif
+		    " ToDo: LAYOUT and many more packages.
+
 		endif
-		" FANCYHDR
-		if s:Search_Package('fancyhdr')
-		    call deepcopy(extend(l:completion_list,g:atp_fancyhdr_commands))
-		endif
-		" ToDo: LAYOUT and many more packages.
 		
 " change the \label{ to \label{short_env_name, also adds it if we are labeling an item (but only if \label is just after \itme\s*\([ ]\)\s* (in the item text one want to have a diffrent prefix).
 	let l:env_name=substitute(l:pline,'.*\%(\\\%(begin\|end.*\){\(.\{-}\)}.*\|\\\%(\(item\)\s*\)\%(\[.*\]\)\?\s*$\)','\1\2','') 
@@ -4606,7 +4958,10 @@ function! Tab_Completion(expert_mode)
 	call sort(l:completion_list)
     " ----------- BIBFILES ----------------- 
     elseif l:completion_method ==  'bibfiles'
-	let l:bibfiles=s:Find_files(g:bibinputs,1,".bib")
+	let l:bibfiles=[]
+	for l:dir in g:atp_bibinputs
+	    let l:bibfiles=extend(l:bibfiles,s:Find_files(l:dir,0,".bib"))
+	endfor
 	let l:completion_list=[]
 	for l:key in l:bibfiles
 	    call add(l:completion_list,fnamemodify(l:key,":t:r"))
@@ -4628,7 +4983,7 @@ function! Tab_Completion(expert_mode)
 	endfor
 
 	" add the \bibitems found in include files
-	call deepcopy(extend(l:completion_list,keys(s:Search_Bib_Items(g:mainfile))))
+	call deepcopy(extend(l:completion_list,keys(s:Search_Bib_Items(b:atp_mainfile))))
     endif
     if exists("l:completion_list")
 	let b:completion_list=l:completion_list	" DEBUG
@@ -4658,10 +5013,18 @@ function! Tab_Completion(expert_mode)
 	    " Commands must match at the beginning (but in a different way)
 	    " (only in epert_mode).
 	    elseif l:completion_method == 'command' 
-		if a:expert_mode == 1 && l:item =~ '\C^' . l:obegin
-		    call add(l:completions, '\' . l:item)
-		elseif a:expert_mode != 1 && l:item =~  l:obegin
-		    call add(l:completions, '\' . l:item)
+		if l:nchar == '{'
+		    if a:expert_mode == 1 && l:item =~ '\C^' . l:obegin && l:item =~ '.*{[}\s]*$'
+			call add(l:completions, '\' . substitute(l:item,'{[}\s]*$','',''))
+		    elseif a:expert_mode != 1 && l:item =~  l:obegin && l:item =~ '.*{[}\s]*$'
+			call add(l:completions, '\' . substitute(l:item,'{[}\s]*$','',''))
+		    endif
+		else
+		    if a:expert_mode == 1 && l:item =~ '\C^' . l:obegin
+			call add(l:completions, '\' . l:item)
+		    elseif a:expert_mode != 1 && l:item =~  l:obegin
+			call add(l:completions, '\' . l:item)
+		    endif
 		endif
 	    endif
 	endfor
@@ -4671,9 +5034,8 @@ function! Tab_Completion(expert_mode)
 	let b:indent=l:indent " DEBUG
 	" 	LAST CHANGE
 " 	call append(line("."),l:indent . '\end{' . substitute(l:l,'.*\\begin{\(.\{-}}\).*','\1',''))
-	let b:return="1"
+	let b:tc_return="1"
 	call CloseLastEnv('a','environment')
-	
 	return ''
     endif
 
@@ -4690,28 +5052,40 @@ function! Tab_Completion(expert_mode)
 		\ l:completion_method == 'bibitems' 		|| l:completion_method == 'bibfiles' || 
 		\ l:completion_method == 'bibfiles'		|| l:completion_method == 'inputfiles'
 	call complete(l:nr+2,l:completions)
-	let b:return="2"
+	let b:tc_return="2"
     elseif l:completion_method == 'command'
 	call complete(l:o+1,l:completions)
-	let b:return="3 X"
+	let b:tc_return="3 X"
     endif
 
-    " it the completion method was a command (probably in a math mode) and
-    " there was no completion check if the \[ and \( are closed.
-" E523 exec 'normal a\\)' do not works but setline works.
-    if l:completion_method == 'command' && (len(l:completions) == 0 && a:expert_mode
-		\ || len(l:completions) == 1 && l:completions[0] == '\'. l:begin )
-		\ && ( !s:Check_if_Closed('[^\\]\\\[','[^\\]\\\]',line("."),g:atp_completion_limits[1]) ||
-		\ !s:Check_if_Closed('[^\\]\\(','[^\\]\\)',line("."),g:atp_completion_limits[0]) )
-	if s:Check_if_Closed('[^\\]\\\[','[^\\]\\\]',line('.'),g:atp_completion_limits[1]) && s:Check_if_Opened('[^\\]\\\[','[^\\]\\\]',line('.'),g:atp_completion_limits[1])
-	    let l:a='disp; " DEBUG
+    " If the completion method was a command (probably in a math mode) and
+    " there was no completion, check if the \[ and \( are closed.
+    if l:completion_method == 'command' && (len(l:completions) == 0 && a:expert_mode ||
+	\ len(l:completions) == 1 && l:completions[0] == '\'. l:begin ) &&
+	\ (!s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line("."),g:atp_completion_limits[1]) ||
+	\ !s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line("."),g:atp_completion_limits[0]) )
+
+	" DEBUG:
+	let b:dmc=s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
+	let b:dmo=s:Check_if_Opened(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
+
+	if !s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1]) && s:Check_if_Opened(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
+	    let l:a='disp' " DEBUG
 	    call CloseLastEnv('i','displayed_math')
-	elseif s:Check_if_Closed('[^\\]\\(','[^\\]\\)',line('.'),g:atp_completion_limits[0]) && s:Check_if_Opened('[^\\]\\(','[^\\]\\)',line('.'),g:atp_completion_limits[1])
+	elseif !s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line('.'),g:atp_completion_limits[0]) && s:Check_if_Opened(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line('.'),g:atp_completion_limits[1])
 	    call CloseLastEnv('i','inline_math')
 	    let l:a='inl' " DEBUG
+	elseif !s:Check_if_Closed('\\begin\s*{','\\end\*{',line("."),g:atp_completion_limits[2]) &&
+		    \ s:Check_if_Opened('\\begin\s*{','\\end\*{',line("."),g:atp_completion_limits[2])
+	    call CloseLastEnv('a','environment')
+	    let l:a='env' " DEBUG
 	endif
-	let b:comp_method='e:close_env' "DEBUG
-	let b:return="close_env end" 
+	let b:comp_method='close_env' "DEBUG
+	if exists("l:a")
+	    let b:tc_return="close_env end " . l:a
+	else
+	    let b:tc_return="close_env end"
+	endif
     endif
 
 "  ToDo: (a chalanging one)  
@@ -4737,17 +5111,177 @@ function! Tab_Completion(expert_mode)
 endfunction
 
 " ------- Wrap Seclection ----------------------------
+if !exists("*WrapSelection")
 function! WrapSelection(wrapper)
     normal `>a}
     exec 'normal `<i\'.a:wrapper.'{'
 endfunction
+endif
+
+" --------------- FD FILES -----------------
+
+" FontSearch([<pattern>,<method>]) 
+" method = 0 match for name of fd file
+" method = 1 match againts whole path
+if !exists("*FontSearch")
+function! FontSearch(...)
+	
+    if a:0 == 0
+	let l:pattern=""
+	let l:method=0
+    else
+	let l:pattern=a:1
+	if a:0 == 1
+	    let l:method=0
+	else
+	    let l:method=1
+	endif
+    endif
+    let b:a=a:0
+    let b:method=l:method
+
+    " Find fd file
+    let l:path=substitute(substitute(system("kpsewhich -show-path tex"),'!!','','g'),'\/\/\+','\/','g')
+    let l:path=substitute(l:path,':\|\n',',','g')
+    let b:path=l:path
+    let l:fd=split(globpath(l:path,"**/*.fd"),'\n') 
+    let b:fd=l:fd
+
+    " Match for l:pattern
+    let s:fd_matches=[]
+    for l:fd_file in l:fd
+	if (l:method==0 && fnamemodify(l:fd_file,":t") =~ l:pattern) ||
+		    \ (l:method==1 && l:fd_file =~ l:pattern)
+	    call add(s:fd_matches,l:fd_file)
+	endif
+    endfor
+    let b:fd_matches=s:fd_matches
+
+    " Open Buffer and list fd files
+    " set filetype to fd_atp
+    let l:tmp_dir=tempname()
+    call mkdir(l:tmp_dir)
+    let l:fd_bufname="fd_list " . l:pattern
+    let l:openbuffer="32vsplit! +setl\\ nospell\\ ft=fd_atp ". fnameescape(l:tmp_dir . "/" . l:fd_bufname )
+
+    let g:fd_matches=[]
+    if len(s:fd_matches) > 0
+	echohl WarningMsg
+	echomsg "Found " . len(s:fd_matches) . " files."
+	echohl None
+	" wipe out the old buffer and open new one instead
+	if buflisted(fnameescape(l:tmp_dir . "/" . l:fd_bufname))
+" 	    echomsg "DEBUG DELETE BUFFER"
+	    silent exe "bd! " . bufnr(fnameescape(l:tmp_dir . "/" . l:fd_bufname))
+	endif
+	silent exe l:openbuffer
+	" make l:tmp_dir available for this buffer.
+	let b:tmp_dir=l:tmp_dir
+	cd /tmp
+	map <buffer> q	:bd<CR>
+
+	" print the lines into the buffer
+	let l:i=0
+	call setline(1,"Press Enter to open a font definition file:")
+	for l:fd_file in s:fd_matches
+	    " we put in line the last directory/fd_filename:
+	    " this is what we cut:
+	    let l:path=fnamemodify(l:fd_file,":h:h")
+	    let l:fd_name=substitute(l:fd_file,"^" . l:path . '/\?','','')
+" 	    call setline(line('$')+1,fnamemodify(l:fd_file,":t"))
+	    call setline(line('$')+1,l:fd_name)
+	    call add(g:fd_matches,l:fd_file)
+	    let l:i+=1
+	endfor
+	silent w
+	setlocal nomodifiable
+	setlocal ro
+    else
+	echohl WarningMsg
+	echomsg "No fd file found."
+	echohl None
+    endif
+
+endfunction
+endif
+
+if !exists("*Fd_completion")
+function! Fd_completion(A,C,P)
+    	
+    " Find all files
+    let l:matches=[]
+    for l:fd_file in s:fd_matches
+	if l:fd_file =~ a:A
+	    call add(l:matches,l:fd_file)
+	endif
+    endfor
+
+endfunction
+endif
+
+" function! DeleteTempBuffers()
+"     " name of the temp ir without '/' at the end
+"     let l:tmp_dir=substitute(tempname(),'\/\d\+','','g')
+"     execute "bufdo " 
+" endfunction
+
+" -------------- RELOAD ---------------------
+
+if !exists("g:atp_debug")
+    let g:atp_debug=0
+endif
+if g:atp_debug==1 && !exists("*Reload")
+" Reload() - reload all the tex_apt functions
+" Reload(func1,func2,...) reload list of functions func1 and func2
+fun! Reload(...)
+    let l:bufname=fnamemodify(expand("%"),":p")
+
+    if a:0 == 0
+	let l:runtime_path=split(&runtimepath,',')
+	echo "Searching for atp plugin files"
+	let l:file_list=['ftplugin/tex_atp.vim','ftplugin/fd_atp.vim', 'ftplugin/bibsearch_atp.vim', 'ftplugin/toc_atp.vim']
+	let l:file_path=[]
+	for l:file in l:file_list
+		call add(l:file_path,globpath(&rtp,l:file))
+	endfor
+	for l:file in l:file_path
+	    echomsg "DELETING FUNCTIONS FROM " . l:file
+	    let l:atp=readfile(l:file)
+	    for l:line in l:atp
+		let l:function_name=matchstr(l:line,'^\s*fun\%(ction\)\?!\?\s\+\zs\<[^(]*\>\ze(')
+		if l:function_name != "" && l:function_name != "Reload"
+		    if exists("*" . l:function_name)
+			if exists("b:atp_debug")
+			    if b:atp_debug=="v" || b:atp_debug=="verbose"
+				echomsg "deleting function " . l:function_name
+			    endif
+			endif
+			execute "delfunction " . l:function_name
+		    endif
+		endif
+	    endfor
+	endfor
+    else
+	let l:f_list=split(a:1,',')
+	let g:f_list=l:f_list
+	for l:function in l:f_list
+	    execute "delfunction " . l:function
+	endfor
+    endif
+    w
+"   THIS IS THE SLOW WAY:
+    bd!
+    execute "edit " . l:bufname 
+"   This could be faster: but aparently doesn't work.
+"     execute "source " . l:file_path[0]
+endfunction
+endif
+command -buffer -nargs=* Reload	:call Reload(<f-args>)
+
 
 "--------- MAPPINGS -------------------------------------------------------
 " Add mappings, unless the user didn't want this.
 " ToDo: to doc.
-if !exists("g:atp_no_env_maps")
-    let g:atp_no_env_maps=0
-endif
 if !exists("no_plugin_maps") && !exists("no_atp_maps")
     " ToDo to doc.
     if exists("g:atp_no_tab_map") && g:atp_no_tab_map == 1
@@ -4774,24 +5308,26 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     " imap <buffer> 2<LocalLeader>l	<Left><ESC>:2TEX<CR>a
     " todo: this is nice idea but it do not works as it should: 
     " map  <buffer> <f4> [d:let nr = input("which one: ")<bar>exe "normal " . nr . "[\t"<cr> 
-    map  <buffer> <f5> 				:call VTEX() <cr>	
-    map  <buffer> <s-f5> 			:call ToggleAuTeX()<cr>
-    imap <buffer> <f5> <left><esc> 		:call VTEX() <cr>a
+    map  <buffer> <F5> 				:call VTEX() <cr>	
+    map  <buffer> <s-F5> 			:call ToggleAuTeX()<cr>
+    imap <buffer> <F5> <left><esc> 		:call VTEX() <cr>a
     map  <buffer> <localleader>sb		:call SimpleBibtex()<cr>
     map  <buffer> <localleader>b		:call Bibtex()<cr>
-    map  <buffer> <f6>d 			:call Delete() <cr>
-    imap <buffer> <silent> <f6>l 		:call OpenLog() <cr>
-    map  <buffer> <silent> <f6>l 		:call OpenLog() <cr>
+    map  <buffer> <F6>d 			:call Delete() <cr>
+    imap <buffer> <silent> <F6>l 		:call OpenLog() <cr>
+    map  <buffer> <silent> <F6>l 		:call OpenLog() <cr>
     map  <buffer> <localleader>e 		:cf<cr> 
-    map  <buffer> <f6>w 			:call texlog("-w")<cr>
-    imap <buffer> <f6>w 			:call texlog("-w")<cr>
-    map  <buffer> <f6>r 			:call texlog("-r")<cr>
-    imap <buffer> <f6>r 			:call texlog("-r")<cr>
-    map  <buffer> <f6>f 			:call texlog("-f")<cr>
-    imap <buffer> <f6>f 			:call texlog("-f")<cr>
-    map  <buffer> <f6>g 			:call PdfFonts()<cr>
-    map  <buffer> <f1> 	   			:!clear;texdoc -m 
-    imap <buffer> <f1> <esc> 			:!clear;texdoc -m  
+    map  <buffer> <F6>e 			:ShowErrors e<cr>
+    imap <buffer> <F6>e 			:ShowErrors e<cr>
+    map  <buffer> <F6>w 			:ShowErrors w<cr>
+    imap <buffer> <F6>w 			:ShowErrors w<cr>
+    map  <buffer> <F6>r 			:ShowErrors rc<cr>
+    imap <buffer> <F6>r 			:ShowErrors rc<cr>
+    map  <buffer> <F6>f 			:ShowErrors f<cr>
+    imap <buffer> <F6>f 			:ShowErrors f<cr>
+    map  <buffer> <F6>g 			:call PdfFonts()<cr>
+    map  <buffer> <F1> 	   			:!clear;texdoc -m 
+    imap <buffer> <F1> <esc> 			:!clear;texdoc -m  
     map  <buffer> <localleader>p 		:call print('','')<cr>
 
     " FONT MAPPINGS
@@ -4851,29 +5387,30 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     if g:atp_no_env_maps != 1
 	imap <buffer> [b \begin{}<Left>
 	imap <buffer> [e \end{}<Left>
-	imap [s \begin{}<CR>\end{}<Up><Right>
 
 	imap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
 	imap <buffer> [c \begin{corollary}<Cr>\end{corollary}<Esc>O
 	imap <buffer> [d \begin{definition}<Cr>\end{definition}<Esc>O
 	imap <buffer> ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
-	imap <buffer> [q \begin{equation}<Cr>\end{equation}<Esc>O
 	imap <buffer> [a \begin{align}<Cr>\end{align}<Esc>O
-	imap <buffer> [x \begin{example}<Cr>\end{example}<Esc>O
-	imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
-	imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
-	imap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
-	imap <buffer> [f \begin{frame}<Cr>\end{frame}<Esc>O
 	imap <buffer> [i \item
 	imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
 	imap <buffer> [l \begin{lemma}<Cr>\end{lemma}<Esc>O
-	imap <buffer> [n \begin{note}<Cr>\end{note}<Esc>O
-	imap <buffer> [o \begin{observation}<Cr>\end{observation}<Esc>O
 	imap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
 	imap <buffer> [p \begin{proposition}<Cr>\end{proposition}<Esc>O
-	imap <buffer> [r \begin{remark}<Cr>\end{remark}<Esc>O
 	imap <buffer> [t \begin{theorem}<Cr>\end{theorem}<Esc>O
 	imap <buffer> ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
+
+	if g:atp_extra_env_maps == 1
+	    imap <buffer> [r \begin{remark}<Cr>\end{remark}<Esc>O
+	    imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
+	    imap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
+	    imap <buffer> [f \begin{frame}<Cr>\end{frame}<Esc>O
+	    imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
+	    imap <buffer> [n \begin{note}<Cr>\end{note}<Esc>O
+	    imap <buffer> [o \begin{observation}<Cr>\end{observation}<Esc>O
+	    imap <buffer> [x \begin{example}<Cr>\end{example}<Esc>O
+	endif
 
 	" imap {c \begin{corollary*}<Cr>\end{corollary*}<Esc>O
 	" imap {d \begin{definition*}<Cr>\end{definition*}<Esc>O
@@ -4909,6 +5446,7 @@ command! -buffer -nargs=? Bibtex 	:call Bibtex(<f-args>)
 command! -buffer -nargs=? -complete=buffer FindBibFiles 	:echo keys(FindBibFiles(<f-args>))
 command! -buffer -nargs=* BibSearch	:call BibSearch(<f-args>)
 command! -buffer -nargs=? DefiSearch	:call DefiSearch(<f-args>)
+command! -buffer -nargs=* FontSearch	:call FontSearch(<f-args>)
 command! -buffer TOC 			:call TOC()
 command! -buffer CTOC 			:call CTOC()
 command! -buffer Labels			:call Labels() 
@@ -4924,6 +5462,7 @@ command! -buffer -nargs=? -complete=buffer	 Note			:call ToDo('\c\<note\>','\s*%
 command! -buffer SetXdvi		:call SetXdvi()
 command! -buffer SetXpdf		:call SetXpdf()	
 command! -complete=custom,ListPrinters  -buffer -nargs=* SshPrint	:call Print(<f-args>)
+command! -buffer Lpstat	:call Lpstat()
 
 command! -buffer -nargs=1 -complete=customlist,Env_compl NEnv			:call NextEnv(<f-args>)
 command! -buffer -nargs=1 -complete=customlist,Env_compl PEnv			:call PrevEnv(<f-args>)
@@ -4935,6 +5474,8 @@ command! -buffer -nargs=? -complete=customlist,Env_compl NPart			:call NextSecti
 command! -buffer -nargs=? -complete=customlist,Env_compl PPart			:call PrevSection('part',<f-args>)
 command! -buffer ToggleSpace   		:call ToggleSpace()
 command! -buffer ToggleCheckMathOpened 	:call ToggleCheckMathOpened()
+command! -buffer ToggleDebugMode 	:call ToggleDebugMode()
+command! -buffer ToggleCallBack 	:call ToggleCallBack()
 
 " MENU
 if !exists("no_plugin_menu") && !exists("no_atp_menu")
@@ -4945,22 +5486,32 @@ nmenu 550.10 &LaTeX.&Bibtex<Tab>:Bibtex	:Bibtex<CR>
 " nmenu 550.10 &LaTeX.&Bibtex\ (bibtex)<Tab>:SBibtex		:SBibtex<CR>
 nmenu 550.10 &LaTeX.&View<Tab>:ViewOutput 	:ViewOutput<CR>
 "
-nmenu 550.20 &LaTeX.&Log.&Open\ Log\ File<Tab>:map\ <F6>l		:call OpenLog()<CR>
-nmenu 550.20 &LaTeX.&Log.-ShowErrors-	:
-nmenu 550.20 &LaTeX.&Log.&Errors<Tab>:ShowErrors			:ShowErrors<CR>
-nmenu 550.20 &LaTeX.&Log.&Warnings<Tab>:ShowErrors\ w 			:ShowErrors w<CR>
-nmenu 550.20 &LaTeX.&Log.&Citation\ Warnings<Tab>:ShowErrors\ c		:ShowErrors c<CR>
-nmenu 550.20 &LaTeX.&Log.&Reference\ Warnings<Tab>:ShowErrors\ r		:ShowErrors r<CR>
-nmenu 550.20 &LaTeX.&Log.&Font\ Warnings<Tab>ShowErrors\ f			:ShowErrors f<CR>
-nmenu 550.20 &LaTeX.&Log.Font\ Warnings\ &&\ Info<Tab>:ShowErrors\ fi	:ShowErrors fi<CR>
-nmenu 550.20 &LaTeX.&Log.&Show\ Files<Tab>:ShowErrors\ F			:ShowErrors F<CR>
+nmenu 550.20.1 &LaTeX.&Errors<Tab>:ShowErrors				:ShowErrors<CR>
+nmenu 550.20.1 &LaTeX.&Log.&Open\ Log\ File<Tab>:map\ <F6>l		:call OpenLog()<CR>
+if b:atp_callback
+    nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>b:atp_callback		:call ToggleCallBack()<CR>
+else
+    nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>b:atp_callback		:call ToggleCallBack()<CR>
+endif  
+if g:atp_debug_mode
+    nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]			:call ToggleDebugMode()<CR>
+else
+    nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]		:call ToggleDebugMode()<CR>
+endif  
+nmenu 550.20.20 &LaTeX.&Log.-ShowErrors-	:
+nmenu 550.20.20 &LaTeX.&Log.&Warnings<Tab>:ShowErrors\ w 			:ShowErrors w<CR>
+nmenu 550.20.20 &LaTeX.&Log.&Citation\ Warnings<Tab>:ShowErrors\ c		:ShowErrors c<CR>
+nmenu 550.20.20 &LaTeX.&Log.&Reference\ Warnings<Tab>:ShowErrors\ r		:ShowErrors r<CR>
+nmenu 550.20.20 &LaTeX.&Log.&Font\ Warnings<Tab>ShowErrors\ f			:ShowErrors f<CR>
+nmenu 550.20.20 &LaTeX.&Log.Font\ Warnings\ &&\ Info<Tab>:ShowErrors\ fi	:ShowErrors fi<CR>
+nmenu 550.20.20 &LaTeX.&Log.&Show\ Files<Tab>:ShowErrors\ F			:ShowErrors F<CR>
 "
-nmenu 550.20 &LaTeX.&Log.-PdfFotns- :
-nmenu 550.20 &LaTeX.&Log.&Pdf\ Fonts<Tab>:PdfFonts		:PdfFonts<CR>
-"
-nmenu 550.20 &LaTeX.&Log.-Delete-	:
-nmenu 550.20 &LaTeX.&Log.&Delete\ Tex\ Output\ Files<Tab>:map\ <F6>d		:call Delete()<CR>
-nmenu 550.20 &LaTeX.&Log.Set\ Error\ File<Tab>:SetErrorFile	:SetErrorFile<CR> 
+nmenu 550.20.20 &LaTeX.&Log.-PdfFotns- :
+nmenu 550.20.20 &LaTeX.&Log.&Pdf\ Fonts<Tab>:PdfFonts		:PdfFonts<CR>
+
+nmenu 550.20.20 &LaTeX.&Log.-Delete-	:
+nmenu 550.20.20 &LaTeX.&Log.&Delete\ Tex\ Output\ Files<Tab>:map\ <F6>d		:call Delete()<CR>
+nmenu 550.20.20 &LaTeX.&Log.Set\ Error\ File<Tab>:SetErrorFile	:SetErrorFile<CR> 
 "
 nmenu 550.30 &LaTeX.-TOC- :
 nmenu 550.30 &LaTeX.&Table\ of\ Contents<Tab>:TOC		:TOC<CR>
@@ -5017,7 +5568,7 @@ nmenu 550.78 &LaTeX.&Toggle\ Space\ [off]				:ToggleSpace<CR>
 if g:atp_math_opened
     nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_math_opened			:ToggleCheckMathOpened<CR>
 else
-    nmenu 550.79 &LaTeX.&Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_math_opened			:ToggleCheckMathOpened<CR>
+    nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_math_opened			:ToggleCheckMathOpened<CR>
 endif
 tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
 " ToDo: add menu for printing.

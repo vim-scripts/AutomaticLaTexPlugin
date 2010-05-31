@@ -1,15 +1,19 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Feb 4
+" Last Changed: 2010 May 31
 " URL:		
 
 "
 " Status Line:
-function! Status()
+
+if exists("b:did_ftplugin") | finish | endif
+let b:did_ftplugin = 1
+
+function! ATPBibStatus()
     return "Bibsearch: " . substitute(expand("%"),"___","","g")
 endfunction
-setlocal statusline=%{Status()}
+setlocal statusline=%{ATPBibStatus()}
 " MAPPINGS
 if !exists("no_plugin_maps") && !exists("no_atp_bibsearch_maps")
     map <buffer> c :call BibChoose()<CR>

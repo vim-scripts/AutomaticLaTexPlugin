@@ -1,8 +1,11 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Feb 14
+" Last Changed: 2010 May 31
 " URL:		
+
+if exists("b:did_ftplugin") | finish | endif
+let b:did_ftplugin = 1
 
 function! ATP_TOC_StatusLine()
     if expand("%") == "__ToC__"

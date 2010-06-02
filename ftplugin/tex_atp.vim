@@ -4,7 +4,7 @@
 " Last Changed: 2010 06 02
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 19 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 20 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -1473,11 +1473,12 @@ function! Print(...)
 
     " print locally or remotely
     " the default is to print locally (g:atp_ssh=`whoami`@localhost)
-    if exists("g:apt_ssh") 
+    if exists("g:atp_ssh") 
 	let l:server=strpart(g:atp_ssh,stridx(g:atp_ssh,"@")+1)
     else
 	let l:server='localhost'
     endif
+    echomsg "SERVER " . l:server
     let b:server=l:server
     if l:server =~ 'localhost'
 	if g:printingoptions != "" || (a:0 >= 2 && a:2 != "")

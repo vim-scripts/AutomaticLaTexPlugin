@@ -952,8 +952,7 @@ Completion works for:
 		beginning then define ':let g:atp_math_commands_first=0' (the
 		default is 1, first go math commands).
 
-
-		The label commands completes in a special way: for example in
+		The label command completes in a special way: for example in
 		a line like:
 			\begin{theorem}\lab<Tab>
 		will complete to 
@@ -965,6 +964,29 @@ Completion works for:
 		- you can list only labels for theorems), so if you do not
 		want it anyway: 'let g:atp_no_short_names=1' will make the
 		work.
+
+							*atp_local_commands*
+							*atp_local_environments*
+							*atp_local_completion*
+		By default the first tile you are completing an environment
+		name or a command a list of locally defined environments and
+		commands is made (it takes a few seconds). If you do not want
+		to completions for them define "let b:atp_local_completion=0",
+		if b:atp_local_completion=2" then the search for local
+		definitions and commands will be done on startup. If you
+		added a command or an environment the function
+		"LocalCommands()" will update the list of local definitions.
+		The output is stored in two variables: |b:atp_local_commands|
+		and |b:atp_local_environments|. 
+
+		If you use the same set of definitions in every tex file
+		you can set g:atp_local_commands and g:atp_local_environments
+		which if defined are used instead of |b:atp_local_commands| and
+		|b:atp_local_environments| (use the function LocalCommands()
+		to generate the list and then use the command: 
+		    :let @a= b:atp_local_commands 
+		i.e. copy the variable to register a and paste it in your vimrc file.)
+
 
 	ref/label/cite
 		for label completion puts short names, for ref and eqref
@@ -988,6 +1010,12 @@ Completion works for:
 		something (in place of XXX) it will close the environment in
 		after the cursor position otherwise in next line.
 
+		The environments opened in tex definitions ('\def',
+		'\newcommand', '\renewcommand') will not be closed unless the
+		current cursor position is in that line (sometimes one might
+		want to have a definition which only opens an environment).
+
+		EXAMPLES:
 				
 			(the <Tab> indicates in which position the
 			<Tab> can be pressed to get the described

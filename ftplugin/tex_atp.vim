@@ -1,10 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 May 31
+" Last Changed: 2010 06 02
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 18 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 19 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -15,6 +15,10 @@
 " 		damages resulting from the use of this software. 
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
+"
+" Todo: generate the g:bibresults dictionary with pattern "" and then match
+" aginst it. This could be faster. And make command to regenerate the bib
+" database.
 "
 " Idea: write a diff function wich compares two files ignoring new lines, but
 " using the structure of \begin:\end \(:\), etc... .
@@ -578,6 +582,7 @@ function! SetErrorFile()
 "     let l:ef=b:outdir . fnamemodify(expand("%"),":t:r") . ".log"
     let l:ef=b:outdir . fnamemodify(b:atp_mainfile,":t:r") . ".log"
     let &l:errorfile=l:ef
+    return &l:errorfile
 endfunction
 endif
 
@@ -628,6 +633,7 @@ function! s:setoutdir(arg)
 		let g:outdir_dict={ fnamemodify(bufname("%"),":p") : b:outdir }
 	    endif
     endif
+    return b:outdir
 endfunction
 
 " ________________GLOBAL_AND_LOCAL_VARIABLES________________________
@@ -639,7 +645,7 @@ let s:optionsDict= { 	"texoptions" 	: "", 		"reloadonerror" : "0",
 		\	"XpdfServer" 	: fnamemodify(expand("%"),":t"), 
 		\	"outdir" 	: fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/",
 		\	"texcompiler" 	: "pdflatex",	"auruns"	: "1",
-		\ 	"truncate_status_section"	: "40" }
+		\ 	"truncate_status_section"	: "40"}
 let s:ask={ "ask" : "0" }
 if !exists("g:rmcommand") && executable("perltrash")
     let g:rmcommand="perltrash"
@@ -827,7 +833,7 @@ function! ShowOptions(...)
 	    echomsg "b:lastbibflags=" . b:lastbibflags
 	endif
 	echohl BibResultsLabel
-	echomsg "g:bibentries=" . string(g:bibentries) . "  ['article', 'book', 'booklet', 'conference', 'inbook', 'incollection', 'inproceedings', 'manual', 'mastertheosis', 'misc', 'phdthesis', 'proceedings', 'techreport', 'unpublished']"
+	echomsg "g:bibentries=" . string(g:bibentries) . "  ['article', 'book', 'booklet', 'conference', 'inbook', 'incollection', 'inproceedings', 'manual', 'masterthesis', 'misc', 'phdthesis', 'proceedings', 'techreport', 'unpublished']"
 	echohl BibResultsFileNames
 	if exists('b:bibfiles')
 	    echomsg "b:bibfiles=  " .  string(b:bibfiles)
@@ -1616,14 +1622,14 @@ function! s:searchbib(pattern)
     let s:bibfiles=keys(FindBibFiles(bufname('%')))
     
     " Make a pattern which will match for the elements of the list g:bibentries
-    let l:pattern = '^\s*@\(\%(\<article\>\)'
-    for l:bibentry in g:bibentries
-	if l:bibentry != 'article'
-	let l:pattern=l:pattern . '\|\%(\<' . l:bibentry . '\>\)'
-	endif
+    let l:pattern = '^\s*@\%(\<'.g:bibentries[0].'\>'
+    for l:bibentry in g:bibentries['1':len(g:bibentries)]
+	let l:pattern=l:pattern . '\|\<' . l:bibentry . '\>'
     endfor
-    unlet l:bibentry
     let l:pattern=l:pattern . '\)'
+    let b:pattern=l:pattern
+
+    unlet l:bibentry
     let b:bibentryline={} 
     
     " READ EACH BIBFILE IN TO DICTIONARY s:bibdict, WITH KEY NAME BEING THE bibfilename
@@ -1641,7 +1647,7 @@ function! s:searchbib(pattern)
 	    " same name under different locations (only the last one will
 	    " survive)
 	    let s:bibdict[l:f]=readfile(fnameescape(findfile(s:append(l:f,'.bib'),s:append(l:path,"/") . "**")))
-	endif
+	endfor
 	let l:bibdict[l:f]=copy(s:bibdict[l:f])
 	" clear the s:bibdict values from lines which begin with %    
 	let l:x=0
@@ -1654,43 +1660,134 @@ function! s:searchbib(pattern)
 	endfor
 	unlet l:line
     endfor
-    for l:f in s:bibfiles
-	let l:list=[]
-	let l:nr=1
-	for l:line in l:bibdict[l:f]
-	    if substitute(l:line,'{\|}','','g') =~ a:pattern
-		let l:true=1
-		let l:t=0
-		while l:true == 1
-		    let l:tnr=l:nr-l:t
-		   if l:bibdict[l:f][l:tnr-1] =~ l:pattern && l:tnr >= 0
-		       let l:true=0
-		       let l:list=add(l:list,l:tnr)
-		   elseif l:tnr <= 0
-		       let l:true=0
-		   endif
-		   let l:t+=1
-		endwhile
-	    endif
-	    let l:nr+=1
+
+    " SPEED UP TODO: if a:pattern == "" there is no need to do that!
+    " uncomment this when the rest will be ready!
+    if a:pattern != ""
+	for l:f in s:bibfiles
+	    let l:list=[]
+	    let l:nr=1
+	    for l:line in l:bibdict[l:f]
+		" if the line matches find the begining of this bib field and add its
+		" line number to the list l:list
+		if substitute(l:line,'{\|}','','g') =~ a:pattern
+		    let l:true=1
+		    let l:t=0
+		    while l:true == 1
+			let l:tnr=l:nr-l:t
+			" go back until the line will match l:pattern (which
+			" shoulf be the beginning of the bib field.
+		       if l:bibdict[l:f][l:tnr-1] =~ l:pattern && l:tnr >= 0
+			   let l:true=0
+			   let l:list=add(l:list,l:tnr)
+		       elseif l:tnr <= 0
+			   let l:true=0
+		       endif
+		       let l:t+=1
+		    endwhile
+		endif
+		let l:nr+=1
+	    endfor
+    " CLEAR THE l:list FROM ENTRIES WHICH APPEAR TWICE OR MORE --> l:clist
+	    let l:pentry="A"		" We want to ensure that l:entry (a number) and l:pentry are different
+	    for l:entry in l:list
+		if l:entry != l:pentry
+		    if count(l:list,l:entry) > 1
+			while count(l:list,l:entry) > 1
+			    let l:eind=index(l:list,l:entry)
+			    call remove(l:list,l:eind)
+			endwhile
+		    endif 
+		    let l:pentry=l:entry
+		endif
+	    endfor
+	    let b:bibentryline=extend(b:bibentryline,{ l:f : l:list })
 	endfor
-" CLEAR THE l:list FROM ENTRIES WHICH APPEAR TWICE OR MORE --> l:clist
-    let l:pentry="A"		" We want to ensure that l:entry (a number) and p:entry are different
-    for l:entry in l:list
-	if l:entry != l:pentry
-	    if count(l:list,l:entry) > 1
-		while count(l:list,l:entry) > 1
-		    let l:eind=index(l:list,l:entry)
-		    call remove(l:list,l:eind)
-		endwhile
-	    endif 
-	    let l:pentry=l:entry
-	endif
-    endfor
-    let b:bibentryline=extend(b:bibentryline,{ l:f : l:list })
-    endfor
+    endif
 "   CHECK EACH BIBFILE
     let l:bibresults={}
+
+    " NEW CODE:
+"     if the pattern was empty make it faster. 
+    if a:pattern == ""
+	for l:bibfile in keys(l:bibdict)
+	    let l:bibfile_len=len(l:bibdict[l:bibfile])
+	    let s:bibd={}
+		let l:nr=0
+		while l:nr < l:bibfile_len
+		    let l:line=l:bibdict[l:bibfile][l:nr]
+" 		    echomsg "LINE " . l:nr . "  " .  (l:line =~ l:pattern) . " line " . l:line
+		    if l:line =~ l:pattern
+			let s:lbibd={}
+			let s:lbibd["KEY"]=l:line
+			let l:beg_line=l:nr+1
+			let l:nr+=1
+			let l:line=l:bibdict[l:bibfile][l:nr]
+			while l:line !~ l:pattern && l:nr < l:bibfile_len
+			    let l:line=l:bibdict[l:bibfile][l:nr]
+			    let l:lkey=tolower(
+					\ matchstr(
+					    \ strpart(l:line,0,
+						\ stridx(l:line,"=")
+					    \ ),'\<\w*\>'
+					\ ))
+" I have to add line concatenation, if it is not ended otherwise it is not shown
+" right.
+
+			if l:lkey != ""
+			    let s:lbibd[l:lkey]=l:line
+" IF THE LINE IS SPLIT ATTACH NEXT LINE									
+			    let l:lline=substitute(l:line,'\\"\|\\{\|\\}\|\\(\|\\)','','g')
+			    let l:pos=s:count(l:lline,"{")
+			    let l:neg=s:count(l:lline,"}")
+			    let l:m=l:pos-l:neg
+			    let l:pos=s:count(l:lline,"(")
+			    let l:neg=s:count(l:lline,")")
+			    let l:n=l:pos-l:neg
+			    let l:o=s:count(l:lline,"\"")
+    " this checks if bracets {}, and () and "" appear in pairs in the current line:  
+			    let l:y=1
+			    if l:m>0 || l:n>0 || l:o>l:o/2*2 
+				while l:m>0 || l:n>0 || l:o>l:o/2*2 
+				    let l:pos=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"{")
+				    let l:neg=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"}")
+				    let l:m+=l:pos-l:neg
+				    let l:pos=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"(")
+				    let l:neg=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),")")
+				    let l:n+=l:pos-l:neg
+				    let l:o+=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"\"")
+    " Let's append the next line: 
+				    let s:lbibd[l:lkey]=substitute(s:lbibd[l:lkey],'\s*$','','') . " ". substitute(get(l:bibdict[l:bibfile],l:nr+l:y),'^\s*','','')
+				    let l:y+=1
+				    if l:y > 30
+					echoerr "ATP-Error /see :h atp-errors-bibsearch/, missing '}', ')' or '\"' in bibentry at line " . l:linenr . " (check line " . l:nr . ") in " . l:f
+					break
+				    endif
+				endwhile
+			    endif
+			endif
+
+
+
+
+" 			    echomsg "SUB LINE " . l:nr . "  " . l:lkey
+			    let l:nr+=l:y
+			endwhile
+			let l:nr-=1
+" 			echomsg "END WHILE " . l:nr
+			call extend(s:bibd, { l:beg_line : s:lbibd })
+		    else
+			let l:nr+=1
+		    endif
+" 		    echomsg "LINE END " . l:nr . " " .  l:bibdict[l:bibfile][l:nr]
+		endwhile
+	    let l:bibresults[l:bibfile]=s:bibd
+	endfor
+	let g:bbibresults=l:bibresults
+	return l:bibresults
+    endif
+    " END OF NEW CODE:
+
     for l:bibfile in keys(b:bibentryline)
 	let l:f=l:bibfile . ".bib"
 "s:bibdict[l:f])	CHECK EVERY STARTING LINE (we are going to read bibfile from starting
@@ -1712,7 +1809,7 @@ function! s:searchbib(pattern)
 " 		let l:time+=1
 " 	    endwhile
 " 	    let l:bfieldline=l:time
-	    
+
 	    let l:nr=l:linenr-1
 	    let l:i=s:count(get(l:bibdict[l:bibfile],l:linenr-1),"{")-s:count(get(l:bibdict[l:bibfile],l:linenr-1),"}")
 	    let l:j=s:count(get(l:bibdict[l:bibfile],l:linenr-1),"(")-s:count(get(l:bibdict[l:bibfile],l:linenr-1),")") 
@@ -1729,7 +1826,12 @@ function! s:searchbib(pattern)
 		let l:pos=s:count(get(l:bibdict[l:bibfile],l:tlnr-1),"(")
 		let l:neg=s:count(get(l:bibdict[l:bibfile],l:tlnr-1),")")
 		let l:j+=l:pos-l:neg
-		let l:lkey=tolower(matchstr(strpart(get(l:bibdict[l:bibfile],l:tlnr-1),0,stridx(get(l:bibdict[l:bibfile],l:tlnr-1),"=")),'\<\w*\>'))
+		let l:lkey=tolower(
+			    \ matchstr(
+				\ strpart(get(l:bibdict[l:bibfile],l:tlnr-1),0,
+				    \ stridx(get(l:bibdict[l:bibfile],l:tlnr-1),"=")
+				\ ),'\<\w*\>'
+			    \ ))
 		if l:lkey != ""
 		    let s:lbibd[l:lkey]=get(l:bibdict[l:bibfile],l:tlnr-1)
 			let l:y=0
@@ -1752,7 +1854,7 @@ function! s:searchbib(pattern)
 				let l:neg=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),")")
 				let l:n+=l:pos-l:neg
 				let l:o+=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),"\"")
-" Let us append the next line: 
+" Let's append the next line: 
 				let s:lbibd[l:lkey]=substitute(s:lbibd[l:lkey],'\s*$','','') . " ". substitute(get(l:bibdict[l:bibfile],l:tlnr+l:y),'^\s*','','')
 				let l:y+=1
 				if l:y > 30
@@ -1772,6 +1874,7 @@ function! s:searchbib(pattern)
 		let b:x=l:x
 		unlet l:tlnr
 	    endwhile
+	    
 	    let s:bibd[l:linenr]=s:lbibd
 	    unlet s:lbibd
 	endfor
@@ -1930,7 +2033,7 @@ function! s:showresults(bibresults,flags,pattern)
 "   Open a new window.
     let l:bufnr=bufnr("___" . a:pattern . "___"  )
     if l:bufnr != -1
-	let l:bdelete=l:bufnr . "bdelete"
+	let l:bdelete=l:bufnr . "bwipeout"
 	exe l:bdelete
     endif
     unlet l:bufnr
@@ -2240,6 +2343,7 @@ function! s:buflist()
     if bufname("") =~ ".tex" && index(t:buflist,l:name) == -1
 	call add(t:buflist,l:name)
     endif
+    return t:buflist
 endfunction
 call s:buflist()
  
@@ -3592,7 +3696,7 @@ endfunction
 	\ 'normal ', 'large ', 'Large ', 'LARGE ', 'huge ', 'HUGE ',
 	\ 'usefont{', 'fontsize{', 'selectfont ',
 	\ 'addcontentsline{', 'addtocontents ',
-	\ 'input', 'include', 'includeonly', 
+	\ 'input', 'include', 'includeonly', 'inlucegraphics',  
 	\ 'savebox', 'sbox', 'usebox ', 'rule ', 'raisebox{', 
 	\ 'parbox{', 'mbox{', 'makebox{', 'framebox{', 'fbox{',
 	\ 'bigskip ', 'medskip ', 'smallskip ', 'vfill ', 'vspace{', 
@@ -3672,7 +3776,9 @@ endfunction
 
     	if !exists("*LocalCommands")
 	function! LocalCommands()
-	    call s:setprojectname()
+
+	    echo "Makeing lists of commands and environments found in input files ... "
+" 	    call s:setprojectname()
 	    let l:command_names=[]
 	    let l:environment_names=[]
 
@@ -3687,7 +3793,9 @@ endfunction
 			    let l:name=matchstr(l:ifile[l:range[0]-1],
 					\ '^\%(\\def\\\zs[^{#]*\ze[{#]\|\\newcommand{\?\\\zs[^\[{]*\ze[\[{}]}\?\)')
 			    if l:name != ""
-				call add(l:command_names,l:name)
+				if !count(l:command_names,l:name)
+				    call add(l:command_names,l:name)
+				endif
 " 				echomsg l:name
 			    endif
 			endif
@@ -3696,13 +3804,15 @@ endfunction
 			    let l:name=matchstr(l:ifile[l:range[0]-1],
 					\ '^\\\%(newtheorem\*\?\|newenvironment\){\zs[^}]*\ze}')
 			    if l:name != ""
-				call add(l:environment_names,l:name)
+				if !count(l:environment_names,l:name)
+				    call add(l:environment_names,l:name)
+				endif
 			    endif
 			endif
 		    endfor
 		endfor
-	    let b:atp_local_commands		= []
-	    let b:atp_local_environments	= []
+	    let s:atp_local_commands		= []
+	    let s:atp_local_environments	= []
 
 	    " remove double entries
 	    for l:type in ['command', 'environment']
@@ -3712,23 +3822,27 @@ endfunction
 " 			echomsg l:item . "  " . index(g:atp_{l:type}s,l:item)
 " 		    endif
 		    if index(g:atp_{l:type}s,l:item) == '-1'
-			call add(b:atp_local_{l:type}s,l:item)
+			call add(s:atp_local_{l:type}s,l:item)
 		    endif
 		endfor
 	    endfor
-	    return [ b:atp_local_environments, b:atp_local_commands ]
+
+	    " Make shallow copies of the lists
+	    let b:atp_local_commands=s:atp_local_commands
+	    let b:atp_local_environemtns=s:atp_local_environments
+	    return [ s:atp_local_environments, s:atp_local_commands ]
 	endfunction
 	endif
 	" The BufEnter augroup doesn't work with EditInputFile, but at least it works
 	" when entering. Debuging shows that when entering new buffer it uses
 	" wrong b:atp_mainfile, it is still equal to the bufername and not the
 	" real main file. Maybe it is better to use s:mainfile variable.
-	if !exists("g:atp_local_completion_lists")
-	    let g:atp_local_completion_lists = 1
+"
+" this is now done by s:setoptions() function.
+	if !exists("b:atp_local_completion_lists")
+	    let b:atp_local_completion_lists = 1
 	endif
-	if g:atp_local_completion_lists == 1
-	    call LocalCommands()
-	elseif g:atp_local_completion_lists == 2 
+	if b:atp_local_completion_lists == 2 
 	    au BufEnter *.tex call LocalCommands()
 	endif
 
@@ -3800,11 +3914,20 @@ endfunction
 		    \ 'shadows', 'shapes.arrows', 'shapes.callout', 'shapes.geometric', 
 		    \ 'shapes.gates.logic.IEC', 'shapes.gates.logic.US', 'shapes.misc', 
 		    \ 'shapes.multipart', 'shapes.symbols', 'topaths', 'through', 'trees' ])
+	" tikz keywords = begin without '\'!
+	" ToDo: add mote keywords:
+	let g:atp_tikz_keywords=[  'matrix', 'anchor', 
+		    \ 'west', 'east', 'north', 'south', 'at', 'thin', 'thick', 'semithick', 'rounded', 'corners',
+		    \ 'controls', 'and', 'circle', 'step', 'grid', 'very', 'style', 'line', 'help',
+		    \ 'color', 'arc', 'curve', 'scale', 'parabola', 'bend', 'sin', 'rectangle', 'ultra', 
+		    \ 'right', 'left', 'intersection', 'xshift', 'yshift', 'near', 'start', 'above', 'below', 
+		    \ 'end', 'sloped', 'coordinate', 'cap', 'shape', 'transition', 'place', 'label', 'every', 
+		    \ 'edge', 'point', 'loop', 'join', 'distance', 'sharp', 'rotate' ]
 	" ToDo: completion for arguments in brackets [] for tikz commands.
 	let g:atp_tikz_commands=[ 'matrix', 'node', 'shadedraw', 'draw', 'tikz', 'usetikzlibrary{', 'tikzset',
 		    \ 'path', 'filldraw', 'fill', 'clip', 'drawclip', 'foreach', 'angle', 'coordinate',
 		    \ 'useasboundingbox', 'tikztostart', 'tikztotarget', 'tikztonodes', 'tikzlastnode',
-		    \ 'pgfextra', 'endpgfextra',
+		    \ 'pgfextra', 'endpgfextra', 'verb', 
 		    \ 'pattern', 'shade', 'shadedraw', ]
 	" ToDo: think of keyword completions
 " 	let g:tikz_keywords=[]
@@ -4047,6 +4170,13 @@ function! CloseLastEnv(...)
 	    " the above condition matches for the situations when we have to
 	    " complete in the same line in three cases:
 	    " l:close == environment, displayd_math or inline_math. 
+
+	    " do not complete environments which starts in a definition.
+let b:cle_debug= (getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand') . " " . (l:begin_line != line("."))
+	    if getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand' && l:begin_line != line(".")
+		let b:cle_return="def"
+		return b:cle_return
+	    endif
 	    if l:close == 'environment' && index(g:atp_no_complete,l:env) == '-1' &&
 		\ !s:Check_if_Closed('\\begin\s*{' . l:env,'\\end\s*{' . l:env,line("."),g:atp_completion_limits[2])
 " 		let l:env_name=matchstr(l:line,'\%(\\begin.*\)*\\begin{\zs[^}]*\ze}') 
@@ -4096,6 +4226,8 @@ function! CloseLastEnv(...)
 	    "Debug:
 	    if l:close == 'environment'
 	    " NESTING
+		" do not complete environments which starts in a definition.
+
 		let l:error=0
 		let l:prev_line_nr="-1"
 		let l:cenv_lines=[]
@@ -4150,6 +4282,11 @@ function! CloseLastEnv(...)
 
 		let b:line_nr=l:line_nr " DEBUG
 			
+let b:cle_debug= (getline(l:line_nr) =~ '\\def\|\%(re\)\?newcommand') . " " . (l:line_nr != line("."))
+		if getline(l:line_nr) =~ '\\def\|\%(re\)\?newcommand' && l:line_nr != line(".")
+		    let b:cle_return="def"
+		    return b:cle_return
+		endif
 		" get all names of environments which begin in this line
 		let l:env_names=[]
 		let l:line=getline(l:line_nr)
@@ -4339,6 +4476,10 @@ function! s:Check_if_Closed(bpat,epat,line,limit,...)
     if l:method==0
 	while l:nr <= a:line+l:limit
 	    let l:line=getline(l:nr)
+" 	    if l:line =~ '\\def\|\%(re\)\?newcommand\>'
+" 		let l:nr+=1
+" 		continue
+" 	    endif
 " 	    echomsg "CC line " . l:nr . " " . l:line
 	" Check if Closed
 	    if l:nr == a:line
@@ -4366,6 +4507,10 @@ function! s:Check_if_Closed(bpat,epat,line,limit,...)
 " 	echomsg "CC DEBUG ------------"
 	while l:nr <= a:line+l:limit
 	    let l:line=getline(l:nr)
+" 	    if l:line =~ '\\def\|\%(re\)\?newcommand\>'
+" 		let l:nr+=1
+" 		continue
+" 	    endif
 	" I assume that the env is opened in the line before!
 	    let l:bpat_count+=s:count(l:line,a:bpat,1)
 	    let l:epat_count+=s:count(l:line,a:epat,1)
@@ -4392,6 +4537,9 @@ endfunction
 " cursor position is important).
 " a:1 == 0 first non closed
 " a:1 == 2 first non closed by counting.
+
+" this function doesn't check if sth is opened in lines which begins with '\\def\>'
+" (some times one want's to have a command which opens an environment.
 function! s:Check_if_Opened(bpat,epat,line,limit,...)
 
     if a:0 == 0 || a:1 == 0
@@ -4416,6 +4564,10 @@ function! s:Check_if_Opened(bpat,epat,line,limit,...)
     if l:check_mode == 0 || l:check_mode == 1
 	while l:nr >= a:line-l:limit && l:nr >= 1
 	    let l:line=getline(l:nr)
+" 	    if l:line =~ '\\def\|\%(re\)\?newcommand\>'
+" 		let l:nr-=1
+" 		continue
+" 	    endif
 " 	echo "DEBUG A " . l:nr . " " . l:line
 		if l:nr == a:line
 " 		    let l:x= a:bpat . '.\{-}' . a:epat
@@ -4440,7 +4592,7 @@ function! s:Check_if_Opened(bpat,epat,line,limit,...)
 			endif
 		    elseif l:check_mode == 1
 			if substitute(l:line, a:bpat . '.\{-}' . a:epat,'','g')
-				    \ =~ a:bpat
+				    \ =~ '\%(\\def\|\%(re\)\?newcommand\)\@<!' . a:bpat
 			    let l:check=s:Check_if_Closed(a:bpat,a:epat,l:nr,a:limit)
 " 		    echo "DEBUG line nr: " l:nr . " line: " . l:line . " check: " . l:check
 			    " if env is not closed or is closed after a:line
@@ -4460,6 +4612,10 @@ function! s:Check_if_Opened(bpat,epat,line,limit,...)
 	let l:c=0
 	while l:nr >= a:line-l:limit  && l:nr >= 1
 	    let l:line=getline(l:nr)
+" 	    if l:line =~ '\\def\|\%(re\)\?newcommand\>'
+" 		let l:nr-=1
+" 		continue
+" 	    endif
 	" I assume that the env is opened in line before!
 " 		let l:line=strpart(l:line,getpos(".")[2])
 	    let l:bpat_count+=s:count(l:line,a:bpat,1)
@@ -4574,8 +4730,9 @@ function! Tab_Completion(expert_mode)
     let l:pos=getpos(".")
     let l:line=join(getbufline("%",l:pos[1]))
     let l:nchar=strpart(l:line,l:pos[2]-1,1)
+    let b:nchar=l:nchar " debug
     let l:l=strpart(l:line,0,l:pos[2]-1)
-    let b:l=l:l	"DEBUG
+    let b:l=l:l	" debug
     let l:n=strridx(l:l,'{')
     let l:m=strridx(l:l,',')
     let l:o=strridx(l:l,'\')
@@ -4586,12 +4743,23 @@ function! Tab_Completion(expert_mode)
     let b:s=l:s
 
     let l:nr=max([l:n,l:m,l:o,l:s])
+    " this matches for \...
     let l:begin=strpart(l:l,l:nr+1)
+    " and this for '\<\w*$' (begining of last started word) -- used in
+    " tikzpicture completion method 
+    let l:tbegin=matchstr(l:l,'\zs\<\w*$')
+    let l:t=match(l:l,'\zs\<\w*$')
+
+    let b:tbegin=l:tbegin "DEBUG
     let b:begin=l:begin "DEBUG
     " what we are trying to complete: usepackage, environment.
     let l:pline=strpart(l:l,0,l:nr)
     let b:pline=l:pline	"DEBUG
-    if l:pline =~ '\\usepackage\%([.*]\)\?\s*'
+    if s:Check_if_Opened('\%(\\def\>.*\|\\\%(re\)\?newcommand\>.*\)\@<!\\begin\s*{tikzpicture}',
+		\ '\\end\s*{tikzpicture}',line("."),g:atp_completion_limits[2],2)
+	let b:comp_method="tikzpicture"
+	let l:completion_method="tikzpicture"
+    elseif l:pline =~ '\\usepackage\%([.*]\)\?\s*'
 	if index(g:atp_completion_active_modes, 'package_names') != '-1'
 	    let l:completion_method='package'
 	    let b:comp_method='package' "DEBUG
@@ -4790,14 +4958,26 @@ function! Tab_Completion(expert_mode)
 	let l:end=strpart(l:line,l:pos[2]-1)
 	if l:end !~ '\s*}'
 	    let l:completion_list=deepcopy(g:atp_environments)
-	    if g:atp_local_completion_lists
-		let l:completion_list=s:extend(l:completion_list,b:atp_local_environments)
+	    if b:atp_local_completion_lists
+		" Make a list of local envs and commands
+		if exists("g:atp_local_environments")
+		    let s:atp_local_environments=g:atp_local_environments
+		elseif !exists("s:atp_local_environments")
+		    let s:atp_local_environments=LocalCommands()[1]
+		endif
+		let l:completion_list=s:extend(l:completion_list,s:atp_local_environments)
 	    endif
 	    let l:completion_list=s:Add_to_List(l:completion_list,'}')
 	else
 	    let l:completion_list=deepcopy(g:atp_environments)
-	    if g:atp_local_completion_lists
-		call s:extend(l:completion_list, b:atp_local_environments)
+	    if b:atp_local_completion_lists
+		" Make a list of local envs and commands
+		if exists("g:atp_local_environments")
+		    let s:atp_local_environments=g:atp_local_environments
+		elseif !exists("s:atp_local_environments")
+		    let s:atp_local_environments=LocalCommands()[1]
+		endif
+		call s:extend(l:completion_list, s:atp_local_environments)
 	    endif
 	endif
 		    " TIKZ
@@ -4827,9 +5007,19 @@ function! Tab_Completion(expert_mode)
     " ------------ TIKZ LIBRARIES --------
     elseif l:completion_method == 'tikz_libraries'
 	let l:completion_list=deepcopy(g:atp_tikz_libraries)
+    " ------------ TIKZPICTURE ENVIRONMENT --------
+    elseif l:completion_method == 'tikzpicture'
+	let l:obegin=strpart(l:l,l:o+1)
+	let l:completion_list=deepcopy(g:atp_tikz_keywords)
+	call deepcopy(extend(l:completion_list,g:atp_tikz_commands))
+	" TODO: this is a simple solution for now but should be extended as
+	" for 'command' completion (it is good to make a function for adding
+	" math completion commands. 
+	call deepcopy(extend(l:completion_list,g:atp_math_commands))
     " ------------ COMMAND ---------------
     elseif l:completion_method == 'command'
 	let l:obegin=strpart(l:l,l:o+1)
+	let b:obegin=l:obegin
 	let l:completion_list=[]
 
 		" Are we in the math mode?
@@ -4857,10 +5047,10 @@ function! Tab_Completion(expert_mode)
 " 		    let b:adebug=1
 		    " add commands if thier package is declared.
 		    " AMSMATH
-		    let b:debug="no amsmath commands"
+" 		    let b:debug="no amsmath commands"
 		    if g:atp_amsmath == 1 || s:Search_Package('amsmath') || 
 				\ s:Search_Package('amssymb') || s:Document_Class() =~ '^ams'
-			let b:debug="amsmath commands added"
+" 			let b:debug="amsmath commands added"
 			if a:expert_mode == 0
 			    call deepcopy(extend(l:completion_list,g:atp_math_commands_non_expert_mode))
 			endif
@@ -4891,8 +5081,14 @@ function! Tab_Completion(expert_mode)
 			call deepcopy(extend(l:completion_list,g:atp_fancyhdr_commands))
 		    endif
 		    " LOCAL COMMNADS
-		    if g:atp_local_completion_lists
-			call deepcopy(extend(l:completion_list,b:atp_local_commands))
+		    if b:atp_local_completion_lists
+			" Make a list of local envs and commands
+			if exists("g:atp_local_commands")
+			    let s:atp_local_commands=g:atp_local_commands
+			elseif !exists("s:atp_local_commands")
+			    let s:atp_local_commands=LocalCommands()[1]
+			endif
+			call deepcopy(extend(l:completion_list,s:atp_local_commands))
 		    endif
 		    " ToDo: LAYOUT and many more packages.
 
@@ -4969,8 +5165,8 @@ function! Tab_Completion(expert_mode)
 	call sort(l:completion_list)
     " ----------- BIBITEMS ----------------- 
     elseif l:completion_method == 'bibitems'
-	let l:bibitems_list=values(s:searchbib(''))
-	let b:bibitems_list=l:bibitems_list
+	let l:bibitems_list=values(s:searchbib(l:begin))
+	let b:bibitems_list=deepcopy(l:bibitems_list)
 	let l:pre_completion_list=[]
 	let l:completion_list=[]
 	for l:dict in l:bibitems_list
@@ -4989,7 +5185,7 @@ function! Tab_Completion(expert_mode)
 	let b:completion_list=l:completion_list	" DEBUG
     endif
 
-    " make the list of matching items
+    " MAKE THE LIST OF MATCHING ITEMS
     if l:completion_method != 'end' && l:completion_method != 'env_close'
 	let l:completions=[]
 	for l:item in l:completion_list
@@ -5026,6 +5222,12 @@ function! Tab_Completion(expert_mode)
 			call add(l:completions, '\' . l:item)
 		    endif
 		endif
+	    elseif l:completion_method == 'tikzpicture'
+		if a:expert_mode == 1 && l:item =~ '\C^' . l:tbegin
+		    call add(l:completions, l:item)
+		elseif a:expert_mode != 1 && l:item =~ l:tbegin
+		    call add(l:completions, l:item)
+		endif
 	    endif
 	endfor
     else
@@ -5056,6 +5258,9 @@ function! Tab_Completion(expert_mode)
     elseif l:completion_method == 'command'
 	call complete(l:o+1,l:completions)
 	let b:tc_return="3 X"
+    elseif l:completion_method == 'tikzpicture'
+	call complete(l:t+1,l:completions)
+	let b:tc_return="4 tikzpicture"
     endif
 
     " If the completion method was a command (probably in a math mode) and
@@ -5463,6 +5668,7 @@ command! -buffer SetXdvi		:call SetXdvi()
 command! -buffer SetXpdf		:call SetXpdf()	
 command! -complete=custom,ListPrinters  -buffer -nargs=* SshPrint	:call Print(<f-args>)
 command! -buffer Lpstat	:call Lpstat()
+command! -buffer LocalCommands		:call LocalCommands()
 
 command! -buffer -nargs=1 -complete=customlist,Env_compl NEnv			:call NextEnv(<f-args>)
 command! -buffer -nargs=1 -complete=customlist,Env_compl PEnv			:call PrevEnv(<f-args>)

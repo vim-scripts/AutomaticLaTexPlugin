@@ -1,10 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 06 02
+" Last Changed: 2010 June 06 
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 20 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 21 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -303,7 +303,7 @@ function! FindBibFiles(...)
 	endif
     endfor
     let l:allbibfiles=deepcopy(l:callbibfiles)
-    let b:abf=deepcopy(l:allbibfiles)
+"     let b:abf=l:allbibfiles
 
     " this variable will store unreadable bibfiles:    
     let s:notreadablebibfiles=[]
@@ -350,7 +350,7 @@ endif
 " files.
 function! s:make_defi_dict(...)
 
-    if a:0 > 0
+    if a:0 >= 1
 	let l:bufname=a:1
     else
 	let l:bufname=bufname("%")
@@ -358,22 +358,29 @@ function! s:make_defi_dict(...)
 
     " pattern to match the definitions this function is also used to fine
     " \newtheorem, and \newenvironment commands  
-    if a:0 > 1	
+    if a:0 >= 2	
 	let l:pattern = a:2
     else
 	let l:pattern = '\\def\|\\newcommand'
+    endif
+
+    if a:0 >= 3
+	let l:preambule_only=a:3
+    else
+	let l:preambule_only=1
     endif
 
     let l:defi_dict={}
 
     let l:inputfiles=FindInputFiles(l:bufname,"0")
     let l:input_files=[]
+    let b:input_files=l:input_files
 
     for l:inputfile in keys(l:inputfiles)
 	if l:inputfiles[l:inputfile][0] != "bib"
 	    let l:input_file=s:append(l:inputfile,'.tex')
-	    if filereadable(b:outdir . '/' . l:input_file)
-		let l:input_file=b:outdir . '/' . l:input_file
+	    if filereadable(s:append(b:outdir,'/') . l:input_file)
+		let l:input_file=s:append(b:outdir,'/') . l:input_file
 	    else
 		let l:input_file=findfile(l:inputfile,g:texmf . '**')
 	    endif
@@ -381,8 +388,11 @@ function! s:make_defi_dict(...)
 	endif
     endfor
 
+
     let l:input_files=filter(l:input_files, 'v:val != ""')
-    call extend(l:input_files,[ b:atp_mainfile ])
+    if !count(l:input_files,b:atp_mainfile)
+	call extend(l:input_files,[ b:atp_mainfile ])
+    endif
 
     if len(l:input_files) > 0
     for l:inputfile in l:input_files
@@ -393,7 +403,8 @@ function! s:make_defi_dict(...)
 	
 	" search for definitions
 	let l:lnr=1
-	while l:lnr <= len(l:ifile)
+	while (l:lnr <= len(l:ifile) && (!l:preambule_only || l:ifile[l:lnr-1] !~ '\\begin\s*{document}'))
+" 	    echo l:lnr . " " . l:inputfile . " " . l:ifile[l:lnr-1] !~ '\\begin\s*{document}'
 
 	    let l:match=0
 
@@ -419,6 +430,7 @@ function! s:make_defi_dict(...)
 		let l:lnr+=1
 	    endif
 	endwhile
+" 	echomsg l:lnr . " " . l:inputfile
     endfor
     endif
 
@@ -433,8 +445,13 @@ function! DefiSearch(...)
     else
 	let l:pattern='\C' . a:1
     endif
+    if a:0 >= 2 
+	let l:preambule_only=a:2
+    else
+	let l:preambule_only=1
+    endif
 
-    let l:ddict=s:make_defi_dict()
+    let l:ddict=s:make_defi_dict(bufname("%"),'\\def\|\\newcommand',l:preambule_only)
 "     let b:dd=l:ddict
 
     " open new buffer
@@ -647,10 +664,16 @@ let s:optionsDict= { 	"texoptions" 	: "", 		"reloadonerror" : "0",
 		\	"texcompiler" 	: "pdflatex",	"auruns"	: "1",
 		\ 	"truncate_status_section"	: "40"}
 let s:ask={ "ask" : "0" }
+if !exists("g:atp_autex_check_if_closed")
+    let g:atp_autex_check_if_closed=1
+endif
 if !exists("g:rmcommand") && executable("perltrash")
     let g:rmcommand="perltrash"
 elseif !exists("g:rmcommand")
     let g:rmcommand="rm"
+endif
+if !exists("g:atp_env_maps_old")
+    let g:atp_env_maps_old=0
 endif
 if !exists("g:atp_amsmath")
     let g:atp_amsmath=0
@@ -873,14 +896,14 @@ hi link atp_statusoutdir String
 if !exists("g:atp_status_notification")
     let g:atp_status_notification=0
 endif
-if !exists("b:atp_callback")
+if !exists("g:atp_callback")
     if exists("g:atp_status_notification") && g:atp_status_notification == 1
-	let b:atp_callback=1
+	let g:atp_callback=1
     else
-	let b:atp_callback=0
+	let g:atp_callback=0
     endif
 endif
-let g:atp_running=0
+let b:atp_running=0
 " ToDo: to doc.
 " this shows errors as ShowErrors better use of call back mechnism is :copen!
 if !exists("g:atp_debug_mode")
@@ -888,7 +911,7 @@ if !exists("g:atp_debug_mode")
 endif
 if !exists("*ATPRunnig")
 function! ATPRunning()
-    if g:atp_running && b:atp_callback
+    if b:atp_running && g:atp_callback
 	redrawstatus
 	return b:texcompiler
     endif
@@ -1060,14 +1083,14 @@ endfunction
 function! s:copy(input,output)
 	call writefile(readfile(a:input),a:output)
 endfunction
-
-" this variable =1 if s:complier was called and tex has not finished.
-" let g:atp_running=0
+ 
+" this variable =1 if s:compiler was called and tex has not finished.
+" let b:atp_running=0
 " This is the MAIN FUNCTION which sets the command and calls it.
 " NOTE: the filename argument is not escaped!
 function! s:compiler(bibtex,start,runs,verbose,command,filename)
     if has('clientserver')
-	let g:atp_running=1
+	let b:atp_running=1
     endif
     call s:outdir()
     	" IF b:texcompiler is not compatible with the viewer
@@ -1187,12 +1210,6 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 	    endif
 	endif
 	
-	" add g:atp_running
-	if has('clientserver') && v:servername != "" && b:atp_callback == 1
-	    let s:texcomp = s:texcomp . ' ; vim --servername ' . v:servername . 
-			\ ' --remote-send "<ESC>:let g:atp_running=0<CR>"'
-	endif
-
 "  	    	echomsg "DEBUG X command s:texcomp=" s:texcomp
 	if a:bibtex == 1
 	    if filereadable(l:outaux)
@@ -1226,16 +1243,18 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 	    let l:j+=1
 	endfor
 	    let s:command=s:command . " ; " . s:copy
-	if has('clientserver') && v:servername != "" && b:atp_callback == 1
-" 	    let s:command = s:command . ' ; vim --servername ' . v:servername . 
-" 			\ ' --remote-send "<ESC>echomsg &errorfile<CR>"'
+
+	if has('clientserver') && v:servername != "" && g:atp_callback == 1
+	    let s:command = s:command . ' ; vim --servername ' . v:servername . 
+			\ ' --remote-send "<ESC>:let b:atp_running=0<CR>"'
+" 	    in g:atp_debug_mode a copen window with list of errors is opened,
+" 	    there is no need to run Show
 	    let s:command = s:command . ' ; vim --servername ' . v:servername . 
 			\ ' --remote-send "<ESC>:cg<CR>"'
-" 	    if  g:atp_debug_mode == 1
-" 		let s:command = s:command . ' ; vim --servername ' . v:servername . 
-" 			    \ ' --remote-send "<ESC>:ShowErrors<CR>"'
-" 	    endif
+" 	    Saving and preserving the mode doesn't work! Leaving in insert
+" 	    mode neither.
 	endif
+
  	let s:rmtmp="rm -r " . s:tmpdir 
 	let s:command=s:command . " ; " . s:rmtmp . ")&"
 	if a:start == 1 
@@ -1262,17 +1281,41 @@ function! s:compiler(bibtex,start,runs,verbose,command,filename)
 	let b:texomp=s:texcomp
 endfunction
 "-------------------------------------------------------------------------
+" To Do: we can now check if the last env is closed and run latex if it is, to
+" not run latex if the 
 function! s:auTeX()
    if b:autex
 	" if the file (or input file is modified) compile the document 
 	if filereadable(expand("%"))
 	    if s:compare(readfile(expand("%")))
-		call s:compiler(0,0,b:auruns,0,"AU",b:atp_mainfile)
-		redraw
+
+" 	let b:autex_debug=!g:atp_autex_check_if_closed || 
+" 	    \ (!s:Check_if_Closed('\\begin\s*{','\\end\s*{',line("."),g:atp_completion_limits[2],1) &&
+" 	    \  !s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line("."),g:atp_completion_limits[0],1) &&
+" 	    \  !s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line("."),g:atp_completion_limits[1],1))
+" 
+" 		if !g:atp_autex_check_if_closed || 
+" 		    \ (!s:Check_if_Closed('\\begin\s*{','\\end\s*{',line("."),g:atp_completion_limits[2],1) &&
+" 		    \  !s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line("."),g:atp_completion_limits[0],1) &&
+" 		    \  !s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line("."),g:atp_completion_limits[1],1))
+		    call s:compiler(0,0,b:auruns,0,"AU",b:atp_mainfile)
+		    redraw
+" 		endif
 	    endif
 	else
-	    call s:compiler(0,0,b:auruns,0,"AU",b:atp_mainfile)
-	    redraw
+
+" 	let b:autex_debug=!g:atp_autex_check_if_closed || 
+" 	    \ (!s:Check_if_Closed('\\begin\s*{','\\end\s*{',line("."),g:atp_completion_limits[2],1) &&
+" 	    \  !s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line("."),g:atp_completion_limits[0],1) &&
+" 	    \  !s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line("."),g:atp_completion_limits[1],1))
+
+" 	    if !g:atp_autex_check_if_closed ||
+" 		\ (!s:Check_if_Closed('\\begin\s*{','\\end\s*{',line("."),g:atp_completion_limits[2],1) &&
+" 		\  !s:Check_if_Closed('\(','\)',line("."),g:atp_completion_limits[0],1) &&
+" 		\  !s:Check_if_Closed('\[','\]',line("."),g:atp_completion_limits[1],1))
+		call s:compiler(0,0,b:auruns,0,"AU",b:atp_mainfile)
+		redraw
+" 	    endif
 	endif
    endif
 endfunction
@@ -1629,6 +1672,13 @@ function! s:searchbib(pattern)
     endfor
     let l:pattern=l:pattern . '\)'
     let b:pattern=l:pattern
+" This pattern matches all entry lines: author = \| title = \| ... 
+    let l:pattern_b = '^\s*\%('
+    for l:bibentry in keys(g:bibflagsdict)
+	let l:pattern_b=l:pattern_b . '\|\<' . g:bibflagsdict[l:bibentry][0] . '\>'
+    endfor
+    let l:pattern_b.='\)\s*='
+    let b:pattern_b=l:pattern_b
 
     unlet l:bibentry
     let b:bibentryline={} 
@@ -1636,7 +1686,6 @@ function! s:searchbib(pattern)
     " READ EACH BIBFILE IN TO DICTIONARY s:bibdict, WITH KEY NAME BEING THE bibfilename
     let s:bibdict={}
     let l:bibdict={}
-    let b:bibdict={}	" DEBUG
     for l:f in s:bibfiles
 	let s:bibdict[l:f]=[]
 
@@ -1651,16 +1700,20 @@ function! s:searchbib(pattern)
 	endfor
 	let l:bibdict[l:f]=copy(s:bibdict[l:f])
 	" clear the s:bibdict values from lines which begin with %    
-	let l:x=0
-	for l:line in s:bibdict[l:f]
-	    if l:line =~ '^\s*\%(%\|@\cstring\)' 
-		call remove(l:bibdict[l:f],l:x)
-	    else
-		let l:x+=1
-	    endif
-	endfor
-	unlet l:line
+	" SPEED UP
+	call filter(l:bibdict[l:f],' v:val !~ "^\\s*\\%(%\\|@\\cstring\\)"')
+" 	let l:x=0
+" 	for l:line in s:bibdict[l:f]
+" 	    if l:line =~ '^\s*\%(%\|@\cstring\)' 
+" 		call remove(l:bibdict[l:f],l:x)
+" 	    else
+" 		let l:x+=1
+" 	    endif
+" 	endfor
+" 	unlet l:line
+" 	END SPEED UP
     endfor
+    let b:bibdict=deepcopy(l:bibdict)	" DEBUG
 
     " SPEED UP TODO: if a:pattern == "" there is no need to do that!
     " uncomment this when the rest will be ready!
@@ -1708,7 +1761,7 @@ function! s:searchbib(pattern)
 "   CHECK EACH BIBFILE
     let l:bibresults={}
 
-    " NEW CODE:
+" NEW CODE: (shows only every second match ?!)
 "     if the pattern was empty make it faster. 
     if a:pattern == ""
 	for l:bibfile in keys(l:bibdict)
@@ -1720,10 +1773,11 @@ function! s:searchbib(pattern)
 " 		    echomsg "LINE " . l:nr . "  " .  (l:line =~ l:pattern) . " line " . l:line
 		    if l:line =~ l:pattern
 			let s:lbibd={}
-			let s:lbibd["KEY"]=l:line
+			let s:lbibd["bibfield_key"]=l:line
 			let l:beg_line=l:nr+1
 			let l:nr+=1
 			let l:line=l:bibdict[l:bibfile][l:nr]
+			let l:y=1
 			while l:line !~ l:pattern && l:nr < l:bibfile_len
 			    let l:line=l:bibdict[l:bibfile][l:nr]
 			    let l:lkey=tolower(
@@ -1732,50 +1786,84 @@ function! s:searchbib(pattern)
 						\ stridx(l:line,"=")
 					    \ ),'\<\w*\>'
 					\ ))
-" I have to add line concatenation, if it is not ended otherwise it is not shown
-" right.
-
-			if l:lkey != ""
-			    let s:lbibd[l:lkey]=l:line
-" IF THE LINE IS SPLIT ATTACH NEXT LINE									
-			    let l:lline=substitute(l:line,'\\"\|\\{\|\\}\|\\(\|\\)','','g')
-			    let l:pos=s:count(l:lline,"{")
-			    let l:neg=s:count(l:lline,"}")
-			    let l:m=l:pos-l:neg
-			    let l:pos=s:count(l:lline,"(")
-			    let l:neg=s:count(l:lline,")")
-			    let l:n=l:pos-l:neg
-			    let l:o=s:count(l:lline,"\"")
-    " this checks if bracets {}, and () and "" appear in pairs in the current line:  
+			" CONCATENATE LINES IF IT IS NOT ENDED
 			    let l:y=1
-			    if l:m>0 || l:n>0 || l:o>l:o/2*2 
-				while l:m>0 || l:n>0 || l:o>l:o/2*2 
-				    let l:pos=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"{")
-				    let l:neg=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"}")
-				    let l:m+=l:pos-l:neg
-				    let l:pos=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"(")
-				    let l:neg=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),")")
-				    let l:n+=l:pos-l:neg
-				    let l:o+=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"\"")
-    " Let's append the next line: 
+			    if l:lkey != ""
+				let s:lbibd[l:lkey]=l:line
+	" IF THE LINE IS SPLIT ATTACH NEXT LINE									
+" 				echomsg "l:nr=".l:nr. "       line=".l:line 
+				let l:nline=get(l:bibdict[l:bibfile],l:nr+l:y)
+" 				while l:line !~ '\%()\|}\|"\)\?\s*,\s*\%(%.*\)\?$' && 
+" 					    \ l:nline !~ l:pattern
+				while l:nline !~ '=' && 
+					    \ l:nline !~ l:pattern &&
+					    \ (l:nr+l:y) < l:bibfile_len
+" 				THIS IS FAST BUT CAN BREAK FROM TIME TO TIME
+" 				(for example if the title contains = )
+" 				instead of l:nline !~ '=' it is better to
+" 				check: 
+" 				while l:nline !~ l:pattern_b &&
+" 					    \ l:nline !~ l:pattern &&
+" 					    \ (l:nr+l:y) < l:bibfile_len
+" 			        (BUT IT TAKES 1s more!)  
 				    let s:lbibd[l:lkey]=substitute(s:lbibd[l:lkey],'\s*$','','') . " ". substitute(get(l:bibdict[l:bibfile],l:nr+l:y),'^\s*','','')
+				    let l:line=get(l:bibdict[l:bibfile],l:nr+l:y)
+" 				    echomsg "l:nr=".l:nr. " l:y=".l:y." line=".l:line 
 				    let l:y+=1
+				    let l:nline=get(l:bibdict[l:bibfile],l:nr+l:y)
 				    if l:y > 30
-					echoerr "ATP-Error /see :h atp-errors-bibsearch/, missing '}', ')' or '\"' in bibentry at line " . l:linenr . " (check line " . l:nr . ") in " . l:f
+					echoerr "ATP-Error /see :h atp-errors-bibsearch/, missing '}', ')' or '\"' in bibentry (check line " . l:nr . ") in " . l:f . " line=".l:line
 					break
 				    endif
 				endwhile
+				if l:nline =~ l:pattern 
+" 				    echomsg "BREAK l:nr=".l:nr. " l:y=".l:y." nline=".l:nline 
+				    let l:y=1
+				endif
+" 				OLD MECHANISM OF ATTACHING LINES
+" 				echomsg "l:nr=".l:nr. "       line=".l:line 
+" 				if l:line !~ '\%()\|}\|"\)\s*,\s*\%(%.*\)\?$'
+" 				    let l:lline=substitute(l:line,'\\"\|\\{\|\\}\|\\(\|\\)','','g')
+" 				    let l:pos=s:count(l:lline,"{")
+" 				    let l:neg=s:count(l:lline,"}")
+" 				    let l:m=l:pos-l:neg
+" 				    let l:pos=s:count(l:lline,"(")
+" 				    let l:neg=s:count(l:lline,")")
+" 				    let l:n=l:pos-l:neg
+" 				    let l:o=s:count(l:lline,"\"")
+" 	    " this checks if bracets {}, and () and "" appear in pairs in the current line:  
+" 				    if l:m>0 || l:n>0 || l:o>l:o/2*2 
+" 					while l:m>0 || l:n>0 || l:o>l:o/2*2 
+" 					    let l:pos=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"{")
+" 					    let l:neg=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"}")
+" 					    let l:m+=l:pos-l:neg
+" 					    let l:pos=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"(")
+" 					    let l:neg=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),")")
+" 					    let l:n+=l:pos-l:neg
+" 					    let l:o+=s:count(get(l:bibdict[l:bibfile],l:nr+l:y),"\"")
+" 	    " Let's append the next line: 
+" 					    let s:lbibd[l:lkey]=substitute(s:lbibd[l:lkey],'\s*$','','') . " ". substitute(get(l:bibdict[l:bibfile],l:nr+l:y),'^\s*','','')
+" 					    let l:y+=1
+" 					    if l:y > 30
+" 						echoerr "ATP-Error /see :h atp-errors-bibsearch/, missing '}', ')' or '\"' in bibentry at line " . l:linenr . " (check line " . l:nr . ") in " . l:f
+" 						break
+" 					    endif
+" 					endwhile
+" 				    endif
+" 				endif
+" 			    END OF OLD MECHANISM OF ATTACHING LINES
+
+
+
+
 			    endif
-			endif
-
-
-
-
-" 			    echomsg "SUB LINE " . l:nr . "  " . l:lkey
+" 			    echomsg "SUB LINE l:nr" . l:nr . "  l:y" . l:y
 			    let l:nr+=l:y
+			    unlet l:y
 			endwhile
 			let l:nr-=1
 " 			echomsg "END WHILE " . l:nr
+" 			echo s:lbibd
 			call extend(s:bibd, { l:beg_line : s:lbibd })
 		    else
 			let l:nr+=1
@@ -1783,11 +1871,12 @@ function! s:searchbib(pattern)
 " 		    echomsg "LINE END " . l:nr . " " .  l:bibdict[l:bibfile][l:nr]
 		endwhile
 	    let l:bibresults[l:bibfile]=s:bibd
+	    let g:bibresults=l:bibresults
 	endfor
 	let g:bbibresults=l:bibresults
 	return l:bibresults
     endif
-    " END OF NEW CODE:
+    " END OF NEW CODE: (up)
 
     for l:bibfile in keys(b:bibentryline)
 	let l:f=l:bibfile . ".bib"
@@ -1815,7 +1904,7 @@ function! s:searchbib(pattern)
 	    let l:i=s:count(get(l:bibdict[l:bibfile],l:linenr-1),"{")-s:count(get(l:bibdict[l:bibfile],l:linenr-1),"}")
 	    let l:j=s:count(get(l:bibdict[l:bibfile],l:linenr-1),"(")-s:count(get(l:bibdict[l:bibfile],l:linenr-1),")") 
 	    let s:lbibd={}
-	    let s:lbibd["KEY"]=get(l:bibdict[l:bibfile],l:linenr-1)
+	    let s:lbibd["bibfield_key"]=get(l:bibdict[l:bibfile],l:linenr-1)
 	    let l:x=1
 " we go from the first line of bibentry, i.e. @article{ or @article(, until the { and (
 " will close. In each line we count brackets.	    
@@ -1837,32 +1926,35 @@ function! s:searchbib(pattern)
 		    let s:lbibd[l:lkey]=get(l:bibdict[l:bibfile],l:tlnr-1)
 			let l:y=0
 " IF THE LINE IS SPLIT ATTACH NEXT LINE									
-			let l:lline=substitute(get(l:bibdict[l:bibfile],l:tlnr+l:y-1),'\\"\|\\{\|\\}\|\\(\|\\)','','g')
-			let l:pos=s:count(l:lline,"{")
-			let l:neg=s:count(l:lline,"}")
-			let l:m=l:pos-l:neg
-			let l:pos=s:count(l:lline,"(")
-			let l:neg=s:count(l:lline,")")
-			let l:n=l:pos-l:neg
-			let l:o=s:count(l:lline,"\"")
-" this checks if bracets {}, and () and "" appear in pairs in the current line:  
-			if l:m>0 || l:n>0 || l:o>l:o/2*2 
-			    while l:m>0 || l:n>0 || l:o>l:o/2*2 
-				let l:pos=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),"{")
-				let l:neg=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),"}")
-				let l:m+=l:pos-l:neg
-				let l:pos=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),"(")
-				let l:neg=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),")")
-				let l:n+=l:pos-l:neg
-				let l:o+=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),"\"")
-" Let's append the next line: 
-				let s:lbibd[l:lkey]=substitute(s:lbibd[l:lkey],'\s*$','','') . " ". substitute(get(l:bibdict[l:bibfile],l:tlnr+l:y),'^\s*','','')
-				let l:y+=1
-				if l:y > 30
-				    echoerr "ATP-Error /see :h atp-errors-bibsearch/, missing '}', ')' or '\"' in bibentry at line " . l:linenr . " (check line " . l:tlnr . ") in " . l:f
-				    break
-				endif
-			    endwhile
+			if get(l:bibdict[l:bibfile],l:tlnr-1) !~ '\%()\|}\|"\)\s*,\s*\%(%.*\)\?$'
+" 				    \ get(l:bibdict[l:bibfile],l:tlnr) !~ l:pattern_b
+			    let l:lline=substitute(get(l:bibdict[l:bibfile],l:tlnr+l:y-1),'\\"\|\\{\|\\}\|\\(\|\\)','','g')
+			    let l:pos=s:count(l:lline,"{")
+			    let l:neg=s:count(l:lline,"}")
+			    let l:m=l:pos-l:neg
+			    let l:pos=s:count(l:lline,"(")
+			    let l:neg=s:count(l:lline,")")
+			    let l:n=l:pos-l:neg
+			    let l:o=s:count(l:lline,"\"")
+    " this checks if bracets {}, and () and "" appear in pairs in the current line:  
+			    if l:m>0 || l:n>0 || l:o>l:o/2*2 
+				while l:m>0 || l:n>0 || l:o>l:o/2*2 
+				    let l:pos=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),"{")
+				    let l:neg=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),"}")
+				    let l:m+=l:pos-l:neg
+				    let l:pos=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),"(")
+				    let l:neg=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),")")
+				    let l:n+=l:pos-l:neg
+				    let l:o+=s:count(get(l:bibdict[l:bibfile],l:tlnr+l:y),"\"")
+    " Let's append the next line: 
+				    let s:lbibd[l:lkey]=substitute(s:lbibd[l:lkey],'\s*$','','') . " ". substitute(get(l:bibdict[l:bibfile],l:tlnr+l:y),'^\s*','','')
+				    let l:y+=1
+				    if l:y > 30
+					echoerr "ATP-Error /see :h atp-errors-bibsearch/, missing '}', ')' or '\"' in bibentry at line " . l:linenr . " (check line " . l:tlnr . ") in " . l:f
+					break
+				    endif
+				endwhile
+			    endif
 			endif
 		endif
 " we have to go line by line and we could skip l:y+1 lines, but we have to
@@ -1900,8 +1992,9 @@ let g:bibflagsdict={ 't' : ['title', 'title        '] , 'a' : ['author', 'author
 		\ 'P' : ['publisher', 'publisher    '], 'N' : ['note', 'note         '], 
 		\ 'S' : ['school', 'school       '], 	'h' : ['howpublished', 'howpublished '], 
 		\ 'o' : ['organization', 'organization '], 'I' : ['institution' , 'institution '],
-		\ 'u' : ['url','url          '],
-		\ 'H' : ['homepage', 'homepage     '], 	'i' : ['issn', 'issn         '] }
+		\ 'u' : ['url', 'url          '],
+		\ 'H' : ['homepage', 'homepage     '], 	'i' : ['issn', 'issn         '],
+		\ 'k' : ['key', 'key          ']}
 let s:bibflagslist=keys(g:bibflagsdict)
 let s:bibflagsstring=join(s:bibflagslist,'')
 let g:kwflagsdict={ 	  '@a' : '@article', 	'@b' : '@book\%(let\)\@<!', 
@@ -1936,13 +2029,6 @@ function! s:comparelist(i1, i2)
    return str2nr(a:i1) == str2nr(a:i2) ? 0 : str2nr(a:i1) > str2nr(a:i2) ? 1 : -1
 endfunction
 "-------------------------s:showresults--------------------------------------
-function! s:showresults(bibresults,flags,pattern)
- 
-    "if nothing was found inform the user and return:
-    if len(a:bibresults) == count(a:bibresults,{})
-	echo "BibSearch: no bib fields matched."
-	return 0
-    endif
 
 " FLAGS:
 " for currently supported flags see ':h atp_bibflags'
@@ -1965,9 +2051,19 @@ function! s:showresults(bibresults,flags,pattern)
 " o - organization
 " i - institution
 
+function! s:showresults(bibresults,flags,pattern)
+ 
+    "if nothing was found inform the user and return:
+    if len(a:bibresults) == count(a:bibresults,{})
+	echo "BibSearch: no bib fields matched."
+	return 0
+    endif
+
+
     function! s:showvalue(value)
 	return substitute(strpart(a:value,stridx(a:value,"=")+1),'^\s*','','')
     endfunction
+
     let s:z=1
     let l:ln=1
     let l:listofkeys={}
@@ -2031,6 +2127,12 @@ function! s:showresults(bibresults,flags,pattern)
 	endif
 " 	let b:flagslist=l:flagslist			" DEBUG
 " 	let b:kwflagslist=l:kwflagslist			" DEBUG
+
+	"NEW: if there are only keyword flags append default flags
+	if len(l:kwflagslist) > 0 && len(l:flagslist) == 0 
+	    let l:flagslist=split(g:defaultbibflags,'\zs')
+	endif
+
 "   Open a new window.
     let l:bufnr=bufnr("___" . a:pattern . "___"  )
     if l:bufnr != -1
@@ -2050,6 +2152,26 @@ function! s:showresults(bibresults,flags,pattern)
 
 "     set the window options
     silent call s:setwindow()
+" make a dictionary of clear values, which we will fill with found entries. 	    
+" the default value is no<keyname>, which after all is matched and not showed
+" SPEED UP:
+    let l:values={'bibfield_key' : 'nokey'}	
+    for l:flag in s:bibflagslist 
+	let l:values_clear=extend(l:values,{ g:bibflagsdict[l:flag][0] : 'no' . g:bibflagsdict[l:flag][0] })
+    endfor
+
+" SPEED UP: 
+    let l:kwflag_pattern="\\C"	
+    let l:len_kwflgslist=len(l:kwflagslist)
+    let l:kwflagslist_rev=reverse(deepcopy(l:kwflagslist))
+    for l:lkwflag in l:kwflagslist
+	if index(l:kwflagslist_rev,l:lkwflag) == 0 
+	    let l:kwflag_pattern.=g:kwflagsdict[l:lkwflag]
+	else
+	    let l:kwflag_pattern.=g:kwflagsdict[l:lkwflag].'\|'
+	endif
+    endfor
+"     let b:kwflag_pattern=l:kwflag_pattern
 
     for l:bibfile in keys(a:bibresults)
 	if a:bibresults[l:bibfile] != {}
@@ -2057,36 +2179,35 @@ function! s:showresults(bibresults,flags,pattern)
 	    let l:ln+=1
 	endif
 	for l:linenr in copy(sort(keys(a:bibresults[l:bibfile]),"s:comparelist"))
-" make a dictionary of clear values, which we will fill with found entries. 	    
-" the default value is no<keyname>, which after all is matched and not showed
-	    let l:values={'key' : 'nokey'}	
-	    for l:flag in s:bibflagslist 
-		let l:values=extend(l:values,{ g:bibflagsdict[l:flag][0] : 'no' . g:bibflagsdict[l:flag][0] })
-	    endfor
-	    unlet l:flag
+	    let l:values=deepcopy(l:values_clear)
 	    let b:values=l:values
 " fill l:values with a:bibrsults	    
-	    let l:values["key"]=a:bibresults[l:bibfile][l:linenr]["KEY"]
-	    for l:key in keys(l:values)
-		if l:key != 'key' && get(a:bibresults[l:bibfile][l:linenr],l:key,"no" . l:key) != "no" . l:key
-		    let l:values[l:key]=a:bibresults[l:bibfile][l:linenr][l:key]
-		endif
-	    endfor
+	    let l:values["bibfield_key"]=a:bibresults[l:bibfile][l:linenr]["bibfield_key"]
+" 	    for l:key in keys(l:values)
+" 		if l:key != 'key' && get(a:bibresults[l:bibfile][l:linenr],l:key,"no" . l:key) != "no" . l:key
+" 		    let l:values[l:key]=a:bibresults[l:bibfile][l:linenr][l:key]
+" 		endif
+" SPEED UP:
+		call extend(l:values,a:bibresults[l:bibfile][l:linenr],'force')
+" 	    endfor
 " ----------------------------- SHOW ENTRIES -------------------------
 " first we check the keyword flags, @a,@b,... it passes if at least one flag
 " is matched
 	    let l:check=0
-	    for l:lkwflag in l:kwflagslist
-	        let l:kwflagpattern= '\C' . g:kwflagsdict[l:lkwflag]
-		if l:values['key'] =~ l:kwflagpattern
-		   let l:check=1
-		endif
-	    endfor
+" 	    for l:lkwflag in l:kwflagslist
+" 	        let l:kwflagpattern= '\C' . g:kwflagsdict[l:lkwflag]
+" 		if l:values['bibfield_key'] =~ l:kwflagpattern
+" 		   let l:check=1
+" 		endif
+" 	    endfor
+	    if l:values['bibfield_key'] =~ l:kwflag_pattern
+		let l:check=1
+	    endif
 	    if l:check == 1 || len(l:kwflagslist) == 0
-		let l:linenumber=index(s:bibdict[l:bibfile],l:values["key"])+1
- 		call setline(l:ln,s:z . ". line " . l:linenumber . "  " . l:values["key"])
+		let l:linenumber=index(s:bibdict[l:bibfile],l:values["bibfield_key"])+1
+ 		call setline(l:ln,s:z . ". line " . l:linenumber . "  " . l:values["bibfield_key"])
 		let l:ln+=1
- 		let l:c0=s:count(l:values["key"],'{')-s:count(l:values["key"],'(')
+ 		let l:c0=s:count(l:values["bibfield_key"],'{')-s:count(l:values["bibfield_key"],'(')
 
 	
 " this goes over the entry flags:
@@ -2115,14 +2236,14 @@ function! s:showresults(bibresults,flags,pattern)
 		    call setline(l:ln,'}')
 		    let l:ln+=1
 		elseif l:c0 == -1 && l:c2 == -1
-		    call setline(line('$'),substitute(l:lastline,')\s*$','','')
+		    call setline(line('$'),substitute(l:lastline,')\s*$','',''))
 		    call setline(l:ln,')')
 		    let l:ln+=1
 		elseif l:c0 == -1 && l:c1 == 0	
 		    call setline(l:ln,')')
 		    let l:ln+=1
 		endif
-		let l:listofkeys[s:z]=l:values["key"]
+		let l:listofkeys[s:z]=l:values["bibfield_key"]
 		let s:z+=1
 	    endif
 	endfor
@@ -3496,14 +3617,16 @@ function! ToggleSpace()
 	echomsg "special space is on"
 	cmap <Space> \_s\+
 	let s:special_space="[on]"
-	aunmenu LaTeX.Toggle\ Space\ [off]
+	silent! aunmenu LaTeX.Toggle\ Space\ [off]
+	silent! aunmenu LaTeX.Toggle\ Space\ [on]
 	nmenu 550.78 &LaTeX.&Toggle\ Space\ [on]	:ToggleSpace<CR>
 	tmenu &LaTeX.&Toggle\ Space\ [on] cmap <space> \_s\+ is curently on
     else
 	echomsg "special space is off"
  	cunmap <Space>
 	let s:special_space="[off]"
-	aunmenu LaTeX.Toggle\ Space\ [on]
+	silent! aunmenu LaTeX.Toggle\ Space\ [on]
+	silent! aunmenu LaTeX.Toggle\ Space\ [off]
 	nmenu 550.78 &LaTeX.&Toggle\ Space\ [off]	:ToggleSpace<CR>
 	tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
     endif
@@ -3513,12 +3636,14 @@ endfunction
 function! ToggleCheckMathOpened()
     if g:atp_math_opened
 	echomsg "check if in math environment is off"
-	aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [on]
+	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [on]
+	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
 	nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_math_opened			
 		    \ :ToggleCheckMathOpened<CR>
     else
 	echomsg "check if in math environment is on"
-	aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
+	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
+	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
 	nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_math_opened
 		    \ :ToggleCheckMathOpened<CR>
     endif
@@ -3526,28 +3651,39 @@ function! ToggleCheckMathOpened()
 endfunction
 
 function! ToggleCallBack()
-    if b:atp_callback
+    if g:atp_callback
 	echomsg "call back is off"
-	aunmenu LaTeX.Toggle\ Call\ Back\ [on]
-	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>b:atp_callback	
+	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
+	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
+	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
 		    \ :call ToggleCallBack()<CR>
     else
 	echomsg "call back is on"
-	aunmenu LaTeX.Toggle\ Call\ Back\ [off]
-	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>b:atp_callback
+	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
+	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
+	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback
 		    \ :call ToggleCallBack()<CR>
     endif
-    let b:atp_callback=!b:atp_callback
+    let g:atp_callback=!g:atp_callback
 endfunction
 " ToDo: to doc.
 " describe DEBUG MODE in doc properly.
 function! ToggleDebugMode()
-    call ToggleCallBack()
+"     call ToggleCallBack()
     if g:atp_debug_mode
 	echomsg "debug mode is off"
-	aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]
+
+	silent! aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]
+	silent! aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]
 	nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>g:atp_debug_mode			
 		    \ :call ToggleDebugMode()<CR>
+
+	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
+	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
+	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
+		    \ :call ToggleDebugMode()<CR>
+
+	let g:atp_callback=0
 	let g:atp_debug_mode=0
 	let g:atp_status_notification=0
 	if g:atp_statusline
@@ -3556,10 +3692,18 @@ function! ToggleDebugMode()
 	silent cclose
     else
 	echomsg "debug mode is on"
-	aunmenu 550.20.5 LaTeX.Log.Toggle\ Debug\ Mode\ [off]
+
+	silent! aunmenu 550.20.5 LaTeX.Log.Toggle\ Debug\ Mode\ [off]
+	silent! aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]
 	nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>g:atp_debug_mode
 		    \ :call ToggleDebugMode()<CR>
-	let b:atp_callback=1
+
+	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
+	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
+	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback	
+		    \ :call ToggleDebugMode()<CR>
+
+	let g:atp_callback=1
 	let g:atp_debug_mode=1
 	let g:atp_status_notification=1
 	if g:atp_statusline
@@ -3574,14 +3718,21 @@ endfunction
 " This function searches if the package in question is declared or not.
 " Returns 1 if it is and 0 if it is not.
 " It was inspired by autex function written by Carl Mueller, math at carlm e4ward c o m
-function! s:Search_Package(name)
+function! s:Search_Package(name,...)
+    if a:0 == 0
+	let l:command='usepackage'
+    elseif a:0 == 1
+	let l:command=a:1
+    else
+	let l:command='usepackage'
+    endif
     let l:n=1
     let l:bufnr=bufnr(b:atp_mainfile)
     let l:line=join(getbufline(l:bufnr,l:n))
-"     echo "DEBUG SEARCH PACKAGE " . l:line  . " bufnr " . l:bufnr
+"     echo "DEBUG SEARCH PACKAGE " . l:line  . " bufnr " . l:bufnr . " pattern " . '^[^%]*\\\<'.l:command.'\>\s*{.*' . a:name
     let l:len=len(getbufline(l:bufnr,1,'$'))
     while l:line !~ '\\begin\s*{document}' &&  l:n <= l:len
-	if l:line =~ '^[^%]*\\usepackage\s*{.*' . a:name
+	if l:line =~ '^[^%]*\\\<'.l:command.'\>\s*{.*' . a:name
 	    return 1
 	endif
 	let l:n+=1
@@ -3590,7 +3741,7 @@ function! s:Search_Package(name)
     return 0
 endfunction
 " DEBUG
-command! -nargs=1 SearchPackage 	:echo s:Search_Package(<f-args>)
+command! -nargs=* SearchPackage 	:echo s:Search_Package(<f-args>)
 
 function! s:Document_Class()
 
@@ -3685,89 +3836,89 @@ endfunction
 	\ 'qpalatin', 'qbookman', 'qcourier', 'qswiss', 'qtimes', 'verbatim', 'wasysym'])
 
 	" the command \label is added at the end.
-	let g:atp_commands=['begin{', 'end{', 
-	\ 'cite{', 'nocite{', 'ref{', 'pageref{', 'eqref{', 'bibitem', 'item',
-	\ 'emph{', 'documentclass{', 'usepackage{',
-	\ 'section{', 'subsection{', 'subsubsection{', 'part{', 
-	\ 'chapter{', 'appendix ', 'subparagraph ', 'paragraph ',
-	\ 'textbf{', 'textsf{', 'textrm{', 'textit{', 'texttt{', 
-	\ 'textsc{', 'textsl{', 'textup{', 'textnormal ', 
-	\ 'bfseries', 'mdseries',
-	\ 'tiny ', 'scriptsize ', 'footnotesize ', 'small ',
-	\ 'normal ', 'large ', 'Large ', 'LARGE ', 'huge ', 'HUGE ',
-	\ 'usefont{', 'fontsize{', 'selectfont ',
-	\ 'addcontentsline{', 'addtocontents ',
-	\ 'input', 'include', 'includeonly', 'inlucegraphics',  
-	\ 'savebox', 'sbox', 'usebox ', 'rule ', 'raisebox{', 
-	\ 'parbox{', 'mbox{', 'makebox{', 'framebox{', 'fbox{',
-	\ 'bigskip ', 'medskip ', 'smallskip ', 'vfill ', 'vspace{', 
-	\ 'hspace ', 'hrulefill ', 'hfill ', 'dotfill ',
-	\ 'thispagestyle ', 'markright ', 'pagestyle ', 'pagenumbering ',
-	\ 'author{', 'date{', 'thanks{', 'title{',
-	\ 'maketitle ', 'overbrace{', 'underbrace{',
-	\ 'marginpar ', 'indent ', 'noindent ', 'par ', 'sloppy ', 'pagebreak[', 'nopagebreak[',
-	\ 'newpage ', 'newline ', 'linebreak[', 'hyphenation{', 'fussy ',
-	\ 'enlagrethispage{', 'clearpage ', 'cleardoublepage ',
-	\ 'opening{', 'name{', 'makelabels{', 'location{', 'closing{', 'address{', 
-	\ 'signature{', 'stopbreaks ', 'startbreaks ',
-	\ 'newcounter{', 'refstepcounter{', 
-	\ 'roman{', 'Roman{', 'stepcounter{', 'setcounter{', 
-	\ 'usecounter{', 'value{', 'newtheorem{', 'newfont{', 
-	\ 'newlength{', 'setlength{', 'addtolength{', 'settodepth{', 
-	\ 'settoheight{', 'settowidth{', 
-	\ 'width', 'height', 'depth', 'totalheight',
-	\ 'footnote{', 'footnotemark ', 'footnotetetext', 
-	\ 'bibliography{', 'bibliographystyle{', 'linethickness', 'line', 'circle',
-	\ 'frame', 'multiput', 'oval', 'put', 'shortstack', 'vector', 'dashbox',
-	\ 'flushbottom', 'onecolumn', 'raggedbottom', 'twocolumn',  
-	\ 'alph{', 'Alph{', 'arabic{', 'fnsymbol{', 'reversemarginpar',
-	\ 'hat{', 'grave{', 'bar{', 'acute{', 'mathring{', 'check{', 'dot{', 'vec{', 'breve{',
-	\ 'tilde{', 'widetilde{', 'widehat{', 'ddot{', 'exhyphenpenalty',
-	\ 'topmargin', 'oddsidemargin', 'evensidemargin', 'headheight', 'headsep', 
-	\ 'textwidth', 'textheight', 'marginparwidth', 'marginparsep', 'marginparpush', 'footskip', 'hoffset',
-	\ 'voffset', 'paperwidth', 'paperheight', 'theequation', 'thepage' ]
+	let g:atp_commands=["\\begin{", "\\end{", 
+	\ "\\cite{", "\\nocite{", "\\ref{", "\\pageref{", "\\eqref{", "\\bibitem", "\\item",
+	\ "\\emph{", "\\documentclass{", "\\usepackage{",
+	\ "\\section{", "\\subsection{", "\\subsubsection{", "\\part{", 
+	\ "\\chapter{", "\\appendix ", "\\subparagraph ", "\\paragraph ",
+	\ "\\textbf{", "\\textsf{", "\\textrm{", "\\textit{", "\\texttt{", 
+	\ "\\textsc{", "\\textsl{", "\\textup{", "\\textnormal ", 
+	\ "\\bfseries", "\\mdseries",
+	\ "\\tiny ", "\\scriptsize ", "\\footnotesize ", "\\small ",
+	\ "\\normal ", "\\large ", "\\Large ", "\\LARGE ", "\\huge ", "\\HUGE ",
+	\ "\\usefont{", "\\fontsize{", "\\selectfont ",
+	\ "\\addcontentsline{", "\\addtocontents ",
+	\ "\\input", "\\include", "\\includeonly", "\\inlucegraphics",  
+	\ "\\savebox", "\\sbox", "\\usebox ", "\\rule ", "\\raisebox{", 
+	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
+	\ "\\bigskip ", "\\medskip ", "\\smallskip ", "\\vfill ", "\\vspace{", 
+	\ "\\hspace ", "\\hrulefill ", "\\hfill ", "\\dots", "\\dotfill ",
+	\ "\\thispagestyle ", "\\markright ", "\\pagestyle ", "\\pagenumbering ",
+	\ "\\author{", "\\date{", "\\thanks{", "\\title{",
+	\ "\\maketitle ", "\\overbrace{", "\\underbrace{",
+	\ "\\marginpar ", "\\indent ", "\\noindent ", "\\par ", "\\sloppy ", "\\pagebreak[", "\\nopagebreak[",
+	\ "\\newpage ", "\\newline ", "\\linebreak[", "\\hyphenation{", "\\fussy ",
+	\ "\\enlagrethispage{", "\\clearpage ", "\\cleardoublepage ",
+	\ "\\opening{", "\\name{", "\\makelabels{", "\\location{", "\\closing{", "\\address{", 
+	\ "\\signature{", "\\stopbreaks ", "\\startbreaks ",
+	\ "\\newcounter{", "\\refstepcounter{", 
+	\ "\\roman{", "\\Roman{", "\\stepcounter{", "\\setcounter{", 
+	\ "\\usecounter{", "\\value{", "\\newtheorem{", "\\newfont{", 
+	\ "\\newlength{", "\\setlength{", "\\addtolength{", "\\settodepth{", 
+	\ "\\settoheight{", "\\settowidth{", 
+	\ "\\width", "\\height", "\\depth", "\\totalheight",
+	\ "\\footnote{", "\\footnotemark ", "\\footnotetetext", 
+	\ "\\bibliography{", "\\bibliographystyle{", "\\linethickness", "\\line", "\\circle",
+	\ "\\frame", "\\multiput", "\\oval", "\\put", "\\shortstack", "\\vector", "\\dashbox",
+	\ "\\flushbottom", "\\onecolumn", "\\raggedbottom", "\\twocolumn",  
+	\ "\\alph{", "\\Alph{", "\\arabic{", "\\fnsymbol{", "\\reversemarginpar",
+	\ "\\hat{", "\\grave{", "\\bar{", "\\acute{", "\\mathring{", "\\check{", "\\dot{", "\\vec{", "\\breve{",
+	\ "\\tilde{", "\\widetilde{", "\\widehat{", "\\ddot{", "\\exhyphenpenalty",
+	\ "\\topmargin", "\\oddsidemargin", "\\evensidemargin", "\\headheight", "\\headsep", 
+	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
+	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage" ]
 	
 	" ToDo: end writting layout commands. 
 	" ToDo: MAKE COMMANDS FOR PREAMBULE.
 
-	let g:atp_math_commands=['forall', 'exists', 'emptyset', 'aleph', 'partial',
-	\ 'nabla', 'Box', 'Diamond', 'bot', 'top', 'flat', 'sharp',
-	\ 'mathbf{', 'mathsf{', 'mathrm{', 'mathit{', 'mathbb{', 'mathtt{', 'mathcal{', 
-	\ 'mathop{', 'limits', 'text{', 'leqslant', 'leq', 'geqslant', 'geq',
-	\ 'gtrsim', 'lesssim', 'gtrless', 
-	\ 'rightarrow', 'Rightarrow', 'leftarrow', 'Leftarrow', 'iff', 
-	\ 'leftrightarrow', 'Leftrightarrow', 'downarrow', 'Downarrow', 'Uparrow',
-	\ 'Longrightarrow', 'longrightarrow', 'Longleftarrow', 'longleftarrow',
-	\ 'overrightarrow{', 'overleftarrow{', 'underrightarrow{', 'underleftarrow{',
-	\ 'uparrow', 'nearrow', 'searrow', 'swarrow', 'nwarrow', 
-	\ 'hookrightarrow', 'hookleftarrow', 'gets', 
-	\ 'sum', 'bigsum', 'cup', 'bigcup', 'cap', 'bigcap', 
-	\ 'prod', 'coprod', 'bigvee', 'bigwedge', 'wedge',  
-	\ 'oplus', 'otimes', 'odot', 'oint',
-	\ 'int', 'bigoplus', 'bigotimes', 'bigodot', 'times',  
-	\ 'smile', 'frown', 'subset', 'subseteq', 'supset', 'supseteq',
-	\ 'dashv', 'vdash', 'vDash', 'Vdash', 'models', 'sim', 'simeq', 
-	\ 'prec', 'preceq', 'preccurlyeq', 'precapprox',
-	\ 'succ', 'succeq', 'succcurlyeq', 'succapprox', 'approx', 
-	\ 'thickapprox', 'conq', 'bullet', 
-	\ 'lhd', 'unlhd', 'rhd', 'unrhd', 'dagger', 'ddager', 'dag', 'ddag', 
-	\ 'ldots', 'cdots', 'vdots', 'ddots', 
-	\ 'vartriangleright', 'vartriangleleft', 'trianglerighteq', 'trianglelefteq',
-	\ 'copyright', 'textregistered', 'puonds',
-	\ 'big', 'Big', 'Bigg', 'huge', 
-	\ 'left', 'right', 'bigr', 'Bigr', 'biggr', 'Biggr',
-	\ 'bigl', 'Bigl', 'biggl', 'Biggl',
-	\ 'sqrt', 'frac{', 'binom{', 'cline', 'vline', 'hline', 'multicolumn{', 
-	\ 'nouppercase', 'sqsubset', 'sqsupset', 'square', 'blacksqaure', 'triangledown', 'triangle', 
-	\ 'diagdown', 'diagup', 'nexists', 'varnothing', 'Bbbk', 'circledS', 'complement', 'hslash', 'hbar', 
-	\ 'eth', 'rightrightarrows', 'leftleftarrows', 'rightleftarrows', 'leftrighrarrows', 
-	\ 'downdownarrows', 'upuparrows', 'rightarrowtail', 'leftarrowtail', 
-	\ 'twoheadrightarrow', 'twoheadleftarrow', 'rceil', 'lceil', 'rfloor', 'lfloor', 
-	\ 'bullet', 'bigtriangledown', 'bigtriangleup', 'ominus', 'bigcirc', 'amalg', 
-	\ 'setminus', 'sqcup', 'sqcap', 
-	\ 'notin', 'neq', 'smile', 'frown', 'equiv', 'perp',
-	\ 'quad', 'qquad', 'stackrel', 'displaystyle', 'textstyle', 'scriptstyle', 'scriptscriptstyle',
-	\ 'langle', 'rangle' ]
+	let g:atp_math_commands=["\\forall", "\\exists", "\\emptyset", "\\aleph", "\\partial",
+	\ "\\nabla", "\\Box", "\\Diamond", "\\bot", "\\top", "\\flat", "\\sharp",
+	\ "\\mathbf{", "\\mathsf{", "\\mathrm{", "\\mathit{", "\\mathbb{", "\\mathtt{", "\\mathcal{", 
+	\ "\\mathop{", "\\limits", "\\text{", "\\leqslant", "\\leq", "\\geqslant", "\\geq",
+	\ "\\gtrsim", "\\lesssim", "\\gtrless", 
+	\ "\\rightarrow", "\\Rightarrow", "\\leftarrow", "\\Leftarrow", "\\iff", 
+	\ "\\leftrightarrow", "\\Leftrightarrow", "\\downarrow", "\\Downarrow", "\\Uparrow",
+	\ "\\Longrightarrow", "\\longrightarrow", "\\Longleftarrow", "\\longleftarrow",
+	\ "\\overrightarrow{", "\\overleftarrow{", "\\underrightarrow{", "\\underleftarrow{",
+	\ "\\uparrow", "\\nearrow", "\\searrow", "\\swarrow", "\\nwarrow", 
+	\ "\\hookrightarrow", "\\hookleftarrow", "\\gets", 
+	\ "\\sum", "\\bigsum", "\\cup", "\\bigcup", "\\cap", "\\bigcap", 
+	\ "\\prod", "\\coprod", "\\bigvee", "\\bigwedge", "\\wedge",  
+	\ "\\oplus", "\\otimes", "\\odot", "\\oint",
+	\ "\\int", "\\bigoplus", "\\bigotimes", "\\bigodot", "\\times",  
+	\ "\\smile", "\\frown", "\\subset", "\\subseteq", "\\supset", "\\supseteq",
+	\ "\\dashv", "\\vdash", "\\vDash", "\\Vdash", "\\models", "\\sim", "\\simeq", 
+	\ "\\prec", "\\preceq", "\\preccurlyeq", "\\precapprox",
+	\ "\\succ", "\\succeq", "\\succcurlyeq", "\\succapprox", "\\approx", 
+	\ "\\thickapprox", "\\conq", "\\bullet", 
+	\ "\\lhd", "\\unlhd", "\\rhd", "\\unrhd", "\\dagger", "\\ddager", "\\dag", "\\ddag", 
+	\ "\\ldots", "\\cdots", "\\vdots", "\\ddots", 
+	\ "\\vartriangleright", "\\vartriangleleft", "\\trianglerighteq", "\\trianglelefteq",
+	\ "\\copyright", "\\textregistered", "\\puonds",
+	\ "\\big", "\\Big", "\\Bigg", "\\huge", 
+	\ "\\left", "\\right", "\\bigr", "\\Bigr", "\\biggr", "\\Biggr",
+	\ "\\bigl", "\\Bigl", "\\biggl", "\\Biggl",
+	\ "\\sqrt", "\\frac{", "\\binom{", "\\cline", "\\vline", "\\hline", "\\multicolumn{", 
+	\ "\\nouppercase", "\\sqsubset", "\\sqsupset", "\\square", "\\blacksqaure", "\\triangledown", "\\triangle", 
+	\ "\\diagdown", "\\diagup", "\\nexists", "\\varnothing", "\\Bbbk", "\\circledS", "\\complement", "\\hslash", "\\hbar", 
+	\ "\\eth", "\\rightrightarrows", "\\leftleftarrows", "\\rightleftarrows", "\\leftrighrarrows", 
+	\ "\\downdownarrows", "\\upuparrows", "\\rightarrowtail", "\\leftarrowtail", 
+	\ "\\twoheadrightarrow", "\\twoheadleftarrow", "\\rceil", "\\lceil", "\\rfloor", "\\lfloor", 
+	\ "\\bullet", "\\bigtriangledown", "\\bigtriangleup", "\\ominus", "\\bigcirc", "\\amalg", 
+	\ "\\setminus", "\\sqcup", "\\sqcap", 
+	\ "\\notin", "\\neq", "\\smile", "\\frown", "\\equiv", "\\perp",
+	\ "\\quad", "\\qquad", "\\stackrel", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle",
+	\ "\\langle", "\\rangle" ]
 
 	" commands defined by the user in input files.
 	" ToDo: to doc.
@@ -3791,11 +3942,19 @@ endfunction
 		    for l:range in l:ddict[l:inputfile]
 			if l:ifile[l:range[0]-1] =~ '\\def\|\\newcommand'
 			    " check only definitions which starts at 0 column
+			    " definition name 
 			    let l:name=matchstr(l:ifile[l:range[0]-1],
 					\ '^\%(\\def\\\zs[^{#]*\ze[{#]\|\\newcommand{\?\\\zs[^\[{]*\ze[\[{}]}\?\)')
+			    " definition
+			    let l:def=matchstr(l:ifile[l:range[0]-1],
+					\ '^\%(\\def\\[^{]*{\zs.*\ze}\|\\newcommand\\[^{]*{\zs.*\ze}\)') 
 			    if l:name != ""
-				if !count(l:command_names,l:name)
-				    call add(l:command_names,l:name)
+				" add a definition if it is not a lenght:
+				" \def\myskip{2cm}
+				" will not be added.
+" 				echo l:name . " count: " . (!count(l:command_names, "\\".l:name)) . " pattern: " . (l:def !~ '^\s*\(\d\|\.\)*\s*\(mm\|cm\|pt\|in\|em\|ex\)\?$' || l:def == "") . " l:def " . l:def
+				if !count(l:command_names, "\\".l:name) && (l:def !~ '^\s*\(\d\|\.\)*\s*\(mm\|cm\|pt\|in\|em\|ex\)\?$' || l:def == "")
+				    call add(l:command_names, "\\".l:name)
 				endif
 " 				echomsg l:name
 			    endif
@@ -3848,49 +4007,49 @@ endfunction
 	endif
 
 
-	let g:atp_math_commands_non_expert_mode=[ 'leqq', 'geqq', 'succeqq', 'preceqq', 
-		    \ 'subseteqq', 'supseteqq', 'gtrapprox', 'lessapprox' ]
+	let g:atp_math_commands_non_expert_mode=[ "\\leqq", "\\geqq", "\\succeqq", "\\preceqq", 
+		    \ "\\subseteqq", "\\supseteqq", "\\gtrapprox", "\\lessapprox" ]
 	 
 	" requiers amssymb package:
-	let g:atp_ams_negations=[ 'nless', 'ngtr', 'lneq', 'gneq', 'nleq', 'ngeq', 'nleqslant', 'ngeqslant', 
-		    \ 'nsim', 'nconq', 'nvdash', 'nvDash', 
-		    \ 'nsubseteq', 'nsupseteq', 
-		    \ 'varsubsetneq', 'subsetneq', 'varsupsetneq', 'supsetneq', 
-		    \ 'ntriangleright', 'ntriangleleft', 'ntrianglerighteq', 'ntrianglelefteq', 
-		    \ 'nrightarrow', 'nleftarrow', 'nRightarrow', 'nLeftarrow', 
-		    \ 'nleftrightarrow', 'nLeftrightarrow', 'nsucc', 'nprec', 'npreceq', 'nsucceq', 
-		    \ 'precneq', 'succneq', 'precnapprox' ]
+	let g:atp_ams_negations=[ "\\nless", "\\ngtr", "\\lneq", "\\gneq", "\\nleq", "\\ngeq", "\\nleqslant", "\\ngeqslant", 
+		    \ "\\nsim", "\\nconq", "\\nvdash", "\\nvDash", 
+		    \ "\\nsubseteq", "\\nsupseteq", 
+		    \ "\\varsubsetneq", "\\subsetneq", "\\varsupsetneq", "\\supsetneq", 
+		    \ "\\ntriangleright", "\\ntriangleleft", "\\ntrianglerighteq", "\\ntrianglelefteq", 
+		    \ "\\nrightarrow", "\\nleftarrow", "\\nRightarrow", "\\nLeftarrow", 
+		    \ "\\nleftrightarrow", "\\nLeftrightarrow", "\\nsucc", "\\nprec", "\\npreceq", "\\nsucceq", 
+		    \ "\\precneq", "\\succneq", "\\precnapprox" ]
 
-	let g:atp_ams_negations_non_expert_mode=[ 'lneqq', 'ngeqq', 'nleqq', 'ngeqq', 'nsubseteqq', 
-		    \ 'nsupseteqq', 'subsetneqq', 'supsetneqq', 'nsucceqq', 'precneqq', 'succneqq' ] 
+	let g:atp_ams_negations_non_expert_mode=[ "\\lneqq", "\\ngeqq", "\\nleqq", "\\ngeqq", "\\nsubseteqq", 
+		    \ "\\nsupseteqq", "\\subsetneqq", "\\supsetneqq", "\\nsucceqq", "\\precneqq", "\\succneqq" ] 
 
 	" ToDo: add more amsmath commands.
-	let g:atp_amsmath_commands=[ 'boxed', 'inserttext', 'multiligngap', 'shoveleft', 'shoveright', 'notag', 'tag', 
-		    \ 'raistag{', 'displaybreak', 'allowdisplaybreaks', 'numberwithin{',
-		    \ 'hdotsfor{' , 'mspace{',
-		    \ 'negthinspace', 'negmedspace', 'negthickspace', 'thinspace', 'medspace', 'thickspace',
-		    \ 'leftroot{', 'uproot{', 'overset{', 'underset{', 'sideset{', 
-		    \ 'dfrac{', 'tfrac{', 'cfrac{', 'dbinom{', 'tbinom{', 'smash',
-		    \ 'lvert', 'rvert', 'lVert', 'rVert', '\DeclareMatchOperator{',
-		    \ 'arccos', 'arcsin', 'arg', 'cos', 'cosh', 'cot', 'coth', 'csc', 'deg', 'det',
-		    \ 'dim', 'exp', 'gcd', 'hom', 'inf', 'injlim', 'ker', 'lg', 'lim', 'liminf', 'limsup',
-		    \ 'ln', 'log', 'min', 'max', 'Pr', 'projlim', 'sec', 'sin', 'sinh', 'sup', 'tan', 'tanh',
-		    \ 'varlimsup', 'varliminf', 'varinjlim', 'varprojlim', 'mod', 'bmod', 'pmod', 'pod', 'sideset',
-		    \ 'iint', 'iiint', 'iiiint', 'idotsint',
-		    \ 'varGamma', 'varDelta', 'varTheta', 'varLambda', 'varXi', 'varPi', 'varSigma', 
-		    \ 'varUpsilon', 'varPhi', 'varPsi', 'varOmega' ]
+	let g:atp_amsmath_commands=[ "\\boxed", "\\inserttext", "\\multiligngap", "\\shoveleft", "\\shoveright", "\\notag", "\\tag", 
+		    \ "\\raistag{", "\\displaybreak", "\\allowdisplaybreaks", "\\numberwithin{",
+		    \ "\\hdotsfor{" , "\\mspace{",
+		    \ "\\negthinspace", "\\negmedspace", "\\negthickspace", "\\thinspace", "\\medspace", "\\thickspace",
+		    \ "\\leftroot{", "\\uproot{", "\\overset{", "\\underset{", "\\sideset{", 
+		    \ "\\dfrac{", "\\tfrac{", "\\cfrac{", "\\dbinom{", "\\tbinom{", "\\smash",
+		    \ "\\lvert", "\\rvert", "\\lVert", "\\rVert", "\\DeclareMatchOperator{",
+		    \ "\\arccos", "\\arcsin", "\\arg", "\\cos", "\\cosh", "\\cot", "\\coth", "\\csc", "\\deg", "\\det",
+		    \ "\\dim", "\\exp", "\\gcd", "\\hom", "\\inf", "\\injlim", "\\ker", "\\lg", "\\lim", "\\liminf", "\\limsup",
+		    \ "\\ln", "\\log", "\\min", "\\max", "\\Pr", "\\projlim", "\\sec", "\\sin", "\\sinh", "\\sup", "\\tan", "\\tanh",
+		    \ "\\varlimsup", "\\varliminf", "\\varinjlim", "\\varprojlim", "\\mod", "\\bmod", "\\pmod", "\\pod", "\\sideset",
+		    \ "\\iint", "\\iiint", "\\iiiint", "\\idotsint",
+		    \ "\\varGamma", "\\varDelta", "\\varTheta", "\\varLambda", "\\varXi", "\\varPi", "\\varSigma", 
+		    \ "\\varUpsilon", "\\varPhi", "\\varPsi", "\\varOmega" ]
 	
 	" ToDo: integrate in Tab_Completion (amsfonts, euscript packages).
-	let g:atp_amsfonts=[ 'mathfrak', 'mathscr' ]
+	let g:atp_amsfonts=[ "\\mathfrak", "\\mathscr" ]
 
 	" not yet supported: in Tab_Completion:
-	let g:atp_amsxtra_commands=[ 'sphat', 'sptilde' ]
-	let g:atp_fancyhdr_commands=['lfoot{', 'rfoot{', 'rhead{', 'lhead{', 
-		    \ 'cfoot{', 'chead{', 'fancyhead{', 'fancyfoot{',
-		    \ 'fancypagestyle{', 'fancyhf{}', 'headrulewidth ', 'footrulewidth ',
-		    \ 'rightmark', 'leftmark', 'markboth', 
-		    \ 'chaptermark', 'sectionmark', 'subsectionmark',
-		    \ 'fancyheadoffset', 'fancyfootoffset', 'fancyhfoffset']
+	let g:atp_amsxtra_commands=[ "\\sphat", "\\sptilde" ]
+	let g:atp_fancyhdr_commands=["\\lfoot{", "\\rfoot{", "\\rhead{", "\\lhead{", 
+		    \ "\\cfoot{", "\\chead{", "\\fancyhead{", "\\fancyfoot{",
+		    \ "\\fancypagestyle{", "\\fancyhf{}", "\\headrulewidth ", "\\footrulewidth ",
+		    \ "\\rightmark", "\\leftmark", "\\markboth", 
+		    \ "\\chaptermark", "\\sectionmark", "\\subsectionmark",
+		    \ "\\fancyheadoffset", "\\fancyfootoffset", "\\fancyhfoffset"]
 
 
 	" ToDo: remove tikzpicture from above and integrate the
@@ -3916,22 +4075,41 @@ endfunction
 		    \ 'shapes.gates.logic.IEC', 'shapes.gates.logic.US', 'shapes.misc', 
 		    \ 'shapes.multipart', 'shapes.symbols', 'topaths', 'through', 'trees' ])
 	" tikz keywords = begin without '\'!
-	" ToDo: add mote keywords:
-	let g:atp_tikz_keywords=[  'matrix', 'anchor', 
+	" ToDo: add mote keywords: done until page 145.
+	" ToDo: put them in a correct order!!!
+	let g:atp_tikz_keywords=[ 'draw', 'node', 'matrix', 'anchor', 'top', 'bottom',  
 		    \ 'west', 'east', 'north', 'south', 'at', 'thin', 'thick', 'semithick', 'rounded', 'corners',
 		    \ 'controls', 'and', 'circle', 'step', 'grid', 'very', 'style', 'line', 'help',
-		    \ 'color', 'arc', 'curve', 'scale', 'parabola', 'bend', 'sin', 'rectangle', 'ultra', 
-		    \ 'right', 'left', 'intersection', 'xshift', 'yshift', 'near', 'start', 'above', 'below', 
+		    \ 'color', 'arc', 'curve', 'scale', 'parabola', 'line', 'ellipse', 'bend', 'sin', 'rectangle', 'ultra', 
+		    \ 'right', 'left', 'intersection', 'xshift', 'yshift', 'shift', 'near', 'start', 'above', 'below', 
 		    \ 'end', 'sloped', 'coordinate', 'cap', 'shape', 'transition', 'place', 'label', 'every', 
-		    \ 'edge', 'point', 'loop', 'join', 'distance', 'sharp', 'rotate' ]
+		    \ 'edge', 'point', 'loop', 'join', 'distance', 'sharp', 'rotate', 'blue', 'red', 'green', 'yellow', 
+		    \ 'black', 'white', 'gray',
+		    \ 'text', 'width', 'inner', 'sep', 'baseline', 'current', 'bounding', 'box', 
+		    \ 'canvas', 'polar', 'radius', 'barycentric', 'angle', 'label', 'opacity', 
+		    \ 'solid', 'phase', 'loosly', 'dashed', 'dotted' , 'densly', 
+		    \ 'latex', 'diamond', 'double', 'smooth', 'cycle', 'coordinates', 'distance',
+		    \ 'even', 'odd', 'rule', 'pattern', 
+		    \ 'stars', 'fivepointed', 'shading', 'ball', 'axis', 'middle', 'outer', 'transorm',
+		    \ 'fading', 'horizontal', 'vertical', 'light', 'crosshatch', 'button', 'postaction', 'out',
+		    \ 'circular', 'shadow', 'scope',   ]
+	let g:atp_tikz_library_arrows=[ "reversed'", "stealth'", 'triangle', 'open', 
+		    \ 'hooks', 'round', 'fast', 'cap', 'butt'] 
+	let g:atp_tikz_library_automata=[ 'state', 'accepting', 'initial', 'swap', 'edge',
+		    \ 'loop', 'nodepart', 'lower', 'output']  
+	let g:atp_tikz_library_backgrounds=[ 'background', 'show', 'inner', 'frame', 'framed',
+		    \ 'tight', 'loose', 'xsep', 'ysep']
+	let g:atp_tikz_library_calendar=[ '\calendar']
+	" for tikz keywords we can complete sentences, like 'matrix of
+	" math nodes'!
+	let g:atp_tikz_library_matrix=['matrix of nodes', 'matrix of math nodes', 'nodes', 'delimiter', 
+		    \ 'rmoustache'] 
 	" ToDo: completion for arguments in brackets [] for tikz commands.
-	let g:atp_tikz_commands=[ 'matrix', 'node', 'shadedraw', 'draw', 'tikz', 'usetikzlibrary{', 'tikzset',
-		    \ 'path', 'filldraw', 'fill', 'clip', 'drawclip', 'foreach', 'angle', 'coordinate',
-		    \ 'useasboundingbox', 'tikztostart', 'tikztotarget', 'tikztonodes', 'tikzlastnode',
-		    \ 'pgfextra', 'endpgfextra', 'verb', 
-		    \ 'pattern', 'shade', 'shadedraw', ]
-	" ToDo: think of keyword completions
-" 	let g:tikz_keywords=[]
+	let g:atp_tikz_commands=[ "\\begin", "\\end", "\\matrix", "\\node", "\\shadedraw", "\\draw", "\\tikz", "\\usetikzlibrary{", "\\tikzset",
+		    \ "\\path", "\\filldraw", "\\fill", "\\clip", "\\drawclip", "\\foreach", "\\angle", "\\coordinate",
+		    \ "\\useasboundingbox", "\\tikztostart", "\\tikztotarget", "\\tikztonodes", "\\tikzlastnode",
+		    \ "\\pgfextra", "\\endpgfextra", "\\verb", "\\coordinate", 
+		    \ "\\pattern", "\\shade", "\\shadedraw", "\\colorlet", "\\definecolor" ]
 
 " ToDo: to doc.
 " adding commands to completion list whether to check or not if we are in the
@@ -3953,10 +4131,17 @@ endif
 " that's maybe good.) 
 " How to deal with $:$ (they are usually in one line, we could count them)  and $$:$$ 
 " matchpair
+
+" let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\))'],
+" 	    \ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)\[','\%([^\\]\|^\)\%(\\\|\\\{3}\)\]'], 	
+" 	    \ ['\\begin{align', '\end{align'], 		['\\begin{gather', '\\end{gather'], 
+" 	    \ ['\\begin{falign', '\\end{flagin'], 	['\\begin[multiline', '\\end{multiline'],
+" 	    \ ['\\begin{tikz', '\\end{tikz'],		['\begin{equation', '\end{equation'] ]
+
 let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\))'],
 	    \ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)\[','\%([^\\]\|^\)\%(\\\|\\\{3}\)\]'], 	
 	    \ ['\\begin{align', '\end{align'], 		['\\begin{gather', '\\end{gather'], 
-	    \ ['\\begin{flign', '\\end{flagin'], 	['\\begin[multiline', '\\end{multiline'],
+	    \ ['\\begin{falign', '\\end{flagin'], 	['\\begin[multiline', '\\end{multiline'],
 	    \ ['\\begin{tikz', '\\end{tikz'],		['\begin{equation', '\end{equation'] ]
 " ToDo: user command list, env list g:atp_commands, g:atp_environments, 
 "
@@ -4105,11 +4290,13 @@ function! CloseLastEnv(...)
 "     let b:com=l:com "DEBUG
 
     if l:env_name == "0"
-	let l:begin_line_env 	= searchpair('\\begin\s*{', '', '\\end\s*{', 'bnW')
+	let l:begin_line_env 	= searchpair('\%(%.*\)\@<!\\begin\s*{', '',
+		    \ '\%(%.*\)\@<!\\end\s*{', 'bnW')
 	let l:begin_line_dmath 	= searchpair(g:atp_math_modes[1][0],'',g:atp_math_modes[1][1], 'bnW')
 	let l:begin_line_imath 	= searchpair(g:atp_math_modes[0][0],'',g:atp_math_modes[0][1], 'bnW')
     else
-	let l:begin_line 	= searchpair('\\begin\s*{' . l:env_name , '', '\\end\s*{' . l:env_name, 'bnW')
+	let l:begin_line 	= searchpair('\%(%.*\)\@<!\\begin\s*{' . l:env_name , '', 
+		    \ '\%(%.*\)\@<!\\end\s*{' . l:env_name, 'bnW')
     endif
 
     if a:0 <= 1
@@ -4146,7 +4333,6 @@ function! CloseLastEnv(...)
     if l:begin_line
 	let l:line=getline(l:begin_line)
 	let l:cline=getline(".")
-" 	let b:line=l:line	" DEBUG
 	if l:close == 'environment'
 	    if l:env_name == 0
 		let l:env = matchstr(l:line, '\%(\\begin\s*{[^}]*}\s*\%(\\label\s*{[^}]*}\)\?\)*\s*\\begin{\zs[^}]*\ze}\%(.*\\begin\s{\)\@!')
@@ -4179,9 +4365,9 @@ let b:cle_debug= (getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand') . " " .
 		return b:cle_return
 	    endif
 	    if l:close == 'environment' && index(g:atp_no_complete,l:env) == '-1' &&
-		\ !s:Check_if_Closed('\\begin\s*{' . l:env,'\\end\s*{' . l:env,line("."),g:atp_completion_limits[2])
+		\ !s:Check_if_Closed('\%(%.*\)\@<!\\begin\s*{' . l:env,'\%(%.*\)\@<!\\end\s*{' . l:env,line("."),g:atp_completion_limits[2])
 " 		let l:env_name=matchstr(l:line,'\%(\\begin.*\)*\\begin{\zs[^}]*\ze}') 
-		let b:d=1 
+" 		let b:d=1 
 		if l:com == 'a'
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]) . '\end{'.l:env.'}' . strpart(l:cline,getpos(".")[2]))
 		    let l:pos=getpos(".")
@@ -4194,7 +4380,7 @@ let b:cle_debug= (getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand') . " " .
 		    keepjumps call setpos(".",l:pos)
 		endif
 	    elseif l:close == 'displayed_math' && !s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line("."),g:atp_completion_limits[1])
-		let b:d=2
+" 		let b:d=2
 		if l:com == 'a'
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]) . '\]'. strpart(l:cline,getpos(".")[2]))
 		else
@@ -4207,7 +4393,7 @@ let b:cle_debug= (getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand') . " " .
 		    keepjumps call setpos(("."),l:pos)
 		endif
 	    elseif l:close == 'inline_math' && !s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line("."),g:atp_completion_limits[1])
-		let b:d=2
+" 		let b:d=2
 " 		exec "normal " . l:com  . "\\)"
 		if l:com == 'a'
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]) . '\)'. strpart(l:cline,getpos(".")[2]))
@@ -4218,7 +4404,7 @@ let b:cle_debug= (getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand') . " " .
 		    keepjumps call setpos(("."),l:pos)
 		endif
 	    endif
-" 	    let b:debug=1 " DEBUG
+" 	    let b:cle_debug=1 " DEBUG
 	else
 	" We are closing in a new line, preerving the indentation.
 	    
@@ -4246,7 +4432,7 @@ let b:cle_debug= (getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand') . " " .
 
 		while l:line_nr >= 0
 " 		    if g:atp_close_after_last_closed == 1	
-			let l:line_nr=search('\\begin\s*{','bW')
+			let l:line_nr=search('\%(%.*\)\@<!\\begin\s*{','bW')
 " 		    else
 " 			let l:line_nr=s:Check_if_Opened('\\begin\s*{', '\\end\s*{',
 " 				\ l:line_nr,g:atp_completion_limits[2],1)
@@ -4254,9 +4440,9 @@ let b:cle_debug= (getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand') . " " .
 		    " match last environment openned in this line.
 		    " ToDo: afterwards we can make it works for multiple openned
 		    " envs.
-		    let l:env_name=matchstr(getline(l:line_nr),'\\begin\s*{\zs[^}]*\ze}\%(.*\\begin\s*{[^}]*}\)\@!')
-		    let l:close_line_nr=s:Check_if_Closed('\\begin\s*{' . l:env_name, 
-				\ '\\end\s*{' . l:env_name,
+		    let l:env_name=matchstr(getline(l:line_nr),'\%(%.*\)\@<!\\begin\s*{\zs[^}]*\ze}\%(.*\\begin\s*{[^}]*}\)\@!')
+		    let l:close_line_nr=s:Check_if_Closed('\%(%.*\)\@<!\\begin\s*{' . l:env_name, 
+				\ '\%(%.*\)\@<!\\end\s*{' . l:env_name,
 				\ l:line_nr,g:atp_completion_limits[2],1)
 " 		    echomsg "CLE line_nr " . l:line_nr . " close_line_nr " . l:close_line_nr . " env_name " . l:env_name
 
@@ -4272,7 +4458,7 @@ let b:cle_debug= (getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand') . " " .
 			break
 		    endif
 		    let l:line_nr-=1
-" 		    echo "CLE DEBUG l:line_nr " . l:line_nr
+		    echo "CLE DEBUG l:line_nr " . l:line_nr
 		endwhile
 
 " 		if g:atp_close_after_last_closed == 1	
@@ -4283,8 +4469,8 @@ let b:cle_debug= (getline(l:begin_line) =~ '\\def\|\%(re\)\?newcommand') . " " .
 
 		let b:line_nr=l:line_nr " DEBUG
 			
-let b:cle_debug= (getline(l:line_nr) =~ '\\def\|\%(re\)\?newcommand') . " " . (l:line_nr != line("."))
-		if getline(l:line_nr) =~ '\\def\|\%(re\)\?newcommand' && l:line_nr != line(".")
+" let b:cle_debug= (getline(l:line_nr) =~ '\%(%.*\)\@<!\%(\\def\|\%(re\)\?newcommand\)') . " " . (l:line_nr != line("."))
+		if getline(l:line_nr) =~ '\%(%.*\)\@<!\%(\\def\|\%(re\)\?newcommand\)' && l:line_nr != line(".")
 		    let b:cle_return="def"
 		    return b:cle_return
 		endif
@@ -4292,8 +4478,8 @@ let b:cle_debug= (getline(l:line_nr) =~ '\\def\|\%(re\)\?newcommand') . " " . (l
 		let l:env_names=[]
 		let l:line=getline(l:line_nr)
 		while l:line =~ '\\begin\s*{' 
-		    let l:cenv_begins = match(l:line,'\\begin{\zs[^}]*\ze}\%(.*\\begin\s{\)\@!')
-		    let l:cenv_name = matchstr(l:line,'\\begin{\zs[^}]*\ze}\%(.*\\begin\s{\)\@!')
+		    let l:cenv_begins = match(l:line,'\%(%.*\)\@<!\\begin{\zs[^}]*\ze}\%(.*\\begin\s{\)\@!')
+		    let l:cenv_name = matchstr(l:line,'\%(%.*\)\@<!\\begin{\zs[^}]*\ze}\%(.*\\begin\s{\)\@!')
 		    let l:cenv_len=len(l:cenv_name)
 		    let l:line=strpart(l:line,l:cenv_begins+l:cenv_len)
 		    call add(l:env_names,l:cenv_name)
@@ -4313,8 +4499,8 @@ let b:cle_debug= (getline(l:line_nr) =~ '\\def\|\%(re\)\?newcommand') . " " . (l
 		let l:cenv_names=[]
 " 		let b:cenv_names=l:cenv_names
 		for l:uenv in l:env_names
-		    let l:uline_nr=s:Check_if_Closed('\\begin\s*{' . l:uenv . '}', 
-				\ '\end\s*{' . l:uenv . '}', l:line_nr, g:atp_completion_limits[2])
+		    let l:uline_nr=s:Check_if_Closed('\%(%.*\)\@<!\\begin\s*{' . l:uenv . '}', 
+				\ '\%(%.*\)\@<!\\end\s*{' . l:uenv . '}', l:line_nr, g:atp_completion_limits[2])
 		    call extend(l:env_dict,[ l:uenv, l:uline_nr])
 		    if l:uline_nr != '0'
 			call add(l:cenv_names,l:uenv)
@@ -4349,7 +4535,7 @@ let b:cle_debug= (getline(l:line_nr) =~ '\\def\|\%(re\)\?newcommand') . " " . (l
 			" pair (below l:pos[1]). (I assume every env is in
 			" a seprate line!
 " 			let l:end=s:Check_if_Closed('\\begin\s*{','\\end\s*{',max(l:cenv_lines)+1,g:atp_completion_limits[2],1)
-			let l:end=s:Check_if_Closed('\\begin\s*{','\\end\s*{',l:line_nr,g:atp_completion_limits[2],1)
+			let l:end=s:Check_if_Closed('\%(%.*\)\@<!\\begin\s*{','\%(%.*\)\@<!\\end\s*{',l:line_nr,g:atp_completion_limits[2],1)
 			let b:info= " l:max " .  l:max . " l:end " . l:end . " line('.') " . line(".")
 			" if the line was found append just befor it.
 			echohl WarningMsg 
@@ -4406,9 +4592,15 @@ let b:cle_debug= (getline(l:line_nr) =~ '\\def\|\%(re\)\?newcommand') . " " . (l
 			    keepjumps call setpos(".",l:pos_saved)
 			    return 1
 			elseif l:eline_nr >= 0
-			    call append(l:pos_saved[1], l:eindent . l:str)
-			    echomsg l:str . " appneded after line " . l:pos_saved[1]
-			    let b:cle_return="append if 2 str " . l:str . " after line " . l:pos_saved[1] 
+			    if match(getline(l:pos_saved[1]),'\\begin\s*{') < (l:pos_saved[2]-1)
+				call append(l:pos_saved[1], l:eindent . l:str)
+				echomsg l:str . " appneded before line " . l:pos_saved[1]
+				let b:cle_return="append before if 2 str " . l:str . " after line " . l:pos_saved[1] 
+			    else
+				call append((l:pos_saved[1]-1), l:eindent . l:str)
+				echomsg l:str . " appneded after line " . l:pos_saved[1]
+				let b:cle_return="append before if 2 str " . l:str . " after line " . l:pos_saved[1] 
+			    endif
 			    keepjumps call setpos(".",l:pos_saved)
 			    return 1
 			endif
@@ -4453,7 +4645,7 @@ endfunction
 " ToDo: this do not works well with nested envs.
 " Method 0 makes mistakes if the pattern is \begin:\end, if
 " \begin{env_name}:\end{env_names} rather no (unless there are nested
-" environments of the same name.
+" environments in the same name.
 " Mechod 1 doesn't make mistakes and thus is preferable.
 " after testing I shall remove method 0
 function! s:Check_if_Closed(bpat,epat,line,limit,...)
@@ -4696,7 +4888,7 @@ let g:atp_completion_modes=[
 	    \ 'tikz_libraries', 	'environment_names', 
 	    \ 'close_environments' , 	'labels', 
 	    \ 'bibitems', 		'input_files',
-	    \ 'bibfiles' ] 
+	    \ 'bibfiles', 		'tikzpicture' ] 
 
 if !exists("g:atp_completion_active_modes")
     let g:atp_completion_active_modes=g:atp_completion_modes
@@ -4715,9 +4907,9 @@ function! s:extend(list_a,list_b,...)
 	endif
     endfor
     if a:0 == 0
-	return extend(deepcopy(l:list_a),l:diff)
+	return extend(l:list_a,l:diff)
     else
-	return extend(deepcopy(l:list_a),l:diff,a:1)
+	return extend(l:list_a,l:diff,a:1)
     endif
 endfunction
 
@@ -4749,17 +4941,30 @@ function! Tab_Completion(expert_mode)
     " and this for '\<\w*$' (begining of last started word) -- used in
     " tikzpicture completion method 
     let l:tbegin=matchstr(l:l,'\zs\<\w*$')
-    let l:t=match(l:l,'\zs\<\w*$')
+    let l:obegin=strpart(l:l,l:o)
 
-    let b:tbegin=l:tbegin "DEBUG
-    let b:begin=l:begin "DEBUG
+    let b:tbegin=l:tbegin " DEBUG
+    let b:obegin=l:obegin " DEBUG
+    let b:begin= l:begin  " DEBUG
+
     " what we are trying to complete: usepackage, environment.
     let l:pline=strpart(l:l,0,l:nr)
     let b:pline=l:pline	"DEBUG
-    if s:Check_if_Opened('\%(\\def\>.*\|\\\%(re\)\?newcommand\>.*\)\@<!\\begin\s*{tikzpicture}',
-		\ '\\end\s*{tikzpicture}',line("."),g:atp_completion_limits[2],2)
-	let b:comp_method="tikzpicture"
-	let l:completion_method="tikzpicture"
+    if s:Check_if_Opened('\%(\\def\>.*\|\\\%(re\)\?newcommand\>.*\|%.*\)\@<!\\begin\s*{tikzpicture}', 
+		\ '\\end\s*{tikzpicture}',line("."),g:atp_completion_limits[2],2) && 
+		\ line(".") !~ '\\\%(end\|begin\){[^}]*$' &&
+		\ s:Check_if_Closed('\%(\\def\>.*\|\\\%(re\)\?newcommand\>.*\|%.*\)\@<!\\begin\s*{tikzpicture}',
+		\ '\%(\\def\>.*\|\\\%(re\)\?newcommand\>.*\)\@<!\\end\s*{tikzpicture}',line("."),g:atp_completion_limits[2],1)
+	if l:l =~ '\%(\s\|\[\|{\|}\|,\|\.\|=\|:\)' . l:tbegin . '$'
+	    let b:comp_method="tikzpicture keyword"
+	    let l:completion_method="tikzpicture keyword"
+	elseif  l:l =~ '\\' . l:tbegin  . '$'
+	    let b:comp_method="tikzpicture command"
+	    let l:completion_method="tikzpicture command"
+	else
+	    let b:comp_method="close_env tikzpicture"
+	    let l:completion_method="close_env"
+	endif
     elseif l:pline =~ '\\usepackage\%([.*]\)\?\s*'
 	if index(g:atp_completion_active_modes, 'package_names') != '-1'
 	    let l:completion_method='package'
@@ -4869,14 +5074,22 @@ function! Tab_Completion(expert_mode)
     " and this is known later :(
 "     let l:env_lnr=search('\\begin\s*{','bnW')
 "     let l:env_name=matchstr(getline(l:env_lnr),'\\begin\s*{\zs[^}]*\ze}\%(.*\\begin\s*{\)\@!')
-    let l:env_opened 	= s:Check_if_Opened('\\begin{','\\end{',
-				\ line('.'),g:atp_completion_limits[2],2)
+    let l:env_opened = s:Check_if_Opened(
+		\ '\%(%.*\)\@<!\\begin\s*{\%(document\)\@!',
+		\ '\%(%.*\)\@<!\\end\s*{\%(document\)\@!',
+		\ line('.'),g:atp_completion_limits[2],2)
+"     let l:env_opened = s:Check_if_Opened('\%(%.*\)\@<!\\begin\s*{\%(document\)\@!','\%(%.*\)\@<!\\end\s*{\%(document\)\@!',
+" 				\ line('.'),g:atp_completion_limits[2],2)
+"     let l:env_opened = min([s:Check_if_Opened('\%(%.*\)\@<!\\begin{\%(document\)\@!','\%(%.*\)\@<!\\end{\%(document\)\@!',
+" 				\ line('.'),g:atp_completion_limits[2],1),
+" 				\ s:Check_if_Opened('\%(%.*\)\@<!\\begin{\%(document\)\@!','\%(%.*\)\@<!\\end{\%(document\)\@!',
+" 				\ line('.'),g:atp_completion_limits[2],2)])
     let b:env_opened = l:env_opened
     if l:env_opened != 0
 	let l:env_lnr=l:env_opened
 	let l:env_name=matchstr(getline(l:env_lnr),'\\begin\s*{\zs[^}]*\ze}\%(.*\\begin\s*{\)\@!')
 	let b:env_name=l:env_name " DEBUG
-	let l:env_closed 	= s:Check_if_Closed('\\begin{' . l:env_name,'\\end{' . l:env_name,
+	let l:env_closed 	= s:Check_if_Closed('\%(%.*\)\@<!\\begin{' . l:env_name,'\%(%.*\)\@<!\\end{' . l:env_name,
 				\ line('.'),g:atp_completion_limits[2],1)
     else
 	let l:env_closed=1
@@ -4928,7 +5141,11 @@ function! Tab_Completion(expert_mode)
 		call CloseLastEnv(b:append,'displayed_math')
 		return ''
 	    else
-"           elseif !l:env_closed && l:env_opened	
+" 	    elseif !l:env_closed && l:env_opened	
+"		this doesn't work because Check_if_Opened is not
+"		returning the right line. (Should return the nearest opened
+"		env.
+"
 		" the env name above might be not the one because it is looked
 		" using '\\begin' and '\\end' this might be not enough,
 		" however the function CloseLastEnv works prefectly and this
@@ -4961,10 +5178,14 @@ function! Tab_Completion(expert_mode)
 	    let l:completion_list=deepcopy(g:atp_environments)
 	    if b:atp_local_completion_lists
 		" Make a list of local envs and commands
-		if exists("g:atp_local_environments")
-		    let s:atp_local_environments=g:atp_local_environments
-		elseif !exists("s:atp_local_environments")
-		    let s:atp_local_environments=LocalCommands()[1]
+		if !exists("s:atp_local_environments") 
+		    if exists("g:atp_local_environments")
+			let s:atp_local_environments=g:atp_local_environments
+		    elseif exists("b:atp_local_environments")
+			let s:atp_local_environments=b:atp_local_environments
+		    else
+			let s:atp_local_environments=LocalCommands()[1]
+		    endif
 		endif
 		let l:completion_list=s:extend(l:completion_list,s:atp_local_environments)
 	    endif
@@ -4973,10 +5194,14 @@ function! Tab_Completion(expert_mode)
 	    let l:completion_list=deepcopy(g:atp_environments)
 	    if b:atp_local_completion_lists
 		" Make a list of local envs and commands
-		if exists("g:atp_local_environments")
-		    let s:atp_local_environments=g:atp_local_environments
-		elseif !exists("s:atp_local_environments")
-		    let s:atp_local_environments=LocalCommands()[1]
+		if !exists("s:atp_local_environments") 
+		    if exists("g:atp_local_environments")
+			let s:atp_local_environments=g:atp_local_environments
+		    elseif exists("b:atp_local_environments")
+			let s:atp_local_environments=b:atp_local_environments
+		    else
+			let s:atp_local_environments=LocalCommands()[1]
+		    endif
 		endif
 		call s:extend(l:completion_list, s:atp_local_environments)
 	    endif
@@ -4987,9 +5212,9 @@ function! Tab_Completion(expert_mode)
 				\ s:Check_if_Opened('\\begin{tikzpicture}','\\end{tikzpicture}',line('.'),80) || 
 				\ s:Check_if_Opened('\\tikz{','}',line("."),g:atp_completion_limits[2]) )
 			if l:end !~ '\s*}'
-			    call deepcopy(extend(l:completion_list,s:Add_to_List(g:atp_tikz_environments,'}')))
+			    call extend(l:completion_list,s:Add_to_List(g:atp_tikz_environments,'}'))
 			else
-			    call deepcopy(extend(l:completion_list,g:atp_tikz_environments))
+			    call extend(l:completion_list,g:atp_tikz_environments)
 			endif
 		    endif
 		    " AMSMATH
@@ -4997,9 +5222,9 @@ function! Tab_Completion(expert_mode)
 		    if s:Search_Package('amsmath') || g:atp_amsmath == 1 || s:Document_Class() =~ '^ams'
 			let b:ddebug=2
 			if l:end !~ '\s*}'
-			    call deepcopy(extend(l:completion_list,s:Add_to_List(g:atp_amsmath_environments,'}'),0))
+			    call extend(l:completion_list,s:Add_to_List(g:atp_amsmath_environments,'}'),0)
 			else
-			    call deepcopy(extend(l:completion_list,g:atp_amsmath_environments,0))
+			    call extend(l:completion_list,g:atp_amsmath_environments,0)
 			endif
 		    endif
     " ------------ PACKAGE ---------------
@@ -5009,18 +5234,30 @@ function! Tab_Completion(expert_mode)
     elseif l:completion_method == 'tikz_libraries'
 	let l:completion_list=deepcopy(g:atp_tikz_libraries)
     " ------------ TIKZPICTURE ENVIRONMENT --------
-    elseif l:completion_method == 'tikzpicture'
-	let l:obegin=strpart(l:l,l:o+1)
+    elseif l:completion_method == 'tikzpicture keyword'
 	let l:completion_list=deepcopy(g:atp_tikz_keywords)
-	call deepcopy(extend(l:completion_list,g:atp_tikz_commands))
-	" TODO: this is a simple solution for now but should be extended as
-	" for 'command' completion (it is good to make a function for adding
-	" math completion commands. 
-	call deepcopy(extend(l:completion_list,g:atp_math_commands))
+	if s:Search_Package('arrows','usetikzlibrary')
+	    call extend(l:completion_list,g:atp_tikz_library_arrows)
+	endif   
+	if s:Search_Package('automata','usetikzlibrary')
+	    call extend(l:completion_list,g:atp_tikz_library_automata)
+	endif   
+	if s:Search_Package('background','usetikzlibrary')
+	    call extend(l:completion_list,g:atp_tikz_library_backgrounds)
+	endif   
+	if s:Search_Package('matrix','usetikzlibrary')
+	    call extend(l:completion_list,g:atp_tikz_library_matrix)
+	endif   
+    elseif l:completion_method == 'tikzpicture command'
+	let l:tbegin=strpart(l:l,l:o+1)
+	let l:completion_list = deepcopy(g:atp_tikz_commands)
+	" ToDo: Should it add more math commands?
+	call extend(l:completion_list,g:atp_math_commands)
     " ------------ COMMAND ---------------
     elseif l:completion_method == 'command'
-	let l:obegin=strpart(l:l,l:o+1)
-	let b:obegin=l:obegin
+	" name with slash
+	" name without slash
+	let l:tbegin=strpart(l:l,l:o+1)
 	let l:completion_list=[]
 
 		" Are we in the math mode?
@@ -5053,43 +5290,52 @@ function! Tab_Completion(expert_mode)
 				\ s:Search_Package('amssymb') || s:Document_Class() =~ '^ams'
 " 			let b:debug="amsmath commands added"
 			if a:expert_mode == 0
-			    call deepcopy(extend(l:completion_list,g:atp_math_commands_non_expert_mode))
+			    call extend(l:completion_list,g:atp_math_commands_non_expert_mode)
 			endif
 			if g:atp_math_commands_first == 1
-			    call deepcopy(extend(l:completion_list,g:atp_amsmath_commands,0))
-			    call deepcopy(extend(l:completion_list,g:atp_math_commands,0))
+			    call extend(l:completion_list,g:atp_amsmath_commands,0)
+			    call extend(l:completion_list,g:atp_math_commands,0)
 			else
-			    call deepcopy(extend(l:completion_list,g:atp_math_commands,len(l:completion_list)))
-			    call deepcopy(extend(l:completion_list,g:atp_amsmath_commands,len(l:completion_list)))
+			    call extend(l:completion_list,g:atp_math_commands,len(l:completion_list))
+			    call extend(l:completion_list,g:atp_amsmath_commands,len(l:completion_list))
 			endif
 		    endif
 		    if s:Search_Package('amssymb')
-			call deepcopy(extend(l:completion_list,g:atp_ams_negations))
+			call extend(l:completion_list,g:atp_ams_negations)
 			if a:expert_mode == 0 
-			    call deepcopy(extend(l:completion_list,g:atp_ams_negations_non_expert_mode))
+			    call extend(l:completion_list,g:atp_ams_negations_non_expert_mode)
 			endif
 		    endif
 		    " TIKZ 
-		    if s:Search_Package('tikz')
-			call deepcopy(extend(l:completion_list,g:atp_tikz_commands))
-		    endif
+" 		    if s:Search_Package('tikz')
+" 			call extend(l:completion_list,g:atp_tikz_commands)
+" 		    endif
 		    " NICEFRAC
 		    if s:Search_Package('nicefrac')
 			call add(l:completion_list,'nicefrac')
 		    endif
 		    " FANCYHDR
 		    if s:Search_Package('fancyhdr')
-			call deepcopy(extend(l:completion_list,g:atp_fancyhdr_commands))
+			call extend(l:completion_list,g:atp_fancyhdr_commands)
 		    endif
 		    " LOCAL COMMNADS
 		    if b:atp_local_completion_lists
 			" Make a list of local envs and commands
-			if exists("g:atp_local_commands")
-			    let s:atp_local_commands=g:atp_local_commands
-			elseif !exists("s:atp_local_commands")
-			    let s:atp_local_commands=LocalCommands()[1]
+			if !exists("s:atp_local_commands") 
+			    if exists("g:atp_local_commands")
+				let s:atp_local_commands=g:atp_local_environments
+			    elseif exists("b:atp_local_commands")
+				let s:atp_local_commands=b:atp_local_environments
+			    else
+				let s:atp_local_commands=LocalCommands()[1]
+			    endif
 			endif
-			call deepcopy(extend(l:completion_list,s:atp_local_commands))
+" 			if exists("g:atp_local_commands")
+" 			    let s:atp_local_commands=g:atp_local_commands
+" 			elseif !exists("s:atp_local_commands")
+" 			    let s:atp_local_commands=LocalCommands()[1]
+" 			endif
+			call extend(l:completion_list,s:atp_local_commands)
 		    endif
 		    " ToDo: LAYOUT and many more packages.
 
@@ -5135,7 +5381,7 @@ function! Tab_Completion(expert_mode)
 	endif
 
 " 	let b:no_sep=l:no_separator " DEBUG
-	call deepcopy(extend(l:completion_list, [ 'label{' . l:short_env_name ],0))
+	call extend(l:completion_list, [ '\\label{' . l:short_env_name ],0)
 
     " ----------- LABELS ------------------
     elseif l:completion_method == 'labels'
@@ -5172,7 +5418,7 @@ function! Tab_Completion(expert_mode)
 	let l:completion_list=[]
 	for l:dict in l:bibitems_list
 	    for l:key in keys(l:dict)
-		call add(l:pre_completion_list,l:dict[l:key]['KEY']) 
+		call add(l:pre_completion_list,l:dict[l:key]['bibfield_key']) 
 	    endfor
 	endfor
 	for l:key in l:pre_completion_list
@@ -5180,7 +5426,7 @@ function! Tab_Completion(expert_mode)
 	endfor
 
 	" add the \bibitems found in include files
-	call deepcopy(extend(l:completion_list,keys(s:Search_Bib_Items(b:atp_mainfile))))
+	call extend(l:completion_list,keys(s:Search_Bib_Items(b:atp_mainfile)))
     endif
     if exists("l:completion_list")
 	let b:completion_list=l:completion_list	" DEBUG
@@ -5211,23 +5457,29 @@ function! Tab_Completion(expert_mode)
 	    " (only in epert_mode).
 	    elseif l:completion_method == 'command' 
 		if l:nchar == '{'
-		    if a:expert_mode == 1 && l:item =~ '\C^' . l:obegin && l:item =~ '.*{[}\s]*$'
-			call add(l:completions, '\' . substitute(l:item,'{[}\s]*$','',''))
-		    elseif a:expert_mode != 1 && l:item =~  l:obegin && l:item =~ '.*{[}\s]*$'
+		    if a:expert_mode == 1 && l:item =~ '\C^\\' . l:tbegin && l:item =~ '.*{[}\s]*$'
+			call add(l:completions, substitute(l:item,'{[}\s]*$','',''))
+		    elseif a:expert_mode != 1 && l:item =~  l:tbegin && l:item =~ '.*{[}\s]*$'
 			call add(l:completions, '\' . substitute(l:item,'{[}\s]*$','',''))
 		    endif
 		else
-		    if a:expert_mode == 1 && l:item =~ '\C^' . l:obegin
-			call add(l:completions, '\' . l:item)
-		    elseif a:expert_mode != 1 && l:item =~  l:obegin
-			call add(l:completions, '\' . l:item)
+		    if a:expert_mode == 1 && l:item =~ '\C^\\' . l:tbegin
+			call add(l:completions,l:item)
+		    elseif a:expert_mode != 1 && l:item =~  l:tbegin
+			call add(l:completions,l:item)
 		    endif
 		endif
-	    elseif l:completion_method == 'tikzpicture'
+	    elseif l:completion_method == 'tikzpicture keyword'
 		if a:expert_mode == 1 && l:item =~ '\C^' . l:tbegin
 		    call add(l:completions, l:item)
 		elseif a:expert_mode != 1 && l:item =~ l:tbegin
 		    call add(l:completions, l:item)
+		endif
+	    elseif l:completion_method == 'tikzpicture command'
+		if a:expert_mode == 1 && l:item =~ '\C^\\' . l:tbegin
+		    call add(l:completions,l:item)
+		elseif a:expert_mode != 1 && l:item =~  l:tbegin
+		    call add(l:completions,l:item)
 		endif
 	    endif
 	endfor
@@ -5250,30 +5502,40 @@ function! Tab_Completion(expert_mode)
 	let l:completions=sort(l:completions)
     endif
 
-    if l:completion_method == 'environment_names' || l:completion_method == 'package' || 
-		\ l:completion_method == 'tikz_libraries' 	|| l:completion_method == 'labels' ||
-		\ l:completion_method == 'bibitems' 		|| l:completion_method == 'bibfiles' || 
-		\ l:completion_method == 'bibfiles'		|| l:completion_method == 'inputfiles'
+    if l:completion_method == 'labels' 			|| 
+		\ l:completion_method == 'package' 	|| 
+		\ l:completion_method == 'tikz_libraries'    || 
+		\ l:completion_method == 'environment_names' ||
+		\ l:completion_method == 'bibitems' 	|| 
+		\ l:completion_method == 'bibfiles' 	|| 
+		\ l:completion_method == 'bibfiles' 	|| 
+		\ l:completion_method == 'inputfiles'
 	call complete(l:nr+2,l:completions)
 	let b:tc_return="2"
-    elseif l:completion_method == 'command'
+    elseif l:completion_method == 'command' || l:completion_method == 'tikzpicture command'
 	call complete(l:o+1,l:completions)
 	let b:tc_return="3 X"
-    elseif l:completion_method == 'tikzpicture'
+    elseif l:completion_method == 'tikzpicture keyword'
+	let l:t=match(l:l,'\zs\<\w*$')
+	let b:t=l:t
+	" in case '\zs\<\w*$ is empty
+	if l:t == -1
+	    let l:t=col(".")
+	endif
 	call complete(l:t+1,l:completions)
-	let b:tc_return="4 tikzpicture"
+	let b:tc_return="tikzpicture keyword"
     endif
 
     " If the completion method was a command (probably in a math mode) and
-    " there was no completion, check if the \[ and \( are closed.
-    if l:completion_method == 'command' && (len(l:completions) == 0 && a:expert_mode ||
-	\ len(l:completions) == 1 && l:completions[0] == '\'. l:begin ) &&
-	\ (!s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line("."),g:atp_completion_limits[1]) ||
-	\ !s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line("."),g:atp_completion_limits[0]) )
+    " there was no completion, check if environments are closed.
+    if (l:completion_method == 'command' || l:completion_method == 'tikzpicture command') && 
+	\ (len(l:completions) == 0 	&& a:expert_mode ||
+		\ len(l:completions) == 1 && l:completions[0] == '\'. l:begin ) &&
+	\ !s:Check_if_Closed(g:atp_math_modes[0][0],g:atp_math_modes[0][1],line("."),g:atp_completion_limits[0])
 
 	" DEBUG:
-	let b:dmc=s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
-	let b:dmo=s:Check_if_Opened(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
+" 	let b:dmc=s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
+" 	let b:dmo=s:Check_if_Opened(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
 
 	if !s:Check_if_Closed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1]) && s:Check_if_Opened(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line('.'),g:atp_completion_limits[1])
 	    let l:a='disp' " DEBUG
@@ -5433,10 +5695,10 @@ endif
 
 " -------------- RELOAD ---------------------
 
-if !exists("g:atp_debug")
-    let g:atp_debug=0
+if !exists("g:debug_atp_plugin")
+    let g:debug_atp_plugin=0
 endif
-if g:atp_debug==1 && !exists("*Reload")
+if g:debug_atp_plugin==1 && !exists("*Reload")
 " Reload() - reload all the tex_apt functions
 " Reload(func1,func2,...) reload list of functions func1 and func2
 fun! Reload(...)
@@ -5591,31 +5853,60 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     imap <buffer> #W \Omega
 
     if g:atp_no_env_maps != 1
-	imap <buffer> [b \begin{}<Left>
-	imap <buffer> [e \end{}<Left>
+	if g:atp_env_maps_old == 1
+	    imap <buffer> [b \begin{}<Left>
+	    imap <buffer> [e \end{}<Left>
 
-	imap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
-	imap <buffer> [c \begin{corollary}<Cr>\end{corollary}<Esc>O
-	imap <buffer> [d \begin{definition}<Cr>\end{definition}<Esc>O
-	imap <buffer> ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
-	imap <buffer> [a \begin{align}<Cr>\end{align}<Esc>O
-	imap <buffer> [i \item
-	imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
-	imap <buffer> [l \begin{lemma}<Cr>\end{lemma}<Esc>O
-	imap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
-	imap <buffer> [p \begin{proposition}<Cr>\end{proposition}<Esc>O
-	imap <buffer> [t \begin{theorem}<Cr>\end{theorem}<Esc>O
-	imap <buffer> ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
+	    imap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
+	    imap <buffer> [c \begin{corollary}<Cr>\end{corollary}<Esc>O
+	    imap <buffer> [d \begin{definition}<Cr>\end{definition}<Esc>O
+	    imap <buffer> ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
+	    imap <buffer> [a \begin{align}<Cr>\end{align}<Esc>O
+	    imap <buffer> [i \item
+	    imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
+	    imap <buffer> [l \begin{lemma}<Cr>\end{lemma}<Esc>O
+	    imap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
+	    imap <buffer> [p \begin{proposition}<Cr>\end{proposition}<Esc>O
+	    imap <buffer> [t \begin{theorem}<Cr>\end{theorem}<Esc>O
+	    imap <buffer> ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
 
-	if g:atp_extra_env_maps == 1
-	    imap <buffer> [r \begin{remark}<Cr>\end{remark}<Esc>O
-	    imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
-	    imap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
-	    imap <buffer> [f \begin{frame}<Cr>\end{frame}<Esc>O
+	    if g:atp_extra_env_maps == 1
+		imap <buffer> [r \begin{remark}<Cr>\end{remark}<Esc>O
+		imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
+		imap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
+		imap <buffer> [f \begin{frame}<Cr>\end{frame}<Esc>O
+		imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
+		imap <buffer> [n \begin{note}<Cr>\end{note}<Esc>O
+		imap <buffer> [o \begin{observation}<Cr>\end{observation}<Esc>O
+		imap <buffer> [x \begin{example}<Cr>\end{example}<Esc>O
+	    endif
+	else
+	    imap <buffer> ]b \begin{}<Left>
+	    imap <buffer> ]e \end{}<Left>
+	    imap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
+
+	    imap <buffer> ]d \begin{definition}<Cr>\end{definition}<Esc>O
+	    imap <buffer> ]t \begin{theorem}<Cr>\end{theorem}<Esc>O
+	    imap <buffer> ]P \begin{proposition}<Cr>\end{proposition}<Esc>O
+	    imap <buffer> ]l \begin{lemma}<Cr>\end{lemma}<Esc>O
+	    imap <buffer> ]r \begin{remark}<Cr>\end{remark}<Esc>O
+	    imap <buffer> ]o \begin{corollary}<Cr>\end{corollary}<Esc>O
+	    imap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
+	    imap <buffer> ]x \begin{example}<Cr>\end{example}<Esc>O
+	    imap <buffer> ]n \begin{note}<Cr>\end{note}<Esc>O
+
+	    imap <buffer> ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
+	    imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
+	    imap <buffer> ]I \item
+
+
+	    imap <buffer> ]a \begin{align}<Cr>\end{align}<Esc>O
 	    imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
-	    imap <buffer> [n \begin{note}<Cr>\end{note}<Esc>O
-	    imap <buffer> [o \begin{observation}<Cr>\end{observation}<Esc>O
-	    imap <buffer> [x \begin{example}<Cr>\end{example}<Esc>O
+
+	    imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
+	    imap <buffer> ]R \begin{flushright}<Cr>\end{flushright}<Esc>O
+	    imap <buffer> ]z \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
+	    imap <buffer> ]f \begin{frame}<Cr>\end{frame}<Esc>O
 	endif
 
 	" imap {c \begin{corollary*}<Cr>\end{corollary*}<Esc>O
@@ -5631,7 +5922,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 
     imap <buffer> __ _{}<Left>
     imap <buffer> ^^ ^{}<Left>
-    imap <buffer> [m \[\]<Left><Left>
+    imap <buffer> ]m \[\]<Left><Left>
 endif
 
 " This is an additional syntax group for enironment provided by the TIKZ
@@ -5640,30 +5931,30 @@ endif
 syn match texTikzCoord '\(|\)\?([A-Za-z0-9]\{1,3})\(|\)\?\|\(|\)\?(\d\d)|\(|\)\?'
 
 " COMMANDS
-command! -buffer ViewOutput		:call ViewOutput()
-command! -buffer SetErrorFile 		:call SetErrorFile()
-command! -buffer -nargs=? ShowOptions 	:call ShowOptions(<f-args>)
-command! -buffer GPID 			:call Getpid()
-command! -buffer CXPDF 			:echo s:xpdfpid()
-command! -buffer -nargs=? -count=1 TEX  :call TEX(<count>,<f-args>)
-command! -buffer -nargs=? -count=1 VTEX	:call VTEX(<count>,<f-args>)
-command! -buffer SBibtex 		:call SimpleBibtex()
-command! -buffer -nargs=? Bibtex 	:call Bibtex(<f-args>)
+command! -buffer ViewOutput					:call ViewOutput()
+command! -buffer SetErrorFile					:call SetErrorFile()
+command! -buffer -nargs=? ShowOptions				:call ShowOptions(<f-args>)
+command! -buffer GPID						:call Getpid()
+command! -buffer CXPDF						:echo s:xpdfpid()
+command! -buffer -nargs=? -count=1 TEX				:call TEX(<count>,<f-args>)
+command! -buffer -nargs=? -count=1 VTEX				:call VTEX(<count>,<f-args>)
+command! -buffer SBibtex					:call SimpleBibtex()
+command! -buffer -nargs=? Bibtex				:call Bibtex(<f-args>)
 command! -buffer -nargs=? -complete=buffer FindBibFiles 	:echo keys(FindBibFiles(<f-args>))
-command! -buffer -nargs=* BibSearch	:call BibSearch(<f-args>)
-command! -buffer -nargs=? DefiSearch	:call DefiSearch(<f-args>)
-command! -buffer -nargs=* FontSearch	:call FontSearch(<f-args>)
-command! -buffer TOC 			:call TOC()
-command! -buffer CTOC 			:call CTOC()
-command! -buffer Labels			:call Labels() 
-command! -buffer SetOutDir 		:call s:setoutdir(1)
-command! -buffer ATPStatus 		:call ATPStatus() 
-command! -buffer PdfFonts		:call PdfFonts()
+command! -buffer -nargs=* BibSearch				:call BibSearch(<f-args>)
+command! -buffer -nargs=* DefiSearch				:call DefiSearch(<f-args>)
+command! -buffer -nargs=* FontSearch				:call FontSearch(<f-args>)
+command! -buffer TOC						:call TOC()
+command! -buffer CTOC						:call CTOC()
+command! -buffer Labels						:call Labels() 
+command! -buffer SetOutDir					:call s:setoutdir(1)
+command! -buffer ATPStatus					:call ATPStatus() 
+command! -buffer PdfFonts					:call PdfFonts()
 command! -buffer -nargs=? 					SetErrorFormat 	:call s:SetErrorFormat(<f-args>)
 command! -buffer -nargs=? -complete=custom,ListErrorsFlags 	ShowErrors 	:call s:ShowErrors(<f-args>)
 command! -buffer -nargs=? -complete=buffer	 		FindInputFiles	:call FindInputFiles(<f-args>)
 command! -buffer -nargs=* -complete=customlist,EI_compl	 	EditInputFile 	:call EditInputFile(<f-args>)
-command! -buffer -nargs=? -complete=buffer	 ToDo 			:call ToDo('\c\<todo\>','\s*%\c.*\<note\>',<f-args>)
+command! -buffer -nargs=? -complete=buffer	 ToDo			:call ToDo('\c\<todo\>','\s*%\c.*\<note\>',<f-args>)
 command! -buffer -nargs=? -complete=buffer	 Note			:call ToDo('\c\<note\>','\s*%\c.*\<todo\>',<f-args>)
 command! -buffer SetXdvi		:call SetXdvi()
 command! -buffer SetXpdf		:call SetXpdf()	
@@ -5671,14 +5962,14 @@ command! -complete=custom,ListPrinters  -buffer -nargs=* SshPrint	:call Print(<f
 command! -buffer Lpstat	:call Lpstat()
 command! -buffer LocalCommands		:call LocalCommands()
 
-command! -buffer -nargs=1 -complete=customlist,Env_compl NEnv			:call NextEnv(<f-args>)
-command! -buffer -nargs=1 -complete=customlist,Env_compl PEnv			:call PrevEnv(<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl NSec			:call NextSection('section',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl PSec			:call PrevSection('section',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl NChap			:call NextSection('chapter',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl PChap			:call PrevSection('chapter',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl NPart			:call NextSection('part',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl PPart			:call PrevSection('part',<f-args>)
+command! -buffer -nargs=1 -complete=customlist,Env_compl NEnv		:call NextEnv(<f-args>)
+command! -buffer -nargs=1 -complete=customlist,Env_compl PEnv		:call PrevEnv(<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl NSec		:call NextSection('section',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl PSec		:call PrevSection('section',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl NChap		:call NextSection('chapter',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl PChap		:call PrevSection('chapter',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl NPart		:call NextSection('part',<f-args>)
+command! -buffer -nargs=? -complete=customlist,Env_compl PPart		:call PrevSection('part',<f-args>)
 command! -buffer ToggleSpace   		:call ToggleSpace()
 command! -buffer ToggleCheckMathOpened 	:call ToggleCheckMathOpened()
 command! -buffer ToggleDebugMode 	:call ToggleDebugMode()
@@ -5686,24 +5977,24 @@ command! -buffer ToggleCallBack 	:call ToggleCallBack()
 
 " MENU
 if !exists("no_plugin_menu") && !exists("no_atp_menu")
-nmenu 550.10 &LaTeX.&Make<Tab>:TEX		:TEX<CR>
-nmenu 550.10 &LaTeX.Make\ &twice<Tab>:2TEX	:2TEX<CR>
-nmenu 550.10 &LaTeX.Make\ verbose<Tab>:VTEX	:VTEX<CR>
-nmenu 550.10 &LaTeX.&Bibtex<Tab>:Bibtex	:Bibtex<CR>
-" nmenu 550.10 &LaTeX.&Bibtex\ (bibtex)<Tab>:SBibtex		:SBibtex<CR>
-nmenu 550.10 &LaTeX.&View<Tab>:ViewOutput 	:ViewOutput<CR>
+nmenu 550.10 &LaTeX.&Make<Tab>:TEX						:TEX<CR>
+nmenu 550.10 &LaTeX.Make\ &twice<Tab>:2TEX					:2TEX<CR>
+nmenu 550.10 &LaTeX.Make\ verbose<Tab>:VTEX					:VTEX<CR>
+nmenu 550.10 &LaTeX.&Bibtex<Tab>:Bibtex						:Bibtex<CR>
+" nmenu 550.10 &LaTeX.&Bibtex\ (bibtex)<Tab>:SBibtex				:SBibtex<CR>
+nmenu 550.10 &LaTeX.&View<Tab>:ViewOutput 					:ViewOutput<CR>
 "
-nmenu 550.20.1 &LaTeX.&Errors<Tab>:ShowErrors				:ShowErrors<CR>
-nmenu 550.20.1 &LaTeX.&Log.&Open\ Log\ File<Tab>:map\ <F6>l		:call OpenLog()<CR>
-if b:atp_callback
-    nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>b:atp_callback		:call ToggleCallBack()<CR>
+nmenu 550.20.1 &LaTeX.&Errors<Tab>:ShowErrors					:ShowErrors<CR>
+nmenu 550.20.1 &LaTeX.&Log.&Open\ Log\ File<Tab>:map\ <F6>l			:call OpenLog()<CR>
+if g:atp_callback
+    nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback		:call ToggleCallBack()<CR>
 else
-    nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>b:atp_callback		:call ToggleCallBack()<CR>
+    nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback		:call ToggleCallBack()<CR>
 endif  
 if g:atp_debug_mode
     nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]			:call ToggleDebugMode()<CR>
 else
-    nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]		:call ToggleDebugMode()<CR>
+    nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]			:call ToggleDebugMode()<CR>
 endif  
 nmenu 550.20.20 &LaTeX.&Log.-ShowErrors-	:
 nmenu 550.20.20 &LaTeX.&Log.&Warnings<Tab>:ShowErrors\ w 			:ShowErrors w<CR>
@@ -5714,68 +6005,68 @@ nmenu 550.20.20 &LaTeX.&Log.Font\ Warnings\ &&\ Info<Tab>:ShowErrors\ fi	:ShowEr
 nmenu 550.20.20 &LaTeX.&Log.&Show\ Files<Tab>:ShowErrors\ F			:ShowErrors F<CR>
 "
 nmenu 550.20.20 &LaTeX.&Log.-PdfFotns- :
-nmenu 550.20.20 &LaTeX.&Log.&Pdf\ Fonts<Tab>:PdfFonts		:PdfFonts<CR>
+nmenu 550.20.20 &LaTeX.&Log.&Pdf\ Fonts<Tab>:PdfFonts				:PdfFonts<CR>
 
 nmenu 550.20.20 &LaTeX.&Log.-Delete-	:
 nmenu 550.20.20 &LaTeX.&Log.&Delete\ Tex\ Output\ Files<Tab>:map\ <F6>d		:call Delete()<CR>
-nmenu 550.20.20 &LaTeX.&Log.Set\ Error\ File<Tab>:SetErrorFile	:SetErrorFile<CR> 
+nmenu 550.20.20 &LaTeX.&Log.Set\ Error\ File<Tab>:SetErrorFile			:SetErrorFile<CR> 
 "
 nmenu 550.30 &LaTeX.-TOC- :
-nmenu 550.30 &LaTeX.&Table\ of\ Contents<Tab>:TOC		:TOC<CR>
-nmenu 550.30 &LaTeX.L&abels<Tab>:Labels			:Labels<CR>
+nmenu 550.30 &LaTeX.&Table\ of\ Contents<Tab>:TOC				:TOC<CR>
+nmenu 550.30 &LaTeX.L&abels<Tab>:Labels						:Labels<CR>
 "
-nmenu 550.40 &LaTeX.&Go\ to.&EditInputFile<Tab>:EditInputFile		:EditInputFile<CR>
+nmenu 550.40 &LaTeX.&Go\ to.&EditInputFile<Tab>:EditInputFile			:EditInputFile<CR>
 "
 nmenu 550.40 &LaTeX.&Go\ to.-Environment- :
-nmenu 550.40 &LaTeX.&Go\ to.Next\ Definition<Tab>:NEnv\ definition	:NEnv definition<CR>
-nmenu 550.40 &LaTeX.&Go\ to.Previuos\ Definition<Tab>:PEnv\ definition	:PEnv definition<CR>
-nmenu 550.40 &LaTeX.&Go\ to.Next\ Environment<Tab>:NEnv\ <arg>		:NEnv 
-nmenu 550.40 &LaTeX.&Go\ to.Previuos\ Environment<Tab>:PEnv\ <arg>	:PEnv 
+nmenu 550.40 &LaTeX.&Go\ to.Next\ Definition<Tab>:NEnv\ definition		:NEnv definition<CR>
+nmenu 550.40 &LaTeX.&Go\ to.Previuos\ Definition<Tab>:PEnv\ definition		:PEnv definition<CR>
+nmenu 550.40 &LaTeX.&Go\ to.Next\ Environment<Tab>:NEnv\ <arg>			:NEnv 
+nmenu 550.40 &LaTeX.&Go\ to.Previuos\ Environment<Tab>:PEnv\ <arg>		:PEnv 
 "
 nmenu 550.40 &LaTeX.&Go\ to.-Section- :
-nmenu 550.40 &LaTeX.&Go\ to.&Next\ Section<Tab>:NSec			:NSec<CR>
-nmenu 550.40 &LaTeX.&Go\ to.&Previuos\ Section<Tab>:PSec		:PSec<CR>
-nmenu 550.40 &LaTeX.&Go\ to.Next\ Chapter<Tab>:NChap			:NChap<CR>
-nmenu 550.40 &LaTeX.&Go\ to.Previous\ Chapter<Tab>:PChap		:PChap<CR>
-nmenu 550.40 &LaTeX.&Go\ to.Next\ Part<Tab>:NPart			:NPart<CR>
-nmenu 550.40 &LaTeX.&Go\ to.Previuos\ Part<Tab>:PPart			:PPart<CR>
+nmenu 550.40 &LaTeX.&Go\ to.&Next\ Section<Tab>:NSec				:NSec<CR>
+nmenu 550.40 &LaTeX.&Go\ to.&Previuos\ Section<Tab>:PSec			:PSec<CR>
+nmenu 550.40 &LaTeX.&Go\ to.Next\ Chapter<Tab>:NChap				:NChap<CR>
+nmenu 550.40 &LaTeX.&Go\ to.Previous\ Chapter<Tab>:PChap			:PChap<CR>
+nmenu 550.40 &LaTeX.&Go\ to.Next\ Part<Tab>:NPart				:NPart<CR>
+nmenu 550.40 &LaTeX.&Go\ to.Previuos\ Part<Tab>:PPart				:PPart<CR>
 "
 nmenu 550.50 &LaTeX.-Bib-			:
-nmenu 550.50 &LaTeX.Bib\ Search<Tab>:Bibsearch\ <arg>			:BibSearch 
-nmenu 550.50 &LaTeX.Find\ Bib\ Files<Tab>:FindBibFiles			:FindBibFiles<CR> 
+nmenu 550.50 &LaTeX.Bib\ Search<Tab>:Bibsearch\ <arg>				:BibSearch 
+nmenu 550.50 &LaTeX.Find\ Bib\ Files<Tab>:FindBibFiles				:FindBibFiles<CR> 
 nmenu 550.50 &LaTeX.Find\ Input\ Files<Tab>:FindInputFiles			:FindInputFiles<CR>
 "
 nmenu 550.60 &LaTeX.-Viewer-			:
 nmenu 550.60 &LaTeX.Set\ &XPdf<Tab>:SetXpdf					:SetXpdf<CR>
-nmenu 550.60 &LaTeX.Set\ X&Dvi\ (inverse\/reverse\ search)<Tab>:SetXdvi	:SetXdvi<CR>
+nmenu 550.60 &LaTeX.Set\ X&Dvi\ (inverse\/reverse\ search)<Tab>:SetXdvi		:SetXdvi<CR>
 "
 nmenu 550.70 &LaTeX.-Editting-			:
 "
 " ToDo: show options doesn't work from the menu (it disappears immediately, but at
 " some point I might change it completely)
-nmenu 550.70 &LaTeX.&Options.&Show\ Options<Tab>:ShowOptions		:ShowOptions<CR> 
+nmenu 550.70 &LaTeX.&Options.&Show\ Options<Tab>:ShowOptions			:ShowOptions<CR> 
 nmenu 550.70 &LaTeX.&Options.-set\ options- :
-nmenu 550.70 &LaTeX.&Options.Automatic\ TeX\ Processing<Tab>b:autex	:let b:autex=
-nmenu 550.70 &LaTeX.&Options.Set\ Runs<Tab>b:auruns			:let b:auruns=
-nmenu 550.70 &LaTeX.&Options.Set\ TeX\ Compiler<Tab>b:texcompiler	:let b:texcompiler="
-nmenu 550.70 &LaTeX.&Options.Set\ Viewer<Tab>b:Viewer			:let b:Viewer="
-nmenu 550.70 &LaTeX.&Options.Set\ Viewer\ Options<Tab>b:ViewerOptions	:let b:ViewerOptions="
-nmenu 550.70 &LaTeX.&Options.Set\ Output\ Directory<Tab>b:outdir	:let b:ViewerOptions="
+nmenu 550.70 &LaTeX.&Options.Automatic\ TeX\ Processing<Tab>b:autex		:let b:autex=
+nmenu 550.70 &LaTeX.&Options.Set\ Runs<Tab>b:auruns				:let b:auruns=
+nmenu 550.70 &LaTeX.&Options.Set\ TeX\ Compiler<Tab>b:texcompiler		:let b:texcompiler="
+nmenu 550.70 &LaTeX.&Options.Set\ Viewer<Tab>b:Viewer				:let b:Viewer="
+nmenu 550.70 &LaTeX.&Options.Set\ Viewer\ Options<Tab>b:ViewerOptions		:let b:ViewerOptions="
+nmenu 550.70 &LaTeX.&Options.Set\ Output\ Directory<Tab>b:outdir		:let b:ViewerOptions="
 nmenu 550.70 &LaTeX.&Options.Set\ Output\ Directory\ to\ the\ default\ value<Tab>:SetOutDir	:SetOutDir<CR> 
 nmenu 550.70 &LaTeX.&Options.Ask\ for\ the\ Output\ Directory<Tab>g:askfortheoutdir		:let g:askfortheoutdir="
-nmenu 550.70 &LaTeX.&Options.Open\ Viewer<Tab>b:openviewer		:let b:openviewer="
-nmenu 550.70 &LaTeX.&Options.Open\ Viewer<Tab>b:openviewer		:let b:openviewer="
-nmenu 550.70 &LaTeX.&Options.Set\ Error\ File<Tab>:SetErrorFile		:SetErrorFile<CR> 
-nmenu 550.70 &LaTeX.&Options.Which\ TeX\ files\ to\ copy<Tab>g:keep	:let g:keep="
-nmenu 550.70 &LaTeX.&Options.Tex\ extensions<Tab>g:texextensions	:let g:texextensions="
-nmenu 550.70 &LaTeX.&Options.Remove\ Command<Tab>g:rmcommand		:let g:rmcommand="
-nmenu 550.70 &LaTeX.&Options.Default\ Bib\ Flags<Tab>g:defaultbibflags	:let g:defaultbibflags="
+nmenu 550.70 &LaTeX.&Options.Open\ Viewer<Tab>b:openviewer			:let b:openviewer="
+nmenu 550.70 &LaTeX.&Options.Open\ Viewer<Tab>b:openviewer			:let b:openviewer="
+nmenu 550.70 &LaTeX.&Options.Set\ Error\ File<Tab>:SetErrorFile			:SetErrorFile<CR> 
+nmenu 550.70 &LaTeX.&Options.Which\ TeX\ files\ to\ copy<Tab>g:keep		:let g:keep="
+nmenu 550.70 &LaTeX.&Options.Tex\ extensions<Tab>g:texextensions		:let g:texextensions="
+nmenu 550.70 &LaTeX.&Options.Remove\ Command<Tab>g:rmcommand			:let g:rmcommand="
+nmenu 550.70 &LaTeX.&Options.Default\ Bib\ Flags<Tab>g:defaultbibflags		:let g:defaultbibflags="
 "
-nmenu 550.78 &LaTeX.&Toggle\ Space\ [off]				:ToggleSpace<CR>
+nmenu 550.78 &LaTeX.&Toggle\ Space\ [off]					:ToggleSpace<CR>
 if g:atp_math_opened
-    nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_math_opened			:ToggleCheckMathOpened<CR>
+    nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_math_opened  :ToggleCheckMathOpened<CR>
 else
-    nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_math_opened			:ToggleCheckMathOpened<CR>
+    nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_math_opened :ToggleCheckMathOpened<CR>
 endif
 tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
 " ToDo: add menu for printing.

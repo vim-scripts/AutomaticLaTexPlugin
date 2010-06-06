@@ -65,7 +65,7 @@ News:
 The new feature:  
 
 Wrap selection (thanks to D.Munger):
-vmap <buffer> <silent> <F7> <Esc>:call <SID>WrapSelection('')<CR>i
+vmap <silent> <F7> <Esc>:call <SID>WrapSelection('')<CR>i
 (i.e. select a piece of text and press F7, the selected text will be put
 inside \{ ... }, and the cursor will be placed just after "\". (Then you can
 use completion to chose which command, or environment to put). Contributed by
@@ -131,23 +131,38 @@ directory with appropriate name to be used when (La)TeX is compiling. (log file
 will be only copied after it is created, other files will be copied back and
 forth between you b:outdir and the temporary directory)
 
+NEW: 
+	You can set g:atp_callback=1 then call back mechanism will turn on
+	(unless you call has('client-server') returns 0 or v:servrename is ""
+	- which is the case if you run vim from the console, gvim sets this
+        variable).
+
+	When call back mechanism is set, you can have additinal
+	funcionalities:
+
+	* STATUS LINE NOTIFICATION: status line can show if tex is running 
+		    let g:atp_status_notification = 1
+	* log file will be automatically read
+	* DEBUG MODE: opens window with errors
+		    let g:atp_debug_mode = 1
+	! WARNNING: when you start typing and tex will end processing the call
+	  back mechanism will move you to the normal mode.
+
 There is also a variable which stores the last command which executed
 your tex compiler, see |atp-texcommand|.   
 
-The last remark is that it is convenient to see if tex is running, if you are
-using a simple window manager like DWM or WMII or some others you can do that
-in your .xinitrc file. If you are using more complex window manager (Gnome,
-KDE) you can use the command GPID (which is mapped to \g). It returns pid
-of |atp-texcompiler| if it runs. The vim status line could be used for that but
-it seems to be to slow and the screen gets messy (at least for me).
+The last remark is that it is very convenient to see if tex is running, if you
+are using a simple window manager like DWM or WMII or some other you can do
+that in your .xinitrc file. If you are using more complex window manager
+(Gnome, KDE) you can use the command GPID (which is mapped to \g). It returns
+pid of |atp-texcompiler| if it runs. 
 
-If you have defined a function with the same name it wan't be overwritten.
+If you have defined a function with the same name it won't be overwritten.
 You can check where the function was defined by the command
 	:verbose function TEX
 the last component is the name of the function (without () at the end).	
 
 Below I explain functions which are defined:
-/all of them do not have any arguments/
 
 TEX([runs])						*atp-TEX()*
 map \l,imap \l, :TEX 
@@ -189,7 +204,7 @@ map <F5>,imap <F5>, :VTEX
 	The command :2VTEX will run :call VTEX(2), :VTEX 3 do :call VTEX(3), and
 	:2VTEX3 will resolve to :call VTEX(3).
 
-ShowErrors						*atp-ShowErrors*
+ShowErrors([flag])					*atp-ShowErrors*
 :ShowErrors <flag>
 	This command shows error/warning messages. It sets the |'errorformat'|
 	variable accordingly to the flag, which is a word made of letters:
@@ -227,7 +242,7 @@ this is not a texloganalyzer mapping but it is a good place to mention it:
 			this is a mapping to a function called |OpenLog()|.
 
 	
-SetErrorFormat						*atp-SetErrorFormat* 
+SetErrorFormat([flag])					*atp-SetErrorFormat* 
 :SetErrorFormat <flag> 	
 	This command has the same syntax as :ShowErrors. It only sets the
 	|'erroformat'| variable.
@@ -295,8 +310,8 @@ BibChoose()						see |atp-BibChoose|
 	This function is defined in the window with results of BibSearch
 	command. It is mapped to 'y' and 'c' and let you copy the bib entry key
 	to a register (see |atp-BibChoose|) or directly to last opened
-	buffer (after the last cursor position). When you paste it will close
-	the Bibsearch window.
+	buffer (after the last cursor position). When you chose to paste, it
+	will close the BibSearch window.
 
 FindBibFiles({bufname})					*atp-FindBibFiles()*
 :FindBibFiles
@@ -697,7 +712,7 @@ BibSearch([pattern],[flags])				*atp-BibSearch*
 		baeP@b		--> show the entries: booktitle, author, editor, 
  							publisher of matching books (@book,@booklet).
 <
-	If flags '@.' are filtered out, if one do not belongs to the one above
+	Flags '@.' are filtered out, if one does not belong to the one above
 	then it is deleated. You can see which flags are defined using
 	ShowOptions function/command (they are listed as Available
 	KeyWordFlags).
@@ -831,12 +846,15 @@ map c, map y, map p
 	:BibSearch 'author.*Joyal\&.*Tirney'
 <
 
-:DefiSearch [pattern]						*atp-DefiSearch()*
+:DefiSearch [pattern] [preambule_only]				*atp-DefiSearch()*
+	Both argument are optional.
 	Finds all definitons which matches the pattern. It looks in the main
-	file and all the input files (except bib files). The pattern is case
-	sensitive (i.e. the functions appends '\C' at the beginning of the
-	pattern by default, if you want to make case insensitive matching put '\c'
-	at the beginning of your pattern).
+	file (only in the preambule, unless the optional argument is equal
+	0, the default is 1) and all the input files (except bib files).
+
+	The pattern is case sensitive (i.e. the function appends '\C' at the
+	beginning of the pattern by default, if you want to make case
+	insensitive matching put '\c' at the beginning of your pattern).
 
 								*atp-bibsearch-variables*
 								*atp-variables-bib*	
@@ -918,6 +936,10 @@ variable 'g:atp_tab_completion_modes'.
 If 'g:atp_local_completion_lists' is set to non zero value, then input files
 will be scanned for \def, \newcommand, \newnevironment and \newtheorem
 commands and they will be used for completion. 
+
+	NOTE: if you press <tab> but then you changed your mind, the
+	completion pop-up menu allows to cancel completion: press ctrl+p (i.e.
+	go up - some times more than once) and then press <space>.
 
 Completion works for:
 	commands
@@ -1034,8 +1056,8 @@ Completion works for:
 						......
  				\end{theorem}
 <			Usually the closing comes in the next line,
-			unless we are inside an environemnt which is opened
-			after the non closed environemnt: 
+			unless we are inside an environment which is opened
+			after the non closed environment: 
 >
  				\begin{theorem}
  					\begin{enumerate}
@@ -1050,7 +1072,7 @@ Completion works for:
 						......
  				\end{theorem}
 <			Then the closing will be put just after the last
-			opend environment closes, or
+			opened environment closes, or
 >
  				\begin{theorem}
  					\begin{enumerate}
@@ -1069,7 +1091,7 @@ Completion works for:
 			'\end{enumerate}' will be placed just above
 			'\end{theorem}', and 	
 >
- 				\begin{theorem}[Joayal\&Tirney]\label{thm:jt}
+ 				\begin{theorem}[Joyal\&Tirney]\label{thm:jt}
  					\begin{enumerate}
  					\item .....
  					\item .....
@@ -1188,7 +1210,7 @@ g:atp_completion_active_modes	= g:atp_completion_modes
      let g:atp_math_modes	=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\))'],
 				\ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)\[','\%([^\\]\|^\)\%(\\\|\\\{3}\)\]'], 	
 				\ ['\\begin{align', '\end{align'], 		['\\begin{gather', '\\end{gather'], 
-				\ ['\\begin{flign', '\\end{flagin'], 	['\\begin[multiline', '\\end{multiline'],
+				\ ['\\begin{falign', '\\end{flagin'], 	['\\begin[multiline', '\\end{multiline'],
 				\ ['\\begin{tikz', '\\end{tikz'],		['\begin{equation', '\end{equation'] ]
 <				The first pattern of the 0th item matches '\(' and '\\\(' but
 				not '\\('. Similarly for '\)', '\[', '\]'.  Remember
@@ -1269,6 +1291,10 @@ let b:auruns=1							*atp-auruns*
 	compiler (consecutively). It is useful if you are working with PDF
 	files and you want to have bookmarks (you can get them using hyperref
 	package with the option: bookmarks. Then set b:auruns to '2'.
+
+let g:atp_autex_check_if_closed=1  				*atp-autex_check_if_closed*
+	tex run if all environments \begin:\end, \(:\) and \[:\] are closed.
+	Set g:atp_autex_check_if_closed=0 in order to not make the checks.
 
 let g:texmf=$HOME/texmf						*atp-texmf*
 	This variable configures where input files are placed. See
@@ -1545,36 +1571,38 @@ imap #V \Varsigma
 imap #W \Omega
 
 								*atp-mappings-environments*
-imap [b \begin{}<Left>
-imap [e \end{}<Left>
-inoremap [s \begin{}<CR>\end{}<Up><Right>
+imap ]b \begin{}<Left>
+imap ]e \end{}<Left>
+imap ]c \begin{center}<Cr>\end{center}<Esc>O
 
-inoremap ]c \begin{center}<Cr>\end{center}<Esc>O
-inoremap [c \begin{corollary}<Cr>\end{corollary}<Esc>O
-inoremap [d \begin{definition}<Cr>\end{definition}<Esc>O
-inoremap ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
-inoremap [q \begin{equation}<Cr>\end{equation}<Esc>O
-inoremap [a \begin{align}<Cr>\end{align}<Esc>O
-inoremap [x \begin{example}<Cr>\end{example}<Esc>O
-inoremap ]q \begin{equation}<Cr>\end{equation}<Esc>O
-inoremap ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
-inoremap ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
-inoremap [i \item  
-inoremap ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
-inoremap [l \begin{lemma}<Cr>\end{lemma}<Esc>O
-inoremap [n \begin{note}<Cr>\end{note}<Esc>O
-inoremap [o \begin{observation}<Cr>\end{observation}<Esc>O
-inoremap ]p \begin{proof}<Cr>\end{proof}<Esc>O
-inoremap [p \begin{proposition}<Cr>\end{proposition}<Esc>O
-inoremap [r \begin{remark}<Cr>\end{remark}<Esc>O
-inoremap [t \begin{theorem}<Cr>\end{theorem}<Esc>O
-imap 	 ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
+imap ]d \begin{definition}<Cr>\end{definition}<Esc>O
+imap ]t \begin{theorem}<Cr>\end{theorem}<Esc>O
+imap ]P \begin{proposition}<Cr>\end{proposition}<Esc>O
+imap ]l \begin{lemma}<Cr>\end{lemma}<Esc>O
+imap ]r \begin{remark}<Cr>\end{remark}<Esc>O
+imap ]o \begin{corollary}<Cr>\end{corollary}<Esc>O
+imap ]p \begin{proof}<Cr>\end{proof}<Esc>O
+imap ]x \begin{example}<Cr>\end{example}<Esc>O
+imap ]n \begin{note}<Cr>\end{note}<Esc>O
+
+imap ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
+imap ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
+imap ]I \item
+
+imap ]a \begin{align}<Cr>\end{align}<Esc>O
+imap ]q \begin{equation}<Cr>\end{equation}<Esc>O
+
+imap ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
+imap ]R \begin{flushright}<Cr>\end{flushright}<Esc>O
+
+imap ]z \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
+imap ]f \begin{frame}<Cr>\end{frame}<Esc>O
 
 								*atp-mappings-other*
 These are very useful mappings for typing mathematics:
 imap __ _{}<Left>
 imap ^^ ^{}<Left>
-imap [m \[\]<Left><Left>
+imap ]m \[\]<Left><Left>
 
 ================================================================================
 Error Handling							*atp-errors*

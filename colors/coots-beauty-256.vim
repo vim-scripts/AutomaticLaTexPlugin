@@ -124,6 +124,11 @@ highlight Ignore         ctermfg=67
 
 highlight Todo           ctermfg=21           ctermbg=233	guifg=DeepPink guibg=#1c1c1c	gui=underline,bold
 
+highlight helpNormal		ctermbg=235
+highlight helpHyperTextJump 	ctermfg=57
+highlight helpBar 		ctermfg=57
+highlight helpStar		ctermfg=27	
+
 highlight TabLine	cterm=none	ctermfg=white 	ctermbg=240
 highlight TabLineFill 	cterm=none	ctermfg=white 	ctermbg=240
 highlight TabLineSel	cterm=bold	ctermfg=white	ctermbg=57

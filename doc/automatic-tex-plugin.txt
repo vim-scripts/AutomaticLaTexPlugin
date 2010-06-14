@@ -2,10 +2,11 @@
 
 			An Introduction to Automatic (La)TeX Plugin
 				by Marcin Szamotulski
+			    mszamot [AT] gmail [DOT] com
 			----------------------------------------
 
 If you found this plugin useful, you are cordially invited to write to me:
-mszamot@gmail.com. Voting at vim site is also welcome ;) .
+mszamot@gmail.com. Voting at Vim site is also welcome ;) .
 
 New Features:
 	|atp-FontSearch|	(make your docs in a new shape!)	
@@ -14,7 +15,7 @@ New Features:
 					Abstract
 					========	
 
-This is a new plugin for vim to comfortably write TeX (LaTeX, PdfLaTeX)
+This is a new plugin for Vim to comfortably write TeX (LaTeX, PdfLaTeX)
 documents, which provides functionality not met in other such plugins. It
 makes you FREE from compiling procedure, making this process automatic using
 autocommands. It also provides useful mappings and other functions: to analyse
@@ -27,7 +28,7 @@ and MikTeX on Windows.
 
 Features include:
 * completion for commands, closing environments (even nested), package names,
-  citations and lables.
+  citations and labels.
 	See |atp-completion|, 
 * a powerful function to search in bibliographic files (bib files):
 	See |atp-bibsearch|,
@@ -79,8 +80,8 @@ Installation                               			*atp-installation*
 	 |:filetype-plugin-on| and |:filetype-indent-on| if you want to have
 	 automatic indentation for TeX files.
 <
-To install you just need to copy tex.vim file to ~your ~/.vim/ftplugin/
-directory copy this help file to ~/.vim/doc and then run :helptags ~/.vim/doc
+To install you just need to copy tex.Vim file to ~your ~/.Vim/ftplugin/
+directory copy this help file to ~/.Vim/doc and then run :helptags ~/.Vim/doc
 and that's all, now you can just type your story ... :)
 
 
@@ -102,7 +103,7 @@ middle of your very long formula). The value of 'updatetime' which works fine
 is around 1000ms ('updatetime' is set in milliseconds). Tex compiler is run with
 one options:
 	-output-directory 
-which points to a unique temporary file in vim temporary directory (using the
+which points to a unique temporary file in Vim temporary directory (using the
 function 'tempname()' (see |tempname()|. If you are concerned with security
 reasons read also: |shelltemp|.
 
@@ -134,7 +135,7 @@ forth between you b:outdir and the temporary directory)
 NEW: 
 	You can set g:atp_callback=1 then call back mechanism will turn on
 	(unless you call has('client-server') returns 0 or v:servrename is ""
-	- which is the case if you run vim from the console, gvim sets this
+	- which is the case if you run Vim from the console, gVim sets this
         variable).
 
 	When call back mechanism is set, you can have additinal
@@ -265,7 +266,7 @@ map \b, :Bibtex, :Bibtex v
 
 							*atp_bibinputs*
 	Tex is looking for the date base files in the path: `kpsewhich
-	-show-path bib`. The variable g:atp_bibinputs contains vim list of
+	-show-path bib`. The variable g:atp_bibinputs contains Vim list of
 	these direcrories. Thus if atp cannot find your bib file, tex also
 	won't be able. 
 
@@ -330,16 +331,16 @@ FindInputFiles([bufname])				*atp-FindInputFiles()*
 :FindInputFiles [bufname]
 	This function finds all the input files, i.e. files put after the
 	tex commands: '\input', '\include' or '\includeonly'. And prints the
-	reuslt. 
+	result. 
 	The function and the command have one optional argument - the buffer
 	name. By default it searches for input files in the current buffer.
-	The bufername complition is set, hence you can use <Tab> to choose the
+	The bufername completion is set, hence you can use <Tab> to choose the
 	bufername.
 
 EditInputFile([input_file_name],[bufname])		*atp-EditInputFile()*
 :EditInputFile [input_file_name] [bufname]
 	This function finds input files (using the function FindInputFiles()
-	in the current buffer and let you choose one to edit.  window. 
+	in the current buffer and let you choose one to edit.
 
 	The first as well as the second argument are optional. There is
 	completion for the input file name, so that you can just press <Tab>
@@ -362,7 +363,7 @@ map <F6>l, imap <F6>l
 	Opens log file in a new tab with two options (which are set
 	locally): ruler, nospell.	
 
-	You can also use the standard command (distributed with vim)
+	You can also use the standard command (distributed with Vim)
 	":Texplore" to see log,aux,... files.
 
 Delete()						*atp-Delete()*
@@ -404,11 +405,17 @@ ShowOptions()						*atp-show-options* *atp-ShowOptions()*
 >
 		:ShowOptions v
 <		
-TOC()							*atp-TOC()*
+TOC([skip])							*atp-TOC()*
 map \t, :TOC
 	Shows Table of Contents of your document. It do not yet support the
-	started version of chapter, section,... environemnts. It opens new
-	window in which you can use the mappings: 
+	started version of chapter, section,... environemnts. 
+
+	The optional argument skip controls if the table of contents data base
+	must be generated: by default map \t doesn't regenerate the toc data
+	base (unless if it doesn't exist), and :TOC command regenerate the
+	data base.
+	
+	The function opens new window in which you can use the mappings: 
 
 		'e' 	to echo the line from your tex file
 		'y' 	to yank the label of the chapter under the curosor
@@ -427,7 +434,7 @@ map \t, :TOC
 	'p' mappings. They all call the function 'Yank(<where>)', the argument
 	<where> can be one of: '@<register name>' or 'p'.  
 
-	TOC() supports many eddited files. For example if you have in your
+	TOC() supports many edited files. For example if you have in your
 	buffer list two files a.tex and b.tex this command will produce table
 	of contents of both of them. If you have just one opened window
 	(excluding the ToC window) then pressing <space>, <enter>, p and q
@@ -443,7 +450,7 @@ map \t, :TOC
 
 CTOC()							*atp-CTOC()*
 :CTOC	
-	This function returns the name of the currently eddited chapter/
+	This function returns the name of the currently edited chapter/
 	section/subsection/subsubsection. Use ':echo CTOC()' or just ':CTOC' to
 	see the returned value. If you added a section unit the function will
 	not update the database, run ':TOC' to do that (map \t).
@@ -465,13 +472,16 @@ map \L, :Labels
 
 NextEnv(<environment>)
 :NEnv <environment>
-	Move to next environment, for example ':NEnv definition'. Complition
+	Move to next environment, for example ':NEnv definition'. Completion
 	is set, which finds environemts defined in current tex source file.
+	This function omits environments in comment lines.
 
 PrevEnv(<environment>)
 :PEnv <environment>
-	Move to previous environment, for example ':NEnv definition'. Complition
-	is set, which finds environemts defined in current tex source file.
+	Move to previous environment, for example ':NEnv definition'. Completion
+	is set, which finds environments defined in current tex source file.
+	This function omits environments in comment lines.
+
 
 NextSection(<section>)
 :NPart, :NChap, NSec
@@ -487,7 +497,7 @@ ToDo(<keyword>,<stop>,[bufname])				*atp-ToDo()*
 	This function list all the lines of the buffer [bufname] which match
 	for the pattern '%.*<keyword>'. The <stop> argument is the pattern to
 	before which to stop. The optional argument is the buffer
-	name (the buffer name complition is set on). If not given the
+	name (the buffer name completion is set on). If not given the
 	current buffer is assumed.
 	You can set highlighting for this command by:
 		highlight atp-Todo ctermfg=... 	guifg=...
@@ -509,7 +519,7 @@ SpaceToggle()	 					*atp-SpaceToggle*
 	match for a space which also might end of the line.
 
 :SetOutDir						*atp-SetOutDir*
-	This is a command wich sets the 'b:outdir' variable and the |'errorfile'| option.
+	This is a command which sets the 'b:outdir' variable and the |'errorfile'| option.
 	See |atp-outdir| for the default value.
 
 :SetErrorFile						*atp-SetErrorFile*
@@ -520,7 +530,7 @@ SpaceToggle()	 					*atp-SpaceToggle*
 ATPStatus						*atp-ATPStatus*
 :ATPStatus
 	This function (command) sets the status line, which include: the name
-	of currently eddited chapter (or section) the value of 'b:outdir' and
+	of currently eddited   chapter (or section) the value of 'b:outdir' and
 	it will warn you if 'b:outdir' variable is not set. This function is
 	called at startup unless the variable 'g:atp_statusline=0' is set (for
 	example in you $VIMRC file). The status is set by the autocommand:
@@ -591,7 +601,7 @@ Searching in bib files 		                        *atp-bibsearch*
 			|atp-bibfiles|
 
 		____________________________
-		Naming Convensions:	
+		Naming Conventions:	
 
 		@article{<label>,					\	
 			author = { .... },		<-- bib entry    | 
@@ -624,7 +634,7 @@ BibSearch([pattern],[flags])				*atp-BibSearch*
 	'Mathematics.bib', ' Physics.bib' and '/home/user/Bibliography.bib'.
 
 								*atp-bibpatterns*
-	Each line of every bib file found in your tex docummnet will be
+	Each line of every bib file found in your tex document will be
 	matched against the pattern, for example if the pattern is:
 >
  		'author.*Grothendieck'
@@ -658,7 +668,7 @@ BibSearch([pattern],[flags])				*atp-BibSearch*
 	But you will see them in the output (what can be useful for debugging
 	errors in bib files)
 
-	Note that in vim patterns should be quoted using '...' not "...".   
+	Note that in Vim patterns should be quoted using '...' not "...".   
 
 	Further examples are supplied after the next section
 	|atp-bibflags:examples|, which describes other functionalities
@@ -668,9 +678,9 @@ BibSearch([pattern],[flags])				*atp-BibSearch*
 	The first optional argument [flags] chooses what and in which order
 	you want to see the  bib entries found (entries are listed in
 	the order they appear in bib file).  Flag is a word made of letters.
-	There are three kinds of flags: entry flags which mathes againts
+	There are three kinds of flags: entry flags which matches against
 	labels of bib entries, like author, title, etc..., and keyword flags: which
-	matches agains keywords of bib fields: @article, @book, @techreport,
+	matches against keywords of bib fields: @article, @book, @techreport,
 	etc...  and two special flags 'All' and 'L'. A flag is a word on
 	letters:
 >
@@ -713,12 +723,12 @@ BibSearch([pattern],[flags])				*atp-BibSearch*
  							publisher of matching books (@book,@booklet).
 <
 	Flags '@.' are filtered out, if one does not belong to the one above
-	then it is deleated. You can see which flags are defined using
+	then it is deleted. You can see which flags are defined using
 	ShowOptions function/command (they are listed as Available
 	KeyWordFlags).
 								*atp-bibflags:default*
 	The default flag is stored in the global variable g:defaultbibflags and is
-	equal to 'tabejsyu'. This means that the ouput for each bib field found 
+	equal to 'tabejsyu'. This means that the output for each bib field found 
 	will include the 
 		title
 		author
@@ -804,8 +814,8 @@ map c, map y, map p
 
 								*atp-bibsearch-highlight*
 	The colours of the output are set by the syntax file
-	'syntax/bibsearch_atp.vim'. All groups except one are the same as in
-	the syntax file for bib files ('syntax/bib.vim' in your $VIMRUNTIME
+	'syntax/bibsearch_atp.Vim'. All groups except one are the same as in
+	the syntax file for bib files ('syntax/bib.Vim' in your $VIMRUNTIME
 	directory). Their names are 'bibsearchEntryKw' instead 'bibEntryKw'.
 	The one that is differently defined 'bibsearchComment'.  Which is
 	changed in that way to highlight the bib file names.  One additional
@@ -814,7 +824,7 @@ map c, map y, map p
 	groups are linked to the corresponding bib group, the bibsearchInfo
 	group is not set.
 	
-	In a colour file (~/.vim/color/*.vim) you can use these groups to set
+	In a colour file (~/.Vim/color/*.Vim) you can use these groups to set
 	colours.  See |highlight| or just read a colour file. For example,
 	this is a nice set of colours for dark background 
 		
@@ -841,14 +851,14 @@ map c, map y, map p
  	:BibSearch title[\s.]*Galois Theory  aetb
 <
 	The next one shows all bib fields which were written by Joyal and
-	Tirney (and mayby somebody else).
+	Tirney (and may by somebody else).
 >
 	:BibSearch 'author.*Joyal\&.*Tirney'
 <
 
 :DefiSearch [pattern] [preambule_only]				*atp-DefiSearch()*
 	Both argument are optional.
-	Finds all definitons which matches the pattern. It looks in the main
+	Finds all definitions which matches the pattern. It looks in the main
 	file (only in the preambule, unless the optional argument is equal
 	0, the default is 1) and all the input files (except bib files).
 
@@ -890,28 +900,14 @@ s:notreadablebibfiles
 	this variable is not enough. In that case the search engine (function
 	s:search) will produce correct output, but the function which displays
 	found entries, will not know how to work with the new entries. One
-	would have to also add an entry to the dictionary 'g:bibflagsdict'. If
-	it is the case, please let me know: mszamot@gmail.com  
+	would have to add an entry to the dictionary 'g:bibflagsdict'. If
+	it is the case, please let me know: mszamot [AT] gmail [DOT] com  
 
 	As you can see entries of the type '@string' which can be used in bib
 	files are not supported (i.e. there is no function which substitutes
 	the variables defined in @string to their values), but it is doable.
 			@string{ Name = Value }
 			
-------------------------------------------------------------------------------------	
-	Comments: for a bib file with over 16000 lines and 1675 entries, it
-	took on my computer (AMD Core 2Duo 1.9Ghz) 25.5s to find all entries,
-	with the command ':BibSearch . All' and 1s to show results (the
-	longest loop took over 100000 times). However to find in this database
-	one entry with default flags (:BibSearch <Name>) it took 2.84s
-	(exactly 79 matching bib fields), and to display them another 0.6s. 
-
-	If for you the algorithm is too slow, there is a way to make it more
-	efficient: the problem with when every line is matched: when we are in
-	line x we go back to find the nearest line of the form @article{,
-	@book{, etc., if we find it we go to line x+1 and do it once again. We
-	could remember previous line numbers and test if we already have done
-	the calculations. This can avoid  long loops.
 
 ================================================================================
 Completion			                        *atp-completion*
@@ -927,7 +923,7 @@ smaller (for example there is no '\lneqq', there is only '\lneq').
 
 If you prefer to not map <Tab> key (you can use '>' '<' to make the tabulation
 in visual mode - see ':h >') then you can define g:atp_no_tab_map=1 in your
-vimrc file. 
+Vimrc file. 
 
 You can switch a completion mode adjusting the variable
 'g:atp_completion_active_modes', all names of completion modes are stored in the
@@ -941,7 +937,8 @@ commands and they will be used for completion.
 	completion pop-up menu allows to cancel completion: press ctrl+p (i.e.
 	go up - some times more than once) and then press <space>.
 
-Completion works for:
+Completion modes are:
+
 	commands
 		if g:atp_check_if_math_mode = 1 then the pull of commands
 		contains math commands only if there you are inside a math
@@ -967,7 +964,7 @@ Completion works for:
 
 		If you do not want math commands completions at all define
 		':let g:atp_no_math_command_completion=1' (you can put it in your
-		~/.vimrc, or define while writing, both will work, so you can
+		~/.Vimrc, or define while writing, both will work, so you can
 		switch off the math completions temporarily)
 
 		If you want math commands to be shown at the end rather than at the
@@ -1007,7 +1004,7 @@ Completion works for:
 		|b:atp_local_environments| (use the function LocalCommands()
 		to generate the list and then use the command: 
 		    :let @a= b:atp_local_commands 
-		i.e. copy the variable to register a and paste it in your vimrc file.)
+		i.e. copy the variable to register a and paste it in your Vimrc file.)
 
 
 	ref/label/cite
@@ -1017,12 +1014,20 @@ Completion works for:
 		and include files for them). The same for cite: which searches
 		also in bib files defined in the main file.
 
+		There is also omnicompletion (CTRL-X CTRL-O, see
+		|i_CTRL-X_CTRL-O|) for \cite command. Check it out, as it is
+		very nice (especially in gvim!) and very fast. 
+
+	brackets
+		Closing of brackets {:},\{:\},[:],(:) (closing of math modes \(:\) and
+		\[:\] is done by environment completion, see just below).
+
 								*atp-closing-environments*
 								*atp-completion-env*
 	environments
 		Completes after '\begin{' and '\end{'. For example
 		'\begin{cen<Tab>' will give '\begin{center}' 
-		But '\begin{thoerem}<Tab>' or
+		But '\begin{theorem}<Tab>' or
 		'\begin{theorem}\label{thm:1}<Tab> will close the environment.
 		The algorithm tries to close environment in many natural
 		situations: for example when it did found less than one command
@@ -1043,125 +1048,141 @@ Completion works for:
 			<Tab> can be pressed to get the described
 			behaviour).
 >
- 				\begin{theorem}
- 					\begin{enumerate}
- 					\item .....
- 					\item .....
- 					    \begin{minipage} 	
- 						......
- 					    \end{minipage}
-					        ......
-						......<Tab>
- 						XXXXXX
-						......
- 				\end{theorem}
+			    \begin{theorem}
+				    \begin{enumerate}
+				    \item .....
+				    \item .....
+					\begin{minipage} 	
+					    ......
+					\end{minipage}
+					    ......
+					    ......<Tab>
+					    XXXXXX
+					    ......
+			    \end{theorem}
 <			Usually the closing comes in the next line,
 			unless we are inside an environment which is opened
 			after the non closed environment: 
 >
- 				\begin{theorem}
- 					\begin{enumerate}
- 					\item .....
- 					\item .....
- 					    \begin{minipage}<Tab> 	
- 						......<Tab>
- 					    \end{minipage}<Tab>
- 						XXXXXX
-					        ......
-						......
-						......
- 				\end{theorem}
+			    \begin{theorem}
+				    \begin{enumerate}
+				    \item .....
+				    \item .....
+					\begin{minipage}<Tab> 	
+					    ......<Tab>
+					\end{minipage}<Tab>
+					    XXXXXX
+					    ......
+					    ......
+					    ......
+			    \end{theorem}
 <			Then the closing will be put just after the last
 			opened environment closes, or
 >
- 				\begin{theorem}
- 					\begin{enumerate}
- 					\item .....
- 					\item .....
- 					    \begin{minipage}
- 						......
- 					    \end{minipage}
-					        ......
-						......
-						......
- 						XXXXXX
- 				\end{theorem}<Tab>
-				....<Tab>
+			    \begin{theorem}
+				    \begin{enumerate}
+				    \item .....
+				    \item .....
+					\begin{minipage}
+					    ......
+					\end{minipage}
+					    ......
+					    ......
+					    ......
+					    XXXXXX
+			    \end{theorem}<Tab>
+			    ....<Tab>
 <			If we are outside the theorem environment,
 			'\end{enumerate}' will be placed just above
 			'\end{theorem}', and 	
 >
- 				\begin{theorem}[Joyal\&Tirney]\label{thm:jt}
- 					\begin{enumerate}
- 					\item .....
- 					\item .....
- 					    \begin{minipage} 	
- 						......
-						......
- 						XXXXXX
- 					\end{enumerate}<Tab>
- 				\end{theorem}<Tab>
+			    \begin{theorem}[Joyal\&Tirney]\label{thm:jt}
+				    \begin{enumerate}
+				    \item .....
+				    \item .....
+					\begin{minipage} 	
+					    ......
+					    ......
+					    XXXXXX
+				    \end{enumerate}<Tab>
+			    \end{theorem}<Tab>
 <			will put \end{minipage} just above
 			\begin{enumerate}. Furthermore, if:
 >
- 				\begin{theorem}
- 					\begin{enumerate}\label{enu:1}
- 					\item .....
- 					\item .....
- 					    \begin{minipage} 	
- 						......
- 						\begin{itemize}
- 							......
- 						\end{itemize}
- 						......
-						......
- 						XXXXXX
- 					\end{enumerate}<Tab>
- 				\end{theorem}<Tab>
+			    \begin{theorem}
+				    \begin{enumerate}\label{enu:1}
+				    \item .....
+				    \item .....
+					\begin{minipage} 	
+					    ......
+					    \begin{itemize}
+						    ......
+					    \end{itemize}
+					    ......
+					    ......
+					    XXXXXX
+				    \end{enumerate}<Tab>
+			    \end{theorem}<Tab>
 <			'\end{minipage}' will be put just above
 			'\end{enumerate}'.  Furthermore,
 >
-	\begin{theorem}[...]\label{...} Let \(C\) be a ....
-	......
-	......<Tab> XXXXX
-<	That is, if you like to write \begin{} \end{} in the beginning and end of a line
-	this will be preserved. However, there is no support for nested environments
-	then.
+			\begin{theorem}[...]\label{...} Let \(C\) be a ....
+			......
+			......<Tab> XXXXX
+<	
+		That is, if you like to write \begin{}:\end{} in the beginning
+		and end of a line this will be preserved. However, there is no
+		support for nested environments then!
 
-	THIS IS NO LONGER IN  USE, but may come later:
-				If this option is set to '0' then closing is put in
-				the line below the current line. The default is '1'.
+	bibstyle
+		Completion for the command '\bibliographystyle{'. Finds all
+		"bst" files avaiable in your tex distribution. 
 
-				Furthermore, this option is in use only if the
-				environments are in separate lines, and
-				\begin{<env_name>} is at most followed by '[...]' or
-				'\label{}'. Otherwise the closing will put
-				\end{env_name} just before the cursor position.
+	documentclass
+		Completion for the command '\documentclass'. Returns list of
+		all classes available in your distribution.
 
 These are all variables which can help to customise the completion:
 (if the value is given it is the default, if it is not means it is too long to
 put it here).
 >
- g:atp_completion_limits		= [ '40', '160', '160' ]
+ 	g:atp_completion_limits		= [ '40', '60', '80', '100' ]
 <
 				The above variable specifies how long should
-				atp plugin search for unclosed environments:
+				atp plugin search for closed/unclosed environments:
 				the first value	 - search for \(:\)  [ in line math ]
 				the second	 - search for \[:\]  [ displayed math ]
 				the third	 - search for \begin{<env>:\end{<env>	
+				the fourth	 - for environments defined in
+						   the variable g:atp_long_environments
 
-				You can also put "-1" as the value, then the
-				search forward/backward will last till
-				first/last line. However, this makes it run slower.
-				
+				You can also put "-1" as the values of
+				g:atp_completion_limits, then the search
+				forward/backward will last till first/last
+				line. However, this makes it run slower.
 >
-  g:atp_completion_modes		= [ 
+ 	g:atp_long_environments 	= []
+<	
+				If some of your environments are very long put
+				ther names in this list. Do not forget that is
+				environment <env> is long and is put inside
+				environment <center> then <center> is alos
+				long!
+				 
+				However, this will not close long environments
+				(for that you have to change the third
+				argument of g:atp_completion_limits !). This
+				just prevents closiong environments which are
+				closed and to long to see that.
+>
+  	g:atp_completion_modes		= [ 
 				\ 'commands', 		'inline_math', 
 				\ 'displayed_math', 	'package_names', 
 				\ 'tikz_libraries', 	'environment_names', 
 				\ 'close_environments' ,'labels', 
 				\ 'bibitems', 		'input_files',
-				\ 'bibfiles' ] 	
+				\ 'bibfiles',		'bibstyles',
+				\ 'documentclass' ] 	
 <				
 				This is the list of completion modes.
 
@@ -1171,28 +1192,28 @@ g:atp_completion_active_modes	= g:atp_completion_modes
 				a value from this list to make it inactive (You can
 				use remove() command, see ':h remove()').  
 >
-    g:atp_environments
-    g:atp_amsmath_environments
-    g:atp_shortname_dict
-    g:atp_separator			= ':'
-    g:atp_no_separator 		= 0
-    g:atp_env_short_names 		= 1
-    g:atp_no_separator_list		= ['', 'titlepage']
-    g:atp_package_list
-    g:atp_commands
-    g:atp_math_commands
-    g:atp_math_commands_non_expert_mode
-    g:atp_ams_negations
-    g:atp_ams_negations_non_expert_mode
-    g:atp_amsmath_commands
-    g:atp_fancyhdr_commands
-    g:atp_tikz_environments
-    g:atp_tikz_libraries
-    g:atp_tikz_commands
+    	g:atp_environments
+    	g:atp_amsmath_environments
+    	g:atp_shortname_dict
+    	g:atp_separator			= ':'
+    	g:atp_no_separator 		= 0
+    	g:atp_env_short_names 		= 1
+    	g:atp_no_separator_list		= ['', 'titlepage']
+    	g:atp_package_list
+    	g:atp_commands
+    	g:atp_math_commands
+    	g:atp_math_commands_non_expert_mode
+    	g:atp_ams_negations
+    	g:atp_ams_negations_non_expert_mode
+    	g:atp_amsmath_commands
+    	g:atp_fancyhdr_commands
+    	g:atp_tikz_environments
+    	g:atp_tikz_libraries
+    	g:atp_tikz_commands
 <
 								*atp-g:atp_check_if_opened*
 >
-     g:atp_check_if_opened	= 1     
+     	g:atp_check_if_opened	= 1     
 <
 				     (this checks if your are in some environments,
 				     for example inside \begin{tikzpicture} or
@@ -1200,14 +1221,14 @@ g:atp_completion_active_modes	= g:atp_completion_modes
 					 available only inside this environments)
 								*atp-g:atp_math_opened*
 >
-     g:atp_math_opened		
+     	g:atp_math_opened		
 <
 				(the default is 1 if in your tex file there was no
 				$ or $$ excluding \$, thus it will be one in any newly
 				edited file!)
 								*atp-g:atp_math_modes*
 >
-     let g:atp_math_modes	=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\))'],
+     	let g:atp_math_modes	=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\))'],
 				\ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)\[','\%([^\\]\|^\)\%(\\\|\\\{3}\)\]'], 	
 				\ ['\\begin{align', '\end{align'], 		['\\begin{gather', '\\end{gather'], 
 				\ ['\\begin{falign', '\\end{flagin'], 	['\\begin[multiline', '\\end{multiline'],
@@ -1218,9 +1239,10 @@ g:atp_completion_active_modes	= g:atp_completion_modes
 				correspond to '\(:\)' and the second to '\[:\]'. If
 				you want to switch checking if cursors stands in math
 				mode use g:atp_math_opened variable.
-
-g:atp_no_tab_map
-g:atp_no_complete		=['document']
+>
+	g:atp_no_tab_map
+	g:atp_no_complete		=['document']
+<
 				List of environments which is not closed by
 				Tab_Completion. (The document environment in longer
 				documents can be not seen by the algorithm as closed,
@@ -1232,7 +1254,7 @@ g:atp_no_complete		=['document']
 How to configure to your needs                          *atp-configure*
 							*atp-variables*
 
-There are several options you can set, and they might be set in your vimrc
+There are several options you can set, and they might be set in your Vimrc
 file. The default values are given below (except the completion setup and
 bibtex documented above).
 
@@ -1240,13 +1262,13 @@ Tip: If you want to see (almost) all the variables, type ':let g:atp-<CTRL+d>',
 and ':let b:<CTRL+d>'.
 
 All buffer variables (see |b:var|), i.e. these which name begins with "b:",
-should be set in your vimrc file. The best way to do that is by using
+should be set in your Vimrc file. The best way to do that is by using
 autocommand:
 >
 	au BufReadPre *.tex let b:texcompiler="latex"
 <
 If you put just let b:texcompiler, this will also work but not always: for
-example when you open a new buffer in existing vim session.
+example when you open a new buffer in existing Vim session.
 
 let b:texcompiler="pdflatex" 					*atp-texcompiler*
 	Used by functions: TEX() (map \l, imap \l), VTEX() (map <F5>, imap <F5>)
@@ -1349,7 +1371,7 @@ let g:rmcommand="perltrash"					*atp-rmcommand*
 >
 	let g:rmcommand=''
 <
-	then the function Delete() (see |apt-Delete()|) will use the vim
+	then the function Delete() (see |apt-Delete()|) will use the Vim
 	|delete()| command, and will delete only the files produced by the
 	current '.tex' file. The temporary directory is cleared by rm command.
 
@@ -1432,13 +1454,13 @@ Mappings and Commands                     		*atp-mappings*
 
 Lots of mappings which are given here uses #. This is a convenient map on
 British keyboards, but not in the US layout, you can change them for '`' or
-some other key that it is not used in vim (there are not many of them though).
+some other key that it is not used in Vim (there are not many of them though).
 The most commonly used latex-suite plugin uses similar set of mappings (but
 there might be some differences).
 
 These mappings are loaded unless you set one of variables: 'g:no_plugin_maps' or
-'g:no_atp_maps' (disables maps defined in tex_atp.vim), 'g:no_atp_toc_maps'
-(disables maps defined in 'toc_atp.vim'),  'g:atp_no_env_maps' (disables the
+'g:no_atp_maps' (disables maps defined in tex_atp.Vim), 'g:no_atp_toc_maps'
+(disables maps defined in 'toc_atp.Vim'),  'g:atp_no_env_maps' (disables the
 environment mapps '[*', ']*') or 'g:atp_no_tab_map' (disables the tab mapping
 for completion, then completion is mapped to F7 but there is not mapping for
 'WrapSelection()', you have to provide one by your self).
@@ -1501,11 +1523,11 @@ texdoc:							*atp-map-texdoc*
 		au! BufWinEnter *.tex silent loadview
 		au! BufWinLeave *.tex mkview
 	in your $VIMRC file, you will need to change this option in all
-	~/.vim/view/*.tex= files. To check if this option was set from a view
+	~/.Vim/view/*.tex= files. To check if this option was set from a view
 	file type 
 		:verbose set keywordprg?
 	Type in your terminal 
-		vim ~/.vim/view/*.tex=
+		Vim ~/.Vim/view/*.tex=
 	then issue the command
 		:bufdo %s/setlocal keywordprg=\p*/setlocal keywordprg=texdoc\ -m/g | w
 		
@@ -1630,7 +1652,7 @@ count.)
 ================================================================================
 Requirements							*atp-requirements*
 
-This plugin requires vim version higher than 7, however a some simple changes
+This plugin requires Vim version higher than 7, however a some simple changes
 can make it run on older versions as well (the 'source code' uses lists
 /g:keep and let g:texextensions are the only ones). 
 
@@ -1639,8 +1661,8 @@ and allows to speed up your searches. Also the option 'keywordprg' has the
 value "texdoc -m", thus pressing 'K' (see |K|) over a tex package should open
 you the package documentation. It is also a good advice to install help files
 of latex-suite, you can find there a big part of 'Non so short introduction to
-Latex' by Tobias Oetiker (copy them to your ~/.vim/doc document then use
-|:helptags| to install the help tags :helptags ~/.vim/doc and that's it). The
+Latex' by Tobias Oetiker (copy them to your ~/.Vim/doc document then use
+|:helptags| to install the help tags :helptags ~/.Vim/doc and that's it). The
 same applies to this help file.
 
 Another good programs are texloganalyzer and pdffonts which are not required
@@ -1681,10 +1703,10 @@ xdvi							*atp-viewers-xdvi*
 	Works fine. The file will be updated after a click (or use the xdvi
 	options '-watchfile 1' see man xdvi for explanations). You can set
 	inverse/reverse searching by the command |SetXdvi|. It is recommended
-	to use gvim rather than vim, if you want to use vim you have to run it
+	to use gVim rather than Vim, if you want to use Vim you have to run it
 	with the command:
 >
- "	vim --servername xdvi <file>
+ "	Vim --servername xdvi <file>
 <
 	You can pick any server name.
 	
@@ -1693,22 +1715,22 @@ xdvi							*atp-viewers-xdvi*
 RevSearch()							*atp-ISearch()*
 map \is, :RevSearch
 	Which makes an reverse search (sets the xdvi position according to the
-	cursor position in gvim).
+	cursor position in gVim).
 
 	Here I describe how inverse/reverse searching is done. 
 	
     (1) Inverse searching
-	(i.e. position vim's cursor after xdvi event:
+	(i.e. position Vim's cursor after xdvi event:
 	usually CTRL+Left Mouse) with this options:
 >
 	let b:texcompiler="latex"
 	let b:texoptions="-src-specials"
-	let b:Viewer="xdvi -editor 'gvim --remote-wait +%l %f'"
+	let b:Viewer="xdvi -editor 'gVim --remote-wait +%l %f'"
 <
-	See vim tip at: http://vim.wikia.com/wiki/Vim_can_interact_with_xdvi 	
+	See Vim tip at: http://Vim.wikia.com/wiki/Vim_can_interact_with_xdvi 	
 
     (2) Reverse searching
-	For reverse searching (position xdvi according to the vim's cursor
+	For reverse searching (position xdvi according to the Vim's cursor
 	position) you can set:
 >
 	let b:reverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
@@ -1720,12 +1742,12 @@ map \is, :RevSearch
 	And xdvi will place itself at the current cursor position in the 'tex'
 	source file. You can make a map for this. 
 
-	To use this with vim one have to add servername. Run
-	vim as:
+	To use this with Vim one have to add server name. Run
+	Vim as:
 >
- 	vim --servername vimtex
- 	let b:Viewer="xdvi -editor 'vim --servername " . v:servername . " --remote-wait +%l %f'"
- 	let b:reverse_search="xdvi -editdor 'vim --servername " . v:servername "' -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
+ 	Vim --servername Vimtex
+ 	let b:Viewer="xdvi -editor 'Vim --servername " . v:servername . " --remote-wait +%l %f'"
+ 	let b:reverse_search="xdvi -editdor 'Vim --servername " . v:servername "' -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
 <
 
 	In case of troubles:
@@ -1733,7 +1755,7 @@ map \is, :RevSearch
 	Reverse Searching:
 	    If reverse searching do not works for you, and you get an error, that
 	    there is no reference to your tex file in the dvi file, then open
-	    your dvi file in an editor (vim :) and check what is the name after
+	    your dvi file in an editor (Vim :) and check what is the name after
 	    'src:<line number>' (this are the source specials put by 'latex
 	    -src-specials' command). It should refer to your tex file. Xdvi
 	    will not recognize if you specify the full name of the tex file (i.e.
@@ -1802,7 +1824,7 @@ Final Remarks                               			*atp-remarks*
 	working very good but I didn't understand why (silly isn't it), and
 	when I started making changes it stopped working: the issue is that
 	it is difficult to make a function sleep until tex stops working not
-	putting whole vim into sleep - this is the time that we want to save.
+	putting whole Vim into sleep - this is the time that we want to save.
 	However, the advantage of using temporary files is smoothness (changes
 	appear faster in the output file). 
 

@@ -101,6 +101,14 @@ endfunction
 
 function! GotoLine(closebuffer)
     
+    " if under help lines do nothing:
+    let l:toc=getbufline("%",1,"$")
+    let l:h_line=index(reverse(copy(l:toc)),'')+1
+    let b:h_line=l:h_line
+    if line(".") > len(l:toc)-l:h_line
+	return ''
+    endif
+
     let l:buf=s:file()
 
     " remember the ToC window number
@@ -133,21 +141,31 @@ endfunction
 
 function! s:yank(arg)
 
+    let l:toc=getbufline("%",1,"$")
+    let l:h_line=index(reverse(copy(l:toc)),'')+1
+    let b:h_line=l:h_line
+    if line(".") > len(l:toc)-l:h_line
+	return ''
+    endif
+
     let l:cbufnr=bufnr("")
     let l:buf=s:file()
     let l:bufname=l:buf[1]
     let l:filename=l:buf[0] . "/" . l:buf[1]
     let b:fn=l:filename
 
-    if exists("t:labels")
-	let l:choice=get(t:labels[l:filename],s:getlinenr())
+    if exists("t:labels") || get(t:labels,l:filename,"nofile") != "nofile"
+	let l:choice=get(get(t:labels,l:filename),s:getlinenr())
     else
 	let l:choice="nokey"
     endif
 
     if l:choice=="nokey"
 	" in TOC, if there is a key we will give it back if not:
+	au! CursorHold __ToC__
 	echomsg "There is no key."
+	sleep 759m
+	au CursorHold __ToC__ :call EchoLine()
 	return ""
     else
 	if a:arg == '@'
@@ -248,6 +266,14 @@ command! -buffer -nargs=1 Y :call YankToReg(<f-arg>)
 
 if !exists("*ShowLabelContext")
 function! ShowLabelContext()
+
+    let l:toc=getbufline("%",1,"$")
+    let l:h_line=index(reverse(copy(l:toc)),'')+1
+    let b:h_line=l:h_line
+    if line(".") > len(l:toc)-l:h_line
+	return ''
+    endif
+
     let l:cbufname=bufname('%')
     let l:bufname=s:file()[1]
     let l:bufnr=bufnr("^" . l:bufname . "$")
@@ -266,8 +292,16 @@ function! ShowLabelContext()
 endfunction
 endif
 
-if !exists("*EchoLabel")
-function! EchoLabel()
+if !exists("*EchoLine")
+function! EchoLine()
+
+    let l:toc=getbufline("%",1,"$")
+    let l:h_line=index(reverse(copy(l:toc)),'')+1
+    let b:h_line=l:h_line
+    if line(".") > len(l:toc)-l:h_line
+	return ''
+    endif
+
     let l:bufname=s:file()[1]
     let l:bufnr=bufnr("^" . l:bufname . "$")
     if !exists("t:labels")
@@ -310,9 +344,15 @@ function! EchoLabel()
 	let l:sec_type="abstract"
     endif
 
-    echo l:sec_type . " : " . strpart(l:sec_line,stridx(l:sec_line,'{')+1,stridx(l:sec_line,'}')-stridx(l:sec_line,'{')-1)
-
-
+    let l:label=matchstr(l:sec_line,'\\label\s*{\zs[^}]*\ze}')
+    let g:sec_line=l:sec_line
+    let g:label=l:label
+    if l:label != ""
+	echo l:sec_type . " : '" . strpart(l:sec_line,stridx(l:sec_line,'{')+1,stridx(l:sec_line,'}')-stridx(l:sec_line,'{')-1) . "'\t label : " . l:label
+    else
+	echo l:sec_type . " : '" . strpart(l:sec_line,stridx(l:sec_line,'{')+1,stridx(l:sec_line,'}')-stridx(l:sec_line,'{')-1) . "'"
+    endif
+    return 0
 endfunction
 endif
 
@@ -362,6 +402,8 @@ if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
     map <buffer> y 			:call YankToReg()<CR>
     noremap <silent> <buffer> p 	:call Paste()<CR>
     noremap <silent> <buffer> s 	:call ShowLabelContext()<CR> 
-    noremap <silent> <buffer> e 	:call EchoLabel()<CR>
+    noremap <silent> <buffer> e 	:call EchoLine()<CR>
     noremap <silent> <buffer> <F1>	:call Help()<CR>
 endif
+setl updatetime=200 
+au CursorHold __ToC__ :call EchoLine()

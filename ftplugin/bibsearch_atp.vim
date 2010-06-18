@@ -26,9 +26,10 @@ endif
 if !exists("*BibChoose")
 function! BibChoose(...)
     let l:which=input("Which entry? ( <Number><reg name><Enter>, <Number><Enter> or <Enter> for none) ")
-    		echomsg "DEBUG " . l:which
-    if l:which =~ '^\d*$'
-		echomsg "DEBUG 1"
+    if l:which == ""
+	return
+    endif
+    if l:which =~ '^\d*$' 
 	let l:start=stridx(b:listofkeys[l:which],'{')+1
 	let l:choice=substitute(strpart(b:listofkeys[l:which],l:start),',','','')
 	q
@@ -37,7 +38,6 @@ function! BibChoose(...)
 	let l:line=strpart(l:line,0,l:col) . l:choice . strpart(l:line,l:col)
 	call setline(line("."), l:line)
     elseif l:which =~ '^\d*\(\a\|+\| . "*" .\)$'
-		echomsg "DEBUG 2"
 	    let l:letter=substitute(l:which,'\d','','g')
 	    let l:which=substitute(l:which,'\a\|+\|' . "*",'','g')
 	    let l:start=stridx(b:listofkeys[l:which],'{')+1

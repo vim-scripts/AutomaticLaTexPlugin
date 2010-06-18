@@ -10,7 +10,9 @@ mszamot@gmail.com. Voting at Vim site is also welcome ;) .
 
 New Features:
 	|atp-FontSearch|	(make your docs in a new shape!)	
+	|atp-FontPreview|	
 	|atp-completion|	(final changes)
+	|atp-omnicompletion|	by D.Munger (LatexBox plugin)
 
 					Abstract
 					========	
@@ -47,7 +49,8 @@ Features include:
 |atp-installation| 	Installation								
 |atp-functions| 	Functions and commands
 |atp-bibsearch|		Searching in bib files
-|atp-completion|        How to use and configure completion	(*NEW*)
+|atp-completion|        How to use and configure completion
+|atp-omnicompletion|						(*NEW*)
 |atp-configure| 	How to configure to your needs 
 |atp-mappings|  	Mappings and Commands
 |atp-errors|  		Error handling
@@ -116,6 +119,10 @@ for example:
 >
     au BufRead texmf/*.tex let b:autex=0
 <
+On start up b:autex is set to 1 if the path of opened file is not under any
+tex directory ('kpsewhich -show-path tex', except the current dir). For example,
+files located under your local texmf tree will have b:autex=0.
+
 The second important variable b:texcompiler (see |atp-texcompiler|) configures
 if you use TeX, PdfTeX, LaTeX, PdfLaTeX and it should point to the program
 name so please do not use capital letters.
@@ -578,6 +585,13 @@ FontSearch([<pattern>,<match option>])				*atp-FontSearch*
 
 	Hopefully, this will help your documents to become beautiful :)
 
+FontPreview(<fd_file>,[<encoding>,<keep tex>])			*atp-FontPreview*
+:FontPreview
+	Previews all fonts defined in fd file matching the pattern <fd_file> for fonts in
+	encoding <encoding> (optional). If <keep tex> is 1 (defualt is 0) it
+	will keep the tex file for the font preview, so you can debug why the
+	font doesn't show up.
+
 ================================================================================
 Searching in bib files 		                        *atp-bibsearch*
 
@@ -929,9 +943,11 @@ You can switch a completion mode adjusting the variable
 'g:atp_completion_active_modes', all names of completion modes are stored in the
 variable 'g:atp_tab_completion_modes'.
 
-If 'g:atp_local_completion_lists' is set to non zero value, then input files
+If 'g:atp_local_completion' is set to non zero value, then input files
 will be scanned for \def, \newcommand, \newnevironment and \newtheorem
-commands and they will be used for completion. 
+commands and they will be used for completion. (if its value is 1 then this
+will be done during first completion - this is the default, if it is set to
+2 then this will be done at start up.
 
 	NOTE: if you press <tab> but then you changed your mind, the
 	completion pop-up menu allows to cancel completion: press ctrl+p (i.e.
@@ -987,11 +1003,11 @@ Completion modes are:
 							*atp_local_commands*
 							*atp_local_environments*
 							*atp_local_completion*
-		By default the first tile you are completing an environment
+		By default the first time you are completing an environment
 		name or a command a list of locally defined environments and
 		commands is made (it takes a few seconds). If you do not want
-		to completions for them define "let b:atp_local_completion=0",
-		if b:atp_local_completion=2" then the search for local
+		to completions for them define "let g:atp_local_completion=0",
+		if g:atp_local_completion=2" then the search for local
 		definitions and commands will be done on startup. If you
 		added a command or an environment the function
 		"LocalCommands()" will update the list of local definitions.
@@ -1017,6 +1033,15 @@ Completion modes are:
 		There is also omnicompletion (CTRL-X CTRL-O, see
 		|i_CTRL-X_CTRL-O|) for \cite command. Check it out, as it is
 		very nice (especially in gvim!) and very fast. 
+
+		For both completion and omnicompletion for the cite command,
+		the text after \cite{  [ or after a comma after \cite{ ] is
+		treated as a regular expression. Thus you can wirte:
+
+		\cite{.*author1\&.*author2<Tab>
+
+		to get the completions for things written by both author 1 and
+		2 (regardless of the order they appear in bib files).
 
 	brackets
 		Closing of brackets {:},\{:\},[:],(:) (closing of math modes \(:\) and
@@ -1199,18 +1224,25 @@ g:atp_completion_active_modes	= g:atp_completion_modes
     	g:atp_no_separator 		= 0
     	g:atp_env_short_names 		= 1
     	g:atp_no_separator_list		= ['', 'titlepage']
-    	g:atp_package_list
     	g:atp_commands
     	g:atp_math_commands
-    	g:atp_math_commands_non_expert_mode
     	g:atp_ams_negations
+    	g:atp_math_commands_non_expert_mode
     	g:atp_ams_negations_non_expert_mode
+<				The two list of commands will be add only in
+				ttphe non expert mode.
+>
     	g:atp_amsmath_commands
     	g:atp_fancyhdr_commands
     	g:atp_tikz_environments
     	g:atp_tikz_libraries
     	g:atp_tikz_commands
+	g:atp_completion_truncate	= 4
 <
+				do not complete commands less than
+				4 characters (not counting the leading '\' if
+				present). If 0 then complete all the defined
+				commands. This only works in the expert mode.
 								*atp-g:atp_check_if_opened*
 >
      	g:atp_check_if_opened	= 1     
@@ -1251,7 +1283,128 @@ g:atp_completion_active_modes	= g:atp_completion_modes
 
 
 ================================================================================
-How to configure to your needs                          *atp-configure*
+OmniCompletion by David Munger (LatexBox plugin)	*atp-omnicompletion*
+
+Completion is achieved through omni completion |compl-omni|, with default
+bindings <CTRL-X><CTRL-O>. There are four types of completion:
+
+
+
+------------------------------------------------------------------------------
+
+							*atp-omnicompletion-commands*
+Commands ~
+
+Command completion is triggered by the '\' character.  For example, >
+	\beg<CTRL-X><CTRL-O>
+completes to >
+	\begin{
+
+Associated settings:
+	|atp-g:LatexBox_completion_commands|
+	|atp-g:LatexBox_completion_close_braces|
+
+
+------------------------------------------------------------------------------
+
+							*atp-omnicompletion-environments*
+Environments ~
+
+Environment completion is triggered by '\begin{'.  For example, >
+	\begin{it<CTRL-X><CTRL-O>
+completes to >
+	\begin{itemize}
+
+Completion of '\end{' automatically closes the last open environment.
+
+Associated settings:
+	|atp-g:LatexBox_completion_environments|
+	|atp-g:LatexBox_completion_close_braces|
+
+
+------------------------------------------------------------------------------
+
+							*atp-omnicompletion-labels*
+Labels ~
+
+Label completion is triggered by '\ref{' or '\eqref{'.  For example, >
+	\ref{sec:<CTRL-X><CTRL-O>
+offers a list of all matching labels, with their associated value and page number.
+Labels are read from the aux file, so label completion works only after
+complilation.
+
+It matches:
+	1. labels: >
+		\ref{sec:<CTRL-X><CTRL-O>
+<	2. numbers: >
+		\eqref{2<CTRL-X><CTRL-O>
+<	3. labels and numbers together (separated by whitespace): >
+		\eqref{eq 2<CTRL-X><CTRL-O>
+	
+
+Associated settings:
+	|atp-g:LatexBox_ref_pattern|
+	|atp-g:LatexBox_completion_close_braces|
+
+
+------------------------------------------------------------------------------
+
+							*atp-omnicompletion-bibtex*
+BibTeX entries ~
+
+BibTeX completion is triggered by '\cite{', '\citep{' or '\citet{'.
+For example, assume you have in your .bib files an entry looking like: >
+
+	@book {	knuth1981,
+		author = "Donald E. Knuth",
+		title = "Seminumerical Algorithms",
+		publisher = "Addison-Wesley",
+		year = "1981" }
+
+Then, try: >
+
+	\cite{Knuth 1981<CTRL-X><CTRL-O>
+	\cite{algo<CTRL-X><CTRL-O>
+
+You can also use regular expressions (or vim patterns) after '\cite{'.
+
+Associated settings:
+*atp-g:LatexBox_cite_pattern*		Default: '\\cite\(p\|t\)\?\*\?\_\s*{'
+*atp-g:LatexBox_ref_pattern*		Default: '\\v\?\(eq\|page\)\?ref\*\?\_\s*{'
+
+	Patterns to match \cite and \ref commands for BibTeX and label completion.
+	Must include the trailing '{'.
+	To match all commands that contain 'cite' (case insensitive), use: >
+		let g:LatexBox_cite_pattern = '\c\\\a*cite\a*\*\?\_\s*{'
+<	To match all commands that end with 'ref' (case insensitive): >
+		let g:LatexBox_ref_pattern = '\c\\\a*ref\*\?\_\s*{'
+<	Both examples match commands with a trailing star too.
+
+*atp-g:LatexBox_bibtex_wild_spaces*		Default: 1
+
+	If nonzero, spaces act as wildcards ('.*') in completion.
+	For example, if nonzero, >
+		\cite{Knuth 1981
+<	is equivalent to >
+		\cite{Knuth.*1981
+
+*atp-g:LatexBox_completion_close_braces*	Default: 1
+
+	If nonzero, omni completion will add closing brackets where relevant.
+	For example, if nonzero, >
+		\begin{itemize
+<	completes to >
+		\begin{itemize}
+
+*atp-g:LatexBox_completion_environments*
+*atp-g:LatexBox_completion_commands*
+
+	Static completion lists for environments
+	|atp-omnicompletion-environments| and commands
+	|atp-omnicompletion-commands|.
+
+================================================================================
+How to configure ATP to your needs                      *atp-configure*
 							*atp-variables*
 
 There are several options you can set, and they might be set in your Vimrc
@@ -1334,19 +1487,25 @@ let b:Viewer="xpdf"						*atp-Viewer*
 	except epdfview, have this functionality as well. This do not works
 	for acroread. Read more about viewers in |atp-viewers|. 
 
-let b:XpdfOptions=""						*atp-XpdfOptions*
+	If you use program b:Viewer then you can use the variable
+	g:{b:Viewer}Options to set the options for example if b:Viewer="xpdf"
+	then you might use:
+
+    g:xpdfOptions						*atp-xpdfOptions*
 	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
 
 	For example, if you want to have different look of one document you can
 	set it to "-bg gray20". Other example:
 >
- 	let b:XpdfOptions="-bg Grey30 -mattecolor SlateBlue2 -papercolor White"
+ 	let g:XpdfOptions="-bg Grey30 -mattecolor SlateBlue2 -papercolor White"
 <
-	If you want this option to work in every new open buffer, use an
-	autocommand like in the following line:
+	This variable will be copied to b:ViewerOptions, so if you want to
+	make changes on the fly use this variable. You can also set it
+	directly using autocommand:
 >
- 	au BufRead *.tex let b:XpdfOptions="-bg NavajoWhite4 -fg black -mattecolor burlywood"
+    au BufRead *.tex let b:ViewerOptions="-bg NavajoWhite4 -fg black -mattecolor burlywood"
 <
+ 
 let b:XpdfServer=fnamemodify(expand("%"),":t")			*atp-XpdfServer*	
 	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
 
@@ -1377,6 +1536,10 @@ let g:rmcommand="perltrash"					*atp-rmcommand*
 
 	The program 'perltrash' is in the package app-misc/perltrash (at least
 	for Gentoo).
+
+let g:atp_delete_output=0
+	If set to 1 then Delete function (map <F6>d) will delete also the
+	output file.	
 
 								*atp-texextensions*	
 let g:texextensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]	
@@ -1491,6 +1654,12 @@ map <F6>l, imap <F6>l
 
 Delete()						*atp-map-Delete()*
 map <F6>d
+	Deletes all the files with an extension which belongs to
+	g:atp_tex_extensions in the directory b:outdir. By default
+	g:atp_tex_extensions does not contain '.tex', '.pdf', '.dvi' so none
+	of your important files will be deleted. If you set
+	g:atp_delete_output=1 the function will delete also the current output
+	file (but not any other!).
 
 Print()							*atp-map-Print()*
 map \p

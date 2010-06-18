@@ -160,17 +160,17 @@ highlight SpellCap       ctermfg=202         	ctermbg=233
 highlight SpellRare      ctermfg=203         	ctermbg=233
 highlight SpellLocal     ctermfg=202         	ctermbg=233
 
-hi bibsearchInfo 	ctermfg=33			guifg=DeepPink3
-hi bibsearchComment	cterm=bold 	ctermfg=27	guifg=LawnGreen		gui=bold 
+hi bibsearchInfo 	ctermfg=33			guifg=DeepPink
+hi bibsearchComment	cterm=bold 	ctermfg=27	guifg=blue		gui=bold 
 hi bibComment2		cterm=bold 	ctermfg=30	guifg=SeaGreen4		gui=bold
 hi bibsearchCommentContents cterm=none	ctermfg=30	guifg=SeaGreen4		gui=none
 hi bibsearchType			ctermfg=24	guifg=MediumVioletRed
 " hi bibsearchEntryData						ctermfg=magenta
 hi bibsearchKey		cterm=bold 		ctermfg=white	guifg=white	gui=bold
 hi bibsearchEntry 				ctermfg=33	guifg=DeepSkyBlue
-    hi bibsearchField 				ctermfg=green	guifg=green1
-	hi bibsearchEntryKw			ctermfg=white	guifg=BlueViolet
-	hi bibsearchBrace			cterm=bold	guifg=white gui=none
+    hi bibsearchField 				ctermfg=green	guifg=SlateBlue4
+	hi bibsearchEntryKw			ctermfg=white	guifg=SlateBlue3
+	hi bibsearchBrace			cterm=bold	guifg=white gui=bold
 	hi bibsearchVariable 			ctermfg=white	guifg=white
 
 " ATP toc file

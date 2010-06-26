@@ -1,10 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 June 18
+" Last Changed: 2010 June 23
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 23 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 25 :AutoInstall: tex_atp.vim
 " {{{1 Copyright
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
@@ -16,6 +16,21 @@
 " 		damages resulting from the use of this software. 
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
+"}}}1
+"{{{1 Ideas:
+" Extend WrapSelection to specify the end and add some mapps. It can also
+" encolse paragraphs with \begin{}:\end{} pairs and brackets
+" (:),{:},[:],\(:\),\[:\]! 
+"
+" To set the master file: a scaning function for a main file:
+" one can do that like in latex-suite with master.tex.some_suffix file
+" or scan .tex files (recursively for a string \input ..., this might be slow?
+" but there is no need of makeing extra files. Make a list of files and let
+" user to choose which is a master file. Mayby there is a way to remember this
+" in vim (saveview/loadview ?) so that if this is done this will be
+" remembered. 
+"
+" check if how it is done now (using EditInputFile) is well documented in doc
 "}}}1
 "{{{1 ToDo:
 " Idea: to make it load faster I can use: 41.14 *write-plugin-quickload* or
@@ -96,10 +111,26 @@ au WinEnter __ToC__ 	let t:winnr=winnr("#")
 au WinEnter __Labels__ 	let t:winnr=winnr("#")
 "}}}1
 " {{{1 Vim options
-setl keywordprg=texdoc\ -m
-" setl matchpairs='(:),[:],{:}' " multibyte characters are not supported yet
-" so \(:\), \[:\] want work :(. New function
 
+" {{{2 Intendation
+if !exists("g:atp_intendation")
+    let g:atp_intendation=1
+endif
+if !exists("g:atp_tex_indent_paragraphs")
+    let g:atp_tex_indent_paragraphs=1
+endif
+if g:atp_intendation
+    setl indentexpr=ATP_GetTeXIndent()
+    setl nolisp
+    setl nosmartindent
+    setl autoindent
+    setl indentkeys+=},=\\item,=\\bibitem,=\\[,=\\],=<CR>
+    let prefix = expand('<sfile>:p:h:h')
+    exe 'so '.prefix.'/indent/tex_atp.vim'
+endif
+" }}}2
+
+setl keywordprg=texdoc\ -m
 " Borrowed from tex.vim written by Benji Fisher:
     " Set 'comments' to format dashed lists in comments
     setlocal com=sO:%\ -,mO:%\ \ ,eO:%%,:%
@@ -659,16 +690,50 @@ function! s:setoutdir(arg)
 endfunction
 " }}}1
 
-" {{{1 GLOBAL AND LOCAL VARIABLES
-
+" {{{1 GLOBAL AND LOCAL VARIABLES /some are set elsewere/
+if !exists("g:atp_imap_first_leader")
+    let g:atp_imap_first_leader="#"
+endif
+if !exists("g:atp_imap_second_leader")
+    let g:atp_imap_second_leader="##"
+endif
+if !exists("g:atp_imap_third_leader")
+    let g:atp_imap_third_leader="]"
+endif
+if !exists("g:atp_imap_fourth_leader")
+    let g:atp_imap_fourth_leader="["
+endif
+" todo: to doc.
+if !exists("g:atp_completion_font_encodings")
+    let g:atp_completion_font_encodings=['T1', 'T2', 'T3', 'T5', 'OT1', 'OT2', 'OT4', 'UT1'] 
+endif
+" todo: to doc.
+if !exists("g:atp_font_encoding")
+    let s:line=atplib#SearchPackage('fontenc')
+    if s:line != 0
+	" the last enconding is the default one for fontenc, this we will
+	" use
+	let s:enc=matchstr(getline(s:line),'\\usepackage\s*\[\%([^,]*,\)*\zs[^]]*\ze\]\s*{fontenc}')
+    else
+	let s:enc='OT1'
+    endif
+    let g:atp_font_encoding=s:enc
+    unlet s:line
+    unlet s:enc
+endif
+if !exists("g:atp_no_star_environments")
+    let g:atp_no_star_environments=['document', 'flushright', 'flushleft', 'center', 
+		\ 'enumerate', 'itemize', 'tikzpicture', 'scope', 
+		\ 'picture', 'array', 'proof', 'tabular', 'table' ]
+endif
 let s:ask={ "ask" : "0" }
 if !exists("g:atp_sizes_of_brackets")
     let g:atp_sizes_of_brackets={'\left': '\right', '\bigl' : '\bigr', 
 		\ '\Bigl' : '\Bigr', '\biggl' : '\biggr' , 
-		\ '\Biggl' : '\Biggr' }
+		\ '\Biggl' : '\Biggr', '\' : '\' }
 endif
 if !exists("g:atp_bracket_dict")
-    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '\{' : '\}', '[' : ']' }
+    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']'  }
 endif
 " }}}2 			variables
 if !exists("g:atp_LatexBox")
@@ -1352,6 +1417,7 @@ function! s:auTeX()
 " 		    \  !atplib#CheckClosed(g:atp_math_modes[1][0],g:atp_math_modes[1][1],line("."),g:atp_completion_limits[1],1))
 		    call s:compiler(0,0,b:auruns,0,"AU",b:atp_mainfile)
 		    redraw
+		    return "compile" 
 " 		endif
 	    endif
 	else
@@ -1367,9 +1433,12 @@ function! s:auTeX()
 " 		\  !atplib#CheckClosed('\[','\]',line("."),g:atp_completion_limits[1],1))
 		call s:compiler(0,0,b:auruns,0,"AU",b:atp_mainfile)
 		redraw
+		return "compile first time"
 " 	    endif
 	endif
+	return "file does not differ"
    endif
+   return "autex is off"
 endfunction
 if !exists('#CursorHold#' . $HOME . '/*.tex')
     au CursorHold *.tex call s:auTeX()
@@ -2361,6 +2430,7 @@ endfunction
 endif
 " }}}2
 " {{{2 Current TOC
+" ToDo: make this faster!
 " {{{3 s:nearestsection
 " This function finds the section name of the current section unit with
 " respect to the dictionary a:section={ 'line number' : 'section name', ... }
@@ -2989,8 +3059,8 @@ fun! SetXdvi()
 	let b:xdvi_reverse_search="xdvi " . b:ViewerOptions . 
 		\ " -editor 'gvim --servername " . v:servername . 
 		\ " --remote-wait +%l %f' -sourceposition " . 
-		\ line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . 
-		\ " " . fnamemodify(expand("%"),":p:r") . ".dvi"
+		\ line(".") . ":" . col(".") . fnameescape(fnamemodify(expand("%"),":p")) . 
+		\ " " . fnameescape(fnamemodify(expand("%"),":p:r") . ".dvi")
 	call system(b:xdvi_reverse_search)
     endfunction
     endif
@@ -3192,9 +3262,9 @@ function! Env_compl(A,P,L)
     return l:returnlist
 endfunction
 " }}}1
-" {{{1 Toggle Functions
+"{{{1 Toggle Functions
 " {{{2 ToggleSpace
-"Special Space for Searching  ----------------------------------
+" Special Space for Searching 
 let s:special_space="[off]"
 " if !exists("*ToggleSpace")
 function! ToggleSpace()
@@ -3216,7 +3286,7 @@ function! ToggleSpace()
 	tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
     endif
 endfunction
-" }}}2
+"}}}2
 " {{{2 ToggleCheckMathOpened
 function! ToggleCheckMathOpened()
     if g:atp_math_opened
@@ -3301,7 +3371,207 @@ function! ToggleDebugMode()
     endif
 endfunction
 " }}}2
-" }}}1
+" {{{2 ToggleTab
+" switches on/off the <Tab> map for TabCompletion
+function! ToggleTab() 
+    if mapcheck('<F7>','i') !~ 'atplib#TabCompletion'
+	if mapcheck('<Tab>','i') =~ 'atplib#TabCompletion'
+	    iunmap <buffer> <Tab>
+	    let l:map=0
+	else
+	    let l:map=1
+	    imap <buffer> <Tab> <C-R>=atplib#TabCompletion(1)<CR>
+	endif
+" 	if mapcheck('<Tab>','n') =~ 'atplib#TabCompletion'
+" 	    nunmap <buffer> <Tab>
+" 	else
+" 	    imap <buffer> <Tab> <C-R>=atplib#TabCompletion(1,1)<CR>
+" 	endif
+	if l:map 
+	    echo '<Tab> map turned on'
+	else
+	    echo '<Tab> map turned off'
+	endif
+    endif
+endfunction
+" }}}2
+"{{{2 ToggleStar
+" this function adds a star to the current environment
+" todo: to doc.
+if !exists("*ToggleStar")
+function! ToggleStar()
+
+    " limit:
+    let l:from_line=max([1,line(".")-g:atp_completion_limits[2]])
+    let l:to_line=line(".")+g:atp_completion_limits[2]
+
+    " omit pattern
+    let l:omit=join(g:atp_no_star_environments,'\|')
+    let l:open_pos=searchpairpos('\\begin\s*{','','\\end\s*{[^}]*}\zs','bnW','getline(".") =~ "\\\\begin\\s*{".l:omit."}"',l:from_line)
+    let l:env_name=matchstr(strpart(getline(l:open_pos[0]),l:open_pos[1]),'begin\s*{\zs[^}]*\ze}')
+    let b:env_name=l:env_name
+    if l:open_pos == [0, 0] || index(g:atp_no_star_environments,l:env_name) != -1
+	return
+    endif
+    if l:env_name =~ '*$'
+	let l:env_name=substitute(l:env_name,'*$','','')
+	let b:env=l:env_name
+	let l:close_pos=searchpairpos('\\begin\s*{'.l:env_name.'\*}','','\\end\s*{'.l:env_name.'\*}\zs','nW',"",l:to_line)
+	if l:close_pos != [0, 0]
+	    call setline(l:open_pos[0],substitute(getline(l:open_pos[0]),'\(\\begin\s*{\)'.l:env_name.'\*}','\1'.l:env_name.'}',''))
+	    call setline(l:close_pos[0],substitute(getline(l:close_pos[0]),
+			\ '\(\\end\s*{\)'.l:env_name.'\*}','\1'.l:env_name.'}',''))
+	    echomsg "Star removed from '".l:env_name."*' at lines: " .l:open_pos[0]." and ".l:close_pos[0]
+	endif
+    else
+	let l:close_pos=searchpairpos('\\begin\s{'.l:env_name.'}','','\\end\s*{'.l:env_name.'}\zs','nW',"",l:to_line)
+	if l:close_pos != [0, 0]
+	    call setline(l:open_pos[0],substitute(getline(l:open_pos[0]),
+		    \ '\(\\begin\s*{\)'.l:env_name.'}','\1'.l:env_name.'\*}',''))
+	    call setline(l:close_pos[0],substitute(getline(l:close_pos[0]),
+			\ '\(\\end\s*{\)'.l:env_name.'}','\1'.l:env_name.'\*}',''))
+	    echomsg "Star added to '".l:env_name."' at lines: " .l:open_pos[0]." and ".l:close_pos[0]
+	endif
+    endif
+endfunction
+endif
+"}}}2
+"{{{2 ToggleEnvironment
+" this function toggles envrionment name.
+" Todo: to doc.
+" Todo: This will have some sence when the environemnts will be restricted to some
+" smaller substets!
+
+if !exists("g:atp_no_toggle_environments")
+    let g:atp_no_toggle_environments=[ 'document', 'tikzpicture', 'picture']
+endif
+if !exists("g:atp_toggle_environment_1")
+    let g:atp_toggle_environment_1=[ 'center', 'flushleft', 'flushright', 'minipage' ]
+endif
+if !exists("g:atp_toggle_environment_2")
+    let g:atp_toggle_environment_2=[ 'enumerate', 'itemize', 'list', 'description' ]
+endif
+if !exists("g:atp_toggle_environment_3")
+    let g:atp_toggle_environment_3=[ 'quotation', 'quote', 'verse' ]
+endif
+if !exists("g:atp_toggle_environment_4")
+    let g:atp_toggle_environment_4=[ 'theorem', 'proposition', 'lemma' ]
+endif
+if !exists("g:atp_toggle_environment_5")
+    let g:atp_toggle_environment_5=[ 'corollary', 'remark', 'note' ]
+endif
+if !exists("g:atp_toggle_environment_6")
+    let g:atp_toggle_environment_6=[  'equation', 'align', 'array', 'alignat', 'gather', 'flalign'  ]
+endif
+if !exists("g:atp_toggle_environment_7")
+    let g:atp_toggle_environment_7=[ 'smallmatrix', 'pmatrix', 'bmatrix', 'Bmatrix', 'vmatrix' ]
+endif
+if !exists("g:atp_toggle_environment_8")
+    let g:atp_toggle_environment_8=[ 'tabbing', 'tabular']
+endif
+if !exists("g:atp_toggle_labels")
+    let g:atp_toggle_labels=1
+endif
+
+" the argument specifies the speed (if -1 then toggle back)
+if !exists("*ToggleEnvironment")
+function! ToggleEnvironment(...)
+
+    if a:0 >= 1
+	let l:add=a:1
+    else
+	let l:add=1
+    endif
+    let b:add=l:add
+
+    " limit:
+    let l:from_line=max([1,line(".")-g:atp_completion_limits[2]])
+    let l:to_line=line(".")+g:atp_completion_limits[2]
+
+    " omit pattern
+    let l:omit=join(g:atp_no_toggle_environments,'\|')
+    let l:open_pos=searchpairpos('\\begin\s*{','','\\end\s*{[^}]*}\zs','bnW','getline(".") =~ "\\\\begin\\s*{".l:omit."}"',l:from_line)
+    let l:env_name=matchstr(strpart(getline(l:open_pos[0]),l:open_pos[1]),'begin\s*{\zs[^}]*\ze}')
+
+    let l:label=matchstr(strpart(getline(l:open_pos[0]),l:open_pos[1]),'\\label\s*{\zs[^}]*\ze}')
+    " DEBUG
+    let b:line=strpart(getline(l:open_pos[0]),l:open_pos[1])
+    let b:label=l:label
+    let b:env_name=l:env_name
+    if l:open_pos == [0, 0] || index(g:atp_no_toggle_environments,l:env_name) != -1
+	return
+    endif
+
+    let l:env_name_ws=substitute(l:env_name,'\*$','','')
+    let l:variable="g:atp_toggle_environment_1"
+    let l:i=1
+    while 1
+	let l:env_idx=index({l:variable},l:env_name_ws)
+	if l:env_idx != -1
+	    break
+	else
+	    let l:i+=1
+	    let l:variable="g:atp_toggle_environment_".l:i
+	endif
+	if !exists(l:variable)
+	    return
+	endif
+    endwhile
+
+    if l:add > 0 && l:env_idx > len({l:variable})-l:add-1
+	let l:env_idx=0
+    elseif ( l:add < 0 && l:env_idx < -1*l:add )
+	let l:env_idx=len({l:variable})-1
+    else
+	let l:env_idx+=l:add
+    endif
+    let l:new_env_name={l:variable}[l:env_idx]
+    if l:env_name =~ '\*$'
+	let l:new_env_name.="*"
+    endif
+
+    " DEBUG
+"     let b:i=l:i
+"     let b:env_idx=l:env_idx
+"     let b:env_name=l:env_name
+"     let b:new_env_name=l:new_env_name
+
+    let l:env_name=escape(l:env_name,'*')
+    let l:close_pos=searchpairpos('\\begin\s*{'.l:env_name.'}','','\\end\s*{'.l:env_name.'}\zs','nW',"",l:to_line)
+    if l:close_pos != [0, 0]
+	call setline(l:open_pos[0],substitute(getline(l:open_pos[0]),'\(\\begin\s*{\)'.l:env_name.'}','\1'.l:new_env_name.'}',''))
+	call setline(l:close_pos[0],substitute(getline(l:close_pos[0]),
+		    \ '\(\\end\s*{\)'.l:env_name.'}','\1'.l:new_env_name.'}',''))
+	echomsg "Environment toggeled at lines: " .l:open_pos[0]." and ".l:close_pos[0]
+    endif
+
+    if l:label != "" && g:atp_toggle_labels
+	let l:new_env_name_ws=substitute(l:new_env_name,'\*$','','')
+	let l:new_short_name=get(g:atp_shortname_dict,l:new_env_name_ws,"")
+	let l:short_pattern=join(values(filter(g:atp_shortname_dict,'v:val != ""')),'\|')
+	let l:short_name=matchstr(l:label,'^'.l:short_pattern)
+	let l:new_label=substitute(l:label,'^'.l:short_name,l:new_short_name,'')
+
+	" check if new label is in use!
+	let l:pos_save=getpos(".")
+	let l:n=search('\C\\\(label\|\%(eq\|page\)\?ref\)\s*{'.l:new_label.'}','nwc')
+" 	let b:n=l:n
+
+	if l:short_name != "" && l:n == 0 && l:new_label != l:label
+	    silent! keepjumps execute '%substitute /\\\(eq\|page\)\?\(ref\s*\){'.l:label.'}/\\\1\2{'.l:new_label.'}/gIe'
+	    silent! keepjumps execute l:open_pos[0].'substitute /\\label{'.l:label.'}/\\label{'.l:new_label.'}'
+	    keepjumps call setpos(".",l:pos_save)
+	elseif l:n != 0 && l:new_label != l:label
+	    echohl WarningMsg
+	    echomsg "Labels not changed, new label: ".l:new_label." is in use!"
+	    echohl Normal
+	endif
+    endif
+    return  l:open_pos[0]."-".l:close_pos[0]
+endfunction
+endif
+"}}}2
+"}}}1
 
 " {{{1 TAB COMPLETION variables
 " ( functions are in autoload/atplib.vim )
@@ -3314,7 +3584,9 @@ let g:atp_completion_modes=[
 	    \ 'bibitems', 		'bibfiles',
 	    \ 'documentclass',		'tikzpicture commands',
 	    \ 'tikzpicture',		'tikzpicture keywords',
-	    \ 'package names' ]
+	    \ 'package names',		'font encoding',
+	    \ 'font family',		'font series',
+	    \ 'font shape' ]
 let g:atp_completion_modes_normal_mode=[ 
 	    \ 'close environments' , 	'brackets' ]
 
@@ -3407,42 +3679,46 @@ endif
 	\ "\\cite{", "\\nocite{", "\\ref{", "\\pageref{", "\\eqref{", "\\bibitem", "\\item",
 	\ "\\emph{", "\\documentclass{", "\\usepackage{",
 	\ "\\section{", "\\subsection{", "\\subsubsection{", "\\part{", 
-	\ "\\chapter{", "\\appendix ", "\\subparagraph ", "\\paragraph ",
+	\ "\\chapter{", "\\appendix", "\\subparagraph", "\\paragraph",
 	\ "\\textbf{", "\\textsf{", "\\textrm{", "\\textit{", "\\texttt{", 
-	\ "\\textsc{", "\\textsl{", "\\textup{", "\\textnormal ", 
+	\ "\\textsc{", "\\textsl{", "\\textup{", "\\textnormal", "\\textcolor{",
 	\ "\\bfseries", "\\mdseries",
-	\ "\\tiny ", "\\scriptsize ", "\\footnotesize ", "\\small ",
-	\ "\\normal ", "\\large ", "\\Large ", "\\LARGE ", "\\huge ", "\\HUGE ",
-	\ "\\usefont{", "\\fontsize{", "\\selectfont ",
-	\ "\\addcontentsline{", "\\addtocontents ",
+	\ "\\tiny",  "\\scriptsize", "\\footnotesize", "\\small",
+	\ "\\noindent", "\\normalfont", "\normalsize", "\\normalsize", "\\normal", 
+	\ "\\large", "\\Large", "\\LARGE", "\\huge", "\\HUGE",
+	\ "\\usefont{", "\\fontsize{", "\\selectfont", "\\fontencoding{", "\\fontfamiliy{", "\\fontseries{", "\\fontshape{",
+	\ "\\rmdefault", "\\sfdefault", "\\ttdefault", "\\bfdefault", "\\mddefault", "\\itdefault",
+	\ "\\sldefault", "\\scdefault", "\\updefault",  "\\renewcommand{", "\\newcommand{",
+	\ "\\addcontentsline{", "\\addtocontents",
 	\ "\\input", "\\include", "\\includeonly", "\\inlucegraphics",  
-	\ "\\savebox", "\\sbox", "\\usebox ", "\\rule ", "\\raisebox{", 
+	\ "\\savebox", "\\sbox", "\\usebox", "\\rule", "\\raisebox{", 
 	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
-	\ "\\bigskip ", "\\medskip ", "\\smallskip ", "\\vfill ", "\\vspace{", 
-	\ "\\hspace ", "\\hrulefill ", "\\hfill ", "\\dots", "\\dotfill ",
-	\ "\\thispagestyle ", "\\markright ", "\\pagestyle ", "\\pagenumbering ",
+	\ "\\bigskip", "\\medskip", "\\smallskip", "\\vfill", "\\vspace{", 
+	\ "\\hspace", "\\hrulefill", "\\hfill", "\\dots", "\\dotfill",
+	\ "\\thispagestyle", "\\mathnormal", "\\markright", "\\pagestyle", "\\pagenumbering",
 	\ "\\author{", "\\date{", "\\thanks{", "\\title{",
-	\ "\\maketitle ", "\\overbrace{", "\\underbrace{",
-	\ "\\marginpar ", "\\indent ", "\\noindent ", "\\par ", "\\sloppy ", "\\pagebreak", "\\nopagebreak",
-	\ "\\newpage ", "\\newline ", "\\linebreak", "\\hyphenation{", "\\fussy ",
-	\ "\\enlagrethispage{", "\\clearpage ", "\\cleardoublepage ",
+	\ "\\maketitle", "\\overbrace{", "\\underbrace{",
+	\ "\\marginpar", "\\indent", "\\par", "\\sloppy", "\\pagebreak", "\\nopagebreak",
+	\ "\\newpage", "\\newline", "\\newtheorem{", "\\linebreak", "\\hyphenation{", "\\fussy",
+	\ "\\enlagrethispage{", "\\clearpage", "\\cleardoublepage",
 	\ "\\caption{",
 	\ "\\opening{", "\\name{", "\\makelabels{", "\\location{", "\\closing{", "\\address{", 
-	\ "\\signature{", "\\stopbreaks ", "\\startbreaks ",
+	\ "\\signature{", "\\stopbreaks", "\\startbreaks",
 	\ "\\newcounter{", "\\refstepcounter{", 
 	\ "\\roman{", "\\Roman{", "\\stepcounter{", "\\setcounter{", 
-	\ "\\usecounter{", "\\value{", "\\newtheorem{", "\\newfont{", 
+	\ "\\usecounter{", "\\value{", 
 	\ "\\newlength{", "\\setlength{", "\\addtolength{", "\\settodepth{", 
 	\ "\\settoheight{", "\\settowidth{", 
 	\ "\\width", "\\height", "\\depth", "\\totalheight",
-	\ "\\footnote{", "\\footnotemark ", "\\footnotetetext", 
+	\ "\\footnote{", "\\footnotemark", "\\footnotetetext", 
 	\ "\\bibliography{", "\\bibliographystyle{", 
 	\ "\\flushbottom", "\\onecolumn", "\\raggedbottom", "\\twocolumn",  
 	\ "\\alph{", "\\Alph{", "\\arabic{", "\\fnsymbol{", "\\reversemarginpar",
 	\ "\\exhyphenpenalty",
 	\ "\\topmargin", "\\oddsidemargin", "\\evensidemargin", "\\headheight", "\\headsep", 
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
-	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{" ]
+	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
+	\ "\\tableofcontents", "\\newfont{" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -3530,7 +3806,7 @@ endif
 		    \ "\\nsupseteqq", "\\subsetneqq", "\\supsetneqq", "\\nsucceqq", "\\precneqq", "\\succneqq" ] 
 
 	" ToDo: add more amsmath commands.
-	let g:atp_amsmath_commands=[ "\\boxed", "\\inserttext", "\\multiligngap", "\\shoveleft", "\\shoveright", "\\notag", "\\tag", 
+	let g:atp_amsmath_commands=[ "\\boxed", "\\intertext", "\\multiligngap", "\\shoveleft", "\\shoveright", "\\notag", "\\tag", 
 		    \ "\\raistag{", "\\displaybreak", "\\allowdisplaybreaks", "\\numberwithin{",
 		    \ "\\hdotsfor{" , "\\mspace{",
 		    \ "\\negthinspace", "\\negmedspace", "\\negthickspace", "\\thinspace", "\\medspace", "\\thickspace",
@@ -3552,7 +3828,7 @@ endif
 	let g:atp_amsxtra_commands=[ "\\sphat", "\\sptilde" ]
 	let g:atp_fancyhdr_commands=["\\lfoot{", "\\rfoot{", "\\rhead{", "\\lhead{", 
 		    \ "\\cfoot{", "\\chead{", "\\fancyhead{", "\\fancyfoot{",
-		    \ "\\fancypagestyle{", "\\fancyhf{}", "\\headrulewidth ", "\\footrulewidth ",
+		    \ "\\fancypagestyle{", "\\fancyhf{}", "\\headrulewidth", "\\footrulewidth",
 		    \ "\\rightmark", "\\leftmark", "\\markboth", 
 		    \ "\\chaptermark", "\\sectionmark", "\\subsectionmark",
 		    \ "\\fancyheadoffset", "\\fancyfootoffset", "\\fancyhfoffset"]
@@ -3624,7 +3900,7 @@ endif
 	" for tikz keywords we can complete sentences, like 'matrix of
 	" math nodes'!
 	let g:atp_tikz_library_matrix_keywords=['matrix of nodes', 'matrix of math nodes', 'nodes', 'delimiter', 
-		    \ 'rmoustache'] 
+		    \ 'rmoustache', 'column sep=', 'row sep=' ] 
 	" ToDo: completion for arguments in brackets [] for tikz commands.
 	let g:atp_tikz_commands=[ "\\begin", "\\end", "\\matrix", "\\node", "\\shadedraw", 
 		    \ "\\draw", "\\tikz", "\\tikzset",
@@ -3654,32 +3930,32 @@ endif
 " How to deal with $:$ (they are usually in one line, we could count them)  and $$:$$ 
 " matchpair
 
-" let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\))'],
-" 	    \ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)\[','\%([^\\]\|^\)\%(\\\|\\\{3}\)\]'], 	
-" 	    \ ['\\begin{align', '\end{align'], 		['\\begin{gather', '\\end{gather'], 
-" 	    \ ['\\begin{falign', '\\end{flagin'], 	['\\begin[multiline', '\\end{multiline'],
-" 	    \ ['\\begin{tikz', '\\end{tikz'],		['\begin{equation', '\end{equation'] ]
-
 let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\)\zs)'],
 	    \ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)\[','\%([^\\]\|^\)\%(\\\|\\\{3}\)\zs\]'], 	
 	    \ ['\\begin{align', '\\end{alig\zsn'], 	['\\begin{gather', '\\end{gathe\zsr'], 
 	    \ ['\\begin{falign', '\\end{flagi\zsn'], 	['\\begin[multiline', '\\end{multilin\zse'],
-	    \ ['\\begin{tikz', '\\end{tik\zsz'],	['\\begin{equation', '\\end{equatio\zsn'] ]
+	    \ ['\\begin{equation', '\\end{equatio\zsn'] ]
 " ToDo: user command list, env list g:atp_commands, g:atp_environments, 
 " }}}1
 "{{{1 LocalCommands 
 if !exists("*LocalCommands")
-function! LocalCommands()
+function! LocalCommands(...)
 
+    if a:0 == 0
+	let l:pattern='\\def\>\|\\newcommand\>\|\\newenvironment\|\\newtheorem\|\\definecolor'
+    else
+	let l:pattern=a:1
+    endif
     echo "Makeing lists of commands and environments found in input files ... "
 " 	    call s:setprojectname()
     let l:command_names=[]
     let l:environment_names=[]
+    let l:color_names=[]
 
     " ToDo: I need a simpler function here !!!
     " 		we are just looking for definition names not for
     " 		definition itself (this takes time).
-    let l:ddict=s:make_defi_dict(b:atp_mainfile,'\\def\>\|\\newcommand\>\|\\newenvironment\|\\newtheorem',1,1)
+    let l:ddict=s:make_defi_dict(b:atp_mainfile,l:pattern,1,1)
 " 	    echomsg " LocalCommands DEBUG " . b:atp_mainfile
     let b:ddict=l:ddict
 	for l:inputfile in keys(l:ddict)
@@ -3714,10 +3990,20 @@ function! LocalCommands()
 			endif
 		    endif
 		endif
+		if l:ifile[l:range[0]-1] =~ '\\definecolor'
+		    let l:name=matchstr(l:ifile[l:range[0]-1],
+				\ '^\s*\\definecolor\s*{\zs[^}]*\ze}')
+		    if l:name != ""
+			if !count(l:color_names,l:name)
+			    call add(l:color_names,l:name)
+			endif
+		    endif
+		endif
 	    endfor
 	endfor
     let s:atp_local_commands		= []
     let s:atp_local_environments	= []
+    let s:atp_local_colors		= l:color_names
 
     " remove double entries
     for l:type in ['command', 'environment']
@@ -3735,7 +4021,8 @@ function! LocalCommands()
     " Make shallow copies of the lists
     let b:atp_local_commands=s:atp_local_commands
     let b:atp_local_environments=s:atp_local_environments
-    return [ s:atp_local_environments, s:atp_local_commands ]
+    let b:atp_local_colors=s:atp_local_colors
+    return [ s:atp_local_environments, s:atp_local_commands, s:atp_local_colors ]
 endfunction
 endif
 "}}}1
@@ -3757,345 +4044,249 @@ function! TEXdoc(name)
     call system("texdoc -m " . a:name)
 endfunction
 function! TEXdoc_complete(A,L,P)
-    return atplib#s:Search_Package("tex","sty")
+    return atplib#Search_Package("tex","sty")
 endfunction
 command -buffer -complete=customlist,TEXdoc_complete TEXdoc 	:call TEXdoc(<f-args>)
 "}}}1
 
 
-" {{{1 LATEX_BOX (omni completion) by DAVID MUNGER 
-if g:atp_LatexBox == 1 || (g:atp_check_if_LatexBox && len(split(globpath(&rtp,'ftplugin/tex_LatexBox.vim'))))
-	    " LaTeX Box completion
-
-if !exists('g:LatexBox_cite_pattern')
-	let g:LatexBox_cite_pattern = '\\cite\(p\|t\)\?\*\?\_\s*{'
-endif
-if !exists('g:LatexBox_ref_pattern')
-	let g:LatexBox_ref_pattern = '\\v\?\(eq\|page\)\?ref\*\?\_\s*{'
-endif
-
-" Global Variables {{{
-let g:LatexBox_complete_with_brackets = 1
-let g:LatexBox_bibtex_wild_spaces = 1
-
-let g:LatexBox_completion_environments = [
-	\ {'word': 'itemize',		'menu': 'bullet list' },
-	\ {'word': 'enumerate',		'menu': 'numbered list' },
-	\ {'word': 'description',	'menu': 'description' },
-	\ {'word': 'center',		'menu': 'centered text' },
-	\ {'word': 'figure',		'menu': 'floating figure' },
-	\ {'word': 'table',		'menu': 'floating table' },
-	\ {'word': 'equation',		'menu': 'equation (numbered)' },
-	\ {'word': 'align',		'menu': 'aligned equations (numbered)' },
-	\ {'word': 'align*',		'menu': 'aligned equations' },
-	\ {'word': 'document' },
-	\ {'word': 'abstract' },
-	\ ]
-
-let g:LatexBox_completion_commands = [
-	\ {'word': '\begin{' },
-	\ {'word': '\end{' },
-	\ {'word': '\item' },
-	\ {'word': '\label{' },
-	\ {'word': '\ref{' },
-	\ {'word': '\eqref{eq:' },
-	\ {'word': '\cite{' },
-	\ {'word': '\nonumber' },
-	\ {'word': '\bibliography' },
-	\ {'word': '\bibliographystyle' },
-	\ ]
-" }}}
-
-" Omni Completion {{{
-
-let s:completion_type = ''
-
-function! LatexBox_Complete(findstart, base)
-	if a:findstart
-		" return the starting position of the word
-		let line = getline('.')
-		let pos = col('.') - 1
-		while pos > 0 && line[pos - 1] !~ '\\\|{'
-			let pos -= 1
-		endwhile
-
-		if line[0:pos-1] =~ '\\begin\_\s*{$'
-			let s:completion_type = 'begin'
-		elseif line[0:pos-1] =~ '\\end\_\s*{$'
-			let s:completion_type = 'end'
-		elseif line[0:pos-1] =~ g:LatexBox_ref_pattern . '$'
-			let s:completion_type = 'ref'
-		elseif line[0:pos-1] =~ g:LatexBox_cite_pattern . '$'
-			let s:completion_type = 'bib'
-			" check for multiple citations
-			let pos = col('.') - 1
-			while pos > 0 && line[pos - 1] !~ '{\|,'
-				let pos -= 1
-			endwhile
-		else
-			let s:completion_type = 'command'
-			if line[pos-1] == '\'
-				let pos -= 1
-			endif
-		endif
-		return pos
-	else
-		" return suggestions in an array
-		let suggestions = []
-
-		if s:completion_type == 'begin'
-			" suggest known environments
-			for entry in g:LatexBox_completion_environments
-				if entry.word =~ '^' . escape(a:base, '\')
-					if g:LatexBox_completion_close_braces
-						" add trailing '}'
-						let entry = copy(entry)
-						let entry.abbr = entry.word
-						let entry.word = entry.word . '}'
-					endif
-					call add(suggestions, entry)
-				endif
-			endfor
-		elseif s:completion_type == 'end'
-			" suggest known environments
-			let env = s:GetLastUnclosedEnv()
-			if env != ''
-				if g:LatexBox_completion_close_braces
-					call add(suggestions, {'word': env . '}', 'abbr': env})
-				else
-					call add(suggestions, env)
-				endif
-			endif
-		elseif s:completion_type == 'command'
-			" suggest known commands
-			for entry in g:LatexBox_completion_commands
-				if entry.word =~ '^' . escape(a:base, '\')
-					" do not display trailing '{'
-					if entry.word =~ '{'
-						let entry.abbr = entry.word[0:-2]
-					endif
-					call add(suggestions, entry)
-				endif
-			endfor
-		elseif s:completion_type == 'ref'
-			let suggestions = s:CompleteLabels(a:base)
-		elseif s:completion_type == 'bib'
-			" suggest BibTeX entries
-			let suggestions = LatexBox_BibComplete(a:base)
-		endif
-		let b:completion_type=s:completion_type." ".a:base
-		if !has('gui_running')
-			redraw!
-		endif
-		return suggestions
+" {{{1 Load Latex_Box addonds (omni completion, and  %) by David Munger 
+if g:atp_LatexBox == 1 || (g:atp_check_if_LatexBox && len(split(globpath(&rtp,'ftplugin/tex_LatexBox.vim')))) 
+    if !exists('s:loaded_LatexBox') 
+	if !exists('g:LatexBox_cite_pattern')
+		let g:LatexBox_cite_pattern = '\\cite\(p\|t\)\?\*\?\_\s*{'
 	endif
-endfunction
-" }}}
-
-
-" BibTeX search {{{
-
-" find the \bibliography{...} commands
-" the optional argument is the file name to be searched
-function! s:FindBibData(...)
-
-	if a:0 == 0
-		let file = LatexBox_GetMainTexFile()
-	else
-		let file = a:1
+	if !exists('g:LatexBox_ref_pattern')
+		let g:LatexBox_ref_pattern = '\\v\?\(eq\|page\)\?ref\*\?\_\s*{'
 	endif
 
-	let prefix = fnamemodify(file, ':p:h')
-	let ext = fnamemodify(file, ':e')
+	" Global Variables {{{
+	let g:LatexBox_complete_with_brackets = 1
+	let g:LatexBox_bibtex_wild_spaces = 1
 
-	let bibdata_list = []
+	let g:LatexBox_completion_environments = [
+		\ {'word': 'itemize',		'menu': 'bullet list' },
+		\ {'word': 'enumerate',		'menu': 'numbered list' },
+		\ {'word': 'description',	'menu': 'description' },
+		\ {'word': 'center',		'menu': 'centered text' },
+		\ {'word': 'figure',		'menu': 'floating figure' },
+		\ {'word': 'table',		'menu': 'floating table' },
+		\ {'word': 'equation',		'menu': 'equation (numbered)' },
+		\ {'word': 'align',		'menu': 'aligned equations (numbered)' },
+		\ {'word': 'align*',		'menu': 'aligned equations' },
+		\ {'word': 'document' },
+		\ {'word': 'abstract' },
+		\ ]
 
-	for line in readfile(file)
+	let g:LatexBox_completion_commands = [
+		\ {'word': '\begin{' },
+		\ {'word': '\end{' },
+		\ {'word': '\item' },
+		\ {'word': '\label{' },
+		\ {'word': '\ref{' },
+		\ {'word': '\eqref{eq:' },
+		\ {'word': '\cite{' },
+		\ {'word': '\nonumber' },
+		\ {'word': '\bibliography' },
+		\ {'word': '\bibliographystyle' },
+		\ ]
+	" }}}
 
-		" match \bibliography{...}
-		let cur_bibdata = matchstr(line, '\\bibliography\_\s*{\zs[^}]*\ze}')
-		if !empty(cur_bibdata)
-			call add(bibdata_list, cur_bibdata)
-		endif
-
-		" match \include{...} or \input ...
-		let included_file = matchstr(line, '\\\(input\|include\)\_\s*{\zs[^}]*\ze}')
-		if empty(included_file)
-			let included_file = matchstr(line, '\\@\?\(input\|include\)\_\s*\zs\S\+\ze')
-		endif
-
-		if !empty(included_file)
-			if !filereadable(included_file)
-				let included_file .= '.' . ext
-				if !filereadable(included_file)
-					continue
-				endif
-			endif
-			call add(bibdata_list, s:FindBibData(included_file))
-		endif
-
-	endfor
-
-	let bibdata = join(bibdata_list, ',')
-	return bibdata
-endfunction
-
-let s:bstfile = expand('<sfile>:p:h') . '/vimcomplete'
-
-function! LatexBox_BibSearch(regexp)
-
-	" find bib data
-    let bibdata = s:FindBibData()
-    if bibdata == ''
-	echomsg 'error: no \bibliography{...} command found'
-	return
+	let prefix = expand('<sfile>:p:h')
+	execute 'source ' . prefix . '/atp_LatexBox.vim'
+	let s:loaded_LatexBox = 1
     endif
-
-    " write temporary aux file
-    let tmpbase = fnamemodify(b:atp_mainfile,":h") . '/_LatexBox_BibComplete'
-    let auxfile = tmpbase . '.aux'
-    let bblfile = tmpbase . '.bbl'
-    let blgfile = tmpbase . '.blg'
-
-    call writefile(['\citation{*}', '\bibstyle{' . s:bstfile . '}', '\bibdata{' . bibdata . '}'], auxfile)
-
-    silent execute '! cd ' shellescape(fnamemodify(b:atp_mainfile,":h")) .
-				\ ' ; bibtex -terse ' . fnamemodify(auxfile, ':t') . ' >/dev/null'
-
-    let res = []
-    let curentry = ''
-    for l:line in readfile(bblfile)
-	if l:line =~ '^\s*$'
-
-	    " process current entry
-			
-	    if empty(curentry) || curentry !~ a:regexp
-				" skip entry if void or doesn't match
-				let curentry = ''
-		continue
-	    endif
-            let matches = matchlist(curentry, '^{\(.*\)}{\(.*\)}{\(.*\)}{\(.*\)}{\(.*\)}.*')
-            if !empty(matches) && !empty(matches[1])
-                call add(res, {'key': matches[1], 'type': matches[2],
-							\ 'author': matches[3], 'year': matches[4], 'title': matches[5]})
-	    endif
-	    let curentry = ''
-	else
-	    let curentry .= l:line
-	endif
-    endfor
-
-	call delete(auxfile)
-	call delete(bblfile)
-	call delete(blgfile)
-
-	return res
-endfunction
-" }}}
-
-" BibTeX completion {{{
-function! LatexBox_BibComplete(regexp)
-
-	" treat spaces as '.*' if needed
-	if g:LatexBox_bibtex_wild_spaces
-		"let regexp = substitute(a:regexp, '\s\+', '.*', 'g')
-		let regexp = '.*' . substitute(a:regexp, '\s\+', '\\\&.*', 'g')
-	else
-		let regexp = a:regexp
-	endif
-
-    let res = []
-    for m in LatexBox_BibSearch(regexp)
-
-        let w = {'word': m['key'],
-					\ 'abbr': '[' . m['type'] . '] ' . m['author'] . ' (' . m['year'] . ')',
-					\ 'menu': m['title']}
-
-		" close braces if needed
-		if g:LatexBox_completion_close_braces
-			let rest_of_line = strpart(getline("."), getpos(".")[2] - 1)
-			if rest_of_line !~ '^\s*[,}]'
-			let w.word = w.word . '}'
-		endif
-		endif
-
-	call add(res, w)
-    endfor
-    return res
-endfunction
-" }}}
-set omnifunc=LatexBox_Complete
-
-" ------- Wrap Seclection ----------------------------
-if !exists("*WrapSelection")
-function! WrapSelection(wrapper)
-    normal `>a}
-    exec 'normal `<i\'.a:wrapper.'{'
-endfunction
 endif
-" Complete Labels {{{
-" the optional argument is the file name to be searched
-function! s:CompleteLabels(regex, ...)
-
-	let suggestions = []
-
-	if a:0 == 0
-		let auxfile = LatexBox_GetAuxFile()
-	else
-		let auxfile = a:1
-	endif
-
-	let prefix = fnamemodify(auxfile, ':p:h')
-
-	" search for the target equation number
-	for line in readfile(auxfile)
-
-		" search for matching label
-		let matches = matchlist(line, '^\\newlabel{\(' . a:regex . '[^}]*\)}{{\([^}]*\)}{\([^}]*\)}.*}')
-
-		if empty(matches)
-			" also try to match label and number
-			let regex_split = split(a:regex)
-			let base = regex_split[0]
-			let number = escape(join(regex_split[1:], ' '), '.')
-			let matches = matchlist(line, '^\\newlabel{\(' . base . '[^}]*\)}{{\(' . number . '\)}{\([^}]*\)}.*}')
-		endif
-
-		if empty(matches)
-			" also try to match number
-			let matches = matchlist(line, '^\\newlabel{\([^}]*\)}{{\(' . escape(a:regex, '.') . '\)}{\([^}]*\)}.*}')
-		endif
-
-		if !empty(matches)
-
-			let entry = {'word': matches[1], 'menu': '(' . matches[2] . ') [p.' . matches[3] . ']'}
-
-			if g:LatexBox_completion_close_braces
-				" add trailing '}'
-				let entry = copy(entry)
-				let entry.abbr = entry.word
-				let entry.word = entry.word . '}'
-			endif
-			call add(suggestions, entry)
-		endif
-
-		" search for included files
-		let included_auxfile = matchstr(line, '^\\@input{\zs[^}]*\ze}')
-		if included_auxfile != ''
-			let included_auxfile = prefix . '/' . included_auxfile
-			call extend(suggestions, s:CompleteLabels(a:regex, included_auxfile))
-		endif
-	endfor
-
-	return suggestions
-
-endfunction
-" }}}
-endif
-
-" ======== LATEX_BOX end ============================
+" Latex_Box end
 " }}}1
 
+" {{{1 WrapSelection
+" ------- Wrap Seclection ----------------------------
+if !exists("*WrapSelection")
+function! WrapSelection(wrapper,...)
+
+    if a:0 == 0
+	let l:end_wrapper='}'
+    else
+	let l:end_wrapper=a:1
+    endif
+    if a:0 >= 2
+	let l:cursor_pos=a:2
+    else
+	let l:cursor_pos="end"
+    endif
+    if a:0 >= 3
+	let l:new_line=a:3
+    else
+	let l:new_line=0
+    endif
+
+"     let b:new_line=l:new_line
+"     let b:cursor_pos=l:cursor_pos
+"     let b:end_wrapper=l:end_wrapper
+
+    let l:begin=getpos("'<")
+    " todo: if and on 'ą' we should go one character further! (this is
+    " a multibyte character)
+    let l:end=getpos("'>")
+    let l:pos_save=getpos(".")
+
+    " hack for that:
+    let l:pos=deepcopy(l:end)
+    keepjumps call setpos(".",l:end)
+    execute 'normal l'
+    let l:pos_new=getpos(".")
+    if l:pos_new[2]-l:pos[2] > 1
+	let l:end[2]+=l:pos_new[2]-l:pos[2]-1
+    endif
+
+    let l:begin_line=getline(l:begin[1])
+    let l:end_line=getline(l:end[1])
+
+    let b:begin=l:begin[1]
+    let b:end=l:end[1]
+
+    " ToDo: this doesn't work yet!
+    let l:add_indent='    '
+    if l:begin[1] != l:end[1]
+	let l:bbegin_line=strpart(l:begin_line,0,l:begin[2]-1)
+	let l:ebegin_line=strpart(l:begin_line,l:begin[2]-1)
+
+	" DEBUG
+	let b:bbegin_line=l:bbegin_line
+	let b:ebegin_line=l:ebegin_line
+
+	let l:bend_line=strpart(l:end_line,0,l:end[2])
+	let l:eend_line=strpart(l:end_line,l:end[2])
+
+	if l:new_line == 0
+	    " inline
+" 	    let b:debug=0
+	    let l:begin_line=l:bbegin_line.a:wrapper.l:ebegin_line
+	    let l:end_line=l:bend_line.l:end_wrapper.l:eend_line
+	    call setline(l:begin[1],l:begin_line)
+	    call setline(l:end[1],l:end_line)
+	    let l:end[2]+=len(l:end_wrapper)
+	else
+	    let b:debug=1
+	    " in seprate lines
+	    let l:indent=atplib#CopyIndentation(l:begin_line)
+	    if l:bbegin_line !~ '^\s*$'
+		let b:debug.=1
+		let l:begin_choice=1
+		call setline(l:begin[1],l:bbegin_line)
+		call append(l:begin[1],l:indent.a:wrapper) " THERE IS AN ISSUE HERE!
+		call append(copy(l:begin[1])+1,l:indent.substitute(l:ebegin_line,'^\s*','',''))
+		let l:end[1]+=2
+" 		return
+	    elseif l:bbegin_line =~ '^\s\+$'
+		let b:debug.=2
+		let l:begin_choice=2
+		call append(l:begin[1]-1,l:indent.a:wrapper)
+		call append(l:begin[1],l:begin_line.l:ebegin_line)
+		let l:end[1]+=2
+	    else
+		let b:debug.=3
+		let l:begin_choice=3
+" 		let l:indent_b=atplib#CopyIndentation(l:begin_line)
+		call append(copy(l:begin[1])-1,l:indent.a:wrapper)
+" 		call append(l:begin[1],l:ebegin_line)
+		let l:end[1]+=1
+	    endif
+	    if l:eend_line !~ '^\s*$'
+		let b:debug.=4
+		let l:end_choice=4
+" 		let l:indent_e=atplib#CopyIndentation(l:bend_line)
+		call setline(l:end[1],l:bend_line)
+		call append(l:end[1],l:indent.l:end_wrapper)
+		call append(copy(l:end[1])+1,l:indent.substitute(l:eend_line,'^\s*','',''))
+	    else
+		let b:debug.=5
+		let l:end_choice=5
+" 		let l:indent=atplib#CopyIndentation(l:bend_line)
+" 		call setline(l:end[1],l:bend_line)
+		call append(l:end[1],l:indent.l:end_wrapper)
+	    endif
+	    " indent lines in the middle: 
+	    if (l:end[1] - l:begin[1]) >= 0
+		let b:debug.=6
+		if l:begin_choice == 1
+		    let i=2
+		elseif l:begin_choice == 2
+		    let i=2
+		elseif l:begin_choice == 3 
+		    let i=1
+		endif
+		if l:end_choice == 5 
+		    let j=l:end[1]-l:begin[1]+1
+		else
+		    let j=l:end[1]-l:begin[1]+1
+		endif
+		while i < j
+		    " Adding indentation doesn't work in this simple way here?
+		    " but the result is ok.
+		    call setline(l:begin[1]+i,l:indent.l:add_indent.getline(l:begin[1]+i))
+		    let i+=1
+		endwhile
+	    endif
+	    let l:end[1]+=2
+	    let l:end[2]=1
+	endif
+    else
+	let l:begin_l=strpart(l:begin_line,0,l:begin[2]-1)
+	let l:middle_l=strpart(l:begin_line,l:begin[2]-1,l:end[2]-l:begin[2]+1)
+	let l:end_l=strpart(l:begin_line,l:end[2])
+	if l:new_line == 0
+	    " inline
+" 	    let b:debug="X1"
+	    let l:line=l:begin_l.a:wrapper.l:middle_l.l:end_wrapper.l:end_l
+	    call setline(l:begin[1],l:line)
+	    let l:end[2]+=len(a:wrapper)+1
+	else
+" 	    let b:debug="X1"
+	    " in seprate lines
+
+	    let b:begin_l=l:begin_l
+	    let b:middle_l=l:middle_l
+	    let b:end_l=l:end_l
+
+	    let l:indent=atplib#CopyIndentation(l:begin_line)
+	    let b:debug="  ".len(l:indent)
+
+	    if l:begin_l =~ '\S' 
+		call setline(l:begin[1],l:begin_l)
+		call append(copy(l:begin[1]),l:indent.a:wrapper)
+		call append(copy(l:begin[1])+1,l:indent.l:add_indent.l:middle_l)
+		call append(copy(l:begin[1])+2,l:indent.l:end_wrapper)
+		if substitute(l:end_l,'^\s*','','') =~ '\S'
+		    call append(copy(l:begin[1])+3,l:indent.substitute(l:end_l,'^\s*','',''))
+		endif
+	    else
+		call setline(copy(l:begin[1]),l:indent.a:wrapper)
+		call append(copy(l:begin[1]),l:indent.l:add_indent.l:middle_l)
+		call append(copy(l:begin[1])+1,l:indent.l:end_wrapper)
+		if substitute(l:end_l,'^\s*','','') =~ '\S'
+		    call append(copy(l:begin[1])+2,l:indent.substitute(l:end_l,'^\s*','',''))
+		endif
+	    endif
+	endif
+    endif
+    if l:cursor_pos == "end"
+	let l:end[2]+=len(l:end_wrapper)-1
+	call setpos(".",l:end)
+    elseif l:cursor_pos =~ '\d\+'
+	let l:pos=l:begin
+	let l:pos[2]+=l:cursor_pos
+	call setpos(".",l:pos)
+    elseif l:cursor_pos == "current"
+	keepjumps call setpos(".",l:pos_save)
+    elseif l:cursor_pos == "begin"
+	let l:begin[2]+=len(a:wrapper)-1
+	keepjumps call setpos(".",l:begin)
+    endif
+endfunction
+endif
+"}}}1
 " {{{1  RELOAD
 
 if !exists("g:debug_atp_plugin")
@@ -4105,54 +4296,77 @@ if g:debug_atp_plugin==1 && !exists("*Reload")
 " Reload() - reload all the tex_apt functions
 " Reload(func1,func2,...) reload list of functions func1 and func2
 fun! Reload(...)
+    let l:pos_saved=getpos(".")
     let l:bufname=fnamemodify(expand("%"),":p")
 
     if a:0 == 0
 	let l:runtime_path=split(&runtimepath,',')
 	echo "Searching for atp plugin files"
-	let l:file_list=['ftplugin/tex_atp.vim','ftplugin/fd_atp.vim', 'ftplugin/bibsearch_atp.vim', 'ftplugin/toc_atp.vim', 'autoload/atplib.vim' ]
+	let l:file_list=['ftplugin/tex_atp.vim', 'ftplugin/fd_atp.vim', 
+		    \ 'ftplugin/bibsearch_atp.vim', 'ftplugin/toc_atp.vim', 
+		    \ 'autoload/atplib.vim', 'ftplugin/atp_LatexBox.vim' ]
 	let l:file_path=[]
 	for l:file in l:file_list
 		call add(l:file_path,globpath(&rtp,l:file))
 	endfor
 	for l:file in l:file_path
-	    echomsg "DELETING FUNCTIONS FROM " . l:file
+	    echomsg "deleting FUNCTIONS and VARIABLES from " . l:file
 	    let l:atp=readfile(l:file)
 	    for l:line in l:atp
 		let l:function_name=matchstr(l:line,'^\s*fun\%(ction\)\?!\?\s\+\zs\<[^(]*\>\ze(')
 		if l:function_name != "" && l:function_name != "Reload"
 		    if exists("*" . l:function_name)
 			if exists("b:atp_debug")
-			    if b:atp_debug=="v" || b:atp_debug=="verbose"
+			    if b:atp_debug == "v" || b:atp_debug == "verbose"
 				echomsg "deleting function " . l:function_name
 			    endif
 			endif
 			execute "delfunction " . l:function_name
 		    endif
 		endif
+		let l:variable_name=matchstr(l:line,'^\s*let\s\+\zsg:[a-zA-Z_^{}]*\ze\>')
+		if exists(l:variable_name)
+		    execute "unlet ".l:variable_name
+		    if exists("b:atp_debug")
+			if b:atp_debug == "v" || b:atp_debug == "verbose"
+			    echomsg l:variable_name
+			endif
+		    endif
+		endif
 	    endfor
 	endfor
     else
-	let l:f_list=split(a:1,',')
-	let g:f_list=l:f_list
-	for l:function in l:f_list
-	    execute "delfunction " . l:function
-	endfor
+	if a:1 != "maps" && a:1 != "reload"
+	    let l:f_list=split(a:1,',')
+	    let g:f_list=l:f_list
+	    for l:function in l:f_list
+		execute "delfunction " . l:function
+	    endfor
+	endif
     endif
+    au! CursorHold *.tex
     w
 "   THIS IS THE SLOW WAY:
     bd!
     execute "edit " . fnameescape(l:bufname)
+    keepjumps call setpos(".",l:pos_saved)
 "   This could be faster: but aparently doesn't work.
 "     execute "source " . l:file_path[0]
 endfunction
 endif
-command -buffer -nargs=* Reload	:call Reload(<f-args>)
+command -buffer -nargs=* -complete=function Reload	:call Reload(<f-args>)
 " }}}1
 " {{{1 MAPS
 " Add maps, unless the user didn't want this.
 " ToDo: to doc.
 if !exists("no_plugin_maps") && !exists("no_atp_maps")
+    " ToDo to doc.
+    map <buffer> <LocalLeader>ns :NSec<CR>
+    map <buffer> <LocalLeader>ps :PSec<CR>
+    map <buffer> <LocalLeader>nc :NChap<CR>
+    map <buffer> <LocalLeader>pc :PChap<CR>
+    map <buffer> <LocalLeader>np :NPart<CR>
+    map <buffer> <LocalLeader>pp :PPart<CR>
     " ToDo to doc.
     if exists("g:atp_no_tab_map") && g:atp_no_tab_map == 1
 	imap <buffer> <F7> <C-R>=atplib#TabCompletion(1)<CR>
@@ -4164,7 +4378,8 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 	imap <buffer> <Tab> <C-R>=atplib#TabCompletion(1)<CR>
 	" HOW TO: do this with <tab>? Streightforward solution interacts with
 	" other maps (e.g. after \l this map is called).
-	nmap <buffer> <F7>	:call atplib#TabCompletion(1,1)<CR>
+" when this is set it also runs after the \l map: ?!?
+" 	nmap <buffer> <Tab>	:call atplib#TabCompletion(1,1)<CR>
 	imap <buffer> <S-Tab> <C-R>=atplib#TabCompletion(0)<CR>
 	nmap <buffer> <S-Tab>	:call atplib#TabCompletion(0,1)<CR> 
 	vmap <buffer> <silent> <F7> <Esc>:call WrapSelection('')<CR>i
@@ -4175,163 +4390,240 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 "     nmap <buffer> <F7>b :call atplib#CloseLastBracket()<CR>
 "     imap <buffer> <F7>b <Esc>:call atplib#CloseLastBracket()<CR>i
 
-    map  <buffer> <LocalLeader>v		:call ViewOutput() <CR><CR>
-    map  <buffer> <F2> 				:ToggleSpace<CR>
-    map  <buffer> <F3>        			:call ViewOutput() <CR><CR>
-    imap <buffer> <F3> <Esc> 			:call ViewOutput() <CR><CR>
-    map  <buffer> <LocalLeader>g 		:call Getpid()<CR>
-    map  <buffer> <LocalLeader>t		:call TOC(1)<CR>
-    map  <buffer> <LocalLeader>L		:Labels<CR>
-    map  <buffer> <LocalLeader>l 		:TEX<CR>	
-    map  <buffer> 2<LocalLeader>l 		:2TEX<CR>	 
-    map  <buffer> 3<LocalLeader>l		:3TEX<CR>
-    map  <buffer> 4<LocalLeader>l		:4TEX<CR>
+" Done: to doc:
+    " Fonts
+    vmap <buffer> f				:WrapSelection '{\usefont{'.g:atp_font_encoding.'}{}{}{}\selectfont ', '}',(len(g:atp_font_encoding)+11)<CR>
+
+    if !exists("g:atp_vmap_text_font_leader")
+	let g:atp_vmap_text_font_leader="<LocalLeader>"
+    else
+	let g:debug=1
+    endif
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."rm		:WrapSelection '"."\\"."textrm{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."em		:WrapSelection '"."\\"."emph{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."it		:WrapSelection '"."\\"."textit{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."sf		:WrapSelection '"."\\"."textsf{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."tt		:WrapSelection '"."\\"."texttt{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."bf		:WrapSelection '"."\\"."textbf{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."sl		:WrapSelection '"."\\"."textsl{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."sc		:WrapSelection '"."\\"."textsc{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."up		:WrapSelection '"."\\"."textup{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."md		:WrapSelection '"."\\"."textmd{'<CR>"
+
+    " Math Fonts
+    if !exists("g:atp_vmap_text_font_leader")
+	let g:atp_vmap_math_font_leader="<LocalLeader>m"
+    endif
+    execute "vmap <buffer> ".g:atp_vmap_math_font_leader."rm		:WrapSelection '"."\\"."mathrm{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_math_font_leader."bf		:WrapSelection '"."\\"."mathbf{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_math_font_leader."it		:WrapSelection '"."\\"."mathit{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_math_font_leader."sf		:WrapSelection '"."\\"."mathsf{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_math_font_leader."tt		:WrapSelection '"."\\"."mathtt{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_math_font_leader."n		:WrapSelection '"."\\"."mathnormal{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_math_font_leader."cal		:WrapSelection '"."\\"."mathcal{'<CR>"
+"     vmap <buffer> <LocalLeader>c				:WrapSelection '\textcolor{}{','}','10'<CR>
+
+    " Environments
+    if !exists("atp_vmap_environment_leader")
+	let g:atp_vmap_environment_leader=""
+    endif
+    execute "vmap <buffer> ".g:atp_vmap_environment_leader."C   :WrapSelection '"."\\"."begin{center}','"."\\"."end{center}','0','1'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_environment_leader."R   :WrapSelection '"."\\"."begin{flushright}','"."\\"."end{flushright}','0','1'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_environment_leader."L   :WrapSelection '"."\\"."begin{flushleft}','"."\\"."end{flushleft}','0','1'<CR>"
+
+    " Math modes
+    vmap <buffer> m						:WrapSelection '\(', '\)'<CR>
+    vmap <buffer> M						:WrapSelection '\[', '\]'<CR>
+
+    " Brackets
+    if !exists("*atp_vmap_bracket_leader")
+	let g:atp_vmap_bracket_leader="<LocalLeader>"
+    endif
+    execute "vmap <buffer> ".g:atp_vmap_bracket_leader."( 	:WrapSelection '(', ')', 'begin'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_bracket_leader."[ 	:WrapSelection '[', ']', 'begin'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_bracket_leader."{ 	:WrapSelection '{', '}', 'begin'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_bracket_leader.")	:WrapSelection '(', ')', 'end'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_bracket_leader."]	:WrapSelection '[', ']', 'end'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_bracket_leader."}	:WrapSelection '{', '}', 'end'<CR>"
+
+    if !exists("*atp_vmap_big_bracket_leader")
+	let g:atp_vmap_big_bracket_leader='<LocalLeader>b'
+    endif
+    execute "vmap <buffer> ".g:atp_vmap_big_bracket_leader."(	:WrapSelection '"."\\"."left(', '"."\\"."right)', 'begin'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_big_bracket_leader."[	:WrapSelection '"."\\"."left[', '"."\\"."right]', 'begin'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_big_bracket_leader."{	:WrapSelection '"."\\"."left{', '"."\\"."right}', 'begin'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_big_bracket_leader.")	:WrapSelection '"."\\"."left(', '"."\\"."right)', 'end'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_big_bracket_leader."]	:WrapSelection '"."\\"."left[', '"."\\"."right]', 'end'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_big_bracket_leader."}	:WrapSelection '"."\\"."left{', '"."\\"."right}', 'end'<CR>"
+
+    " Normal mode maps (mostly)
+    nmap  <buffer> <LocalLeader>v		:call ViewOutput() <CR><CR>
+    nmap  <buffer> <F2> 			:ToggleSpace<CR>
+    nmap  <buffer> <LocalLeader>s		:call ToggleStar()<CR>
+    nmap  <buffer> <F4>				:call ToggleEnvironment()<CR>
+    nmap  <buffer> <S-F4>			:call ToggleEnvironment(-1)<CR>
+    nmap  <buffer> <F3>        			:call ViewOutput() <CR><CR>
+    imap  <buffer> <F3> <Esc> 			:call ViewOutput() <CR><CR>
+    nmap  <buffer> <LocalLeader>g 		:call Getpid()<CR>
+    nmap  <buffer> <LocalLeader>t		:call TOC(1)<CR>
+    nmap  <buffer> <LocalLeader>L		:Labels<CR>
+    nmap  <buffer> <LocalLeader>l 		:TEX<CR>	
+    nmap  <buffer> 2<LocalLeader>l 		:2TEX<CR>	 
+    nmap  <buffer> 3<LocalLeader>l		:3TEX<CR>
+    nmap  <buffer> 4<LocalLeader>l		:4TEX<CR>
     " imap <buffer> <LocalLeader>l	<Left><ESC>:TEX<CR>a
     " imap <buffer> 2<LocalLeader>l	<Left><ESC>:2TEX<CR>a
     " todo: this is nice idea but it do not works as it should: 
-    " map  <buffer> <f4> [d:let nr = input("which one: ")<bar>exe "normal " . nr . "[\t"<cr> 
-    map  <buffer> <F5> 				:call VTEX() <cr>	
-    map  <buffer> <s-F5> 			:call ToggleAuTeX()<cr>
-    imap <buffer> <F5> <left><esc> 		:call VTEX() <cr>a
-    map  <buffer> <localleader>sb		:call SimpleBibtex()<cr>
-    map  <buffer> <localleader>b		:call Bibtex()<cr>
-    map  <buffer> <F6>d 			:call Delete() <cr>
-    imap <buffer> <silent> <F6>l 		:call OpenLog() <cr>
-    map  <buffer> <silent> <F6>l 		:call OpenLog() <cr>
-    map  <buffer> <localleader>e 		:cf<cr> 
-    map  <buffer> <F6>e 			:ShowErrors e<cr>
-    imap <buffer> <F6>e 			:ShowErrors e<cr>
-    map  <buffer> <F6>w 			:ShowErrors w<cr>
-    imap <buffer> <F6>w 			:ShowErrors w<cr>
-    map  <buffer> <F6>r 			:ShowErrors rc<cr>
-    imap <buffer> <F6>r 			:ShowErrors rc<cr>
-    map  <buffer> <F6>f 			:ShowErrors f<cr>
-    imap <buffer> <F6>f 			:ShowErrors f<cr>
-    map  <buffer> <F6>g 			:call PdfFonts()<cr>
-    map  <buffer> <F1> 	   			:!clear;texdoc -m 
+    " map  <buffer> <f4> [d:let nr = input("which one: ")<bar>exe "normal " . nr . "[\t"<CR> 
+    nmap  <buffer> <F5> 				:call VTEX() <CR>	
+    nmap  <buffer> <s-F5> 			:call ToggleAuTeX()<CR>
+    nmap  <buffer> `<Tab>			:call ToggleTab()<CR>
+    imap <buffer> <F5> <left><esc> 		:call VTEX() <CR>a
+    nmap  <buffer> <localleader>B		:call SimpleBibtex()<CR>
+    nmap  <buffer> <localleader>b		:call Bibtex()<CR>
+    nmap  <buffer> <F6>d 			:call Delete() <CR>
+    imap <buffer> <silent> <F6>l 		:call OpenLog() <CR>
+    nmap  <buffer> <silent> <F6>l 		:call OpenLog() <CR>
+    nmap  <buffer> <localleader>e 		:cf<CR> 
+    nmap  <buffer> <F6> 			:ShowErrors e<CR>
+    imap <buffer> <F6> 				:ShowErrors e<CR>
+    nmap  <buffer> <F6>w 			:ShowErrors w<CR>
+    imap <buffer> <F6>w 			:ShowErrors w<CR>
+    nmap  <buffer> <F6>r 			:ShowErrors rc<CR>
+    nmap <buffer> <F6>r 			:ShowErrors rc<CR>
+    nmap  <buffer> <F6>f 			:ShowErrors f<CR>
+    imap <buffer> <F6>f 			:ShowErrors f<CR>
+    nmap  <buffer> <F6>g 			:call PdfFonts()<CR>
+    nmap  <buffer> <F1> 	   			:!clear;texdoc -m 
     imap <buffer> <F1> <esc> 			:!clear;texdoc -m  
-    map  <buffer> <localleader>p 		:call print('','')<cr>
+    nmap  <buffer> <localleader>p 		:call print('','')<CR>
 
     " FONT MAPPINGS
-    imap <buffer> ##rm \textrm{}<Left>
-    imap <buffer> ##it \textit{}<Left>
-    imap <buffer> ##sl \textsl{}<Left>
-    imap <buffer> ##sf \textsf{}<Left>
-    imap <buffer> ##bf \textbf{}<Left>
+    execute 'imap <buffer> '.g:atp_imap_second_leader.'rm \textrm{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'up \textup{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'md \textmd{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'it \textit{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'sl \textsl{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'sc \textsc{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'sf \textsf{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'bf \textbf{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'tt \texttt{}<Left>'
 	    
-    imap <buffer> ##mit \mathit{}<Left>
-    imap <buffer> ##mrm \mathrm{}<Left>
-    imap <buffer> ##msf \mathsf{}<Left>
-    imap <buffer> ##mbf \mathbf{}<Left>
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'mit \mathit{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'mrm \mathrm{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'msf \mathsf{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'mbf \mathbf{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'mtt \mathtt{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'mcal \mathcal{}<Left>'
 
     " GREEK LETTERS
-    imap <buffer> #a \alpha
-    imap <buffer> #b \beta
-    imap <buffer> #c \chi
-    imap <buffer> #d \delta
-    imap <buffer> #e \epsilon
-    imap <buffer> #f \phi
-    imap <buffer> #y \psi
-    imap <buffer> #g \gamma
-    imap <buffer> #h \eta
-    imap <buffer> #k \kappa
-    imap <buffer> #l \lambda
-    imap <buffer> #i \iota
-    imap <buffer> #m \mu
-    imap <buffer> #n \nu
-    imap <buffer> #p \pi
-    imap <buffer> #o \theta
-    imap <buffer> #r \rho
-    imap <buffer> #s \sigma
-    imap <buffer> #t \tau
-    imap <buffer> #u \upsilon
-    imap <buffer> #vs \varsigma
-    imap <buffer> #vo \vartheta
-    imap <buffer> #w \omega
-    imap <buffer> #x \xi
-    imap <buffer> #z \zeta
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'a \alpha'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'b \beta'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'c \chi'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'d \delta'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'e \epsilon'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'f \phi'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'y \psi'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'g \gamma'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'h \eta'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'k \kappa'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'l \lambda'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'i \iota'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'m \mu'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'n \nu'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'p \pi'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'o \theta'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'r \rho'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'s \sigma'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'t \tau'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'u \upsilon'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'vs \varsigma'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'vo \vartheta'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'w \omega'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'x \xi'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'z \zeta'
 
-    imap <buffer> #D \Delta
-    imap <buffer> #Y \Psi
-    imap <buffer> #F \Phi
-    imap <buffer> #G \Gamma
-    imap <buffer> #L \Lambda
-    imap <buffer> #M \Mu
-    imap <buffer> #N \Nu
-    imap <buffer> #P \Pi
-    imap <buffer> #O \Theta
-    imap <buffer> #S \Sigma
-    imap <buffer> #T \Tau
-    imap <buffer> #U \Upsilon
-    imap <buffer> #V \Varsigma
-    imap <buffer> #W \Omega
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'D \Delta'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'Y \Psi'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'F \Phi'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'G \Gamma'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'L \Lambda'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'M \Mu'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'N \Nu'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'P \Pi'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'O \Theta'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'S \Sigma'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'T \Tau'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'U \Upsilon'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'V \Varsigma'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'W \Omega'
 
     if g:atp_no_env_maps != 1
 	if g:atp_env_maps_old == 1
-	    imap <buffer> [b \begin{}<Left>
-	    imap <buffer> [e \end{}<Left>
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'b \begin{}<Left>'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'e \end{}<Left>'
 
-	    imap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
-	    imap <buffer> [c \begin{corollary}<Cr>\end{corollary}<Esc>O
-	    imap <buffer> [d \begin{definition}<Cr>\end{definition}<Esc>O
-	    imap <buffer> ]e \begin{enumerate}<Cr>\end{enumerate}<Esc>O
-	    imap <buffer> [a \begin{align}<Cr>\end{align}<Esc>O
-	    imap <buffer> [i \item
-	    imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
-	    imap <buffer> [l \begin{lemma}<Cr>\end{lemma}<Esc>O
-	    imap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
-	    imap <buffer> [p \begin{proposition}<Cr>\end{proposition}<Esc>O
-	    imap <buffer> [t \begin{theorem}<Cr>\end{theorem}<Esc>O
-	    imap <buffer> ]t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_fourth_leader.'c \begin{corollary}<CR>\end{corollary}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'d \begin{definition}<CR>\end{definition}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_fourth_leader.'e \begin{enumerate}<CR>\end{enumerate}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'a \begin{align}<CR>\end{align}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'i \item'
+	    execute 'imap <buffer> '.g:atp_imap_fourth_leader.'i \begin{itemize}<CR>\end{itemize}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'l \begin{lemma}<CR>\end{lemma}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_fourth_leader.'p \begin{proof}<CR>\end{proof}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'p \begin{proposition}<CR>\end{proposition}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'t \begin{theorem}<CR>\end{theorem}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_fourth_leader.'t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>'
 
 	    if g:atp_extra_env_maps == 1
-		imap <buffer> [r \begin{remark}<Cr>\end{remark}<Esc>O
-		imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
-		imap <buffer> ]r \begin{flushright}<Cr>\end{flushright}<Esc>O
-		imap <buffer> [f \begin{frame}<Cr>\end{frame}<Esc>O
-		imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
-		imap <buffer> [n \begin{note}<Cr>\end{note}<Esc>O
-		imap <buffer> [o \begin{observation}<Cr>\end{observation}<Esc>O
-		imap <buffer> [x \begin{example}<Cr>\end{example}<Esc>O
+		execute 'imap <buffer> '.g:atp_imap_third_leader.'r \begin{remark}<CR>\end{remark}<Esc>O'
+		execute 'imap <buffer> '.g:atp_imap_fourth_leader.'l \begin{flushleft}<CR>\end{flushleft}<Esc>O'
+		execute 'imap <buffer> '.g:atp_imap_third_leader.'r \begin{flushright}<CR>\end{flushright}<Esc>O'
+		execute 'imap <buffer> '.g:atp_imap_third_leader.'f \begin{frame}<CR>\end{frame}<Esc>O'
+		execute 'imap <buffer> '.g:atp_imap_fourth_leader.'q \begin{equation}<CR>\end{equation}<Esc>O'
+		execute 'imap <buffer> '.g:atp_imap_third_leader.'n \begin{note}<CR>\end{note}<Esc>O'
+		execute 'imap <buffer> '.g:atp_imap_third_leader.'o \begin{observation}<CR>\end{observation}<Esc>O'
+		execute 'imap <buffer> '.g:atp_imap_third_leader.'x \begin{example}<CR>\end{example}<Esc>O'
 	    endif
 	else
-	    imap <buffer> ]b \begin{}<Left>
-	    imap <buffer> ]e \end{}<Left>
-	    imap <buffer> ]c \begin{center}<Cr>\end{center}<Esc>O
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'b \begin{}<Left>'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'e \end{}<Left>'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
 
-	    imap <buffer> ]d \begin{definition}<Cr>\end{definition}<Esc>O
-	    imap <buffer> ]t \begin{theorem}<Cr>\end{theorem}<Esc>O
-	    imap <buffer> ]P \begin{proposition}<Cr>\end{proposition}<Esc>O
-	    imap <buffer> ]l \begin{lemma}<Cr>\end{lemma}<Esc>O
-	    imap <buffer> ]r \begin{remark}<Cr>\end{remark}<Esc>O
-	    imap <buffer> ]o \begin{corollary}<Cr>\end{corollary}<Esc>O
-	    imap <buffer> ]p \begin{proof}<Cr>\end{proof}<Esc>O
-	    imap <buffer> ]x \begin{example}<Cr>\end{example}<Esc>O
-	    imap <buffer> ]n \begin{note}<Cr>\end{note}<Esc>O
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'d \begin{definition}<CR>\end{definition}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'t \begin{theorem}<CR>\end{theorem}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'P \begin{proposition}<CR>\end{proposition}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'l \begin{lemma}<CR>\end{lemma}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'r \begin{remark}<CR>\end{remark}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'o \begin{corollary}<CR>\end{corollary}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'p \begin{proof}<CR>\end{proof}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'x \begin{example}<CR>\end{example}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'n \begin{note}<CR>\end{note}<Esc>O'
 
-	    imap <buffer> ]u \begin{enumerate}<Cr>\end{enumerate}<Esc>O
-	    imap <buffer> ]i \begin{itemize}<Cr>\end{itemize}<Esc>O
-	    imap <buffer> ]I \item
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'u \begin{enumerate}<CR>\end{enumerate}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'i \begin{itemize}<CR>\end{itemize}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'I \item'
 
 
-	    imap <buffer> ]a \begin{align}<Cr>\end{align}<Esc>O
-	    imap <buffer> ]q \begin{equation}<Cr>\end{equation}<Esc>O
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'a \begin{align}<CR>\end{align}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'q \begin{equation}<CR>\end{equation}<Esc>O'
 
-	    imap <buffer> ]l \begin{flushleft}<Cr>\end{flushleft}<Esc>O
-	    imap <buffer> ]R \begin{flushright}<Cr>\end{flushright}<Esc>O
-	    imap <buffer> ]z \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>
-	    imap <buffer> ]f \begin{frame}<Cr>\end{frame}<Esc>O
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'l \begin{flushleft}<CR>\end{flushleft}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'R \begin{flushright}<CR>\end{flushright}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'z \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'f \begin{frame}<CR>\end{frame}<Esc>O'
 	endif
 
-	" imap {c \begin{corollary*}<Cr>\end{corollary*}<Esc>O
-	" imap {d \begin{definition*}<Cr>\end{definition*}<Esc>O
-	" imap {x \begin{example*}\normalfont<Cr>\end{example*}<Esc>O
-	" imap {l \begin{lemma*}<Cr>\end{lemma*}<Esc>O
-	" imap {n \begin{note*}<Cr>\end{note*}<Esc>O
-	" imap {o \begin{observation*}<Cr>\end{observation*}<Esc>O
-	" imap {p \begin{proposition*}<Cr>\end{proposition*}<Esc>O
-	" imap {r \begin{remark*}<Cr>\end{remark*}<Esc>O
-	" imap {t \begin{theorem*}<Cr>\end{theorem*}<Esc>O
+	" imap {c \begin{corollary*}<CR>\end{corollary*}<Esc>O
+	" imap {d \begin{definition*}<CR>\end{definition*}<Esc>O
+	" imap {x \begin{example*}\normalfont<CR>\end{example*}<Esc>O
+	" imap {l \begin{lemma*}<CR>\end{lemma*}<Esc>O
+	" imap {n \begin{note*}<CR>\end{note*}<Esc>O
+	" imap {o \begin{observation*}<CR>\end{observation*}<Esc>O
+	" imap {p \begin{proposition*}<CR>\end{proposition*}<Esc>O
+	" imap {r \begin{remark*}<CR>\end{remark*}<Esc>O
+	" imap {t \begin{theorem*}<CR>\end{theorem*}<Esc>O
     endif
 
     imap <buffer> __ _{}<Left>
@@ -4368,8 +4660,10 @@ command! -buffer Labels						:call Labels()
 command! -buffer SetOutDir					:call s:setoutdir(1)
 command! -buffer ATPStatus					:call ATPStatus() 
 command! -buffer PdfFonts					:call PdfFonts()
+command! -buffer -nargs=? -range WrapSelection			:call WrapSelection(<args>)
 command! -buffer -nargs=? 					SetErrorFormat 	:call s:SetErrorFormat(<f-args>)
 command! -buffer -nargs=? -complete=custom,ListErrorsFlags 	ShowErrors 	:call s:ShowErrors(<f-args>)
+command! -buffer 						OpenLog		:call OpenLog()
 command! -buffer -nargs=? -complete=buffer	 		FindInputFiles	:call FindInputFiles(<f-args>)
 command! -buffer -nargs=* -complete=customlist,EI_compl	 	EditInputFile 	:call EditInputFile(<f-args>)
 command! -buffer -nargs=? -complete=buffer	 ToDo			:call ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
@@ -4383,18 +4677,22 @@ command! -buffer LocalCommands		:call LocalCommands()
 command! -buffer -nargs=* CloseLastEnvironment	:call atplib#CloseLastEnvironment(<f-args>)
 command! -buffer 	  CloseLastBracket	:call atplib#CloseLastBracket()
 
-command! -buffer -nargs=1 -complete=customlist,Env_compl NEnv		:call NextEnv(<f-args>)
-command! -buffer -nargs=1 -complete=customlist,Env_compl PEnv		:call PrevEnv(<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl NSec		:call NextSection('section',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl PSec		:call PrevSection('section',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl NChap		:call NextSection('chapter',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl PChap		:call PrevSection('chapter',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl NPart		:call NextSection('part',<f-args>)
-command! -buffer -nargs=? -complete=customlist,Env_compl PPart		:call PrevSection('part',<f-args>)
-command! -buffer ToggleSpace   		:call ToggleSpace()
-command! -buffer ToggleCheckMathOpened 	:call ToggleCheckMathOpened()
-command! -buffer ToggleDebugMode 	:call ToggleDebugMode()
-command! -buffer ToggleCallBack 	:call ToggleCallBack()
+" to do make count for this commands and maps!
+command! -buffer -count=1 -nargs=1 -complete=customlist,Env_compl NEnv		:call NextEnv(<f-args>)
+command! -buffer -count=1 -nargs=1 -complete=customlist,Env_compl PEnv		:call PrevEnv(<f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NSec		:call NextSection('section',<f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PSec		:call PrevSection('section',<f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NChap		:call NextSection('chapter',<f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PChap		:call PrevSection('chapter',<f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NPart		:call NextSection('part',<f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call PrevSection('part',<f-args>)
+command! -buffer 	ToggleSpace 		:call ToggleSpace()
+command! -buffer -nargs=? ToggleEnvironment  	:call ToggleEnvironment(<f-args>)
+command! -buffer 	ToggleStar   		:call ToggleStar()
+command! -buffer 	ToggleTab   		:call ToggleTab()
+command! -buffer 	ToggleCheckMathOpened 	:call ToggleCheckMathOpened()
+command! -buffer 	ToggleDebugMode 	:call ToggleDebugMode()
+command! -buffer 	ToggleCallBack 		:call ToggleCallBack()
 " }}}1
 " {{{1 MENU
 if !exists("no_plugin_menu") && !exists("no_atp_menu")

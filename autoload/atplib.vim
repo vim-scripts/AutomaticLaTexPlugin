@@ -1,7 +1,7 @@
 " Vim library for atp filetype plugin
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 June 13
+" Last Changed: 2010 June 26
 " Email:	mszamot [AT] gmail [DOT] com
 
 "{{{1 atplib#outdir
@@ -1556,7 +1556,18 @@ endfunction
 
 " ToDo: \\{ is not closing right, add support for {:}!
 " {{{2 			atplib#CloseLastBracket	
-function! atplib#CloseLastBracket()
+" a:1 == 1 just return the bracket 
+function! atplib#CloseLastBracket(...)
+    
+    if a:0 >= 1
+	let l:only_return = a:1
+    else
+	let l:only_return = 0
+    endif
+
+    " the value to return 
+"     let l:return=""
+
     " {{{3
     let l:pattern=""
     let l:size_patterns=[]
@@ -1628,7 +1639,7 @@ function! atplib#CloseLastBracket()
 
 	let l:bline=strpart(l:line,0,(l:open_col-1))
 	let l:eline=strpart(l:line,l:open_col-1,2)
-	let b:bline=l:bline
+" 	let b:bline=l:bline
 
 
 	let l:opening_size=matchstr(l:bline,'\zs'.l:pattern_b.'\ze\s*$')
@@ -1664,19 +1675,25 @@ function! atplib#CloseLastBracket()
 " 	else
 	    let l:cline=getline(line("."))
 	    if mode() == 'i'
-		call setline(line("."), strpart(l:cline,0,getpos(".")[2]-1).
-			\ l:closing_size.get(g:atp_bracket_dict,l:opening_bracket) . 
-			\ strpart(l:cline,getpos(".")[2]-1))
+		if !l:only_return
+		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]-1).
+			    \ l:closing_size.get(g:atp_bracket_dict,l:opening_bracket). 
+			    \ strpart(l:cline,getpos(".")[2]-1))
+		endif
+		let l:return=l:closing_size.get(g:atp_bracket_dict,l:opening_bracket)
 	    elseif mode() == 'n'
-		call setline(line("."), strpart(l:cline,0,getpos(".")[2]).
-			\ l:closing_size.get(g:atp_bracket_dict,l:opening_bracket) . 
-			\ strpart(l:cline,getpos(".")[2]))
+		if !l:only_return
+		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]).
+			    \ l:closing_size.get(g:atp_bracket_dict,l:opening_bracket). 
+			    \ strpart(l:cline,getpos(".")[2]))
+		endif
+		let l:return=l:closing_size.get(g:atp_bracket_dict,l:opening_bracket)
 	    endif
 	    let l:pos=getpos(".")
 	    let l:pos[2]+=len(l:closing_size.get(g:atp_bracket_dict,l:opening_bracket))
 	    keepjumps call setpos(".",l:pos)
-	    let b:clb_return='close inline'
-	    return 'close inline'
+" 	    let b:clb_return='close inline'
+	    return l:return
 " 	endif
    endif
    " }}}3
@@ -1976,7 +1993,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	endif
     "}}}3
     "{{{3 colors
-    elseif l:l =~ '\\textcolor{'
+    elseif l:l =~ '\\textcolor{[^}]*$'
 	let l:completion_method='colors'
 	"DEBUG:
 	let b:comp_method='colors'
@@ -2349,6 +2366,7 @@ function! atplib#TabCompletion(expert_mode,...)
     " }}}3
     " {{{3 ------------ TIKZPICTURE KEYWORDS
     elseif l:completion_method == 'tikzpicture keywords'
+
 	keepjumps call setpos(".",[0,1,1,0])
 	let l:stop_line=search('\\begin\s*{document}','cnW')
 	keepjumps call setpos(".",l:pos_saved)
@@ -2824,6 +2842,12 @@ function! atplib#TabCompletion(expert_mode,...)
 		\ index(['bibfiles', 'bibitems', 'bibstyles', 'labels', 
 		\ 'font family', 'font series', 'font shape', 'font encoding' ],l:completion_method) == -1
 	call filter(l:completions,'len(substitute(v:val,"^\\","","")) >= g:atp_completion_truncate')
+    endif
+    if l:completion_method == "tikzpicture keywords"
+	let l:bracket=atplib#CloseLastBracket(1)
+	if l:bracket != ""
+	    call insert(l:completions,l:bracket,0)
+	endif
     endif
     " if the list is long it is better if it is sorted, if it short it is
     " better if the more used things are at the beginning.

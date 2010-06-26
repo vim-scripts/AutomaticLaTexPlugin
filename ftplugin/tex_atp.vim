@@ -1,10 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 June 23
+" Last Changed: 2010 June 26
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 25 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 26 :AutoInstall: tex_atp.vim
 " {{{1 Copyright
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
@@ -103,10 +103,10 @@ compiler tex
 "{{{1 autocommands for buf/win numbers
 " These autocommands are used to remember the last opened buffer number and its
 " window number:
-au BufLeave *.tex let t:bufname=resolve(fnamemodify(bufname(""),":p"))
-au BufLeave *.tex let t:bufnr=bufnr("")
+au BufLeave *.tex 	let t:bufname=resolve(fnamemodify(bufname(""),":p"))
+au BufLeave *.tex 	let t:bufnr=bufnr("")
 " t:winnr the last window used by tex, ToC or Labels buffers:
-au WinEnter *.tex let t:winnr=winnr("#")
+au WinEnter *.tex 	let t:winnr=winnr("#")
 au WinEnter __ToC__ 	let t:winnr=winnr("#")
 au WinEnter __Labels__ 	let t:winnr=winnr("#")
 "}}}1
@@ -1826,7 +1826,7 @@ function! BibSearch(...)
 endfunction
 endif
 " }}}1
-" {{{1 TOC
+" {{{1 Table Of Contents
 let g:atp_sections={
     \	'chapter' 	: [           '^\s*\(\\chapter\*\?\s*{\)',	'\\chapter\*'],	
     \	'section' 	: [           '^\s*\(\\section\*\?\s*{\)',	'\\section\*'],
@@ -3407,16 +3407,16 @@ function! ToggleStar()
 
     " omit pattern
     let l:omit=join(g:atp_no_star_environments,'\|')
-    let l:open_pos=searchpairpos('\\begin\s*{','','\\end\s*{[^}]*}\zs','bnW','getline(".") =~ "\\\\begin\\s*{".l:omit."}"',l:from_line)
+    let l:open_pos=searchpairpos('\\begin\s*{','','\\end\s*{[^}]*}\zs','cbnW','getline(".") =~ "\\\\begin\\s*{".l:omit."}"',l:from_line)
+    let b:open_pos=l:open_pos
     let l:env_name=matchstr(strpart(getline(l:open_pos[0]),l:open_pos[1]),'begin\s*{\zs[^}]*\ze}')
     let b:env_name=l:env_name
     if l:open_pos == [0, 0] || index(g:atp_no_star_environments,l:env_name) != -1
 	return
     endif
-    if l:env_name =~ '*$'
-	let l:env_name=substitute(l:env_name,'*$','','')
-	let b:env=l:env_name
-	let l:close_pos=searchpairpos('\\begin\s*{'.l:env_name.'\*}','','\\end\s*{'.l:env_name.'\*}\zs','nW',"",l:to_line)
+    if l:env_name =~ '\*$'
+	let l:env_name=substitute(l:env_name,'\*$','','')
+	let l:close_pos=searchpairpos('\\begin\s*{'.l:env_name.'\*}','','\\end\s*{'.l:env_name.'\*}\zs','cnW',"",l:to_line)
 	if l:close_pos != [0, 0]
 	    call setline(l:open_pos[0],substitute(getline(l:open_pos[0]),'\(\\begin\s*{\)'.l:env_name.'\*}','\1'.l:env_name.'}',''))
 	    call setline(l:close_pos[0],substitute(getline(l:close_pos[0]),
@@ -3424,7 +3424,7 @@ function! ToggleStar()
 	    echomsg "Star removed from '".l:env_name."*' at lines: " .l:open_pos[0]." and ".l:close_pos[0]
 	endif
     else
-	let l:close_pos=searchpairpos('\\begin\s{'.l:env_name.'}','','\\end\s*{'.l:env_name.'}\zs','nW',"",l:to_line)
+	let l:close_pos=searchpairpos('\\begin\s{'.l:env_name.'}','','\\end\s*{'.l:env_name.'}\zs','cnW',"",l:to_line)
 	if l:close_pos != [0, 0]
 	    call setline(l:open_pos[0],substitute(getline(l:open_pos[0]),
 		    \ '\(\\begin\s*{\)'.l:env_name.'}','\1'.l:env_name.'\*}',''))
@@ -4304,7 +4304,8 @@ fun! Reload(...)
 	echo "Searching for atp plugin files"
 	let l:file_list=['ftplugin/tex_atp.vim', 'ftplugin/fd_atp.vim', 
 		    \ 'ftplugin/bibsearch_atp.vim', 'ftplugin/toc_atp.vim', 
-		    \ 'autoload/atplib.vim', 'ftplugin/atp_LatexBox.vim' ]
+		    \ 'autoload/atplib.vim', 'ftplugin/atp_LatexBox.vim',
+		    \ 'indent/tex_atp.vim' ]
 	let l:file_path=[]
 	for l:file in l:file_list
 		call add(l:file_path,globpath(&rtp,l:file))

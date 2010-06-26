@@ -65,7 +65,7 @@ endif
 
 
 
-function ATP_GetTeXIndent()
+function! ATP_GetTeXIndent()
 
   " Find a non-blank line above the current line.
   let lnum = prevnonblank(v:lnum - 1)
@@ -76,9 +76,9 @@ function ATP_GetTeXIndent()
   endif
 
   let ind = indent(lnum)
-  let line = getline(lnum)             " last line
-  let pline = getline(pnum)      " previous line (one up)
-  let cline = getline(v:lnum)          " current line
+  let line = getline(lnum)             	" last line
+  let pline = getline(pnum)      	" previous line (one up)
+  let cline = getline(v:lnum)          	" current line
 
   " Do not change indentation of commented lines.
   if line =~ '^\s*%'
@@ -208,17 +208,9 @@ function ATP_GetTeXIndent()
 endfunction
 
 " Some tools by M.S.:
-" is a<=b return 1
-function s:sompare(a,b)
-    if ( a[0] < b[0] ) || a[0] == b[0] && a[1] < b[1]
-	return 1
-    elseif ( a[0] == b[0] && a[1] >= b[1] ) || ( a[0] > b[0] )
-	return 0
-    endif
-endfunction
 
 " this function finds first line which doesn't contain \]. 
-function! Search()
+function! s:search()
     let pos_save=getpos(".")
     "chech if inside \[:\]
     let check = searchpair('\\\[','','\\\]', 'bnW',"",max([1,line(".")-g:atp_completion_limits[1]]))

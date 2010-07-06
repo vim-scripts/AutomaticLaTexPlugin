@@ -3,9 +3,6 @@
 " Maintainer:	Marcin Szamotulski
 " Last Changed: 2010 May 31
 " URL:		
-" ToDo: Better Choice function:
-" 		to mark/unmark files to show
-" 		/this should be easy and nice feature/
 "{{{1 Load Once
 if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1
@@ -19,7 +16,7 @@ function! OpenFile()
     " The list of fd files starts at second line.
     let l:openbuffer="topleft split! +setl\\ nospell\\ ft=fd_atp\\ noro " . fnameescape(l:file)
     silent exe l:openbuffer
-    let b:autex=0
+    let b:atp_autex=0
 endfunction
 endif
 "}}}1
@@ -48,13 +45,13 @@ function! Preview(...)
     endif
     let l:b_pos=getpos("'<")[1]
     let l:e_pos=getpos("'>")[1]
-    let b:b=l:b_pos
-    let b:e=l:e_pos
+"     let b:b=l:b_pos
+"     let b:e=l:e_pos
     if getpos("'<") != [0, 0, 0, 0] && getpos("'<") != [0, 0, 0, 0]
-	let b:deb=1
+" 	let b:deb=1
 	let l:fd_files=filter(copy(g:fd_matches),'index(g:fd_matches,v:val)+1 >= l:b_pos-1 && index(g:fd_matches,v:val)+1 <= l:e_pos-1')
     else
-	let b:deb=2
+" 	let b:deb=2
 	let l:fd_files=[g:fd_matches[(max([line("."),'2'])-2)]]
     endif
     let g:fd_files=l:fd_files
@@ -72,10 +69,10 @@ else
 endif
 "}}}1
 "{{{1 Maps
-map <buffer> P :Preview 1<CR>
-map <buffer> p :Preview 0<CR>
-vmap <buffer> P :Preview 1<CR>
-vmap <buffer> p :Preview 0<CR>
-map <buffer> Q :bd!<CR>
-map <buffer> q :q!<CR>R
+map <buffer> 	P :Preview 1<CR>
+map <buffer> 	p :Preview 0<CR>
+vmap <buffer> 	P :Preview 1<CR>
+vmap <buffer> 	p :Preview 0<CR>
+map <buffer> 	Q :bd!<CR>
+map <buffer> 	q :q!<CR>R
 "}}}1

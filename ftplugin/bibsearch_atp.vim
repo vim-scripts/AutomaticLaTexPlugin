@@ -1,20 +1,24 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 May 31
-" URL:		
+" Last Changed: 2010 July 3
+" Note:		This file is a part of ATP plugin.
 
 "
-" Status Line:
-
+" {{{ Load Once
 if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1
+" }}}
 
-function! ATPBibStatus()
+" Status Line:
+function! ATPBibStatus() "{{{
     return "Bibsearch: " . substitute(expand("%"),"___","","g")
 endfunction
 setlocal statusline=%{ATPBibStatus()}
-" MAPPINGS
+" }}}
+
+" Maps:
+" {{{ MAPPINGS 
 if !exists("no_plugin_maps") && !exists("no_atp_bibsearch_maps")
     map <buffer> c :call BibChoose()<CR>
     map <buffer> y :call BibChoose()<CR>
@@ -22,9 +26,10 @@ if !exists("no_plugin_maps") && !exists("no_atp_bibsearch_maps")
     map <buffer> q :hide<CR>
     command! -buffer -nargs=* BibChoose 	:call BibChoose(<f-args>)
 endif
+" }}}
 
-if !exists("*BibChoose")
-function! BibChoose(...)
+" Functions:
+function! BibChoose(...)" {{{
     let l:which=input("Which entry? ( <Number><reg name><Enter>, <Number><Enter> or <Enter> for none) ")
     if l:which == ""
 	return
@@ -103,6 +108,5 @@ function! BibChoose(...)
 	    endif
 	    echohl WarningMsg | echomsg "Choice yanekd to the register '" . l:letter . "'" | echohl None
     endif
-endfunction
-endif
+endfunction "}}}
 

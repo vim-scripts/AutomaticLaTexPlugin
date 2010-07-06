@@ -151,6 +151,12 @@ highlight texSpecialChar		ctermfg=39	ctermbg=233	guifg=DodgerBlue
 highlight texRefZone							guifg=DeepPink2		gui=bold
 highlight texCite							guifg=DeepPink4
 highlight texRefOption							guifg=HotPink4
+
+" Testing:
+hi texBfText 		gui=bold
+hi texItText 		gui=italic
+hi texUnderlineText 	gui=underline
+
 " \chapter, \section, ... {theorem} {definition}
 
 highlight Error          ctermfg=196         	ctermbg=233

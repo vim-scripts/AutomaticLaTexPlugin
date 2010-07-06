@@ -69,17 +69,17 @@ command! File	:echo s:file()
 function! s:gotowinnr()
     " This is the line number to which we will go.
     let l:nr=s:getlinenr()
-    " t:bufname
-    " t:winnr		were set by TOC(), they should also be set by
+    " t:atp_bufname
+    " t:atp_winnr		were set by TOC(), they should also be set by
     " 			autocommands
     let l:buf=s:file()
     let l:bufname=l:buf[0] . "/" . l:buf[1]
 
-    if t:bufname == l:bufname
-	" if t:bufname agree with that found in ToC
-	" if the t:winnr is still open
-	if bufwinnr(t:bufname) != -1
-	    let l:gotowinnr=t:winnr
+    if t:atp_bufname == l:bufname
+	" if t:atp_bufname agree with that found in ToC
+	" if the t:atp_winnr is still open
+	if bufwinnr(t:atp_bufname) != -1
+	    let l:gotowinnr=t:atp_winnr
 " 	    echomsg "DEBUG A"
 	else
 	    let l:gotowinnr=-1
@@ -92,7 +92,7 @@ function! s:gotowinnr()
 	    let l:gotowinnr=bufwinnr("^" . l:bufname . "$")
  	else
 	    " if not and there is no window with buffer l:bufname
- 	    let l:gotowinnr=t:winnr
+ 	    let l:gotowinnr=t:atp_winnr
  	endif
     endif
     return l:gotowinnr
@@ -104,7 +104,6 @@ function! GotoLine(closebuffer)
     " if under help lines do nothing:
     let l:toc=getbufline("%",1,"$")
     let l:h_line=index(reverse(copy(l:toc)),'')+1
-    let b:h_line=l:h_line
     if line(".") > len(l:toc)-l:h_line
 	return ''
     endif
@@ -143,7 +142,6 @@ function! s:yank(arg)
 
     let l:toc=getbufline("%",1,"$")
     let l:h_line=index(reverse(copy(l:toc)),'')+1
-    let b:h_line=l:h_line
     if line(".") > len(l:toc)-l:h_line
 	return ''
     endif
@@ -152,10 +150,9 @@ function! s:yank(arg)
     let l:buf=s:file()
     let l:bufname=l:buf[1]
     let l:filename=l:buf[0] . "/" . l:buf[1]
-    let b:fn=l:filename
 
-    if exists("t:labels") || get(t:labels,l:filename,"nofile") != "nofile"
-	let l:choice=get(get(t:labels,l:filename),s:getlinenr())
+    if exists("t:atp_labels") || get(t:atp_labels,l:filename,"nofile") != "nofile"
+	let l:choice=get(get(t:atp_labels,l:filename),s:getlinenr())
     else
 	let l:choice="nokey"
     endif
@@ -269,7 +266,6 @@ function! ShowLabelContext()
 
     let l:toc=getbufline("%",1,"$")
     let l:h_line=index(reverse(copy(l:toc)),'')+1
-    let b:h_line=l:h_line
     if line(".") > len(l:toc)-l:h_line
 	return ''
     endif
@@ -280,8 +276,8 @@ function! ShowLabelContext()
     let l:winnr=bufwinnr(l:bufname)
 " 	echomsg "DEBUG bufname " . l:bufname
     let l:line=s:getlinenr()
-    if !exists("t:labels")
-	let t:labels=UpdateLabels(l:bufname)
+    if !exists("t:atp_labels")
+	let t:atp_labels=UpdateLabels(l:bufname)
     endif
     exe l:winnr . " wincmd w"
 	if l:winnr == -1
@@ -297,15 +293,14 @@ function! EchoLine()
 
     let l:toc=getbufline("%",1,"$")
     let l:h_line=index(reverse(copy(l:toc)),'')+1
-    let b:h_line=l:h_line
     if line(".") > len(l:toc)-l:h_line
 	return ''
     endif
 
     let l:bufname=s:file()[1]
     let l:bufnr=bufnr("^" . l:bufname . "$")
-    if !exists("t:labels")
-	let t:labels[l:bufname]=UpdateLabels(l:bufname)[l:bufname]
+    if !exists("t:atp_labels")
+	let t:atp_labels[l:bufname]=UpdateLabels(l:bufname)[l:bufname]
     endif
     let l:line=s:getlinenr()
     let l:sec_line=join(getbufline(l:bufname,l:line))
@@ -367,7 +362,7 @@ endif
 "     l:cbufname=bufname("")
 "     let l:bufname=substitute(l:cbufname,'\C\%(-TOC\|-LABELS\)$','','')
 "     let l:bufnr=bufnr("^" . l:bufname . "$")
-"     let t:labels[l:bufname]=UpdateLabels(l:bufname)[l:bufname]
+"     let t:atp_labels[l:bufname]=UpdateLabels(l:bufname)[l:bufname]
 "     if l:cbufname =~ "-TOC$"
 " 	" TODO
 "     elseif l:cbufname =~ "-LABELS$"

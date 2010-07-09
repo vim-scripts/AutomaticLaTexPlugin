@@ -1214,7 +1214,6 @@ endif
 if !exists("g:atp_MathVimOptions")
 "     { 'option_name' : [ val_in_math, normal_val], ... }
     let g:atp_MathVimOptions 		=  { 'textwidth' 	: [ 0, 	&textwidth],
-						\ 'linebreak' 	: [ 'nolinebreak', &linebreak]
 						\ }
 endif
 
@@ -1249,10 +1248,15 @@ function! s:SetMathVimOptions(...)
 	    call add(MathZones, 'texMathZoneY')
 	endif
 	    
+	" Change the long values to numbers 
 	let MathVimOptions = map(copy(g:atp_MathVimOptions),
-		    \ "v:val[0] == 'no'.v:key ? [ 0, v:val[1]] : v:val[0] == v:key  ? [ 1, v:val[1]] : v:val") 
+			\ " v:val[0] =~ v:key ? [ v:val[0] =~ 'no' . v:key ? 0 : 1, v:val[1] ] : v:val " )
+	let MathVimOptions = map(MathVimOptions,
+			\ " v:val[1] =~ v:key ? [ v:val[0], v:val[1] =~ 'no' . v:key ? 0 : 1 ] : v:val " )
 
-	let check	= a:0 == 0 ? atplib#CheckSyntaxGroups(MathZones) : a:1
+	" check if the current (and 3 steps back) cursor position is in math
+	" or use a:1
+	let check	= a:0 == 0 ? atplib#CheckSyntaxGroups(MathZones) + atplib#CheckSyntaxGroups(MathZones, line("."), max([ 1, col(".")-3])) : a:1
 
 	if check
 	    for option_name in keys(MathVimOptions)
@@ -1268,10 +1272,13 @@ endfunction
 
 if !s:did_options
 
+    " if leaving the insert mode set the non-math options
     au InsertLeave 	*.tex :call s:SetMathVimOptions(0)
+    " if entering the insert mode or in the insert mode check if the cursor is in
+    " math or not and set the options acrodingly
     au InsertEnter	*.tex :call s:SetMathVimOptions()
     au CursorMovedI 	*.tex :call s:SetMathVimOptions()
-"   This makes vim slow down when moving cursor.
+"   This makes vim slow down when moving cursor:
 "     au CursorMoved 	*.tex :call s:SetMathVimOptions()
 
 endif

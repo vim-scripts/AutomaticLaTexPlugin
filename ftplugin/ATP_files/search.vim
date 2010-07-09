@@ -1,4 +1,5 @@
 " Author:	Marcin Szamotulski
+" Note:		This file is a part of ATP plugin for vim.
 
 
 

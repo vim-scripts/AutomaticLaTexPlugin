@@ -767,7 +767,7 @@ endif
 " }}}
 " {{{ ToggleTab
 " switches on/off the <Tab> map for TabCompletion
-function! ToggleTab() 
+function! s:ToggleTab() 
     if mapcheck('<F7>','i') !~ 'atplib#TabCompletion'
 	if mapcheck('<Tab>','i') =~ 'atplib#TabCompletion'
 	    iunmap <buffer> <Tab>
@@ -789,7 +789,7 @@ function! ToggleTab()
     endif
 endfunction
 command! -buffer 	ToggleTab	 	:call <SID>ToggleTab()
-nnoremap <silent> <Plug>ToggleTab		:ToggleTab<CR>
+nnoremap <silent> <Plug>ToggleTab		:ToggleTab
 " }}}
 endif
 "}}}
@@ -1205,43 +1205,74 @@ endif
 
 " This function and the following autocommand toggles the textwidth option if
 " editting a math mode. Currently, supported are $:$, \(:\), \[:\] and $$:$$.
-" {{{  ToggleMathTextWidth
-let g:atp_textwidth	= &l:tw
+" {{{  SetMathVimOptions
 
-if !exists("g:atp_ToggleMathTextWidth")
-    let g:atp_ToggleMathTextWidth 	= &l:tw
+if !exists("g:atp_SetMathVimOptions")
+    let g:atp_SetMathVimOptions 	= 1
 endif
 
-let g:atp_MathZones	= [ 'texMathZoneV', 'texMathZoneW', 'texMathZoneX', 'texMathZoneY']
+if !exists("g:atp_MathVimOptions")
+"     { 'option_name' : [ val_in_math, normal_val], ... }
+    let g:atp_MathVimOptions 		=  { 'textwidth' 	: [ 0, 	&textwidth],
+						\ 'linebreak' 	: [ 'nolinebreak', &linebreak]
+						\ }
+endif
 
-function! s:ToggleMathTextWidth()
+let g:atp_MathZones	= [ 
+	    		\ 'texMathZoneV', 	'texMathZoneW', 
+	    		\ 'texMathZoneX', 	'texMathZoneY',
+	    		\ 'texMathZoneA', 	'texMathZoneAS',
+	    		\ 'texMathZoneB', 	'texMathZoneBS',
+	    		\ 'texMathZoneC', 	'texMathZoneCS',
+	    		\ 'texMathZoneD', 	'texMathZoneDS',
+	    		\ 'texMathZoneE', 	'texMathZoneES',
+	    		\ 'texMathZoneF', 	'texMathZoneFS',
+	    		\ 'texMathZoneG', 	'texMathZoneGS',
+	    		\ 'texMathZoneH', 	'texMathZoneHS',
+	    		\ 'texMathZoneI', 	'texMathZoneIS',
+	    		\ 'texMathZoneJ', 	'texMathZoneJS',
+	    		\ 'texMathZoneK', 	'texMathZoneKS',
+	    		\ 'texMathZoneL', 	'texMathZoneLS' 
+			\ ]
 
-	if !g:atp_ToggleMathTextWidth
-	    return "toggle math text width is off" 
+" a:0 	= 0 check if in math mode
+" a:1   = 0 assume cursor is not in math
+" a:1	= 1 assume cursor stands in math  
+function! s:SetMathVimOptions(...)
+
+	if !g:atp_SetMathVimOptions
+	    return "no setting to toggle" 
 	endif
 
-	let synstack	= string(map(synstack( line('.'), col('.')), "synIDattr( v:val, 'name')"))
-
-	let MathZones = map(copy(g:atp_MathZones), '"\\<" . v:val . "\\>"')
+	let MathZones = copy(g:atp_MathZones)
 	if b:atp_TexFlavour == 'plaintex'
-	    call add(MathZones, '\<texMathZoneY\>')
+	    call add(MathZones, 'texMathZoneY')
 	endif
 	    
-	if !atplib#CheckSyntax(MathZones)
-	    let &l:tw	= g:atp_textwidth
+	let MathVimOptions = map(copy(g:atp_MathVimOptions),
+		    \ "v:val[0] == 'no'.v:key ? [ 0, v:val[1]] : v:val[0] == v:key  ? [ 1, v:val[1]] : v:val") 
+
+	let check	= a:0 == 0 ? atplib#CheckSyntaxGroups(MathZones) : a:1
+
+	if check
+	    for option_name in keys(MathVimOptions)
+		execute "let &l:".option_name. " = " . MathVimOptions[option_name][0]
+	    endfor
 	else
-	    let &l:tw	= 0
+	    for option_name in keys(MathVimOptions)
+		execute "let &l:".option_name. " = " . MathVimOptions[option_name][1]
+	    endfor
 	endif
 
-	return &l:tw
 endfunction
 
 if !s:did_options
 
-    au CursorMoved 	*.tex :call s:ToggleMathTextWidth()
-    au CursorMovedI 	*.tex :call s:ToggleMathTextWidth()
-    " CursorMovedI is not working due to a problem with synstack() function in
-    " insert mode. Using string(synstack()) instead.
+    au InsertLeave 	*.tex :call s:SetMathVimOptions(0)
+    au InsertEnter	*.tex :call s:SetMathVimOptions()
+    au CursorMovedI 	*.tex :call s:SetMathVimOptions()
+"   This makes vim slow down when moving cursor.
+"     au CursorMoved 	*.tex :call s:SetMathVimOptions()
 
 endif
 "}}}

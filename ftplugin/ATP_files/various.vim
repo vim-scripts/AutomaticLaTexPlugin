@@ -612,55 +612,55 @@ endif
 " TODO if the file was not found ask to make one.
 function! s:ToDo(keyword,stop,...)
 
-    if a:0==0
-	let l:bufname=bufname("%")
+    if a:0 == 0
+	let bufname	= bufname("%")
     else
-	let l:bufname=a:1
+	let bufname	= a:1
     endif
 
     " read the buffer
-    let l:texfile=getbufline(l:bufname, 1, "$")
+    let texfile=getbufline(bufname, 1, "$")
 
     " find ToDos
-    let b:todo={}
-    let l:nr=1
-    for l:line in l:texfile
-	if l:line =~ '%.*' . a:keyword 
-	    call extend(b:todo, { l:nr : l:line }) 
+    let todo = {}
+    let nr=1
+    for line in texfile
+	if line =~ '%.*' . a:keyword 
+	    call extend(todo, { nr : line }) 
 	endif
-	let l:nr+=1
+	let nr += 1
     endfor
 
     " Show ToDos
     echohl atp_Todo
-    if len(keys(b:todo)) == 0
-	echomsg " List for '%.*" . a:keyword . "' in '" . l:bufname . "' is empty."
+    if len(keys(todo)) == 0
+	echomsg " List for '%.*" . a:keyword . "' in '" . bufname . "' is empty."
 	return
     endif
-    echomsg " List for '%.*" . a:keyword . "' in '" . l:bufname . "':"
-    let l:sortedkeys=sort(keys(b:todo),"atplib#CompareList")
-    for l:key in l:sortedkeys
+    echomsg " List for '%.*" . a:keyword . "' in '" . bufname . "':"
+    let sortedkeys=sort(keys(todo),"atplib#CompareList")
+    for key in sortedkeys
 	" echo the todo line.
-	echomsg l:key . " " . substitute(substitute(b:todo[l:key],'%','',''),'\t',' ','g')
-	let l:true=1
-	let l:a=1
-	let l:linenr=l:key
+	echomsg key . " " . substitute(substitute(todo[key],'%','',''),'\t',' ','g')
+	let true	= 1
+	let a		= 1
+	let linenr	= key
 	" show all comment lines right below the found todo line.
-	while l:true && l:texfile[l:linenr] !~ '%.*\c\<todo\>' 
-	    let l:linenr=l:key+l:a-1
-	    if l:texfile[l:linenr] =~ "\s*%" && l:texfile[l:linenr] !~ a:stop
-		" make space of length equal to len(l:linenr)
-		let l:space=""
-		let l:j=0
-		while l:j < len(l:linenr)
-		    let l:space=l:space . " " 
-		    let l:j+=1
+	while true && texfile[linenr] !~ '%.*\c\<todo\>' 
+	    let linenr=key+a-1
+	    if texfile[linenr] =~ "\s*%" && texfile[linenr] !~ a:stop
+		" make space of length equal to len(linenr)
+		let space=""
+		let j=0
+		while j < len(linenr)
+		    let space=space . " " 
+		    let j+=1
 		endwhile
-		echomsg l:space . " " . substitute(substitute(l:texfile[l:linenr],'%','',''),'\t',' ','g')
+		echomsg space . " " . substitute(substitute(texfile[linenr],'%','',''),'\t',' ','g')
 	    else
-		let l:true=0
+		let true = 0
 	    endif
-	    let l:a+=1
+	    let a += 1
 	endwhile
     endfor
     echohl None

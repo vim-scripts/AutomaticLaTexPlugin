@@ -5,16 +5,9 @@
 			    mszamot [AT] gmail [DOT] com
 			----------------------------------------
 
-If you found this plugin useful, you are cordially invited to write to me:
+If you found this plugin useful or you have any kind of problems with running
+it or some ideas to share, you are cordially invited to write to me:
 mszamot@gmail.com. Voting at Vim site is also welcome ;) .
-
-New Features:
-					intedation 
-	|atp-debug|			call back mechanism as sugested by D.Munger
-					t:atp_DebugMode and g:atp_DefaultDebugMode
-					variables
-					
-
 
 -----------------------------------------------------------------------------
 					Abstract
@@ -47,10 +40,10 @@ Features include:
 	See |atp-command-Labels|,
 * a command to list ToDo lines:
 	See |atp-command-ToDo|.
-* a command to search for a macro definition:
+* a command to search for a macro definition (multi-line support):
  	See |atp-command-DefiSearch|
 * a command to search and PREVIEW fonts in your latex distribution:
- 	See |atp-command-FontSearch| 
+ 	See |atp-command-FontSearch|, and |atp-command-FontPreview|
 
 
 			Table of Contents
@@ -101,21 +94,28 @@ News: >
 				using $$:$$ is latex is not recommended it is
 				know to break some latex specific things).
 >
-	g:atp_ToggleMathTextWidth
-<				a boolean valued variable. If '1' and
-				|textwidth| is set to non-zero value, then
-				when you edit one of math zones $:$,
-				\(:\), \[:\] (and in plain tex files also
-				$$:$$) it changes the value of |textwidth| to
-				zero. If you go out of math zone it restores
-				the value. You can specify in which syntax
-				regions this works using the variable: >
-					g:atp_MathZones 
-<				Note: the standard tex syntax file defines 
+	New Feature in version 7.1
+	g:atp_MathVimOptions	= { 'textwidth' : '0' }
+<				This variable is a dictionary of vim settings
+				and its values which will be valid when you
+				edit mathematics inside the pairs \(:\), $:$,
+				\[:\], $$:$$ (only in plain tex files or if
+				g:atp_TexFlavour = 'plaintex'). For example,
+				the default value will toggle between your
+				'textwidth' in non-math and 0 in math.
+				The dictionary may contain short option names
+				eqally well as long names.
+
+				Note: the standard tex syntax file defines 
 				other zones: for example for align and
 				equation environments (and many others) but
 				some how they are not accessible using
 				synstack() function. 
+				
+				This feature can be turned off using setting
+				variable >
+					g:atp_SetMathVimOptions
+<				to '0', the default is '1'.
 
 	New Editing Tools	vie, viE, vae, vi$ and va$ or when in visual
 	written by 		mode ie, iE, ae i$, a$.
@@ -132,64 +132,6 @@ News: >
 				the begining of the inner part of an
 				environment, so it can be environment name or
 				an option just after. 						
-
-							*atp-command-ToggleEnvironment*
-	:ToggleEnvironment 	mapped to <F4> and <S-F4>, switches environment
-	map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7 
-				(you can change or add your own variables,
-				just add numbers - they must be consecutive).
-
-							*atp-command-ToggleLabels*
-							*atp-variable-g:atp_toggle_labels*
-				It also changes the prefixes of labels (if
-				there is one, which belongs to
-				g:atp_shortnames_dict) and all ref's (\ref,
-				\eqref and \pageref). You have to turn on this
-				feature by putting g:atp_toggle_labels=1 (by
-				default it is 0).  Check if it works for you!
-				If there is a label or reference to which it
-				wants to change it doesn't change labels and
-				issue a Warning Message, thus I believe it
-				should work for every one, but as this changes
-				your file it is turned off by default.) 
-
-	FontPreview(<fontname>,[<encoding>,<keep_tex>])		|atp-command-FontPreview|
-
-	|atp-completion-fontdeclaration| 
-				a new inteligent completion method for font
-				declaration commands.   
-
-	:WrapSelection  	see |atp-command-WrapSelection| for many useful maps (in visual mode)!
-				You can define even more maps.
-	
-	Leaders for maps, imaps and vmaps are now configurable using the variables and an option:
-	    imaps:
-	    g:atp_imap_first_leader == "#"
-	    	for Greak letters,
-	    g:atp_imap_second_leader == "##"
-	    	for font commands,
-	    g:atp_imap_third_leader == "]"
-	    	for environments,  
-	    g:atp_imap_fourth_leader == "["
-	    	for extra environments in the old layout.
-	    other maps:
-	    <LocalLeader> with option |maplocalleader| 
-	    g:atp_vmap_text_font_leader 	== "<LocalLeader>"
-	    g:atp_vmap_math_font_leader 	== "<LocalLeader>m"
-	    g:atp_vmap_environment_leader 	== ""		(empty)
-	    g:atp_vmap_bracket_leader 		== "<LocalLeader>"
-	    g:atp_vmap_big_bracket_leader 	== "<LocalLeader>b"
-	
-	intendation 	you can switch it off setting the variable: >
-			    g:atp_intedation=0
-<			Then an intedation file is loaded. If you have one it will
-			not be overwritten. 
-
-			It is recommended to use it while the <Tab> key is mapped
-			to the TabCompletion function.
-
-			I swithed to intendation file written recently by
-			David Munger (LatexBox).
 
 
 ================================================================================
@@ -288,6 +230,12 @@ forth between you b:atp_OutDir and the temporary directory)
 			   	= 'verbose'
 			   Every compilation which is invoked by the user will
 			   be run in verbose mode as with <F5> key.
+
+	Note: the 'verbose' mode in 'vim' (in console) needs to be run, when
+	there is no other latex instance running. Now you get a message to
+	wait until compelation ends. In future releases, a better solution
+	will be worked out. Gui version 'gvim' works better (as it dosn't  
+	susspend the edditor).
 
 	 The background compilation is always done in g:atp_DefaultDebugMode.
 	 Unless it is set to 'verbose' in which case 'debug' mode is used. 
@@ -722,7 +670,7 @@ ToDo(<keyword>,<stop>,[bufname])			*atp-command-ToDo*
 	sets keyowrd='\c\<note\>' and stop='\s*%.*\c\<todo\>'. This prevent
 	from listing ToDo lines with Notes and vice versa. 
 	 
-:SpaceToggle, map <F2>					*atp-command-SpaceToggle*
+:ToggleSpace, map <F2>					*atp-command-ToggleSpace*
 	This function (command) sets, if it is undefined or removes if it is
 	defined, the mapping:
 >
@@ -739,6 +687,22 @@ map <LocalLeader>s		environment (if it is not one belonging
 				to the list: >
 					g:atp_no_star_environments
 <				
+							*atp-command-ToggleEnvironment*
+:ToggleEnvironment 	mapped to <F4> and <S-F4>, switches environment
+map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7 
+			(you can change or add your own variables,
+			just add numbers - they must be consecutive).
+
+							*atp-command-ToggleLabels*
+							*atp-variable-g:atp_toggle_labels*
+	It also changes the prefixes of labels (if there is one, which belongs
+	to g:atp_shortnames_dict) and all ref's (\ref, \eqref and \pageref).
+	You have to turn on this feature by putting g:atp_toggle_labels=1 (by
+	default it is 0).  Check if it works for you!  If there is a label or
+	reference to which it wants to change it doesn't change labels and
+	issue a Warning Message, thus I believe it should work for every one,
+	but as this changes your file it is turned off by default.) 
+
 
 :SetOutDir						*atp-command-SetOutDir*
 	This is a command which sets the 'b:atp_OutDir' variable and the |'errorfile'| option.

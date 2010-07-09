@@ -134,6 +134,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     nmap  <buffer> <F5> 			<Plug>ATP_TeXVerbose<CR>
     nmap  <buffer> <s-F5> 			<Plug>ToggleAuTeX<CR>
     nmap  <buffer> `<Tab>			<Plug>ToggleTab<CR>
+    imap  <buffer> `<Tab>			<Esc><Plug>ToggleTab<CR>i
     nmap  <buffer> <LocalLeader>B		<Plug>SimpleBibtex<CR>
     nmap  <buffer> <LocalLeader>b		<Plug>BibtexDefault<CR>
     nmap  <buffer> <F6>d 			:call Delete() <CR>

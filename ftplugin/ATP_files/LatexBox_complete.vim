@@ -243,7 +243,6 @@ function! LatexBox_BibComplete(regexp)
     return res
 endfunction
 " }}}
-set omnifunc=LatexBox_Complete
 
 " Complete Labels {{{
 " the optional argument is the file name to be searched

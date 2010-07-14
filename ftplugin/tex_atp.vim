@@ -5,6 +5,7 @@
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
 " GetLatestVimScripts: 2945 27 :AutoInstall: tex_atp.vim
+" LINE ADDED.
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -26,24 +27,22 @@ if &cpoptions =~ '<'
 	setl cpoptions-=<
 endif
 
-if !exists('s:loaded')
+" if !exists('s:loaded')
 
 	" Functions needed before setting options
 	execute 'source ' . fnameescape(prefix . '/common.vim')
 
-endif
+" endif
 
 
 execute 'source '  . fnameescape(prefix . '/options.vim')
 
 
-if !exists('s:loaded')
-
 	execute 'source ' . fnameescape(prefix . '/common.vim')
 	execute 'source ' . fnameescape(prefix . '/compiler.vim')
 
 	if g:atp_LatexBox
-		execute 'source ' . fnameescape(prefix . '/LatexBox_variables.vim')
+		execute 'source ' . fnameescape(prefix . '/LatexBox_common.vim')
 		execute 'source ' . fnameescape(prefix . '/LatexBox_complete.vim')
 		execute 'source ' . fnameescape(prefix . '/LatexBox_motion.vim')
 	endif
@@ -53,8 +52,6 @@ if !exists('s:loaded')
 	execute 'source ' . fnameescape(prefix . '/search.vim')
 	execute 'source ' . fnameescape(prefix . '/various.vim')
 
-	let s:loaded = 1
-endif
 
 " Source maps and menu files.
 execute 'source ' . fnameescape(prefix . '/mappings.vim')

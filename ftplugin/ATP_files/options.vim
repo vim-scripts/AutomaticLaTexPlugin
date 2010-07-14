@@ -250,6 +250,9 @@ endfunction
 
 " Almost all global variables 
 " {{{ global variables 
+if !exists("g:atp_TeXdocDefault")
+    let g:atp_TeXdocDefault	= '-a lshort'
+endif
 "ToDo: to doc.
 "ToDo: luatex! (can produce both!)
 if !exists("g:atp_CompilersDict")
@@ -445,7 +448,7 @@ endif
 " }}}
 
 " Buffer-local variables
-" {{{
+" {{{ buffer variables
 let b:atp_running=0
 
 " these are all buffer related variables:
@@ -511,14 +514,14 @@ endif
 " not already set by the user.
 " {{{ s:SetOptions
 function! s:SetOptions()
-    let s:optionsKeys=keys(s:optionsDict)
-    let s:optionsinuseDict=getbufvar(bufname("%"),"")
+
+    let s:optionsKeys		= keys(s:optionsDict)
+    let s:optionsinuseDict	= getbufvar(bufname("%"),"")
 
     "for each key in s:optionsKeys set the corresponding variable to its default
     "value unless it was already set in .vimrc file.
     for l:key in s:optionsKeys
-	
-	if get(s:optionsinuseDict,l:key, "optionnotset") == "optionnotset" && l:key != "outdir" && l:key != "atp_autex"
+	if string(get(s:optionsinuseDict,l:key, "optionnotset")) == string("optionnotset") && l:key != "outdir" && l:key != "atp_autex"
 	    call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
 	elseif l:key == "atp_OutDir"
 	    call BeNice(l:key)
@@ -527,20 +530,19 @@ function! s:SetOptions()
 	    if !exists("b:atp_OutDir")
 		call s:setoutdir(1)
 	    endif
-	    let s:ask["ask"] = 1
+	    let s:ask["ask"] 	= 1
 	endif
     endfor
-    if get(s:optionsinuseDict,"atp_autex","optionnotset") == "optionnotset"
+    if string(get(s:optionsinuseDict,"atp_autex", 'optionnotset')) == string('optionnotset')
 	let l:atp_texinputs=split(substitute(substitute(system("kpsewhich -show-path tex"),'\/\/\+','\/','g'),'!\|\n','','g'),':')
-    call remove(l:atp_texinputs,'.')
+	call remove(l:atp_texinputs,'.')
 	call filter(l:atp_texinputs,'v:val =~ b:atp_OutDir')
 	if len(l:atp_texinputs) == 0
-	    let b:atp_autex=1
+	    let b:atp_autex	= 1
 	else
-	    let b:atp_autex=0
+	    let b:atp_autex	= 0
 	endif
     endif
-
 endfunction
 "}}}
 call s:SetOptions()
@@ -574,6 +576,7 @@ if !s:did_options
     au FileType qf 		let t:atp_QuickFixOpen=1
     " When closing the quickfix error buffer (:close, :q) also end the Debug Mode.
     au FileType qf 		au BufUnload <buffer> let t:atp_DebugMode = g:atp_DefaultDebugMode | let t:atp_QuickFixOpen = 0
+    au FileType qf		setl nospell
 endif
 "}}}
 
@@ -649,7 +652,7 @@ function! s:ToggleAuTeX()
   endif
 endfunction
 command! -buffer 	ToggleAuTeX 		:call <SID>ToggleAuTeX()
-nnoremap <silent> <Plug>ToggleAuTeX 		:ToggleAuTeX<CR>
+nnoremap <silent> <Plug>ToggleAuTeX 		:ToggleAuTeX
 "}}}
 " {{{ ToggleSpace
 " Special Space for Searching 
@@ -674,7 +677,7 @@ function! s:ToggleSpace()
     endif
 endfunction
 command! -buffer 	ToggleSpace 	:call <SID>ToggleSpace()
-nnoremap <silent> <Plug>ToggleSpace 	:ToggleSpace<CR>
+nnoremap <silent> <Plug>ToggleSpace 	:ToggleSpace
 "}}}
 " {{{ ToggleCheckMathOpened
 " This function toggles if ATP is checking if editing a math mode.
@@ -697,7 +700,7 @@ function! s:ToggleCheckMathOpened()
     let g:atp_math_opened=!g:atp_math_opened
 endfunction
 command! -buffer 	ToggleCheckMathOpened 	:call <SID>ToggleCheckMathOpened()
-nnoremap <silent> <Plug>ToggleCheckMathOpened	:ToggleCheckMathOpened<CR>
+nnoremap <silent> <Plug>ToggleCheckMathOpened	:ToggleCheckMathOpened
 "}}}
 " {{{ ToggleCallBack
 function! s:ToggleCallBack()
@@ -717,7 +720,7 @@ function! s:ToggleCallBack()
     let g:atp_callback=!g:atp_callback
 endfunction
 command! -buffer 	ToggleCallBack 		:call <SID>ToggleCallBack()
-nnoremap <silent> <Plug>ToggleCallBack		:ToggleCallBack<CR>
+nnoremap <silent> <Plug>ToggleCallBack		:ToggleCallBack
 "}}}
 " {{{ ToggleDebugMode
 " ToDo: to doc.
@@ -940,7 +943,8 @@ endif
 	\ "\\topmargin", "\\oddsidemargin", "\\evensidemargin", "\\headheight", "\\headsep", 
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
 	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
-	\ "\\tableofcontents", "\\newfont{" ]
+	\ "\\tableofcontents", "\\newfont{", 
+	\ "\\DeclareRobustCommand", "\\show", "\\CheckCommand" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -1158,7 +1162,7 @@ let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\
 " ToDo: user command list, env list g:atp_Commands, g:atp_Environments, 
 " }}}
 "
-" Some of the autocommands (Status Line, LocalCommands):
+" Some of the autocommands (Status Line, LocalCommands, Log File):
 " {{{ Autocommands:
 
 

@@ -984,6 +984,7 @@ nnoremap <silent> <Plug>PreviousEnv	:call <SID>PrevEnv('[^}]*')
 function! s:NextSection(secname,...)
     let section_title_pattern = ( a:0 == 0 ? '' : '\s*{.*' . a:1 )
     call search('\\' . a:secname . '\>' . section_title_pattern ,'w')
+    let @/='\\' . a:secname . '\>' . section_title_pattern
 endfunction
 nnoremap <silent> <Plug>GoToNextSection		:call <SID>NextSection('section')
 nnoremap <silent> <Plug>GoToNextChapter		:call <SID>NextSection('chapter')
@@ -992,17 +993,17 @@ command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NSec		:call <S
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NChap		:call <SID>NextSection('chapter',<f-args>)
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NPart		:call <SID>NextSection('part',<f-args>)
 
-function! s:PrevSection(secname,...)
+function! s:PreviousSection(secname,...)
     let section_title_pattern = ( a:0 == 0 ? '' : '\s*{.*' . a:1 )
     call search('\\' . a:secname . '\>' . section_title_pattern ,'bw')
+    let @/='\\' . a:secname . '\>' . section_title_pattern
 endfunction
 nnoremap <silent> <Plug>GoToPreviousSection		:call <SID>PreviousSection('section')
 nnoremap <silent> <Plug>GoToPreviousChapter		:call <SID>PreviousSection('chapter')
 nnoremap <silent> <Plug>GoToPreviousPart		:call <SID>PreviousSection('part')
-
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PSec		:call <SID>PrevSection('section',<f-args>)
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PChap		:call <SID>PrevSection('chapter',<f-args>)
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call <SID>PrevSection('part',<f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PSec		:call <SID>PreviousSection('section',<f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PChap		:call <SID>PreviousSection('chapter',<f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call <SID>PreviousSection('part',<f-args>)
 
 function! Env_compl(A,P,L)
     let l:envlist=sort(['abstract', 'definition', 'equation', 'proposition', 

@@ -28,9 +28,9 @@ endfunction
 
 " s:SearchAndSkipComments(pattern, [flags], [stopline])
 function! s:SearchAndSkipComments(pat, ...)
-	let flags		= a:0 >= 1 ? a:1 : ''
+	let flags	= a:0 >= 1 ? a:1 : ''
 	let stopline	= a:0 >= 2 ? a:2 : 0
-	let saved_pos = getpos('.')
+	let saved_pos 	= getpos('.')
 
 	" search once
 	let ret = search(a:pat, flags, stopline)
@@ -100,7 +100,6 @@ function! s:JumpToMatch(mode, ...)
 	let rest_of_line = strpart(getline('.'), col('.') - 1)
 
 	" match for '$' pairs
-	let b:rest = rest_of_line
 	if rest_of_line =~ '^\$'
 
 		" check if next character is in inline math
@@ -149,18 +148,55 @@ vnoremap <silent> <Plug>LatexBox_BackJumpToMatch 	:<C-U>call <SID>JumpToMatch('v
 " where seltype is either 'inner' or 'outer'
 function! s:SelectInlineMath(seltype)
 
-	let dollar_pat = '\\\@<!\$'
+    	let saved_pos		= getpos('.')
 
-	if s:HasSyntax('texMathZoneX')
-		call s:SearchAndSkipComments(dollar_pat, 'cbW')
-	elseif getline('.')[col('.') - 1] == '$'
-		call s:SearchAndSkipComments(dollar_pat, 'bW')
-	else
-		return
+	let ZoneX_pat_O 	= '\\\@<!\$'
+	let ZoneX_pat_C 	= '\\\@<!\$'
+	let ZoneY_pat_O 	= '\\\@<!\$\$'
+	let ZoneY_pat_C 	= a:seltype == 'inner' ? '\\\@<!\$\$' 	: '\\\@<!\$\$'
+	let ZoneV_pat_O		= '\\\@<!\\('
+	let ZoneV_pat_C		= a:seltype == 'inner' ? '\\\@<!\\)' 	: '\\\@<!\\\zs)' 
+	let ZoneW_pat_O		= '\\\@<!\\\['
+	let ZoneW_pat_C		= a:seltype == 'inner' ? '\\\@<!\\\]'	: '\\\@<!\\\zs\]'
+
+	if 	( s:HasSyntax('texMathZoneV', line("."), max([1,col(".")-1])) ||
+		\ s:HasSyntax('texMathZoneW', line("."), max([1,col(".")-1])) ||
+		\ s:HasSyntax('texMathZoneX', line("."), max([1,col(".")-1])) ||
+		\ s:HasSyntax('texMathZoneY', line("."), max([1,col(".")-1])) && b:atp_TexFlavour == 'plaintex' )  && 
+		\ col(".") > 1
+	    normal! h
+	elseif 	( s:HasSyntax('texMathZoneV', line("."), max([1,col(".")-2])) ||
+		\ s:HasSyntax('texMathZoneW', line("."), max([1,col(".")-2])) ||
+		\ s:HasSyntax('texMathZoneY', line("."), max([1,col(".")-2])) && b:atp_TexFlavour == 'plaintex' )  && 
+		\ col(".") > 2
+	    normal! 2h
+	endif
+
+	let return 		= 1 
+	let math_zones		= ( b:atp_TexFlavour == 'plaintex' ? [ 'V', 'W', 'X', 'Y'] : [ 'V', 'W', 'X'] )
+	for L in math_zones
+	    if s:HasSyntax('texMathZone'. L, line(".")) ||
+			\ s:HasSyntax('texMathZone'. L, line("."), max([1, col(".")-1]))
+		    call s:SearchAndSkipComments(Zone{L}_pat_O, 'cbW')
+		    let zone 	= L
+		    let return 	= 0
+	    endif
+	endfor
+
+	if return
+	    call cursor(saved_pos[1], saved_pos[2])
+	    return
 	endif
 
 	if a:seltype == 'inner'
+	    if zone =~ '^V\|W$' || zone == 'Y' && b:atp_TexFlavour == 'plaintex'
+		normal! 2l
+	    elseif zone == 'X'
+		normal! l
+	    endif
+	    if getline(".")[col(".")-1] == ' '
 		normal! w
+	    endif
 	endif
 
 	if visualmode() ==# 'V'
@@ -169,15 +205,210 @@ function! s:SelectInlineMath(seltype)
 		normal! v
 	endif
 
-	call s:SearchAndSkipComments(dollar_pat, 'W')
+	call s:SearchAndSkipComments(Zone{zone}_pat_C, 'W')
 
 	if a:seltype == 'inner'
+	    if getline(".")[col(".")-2] == ' '
 		normal! ge
+	    else
+		if col(".") > 1
+		    call cursor(line("."),col(".")-1)
+		else
+		    call cursor(line(".")-1, len(getline(line(".")-1)))
+		endif
+	    endif
+	endif
+
+	if a:seltype == 'outer' && zone == 'Y'
+	    call cursor(line("."),col(".")+1)
 	endif
 endfunction
 
+
 vnoremap <silent> <Plug>LatexBox_SelectInlineMathInner :<C-U>call <SID>SelectInlineMath('inner')<CR>
 vnoremap <silent> <Plug>LatexBox_SelectInlineMathOuter :<C-U>call <SID>SelectInlineMath('outer')<CR>
+" }}}
+
+" {{{ select current bracket
+" a:seltype		= 'inner' / 'outer' / 'INNER' / 'OUTER'
+function! s:SelectCurrentBracket(seltype) 
+
+    let bracket_dict	= { '{' : '}', '(': ')', '[' : '\]' }
+    let OUTER_flag	= a:seltype =~  '\C^OUTER\|INNER$'  ? 'r' : ''
+
+    if getline(".")[col(".")-1] =~ '^}\|)\|\]$'
+	let line = searchpair('{\|\\\@<!(\|\\\@<!\[', '', '}\|\\\@<!)\|\\\@<!\]', 'bsW' . OUTER_flag )
+    else
+	let line = searchpair('{\|\\\@<!(\|\\\@<!\[', '', '}\|\\\@<!)\|\\\@<!\]', 'bcsW' . OUTER_flag )
+    endif
+
+    let b:pos1 = getpos(".")
+
+    " return if opening bracket was not found.
+    if !line
+	return
+    endif
+
+    let opening_bracket	= getline(".")[col(".")-1]
+    let closing_bracket = get(bracket_dict, opening_bracket, 0) 
+    let opening_bracket = opening_bracket == '[' ? '\[' : opening_bracket
+
+    let pos	= getpos(".")
+
+    if visualmode() ==# 'V'
+	normal! V
+    else
+	normal! v
+    endif
+
+    if a:seltype == 'outer'
+	call cursor(pos[1], pos[2])
+    endif
+
+    " Find closing bracket.
+    call searchpair( opening_bracket, '', closing_bracket, 'W' )
+
+    " begining offset
+    normal! o
+    if a:seltype == 'outer'
+	call search('\\\%'.col('.').'c\%'.line('.').'l', 'b')
+    elseif a:seltype == 'inner'
+	normal! l
+	if getline(".")[col(".")-1] == ' '
+	    normal! w
+	endif
+    endif
+
+    " end offset
+    normal! o
+    if a:seltype == 'inner'
+	if getline(".")[col(".")-2] =~ '^\s\|\\$'
+	    normal! ge
+	else
+	    if col(".") > 1
+		call cursor(line("."),col(".")-1)
+	    else
+		call cursor(line(".")-1, len(getline(line(".")-1)))
+	    endif
+	endif
+    endif
+
+endfunction
+vnoremap <silent> <Plug>SelectInnerBracket :call <SID>SelectCurrentBracket('inner')<CR>
+vnoremap <silent> <Plug>SelectOuterBracket :call <SID>SelectCurrentBracket('outer')<CR>
+vnoremap <silent> <Plug>SelectINNERBracket :call <SID>SelectCurrentBracket('INNER')<CR>
+vnoremap <silent> <Plug>SelectOUTERBracket :call <SID>SelectCurrentBracket('OUTER')<CR>
+" These maps should be moved to mappings.vim:
+vmap i)		<ESC>:call <SID>SelectCurrentBracket('inner')<CR>
+vmap a)		<ESC>:call <SID>SelectCurrentBracket('outer')<CR>
+vmap A)		<ESC>:call <SID>SelectCurrentBracket('OUTER')<CR>
+vmap I)		<ESC>:call <SID>SelectCurrentBracket('INNER')<CR>
+" }}}
+
+" {{{ select syntax
+" syntax groups 'texDocZone' and 'texSectionZone' need to be synchronized
+" before ':syntax sync fromstart' which is quite slow. It is better to provide
+" other method of doing this. (If s:SelectSyntax is not syncing the syntax
+" then the behaviour is unpredictable).
+function! s:SelectSyntax(syntax)
+
+    " mark the current position
+    normal! m'
+
+    let synstack	= map(synstack(line("."),col(".")), 'synIDattr(v:val, "name")')
+    if  synstack == []
+	return
+
+    endif
+
+    if a:syntax == 'inner'
+
+	let len		= len(synstack)
+	let syntax	= synstack[max([0, len-1])]
+
+    elseif a:syntax == 'outer'
+	let syntax	= synstack[0]
+
+    else
+	let syntax	= a:syntax
+
+    endif
+
+    " there are better method 
+    if count([ 'texDocZone', 'texSectionZone'], syntax)
+	return
+    endif
+
+    let save_ww		= &l:ww
+    set ww		+=b,l
+    let save_pos	= getpos(".")	 
+
+
+    if !count(map(synstack(line("."),col(".")), 'synIDattr(v:val, "name")'), syntax)
+	return
+
+    endif
+
+    while count(map(synstack(line("."),col(".")), 'synIDattr(v:val, "name")'), syntax)
+	normal! h
+	" for some syntax groups do not move to previous line
+	if col(".") == 1 && count(['texStatement', 'texTypeSize'], syntax)
+	    keepjumps normal! h
+	    break
+	endif
+
+    endwhile
+
+    " begin offset
+    if getpos(".")[2] < len(getline("."))
+	call cursor(line("."),col(".")+1)
+
+    else
+	call cursor(line(".")+1, 1)
+
+    endif
+
+    if visualmode() ==# 'V'
+	normal! V
+
+    else
+	normal! v
+
+    endif
+
+    call cursor(save_pos[1], save_pos[2]) 
+    while count(map(synstack(line("."),max([1, min([col("."), len(getline("."))])])), 'synIDattr(v:val, "name")'), syntax) || len(getline(".")) == 0 
+	keepjumps normal! l
+	" for some syntax groups do not move to next line
+	if col(".") == len(getline(".")) && count(['texStatement', 'texTypeSize'], syntax)
+	    keepjumps normal! l
+	    break
+	endif
+    endwhile
+
+    " end offset
+    if len(getline(".")) == 0
+	call cursor(line(".")-1,len(getline(line(".")-1)))
+    endif
+    if count(['texParen', 'texLength', 'Delimiter', 'texStatement', 'texTypeSize', 'texRefZone', 'texSectionMarker', 'texTypeStyle'], syntax)
+	if col(".") > 1
+	    call cursor(line("."),col(".")-1)
+
+	else
+	    call cursor(line(".")-1,len(getline(line(".")-1)))
+
+	endif
+    elseif count(['texMathZoneV', 'texMathZoneW', 'texMathZoneY'], syntax)
+	    call cursor(line("."),col(".")+1)
+
+    endif
+
+    let &l:ww	= save_ww
+endfunction
+vnoremap <silent> <buffer> <Plug>SelectInnerSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('inner')<CR>
+vnoremap <silent> <buffer> <Plug>SelectOuterSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('outer')<CR>
+vmap as		<ESC>:<C-U>call <SID>SelectSyntax('outer')<CR>
+vmap is		<ESC>:<C-U>call <SID>SelectSyntax('inner')<CR>
 " }}}
 
 " select current environment {{{
@@ -188,7 +419,8 @@ function! s:SelectCurrentEnv(seltype)
 		if env =~ '^\'
 			call search('\\.\_\s*\S', 'eW')
 		else
-			call search('}\(\_\s*\[\_[^]]*\]\)\?\_\s*\S', 'eW')
+" 			call search('}\%(\_\s*\[\_[^]]*\]\)\?\%(\_\s*\\label\s*{[^}]*}\)\?\_\s*\S', 'eW')
+			call search('}\%(\_\s*\[\_[^]]*\]\)\?\_\s*\S', 'eW')
 		endif
 	endif
 	if visualmode() ==# 'V'
@@ -367,7 +599,6 @@ endif
 " (to add: optionaly only in gui) 
 " this function should do that for every \texbf on the screen
 " {{{
-hi textBold gui=bold
 " THIS IS TOO SLOW:
 function! HighlightEmphText()
 

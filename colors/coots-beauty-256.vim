@@ -202,6 +202,29 @@ highlight atp_statusoutdir 			ctermfg=grey 	ctermbg=233
 
 highlight link atp_Todo Normal
 
+" hi texlogKeyword		Keyword
+hi texlogPath			guifg=gray38 gui=bold
+
+hi texlogLatexInfo 		guifg=DeepPink4
+hi texlogEndInfo 		guifg=DeepPink4
+hi texlogLatexFontInfo 		guifg=DeepPink4
+hi texlogLatexWarning 		guifg=white gui=bold
+hi texlogLatexFontWarning 	guifg=white gui=bold
+hi texlogPackageWarning		guifg=white gui=bold
+hi texlogPackageInfo 		guifg=DeepPink3
+" hi texlogError 		Error
+hi texlogLineNr			guifg=SlateBlue3
+hi texlogPageNr			guifg=SlateBlue3
+
+hi texlogDocumentClass		guifg=DeepPink3
+hi texlogPackage		guifg=DeepPink3
+hi texlogFile			guifg=DeepPink3
+hi texlogCitation		guifg=DeepPink3
+hi texlogReference		guifg=DeepPink3
+hi texlogScope			guifg=green1 
+
+
+
 highlight ywtxt_todo	guifg=yellow gui=bold
 highlight ywtxt_note	guifg=yellow gui=bold
 

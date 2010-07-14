@@ -3,8 +3,7 @@
 " Maintainer:	Marcin Szamotulski
 " Email:	mszamot [AT] gmail [DOT] com
 
-" This is a small function which appends '/' to b:atp_OutDir if it is not
-" present. 
+" This function appends '/' to b:atp_OutDir if it is not present. 
 "{{{ atplib#outdir
 function! atplib#outdir()
     if b:atp_OutDir !~ "\/$"
@@ -32,14 +31,14 @@ function! atplib#generatelabels(filename)
     let true=1
     let i=0
 
-    " remove the preambule
-    while true == 1
-	if texfile[0] =~ '\\begin\s*{document}'
-		let true=0
-	endif
-	call remove(texfile,0)
-	let i+=1
-    endwhile
+"     " remove the preambule
+"     while true == 1
+" 	if texfile[0] =~ '\\begin\s*{document}'
+" 		let true=0
+" 	endif
+" 	call remove(texfile,0)
+" 	let i+=1
+"     endwhile
 
     let i=0
     while i < len(texfile)
@@ -51,7 +50,7 @@ function! atplib#generatelabels(filename)
 	    let lname	= strpart(lname, 0, end)
     "This can be extended to have also the whole environment which
     "could be shown.
-	    call extend(s:labels, { i+bline+1 : lname })
+	    call extend(s:labels, { i+1 : lname })
 	endif
 	let i+=1 
     endwhile
@@ -1090,6 +1089,8 @@ endfunction
 " a:zones =	a list of zones
 " a:1	  = 	line nr (default: current cursor line)
 " a:2     =	column nr (default: column before the current cursor position)
+" The function doesn't make any checks if the line and column supplied are
+" valid /synstack() function returns 0 rather than [] in such a case/.
 function! atplib#CheckSyntaxGroups(zones,...)
     let line		= a:0 >= 2 ? a:1 : line(".")
     let col		= a:0 >= 2 ? a:2 : max([1, col(".")-1])
@@ -1102,16 +1103,16 @@ endfunction
 "}}}
 " atplib#CopyIndentation {{{1
 function! atplib#CopyIndentation(line)
-    let l:indent=split(a:line,'\s\zs')
-    let l:eindent=""
-    for l:s in l:indent
-	if l:s =~ '^\%(\s\|\t\)'
-	    let l:eindent.=l:s
+    let raw_indent	= split(a:line,'\s\zs')
+    let indent		= ""
+    for char in raw_indent
+	if char =~ '^\%(\s\|\t\)'
+	    let indent.=char
 	else
 	    break
 	endif
     endfor
-    return l:eindent
+    return indent
 endfunction
 "}}}1
 
@@ -1493,7 +1494,6 @@ let l:eindent=atplib#CopyIndentation(l:line)
 
 		" check if at least one of them is closed
 		if len(l:cenv_names) == 0
-" 		    echomsg "cle DEBUG A1"
 		    let l:str=""
 		    for l:uenv in l:env_names
 			if index(g:atp_no_complete,l:uenv) == '-1'
@@ -1689,7 +1689,6 @@ let l:eindent=atplib#CopyIndentation(l:line)
 endfunction
 " imap <F7> <Esc>:call atplib#CloseLastEnvironment()<CR>
 " }}}1
-" }}}1
 " {{{1 atplib#CloseLastBracket
 "
 " Note adding a bracket pair doesn't mean that it will be supported!
@@ -1882,7 +1881,10 @@ endfunction
 " 	bibfiles (\bibliography)
 " 	bibstyle (\bibliographystyle)
 " 	end	 (close \begin{env} with \end{env})
-"
+" 	font encoding
+" 	font family
+" 	font series
+" 	font shape
 
 "ToDo: the completion should be only done if the completed text is different
 "from what it is. But it might be as it is, there are reasons to keep this.
@@ -2198,9 +2200,9 @@ function! atplib#TabCompletion(expert_mode,...)
     "{{{3 brackets
 " TODO: make this dependent on g:atp_bracket_dict
     elseif index(g:atp_completion_active_modes, 'brackets') != -1 && 
-		\ (searchpairpos('(','', ')', 'bnW', "", l:limit_line) != [0, 0] ||  
+		\ (searchpairpos('\%(\\\@<!\\\)\@<!(','', '\%(\\\@<!\\\)\@<!)', 'bnW', "", l:limit_line) != [0, 0] ||  
 		\ searchpairpos('\%(\\begin\s*\|\\end\s*\)\@<!{',	  '', '}',	 'bnW', "", l:limit_line) != [0, 0] || 
-		\ searchpairpos('\[',	  '', '\]',	 'bnW', "", l:limit_line) != [0, 0] )
+		\ searchpairpos('\%(\\\@<!\\\)\@<!\[', '', '\%(\\\@<!\\\)\@<!\]', 'bnW', "", l:limit_line) != [0, 0] )
 	if (!normal_mode &&  index(g:atp_completion_active_modes, 'brackets') != -1 ) ||
 		    \ (l:normal_mode && index(g:atp_completion_active_modes_normal_mode, 'brackets') != -1 )
 	    let b:comp_method='brackets'
@@ -2233,9 +2235,6 @@ function! atplib#TabCompletion(expert_mode,...)
 	" Close inline math
 	if atplib#CheckSyntaxGroups(['texMathZoneV', 'texMathZoneW', 'texMathZoneX', 'texMathZoneY'])
 	    call atplib#CloseLastEnvironment(l:append, 'math')
-	    " THIS IS COOL:
-	    " it is better than CheckOpened and CheckClosed and probably
-	    " faster.
 	else
 " 	    let l:env_opened	= searchpair('\%(\\\@<!%.*\)\@<!\\begin','','\%(\\\@<!%.*\)\@<!\\end','bnW','searchpair("\\%(\\\\\\@<!%.*\\)\\@<!\\\\begin{".matchstr(getline("."),"\\\\begin{\\zs[^}]*\\ze}"),"","\\%(\\\\\\@<!%.*\\)\\@<!\\\\end{".matchstr(getline("."),"\\\\begin{\\zs[^}]*\\ze}"),"nW")',max([1,(line(".")-g:atp_completion_limits[2])]))
 
@@ -2320,9 +2319,8 @@ function! atplib#TabCompletion(expert_mode,...)
 	    endif
 	endif
     " }}}3
-    "{{{3 ------------ PACKAGE
+    "{{{3 ------------ PACKAGES
     elseif l:completion_method == 'package'
-" 	let l:completion_list=deepcopy(g:atp_package_list)    
 	let l:completion_list=atplib#FindFiles("tex","sty")
     "}}}3
     "{{{3 ------------ COLORS
@@ -2728,9 +2726,6 @@ function! atplib#TabCompletion(expert_mode,...)
 " {{{2 make the list of matching completions
     "{{{3 if l:completion_method != close environments && != env_close
     if l:completion_method != 'close environments' && l:completion_method != 'env_close'
-" 		\ l:completion_method != 'font family' &&
-" 		\ l:completion_method != 'font series' &&
-" 		\ l:completion_method != 'font shape'
 	let l:completions=[]
 	    " Packages, environments, labels, bib and input files must match
 	    " at the beginning (in expert_mode).
@@ -2846,7 +2841,7 @@ function! atplib#TabCompletion(expert_mode,...)
     " there was no completion, check if environments are closed.
     " {{{ 3 Final call of CloseLastEnvrionment / CloseLastBracket
     let l:len=len(l:completions)
-    if l:len <= 1
+    if l:len == 0 && (!count(['package', 'bibfiles', 'bibstyles', 'inputfiles'], l:completion_method) || a:expert_mode == 1 )|| l:len == 1
 	if (l:completion_method == 'command' || l:completion_method == 'tikzpicture commands') && 
 	    \ (l:len == 0 || l:len == 1 && l:completions[0] == '\'. l:begin )
 
@@ -2883,8 +2878,8 @@ function! atplib#TabCompletion(expert_mode,...)
 ""}}}2
 "  ToDo: (a challenging one)  
 "  Move one step after completion is done (see the condition).
-"  for this one have to end till complete() function will end, and this I do
-"  not know how to do. 
+"  for this one have to end till complete() function will end, and this can be
+"  done using (g)vim server functions.
 "     let b:check=0
 "     if l:completion_method == 'environment_names' && l:end =~ '\s*}'
 " 	let b:check=1
@@ -2906,7 +2901,7 @@ endfunction
 " }}}1
 
 " Font Preview Functions
-"{{{1
+"{{{1 Font Preview Functions
 " These functions search for fd files and show them in a buffer with filetype
 " 'fd_atp'. There are additional function for this filetype written in
 " fd_atp.vim ftplugin. Distributed with atp.

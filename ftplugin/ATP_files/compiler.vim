@@ -52,7 +52,7 @@ function! s:ViewOutput()
 endfunction
 
 noremap <silent> <Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
-command! -buffer ViewOutput		:call <SID>ViewOutput()<CR>
+command! -buffer ViewOutput		:call <SID>ViewOutput()
 "}}}
 
 " This function gets the pid of the running compiler
@@ -235,16 +235,16 @@ endfunction
 " THE MAIN COMPILER FUNCTION
 " {{{ s:compiler 
 " This is the MAIN FUNCTION which sets the command and calls it.
-" NOTE: the filename argument is not escaped!
+" NOTE: the <filename> argument is not escaped!
 " make a:verbose=verbose or debug or 0
-" 	debug 	-- swich to show errors after compilation.
+" 	debug 	-- switch to show errors after compilation.
 " 	verbose -- show compiling procedure.
 " 	0 	-- compile silently (gives status information if fails)
 function! s:compiler(bibtex, start, runs, verbose, command, filename)
 
     if !has('gui') && a:verbose == 'verbose' && b:atp_running > 0
 	redraw!
-	echomsg "Please wait until compelation stops."
+	echomsg "Please wait until compilation stops."
 	return
     endif
 
@@ -295,7 +295,7 @@ function! s:compiler(bibtex, start, runs, verbose, command, filename)
 	    let l:basename=a:filename
 	endif
 
-	" finaly, set the the output file names. 
+	" finally, set the output file names. 
 	let l:outfile = b:atp_OutDir . fnamemodify(l:basename,":t:r") . l:ext
 	let l:outaux  = b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".aux"
 	let l:outlog  = b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".log"
@@ -318,7 +318,7 @@ function! s:compiler(bibtex, start, runs, verbose, command, filename)
 " TIME: this take 1/3 of time! 0.039
 		if s:xpdfpid() != ""
 		    "if xpdf is running (then we want to reload it).
-		    "This is where I use ps command to check if xpdf is
+		    "This is where I use 'ps' command to check if xpdf is
 		    "running.
 		    let s:xpdfreload = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " -reload"	
 		else
@@ -338,7 +338,7 @@ function! s:compiler(bibtex, start, runs, verbose, command, filename)
 	    endif	
 	endif
 
-" 	IF OPENINIG NON EXISTING OUTPUT FILE
+" 	IF OPENING NON EXISTING OUTPUT FILE
 "	only xpdf needs to be run before (we are going to reload it)
 	if a:start == 1 && b:atp_Viewer == "xpdf"
 	    let s:start = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . b:atp_ViewerOptions . " & "
@@ -474,7 +474,7 @@ endfunction
 
 " AUTOMATIC TEX PROCESSING 
 " {{{1 s:auTeX
-" To Do: we can now check if the last env is closed and run latex if it is, to
+" To Do: we can now check if the last environment is closed and run latex if it is, to
 " not run latex if the 
 function! s:auTeX()
     let mode 	= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
@@ -578,7 +578,7 @@ nnoremap <silent> <Plug>BibtexVerbose	:call <SID>Bibtex("verbose")<CR>
 " possible flags:
 " e	- errors (or empty flag)
 " w	- all warning messages
-" c	- citasion warning messages
+" c	- citation warning messages
 " r	- reference warning messages
 " f	- font warning messages
 " fi	- font warning and info messages
@@ -733,7 +733,7 @@ command! -buffer -nargs=? 	SetErrorFormat 	:call <SID>SetErrorFormat(<f-args>)
 "{{{ s:ShowErrors
 " each argument can be a word in flags as for s:SetErrorFormat (except the
 " word 'whole') + two other flags: all (include all errors) and ALL (include
-" all errors and dont ignore any line - this ovwerides the variables
+" all errors and don't ignore any line - this overrides the variables
 " g:atp_ignore_unmatched and g:atp_show_all_lines.
 function! s:ShowErrors(...)
 
@@ -760,38 +760,27 @@ function! s:ShowErrors(...)
     
     " set errorformat 
     let l:arg = ( a:0 > 0 ? a:1 : "e" )
-    let b:arg = l:arg
+    if l:arg =~ 'o'
+	OpenLog
+	return
+    endif
     call s:SetErrorFormat(l:arg)
 
     let l:show_message = ( a:0 >= 2 ? a:2 : 1 )
 
     " read the log file
-	cg
-"     merge the lines of qflist (it is not necessary)
-"     let qflist = getqflist()
-"     for entry in qflist
-" 	call substitute(entry['text'],'\_s\+','','g')
-" 	call remove(entry, 'valid')
-" 	call extend(entry, { 'filename' : b:atp_MainFile })
-"     endfor
-"     call setqflist(qflist)
-    " list errors
-"     try
-" 	cl
-"     catch /No Errors/
-" 	echomsg " :)"
-" 	return ":)"
-"     endtry
-"     return 1
-	if len(getqflist()) == 0 
-	    if l:show_message
-		echomsg "no errors"
-	    endif
-	    return ":)"
-	else
-	    cl
-	    return 1
+    cg
+
+    " final stuff
+    if len(getqflist()) == 0 
+	if l:show_message
+	    echomsg "no errors"
 	endif
+	return ":)"
+    else
+	cl
+	return 1
+    endif
 endfunction
 command! -buffer -nargs=? -complete=custom,ListErrorsFlags 	ShowErrors 	:call <SID>ShowErrors(<f-args>)
 "}}}

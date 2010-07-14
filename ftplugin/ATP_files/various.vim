@@ -2,25 +2,12 @@
 "These are various tools.
 
 " This is the wrap selection function.
-" {{{1 WrapSelection
-" ------- Wrap Seclection ----------------------------
+" {{{ WrapSelection
 function! s:WrapSelection(wrapper,...)
 
-    if a:0 == 0
-	let l:end_wrapper='}'
-    else
-	let l:end_wrapper=a:1
-    endif
-    if a:0 >= 2
-	let l:cursor_pos=a:2
-    else
-	let l:cursor_pos="end"
-    endif
-    if a:0 >= 3
-	let l:new_line=a:3
-    else
-	let l:new_line=0
-    endif
+    let l:end_wrapper 	= ( a:0 >= 1 ? a:1 : '}' )
+    let l:cursor_pos	= ( a:0 >= 2 ? a:2 : 'end' )
+    let l:new_line	= ( a:0 >= 3 ? a:3 : 0 )
 
 "     let b:new_line=l:new_line
 "     let b:cursor_pos=l:cursor_pos
@@ -73,44 +60,31 @@ function! s:WrapSelection(wrapper,...)
 	    " in seprate lines
 	    let l:indent=atplib#CopyIndentation(l:begin_line)
 	    if l:bbegin_line !~ '^\s*$'
-" 		let b:debug.=1
 		let l:begin_choice=1
 		call setline(l:begin[1],l:bbegin_line)
 		call append(l:begin[1],l:indent.a:wrapper) " THERE IS AN ISSUE HERE!
 		call append(copy(l:begin[1])+1,l:indent.substitute(l:ebegin_line,'^\s*','',''))
 		let l:end[1]+=2
-" 		return
 	    elseif l:bbegin_line =~ '^\s\+$'
-" 		let b:debug.=2
 		let l:begin_choice=2
 		call append(l:begin[1]-1,l:indent.a:wrapper)
 		call append(l:begin[1],l:begin_line.l:ebegin_line)
 		let l:end[1]+=2
 	    else
-" 		let b:debug.=3
 		let l:begin_choice=3
-" 		let l:indent_b=atplib#CopyIndentation(l:begin_line)
 		call append(copy(l:begin[1])-1,l:indent.a:wrapper)
-" 		call append(l:begin[1],l:ebegin_line)
 		let l:end[1]+=1
 	    endif
 	    if l:eend_line !~ '^\s*$'
-" 		let b:debug.=4
 		let l:end_choice=4
-" 		let l:indent_e=atplib#CopyIndentation(l:bend_line)
 		call setline(l:end[1],l:bend_line)
 		call append(l:end[1],l:indent.l:end_wrapper)
 		call append(copy(l:end[1])+1,l:indent.substitute(l:eend_line,'^\s*','',''))
 	    else
-" 		let b:debug.=5
 		let l:end_choice=5
-" 		let l:indent=atplib#CopyIndentation(l:bend_line)
-" 		call setline(l:end[1],l:bend_line)
 		call append(l:end[1],l:indent.l:end_wrapper)
 	    endif
-	    " indent lines in the middle: 
 	    if (l:end[1] - l:begin[1]) >= 0
-" 		let b:debug.=6
 		if l:begin_choice == 1
 		    let i=2
 		elseif l:begin_choice == 2
@@ -139,20 +113,16 @@ function! s:WrapSelection(wrapper,...)
 	let l:end_l=strpart(l:begin_line,l:end[2])
 	if l:new_line == 0
 	    " inline
-" 	    let b:debug="X1"
 	    let l:line=l:begin_l.a:wrapper.l:middle_l.l:end_wrapper.l:end_l
 	    call setline(l:begin[1],l:line)
 	    let l:end[2]+=len(a:wrapper)+1
 	else
-" 	    let b:debug="X1"
 	    " in seprate lines
-
 	    let b:begin_l=l:begin_l
 	    let b:middle_l=l:middle_l
 	    let b:end_l=l:end_l
 
 	    let l:indent=atplib#CopyIndentation(l:begin_line)
-" 	    let b:debug="  ".len(l:indent)
 
 	    if l:begin_l =~ '\S' 
 		call setline(l:begin[1],l:begin_l)
@@ -186,12 +156,83 @@ function! s:WrapSelection(wrapper,...)
 	keepjumps call setpos(".",l:begin)
     endif
 endfunction
-command! -buffer -nargs=? -range WrapSelection		:call <SID>WrapSelection(<args>)
-vmap <Plug>WrapSelection	:<C-U>call <SID>WrapSelection('')<CR>i
+command! -buffer -nargs=? -range WrapSelection	:call <SID>WrapSelection(<args>)
+vmap <Plug>WrapSelection			:<C-U>call <SID>WrapSelection('')<CR>i
 
-"}}}1
+"}}}
+"{{{ Inteligent Wrap Selection 
+" This function selects the correct font wrapper for math/text environment.
+" the rest of arguments are the same as for WrapSelection (and are passed to
+" WrapSelection function)
+" a:text_wrapper	= [ 'begin_text_wrapper', 'end_text_wrapper' ] 
+" a:math_wrapper	= [ 'begin_math_wrapper', 'end_math_wrapper' ] 
+" if end_(math\|text)_wrapper is not given '}' is used (but neverthe less both
+" arguments must be lists).
+function! s:InteligentWrapSelection(text_wrapper, math_wrapper, ...)
+
+    let cursor_pos	= ( a:0 >= 1 ? a:2 : 'end' )
+    let new_line	= ( a:0 >= 2 ? a:3 : 0 )
+
+    let MathZones = copy(g:atp_MathZones)
+    if b:atp_TexFlavour == 'plaintex'
+	call add(MathZones, 'texMathZoneY')
+    endif
+
+    " select the correct wrapper
+    if atplib#CheckSyntaxGroups(MathZones)
+	let begin_wrapper 	= a:math_wrapper[0]
+	let end_wrapper 	= get(a:math_wrapper,1, '}')
+    else
+	let begin_wrapper	= a:text_wrapper[0]
+	let end_wrapper		= get(a:text_wrapper,1, '}')
+    endif
+
+    " if the wrapper is empty return
+    " useful for wrappers which are valid only in one mode.
+    if begin_wrapper == ""
+	return
+    endif
+
+    call s:WrapSelection(begin_wrapper, end_wrapper, cursor_pos, new_line) 
+endfunction
+command! -buffer -nargs=? -range InteligentWrapSelection	:call <SID>InteligentWrapSelection(<args>)
+vmap <Plug>InteligentWrapSelection				:<C-U>call <SID>InteligentWrapSelection('')<CR>i
+"}}}
+
 
 " Editing Toggle Functions
+"{{{ Variables
+if !exists("g:atp_no_toggle_environments")
+    let g:atp_no_toggle_environments=[ 'document', 'tikzpicture', 'picture']
+endif
+if !exists("g:atp_toggle_environment_1")
+    let g:atp_toggle_environment_1=[ 'center', 'flushleft', 'flushright', 'minipage' ]
+endif
+if !exists("g:atp_toggle_environment_2")
+    let g:atp_toggle_environment_2=[ 'enumerate', 'itemize', 'list', 'description' ]
+endif
+if !exists("g:atp_toggle_environment_3")
+    let g:atp_toggle_environment_3=[ 'quotation', 'quote', 'verse' ]
+endif
+if !exists("g:atp_toggle_environment_4")
+    let g:atp_toggle_environment_4=[ 'theorem', 'proposition', 'lemma' ]
+endif
+if !exists("g:atp_toggle_environment_5")
+    let g:atp_toggle_environment_5=[ 'corollary', 'remark', 'note' ]
+endif
+if !exists("g:atp_toggle_environment_6")
+    let g:atp_toggle_environment_6=[  'equation', 'align', 'array', 'alignat', 'gather', 'flalign'  ]
+endif
+if !exists("g:atp_toggle_environment_7")
+    let g:atp_toggle_environment_7=[ 'smallmatrix', 'pmatrix', 'bmatrix', 'Bmatrix', 'vmatrix' ]
+endif
+if !exists("g:atp_toggle_environment_8")
+    let g:atp_toggle_environment_8=[ 'tabbing', 'tabular']
+endif
+if !exists("g:atp_toggle_labels")
+    let g:atp_toggle_labels=1
+endif
+"}}}
 "{{{ ToggleStar
 " this function adds a star to the current environment
 " todo: to doc.
@@ -233,43 +274,9 @@ endfunction
 command! -buffer 	ToggleStar   		:call <SID>ToggleStar()
 nnoremap <silent> <Plug>ToggleStar		:ToggleStar
 "}}}
-"{{{2 ToggleEnvironment
+"{{{ ToggleEnvironment
 " this function toggles envrionment name.
 " Todo: to doc.
-
-"{{{ Variables
-if !exists("g:atp_no_toggle_environments")
-    let g:atp_no_toggle_environments=[ 'document', 'tikzpicture', 'picture']
-endif
-if !exists("g:atp_toggle_environment_1")
-    let g:atp_toggle_environment_1=[ 'center', 'flushleft', 'flushright', 'minipage' ]
-endif
-if !exists("g:atp_toggle_environment_2")
-    let g:atp_toggle_environment_2=[ 'enumerate', 'itemize', 'list', 'description' ]
-endif
-if !exists("g:atp_toggle_environment_3")
-    let g:atp_toggle_environment_3=[ 'quotation', 'quote', 'verse' ]
-endif
-if !exists("g:atp_toggle_environment_4")
-    let g:atp_toggle_environment_4=[ 'theorem', 'proposition', 'lemma' ]
-endif
-if !exists("g:atp_toggle_environment_5")
-    let g:atp_toggle_environment_5=[ 'corollary', 'remark', 'note' ]
-endif
-if !exists("g:atp_toggle_environment_6")
-    let g:atp_toggle_environment_6=[  'equation', 'align', 'array', 'alignat', 'gather', 'flalign'  ]
-endif
-if !exists("g:atp_toggle_environment_7")
-    let g:atp_toggle_environment_7=[ 'smallmatrix', 'pmatrix', 'bmatrix', 'Bmatrix', 'vmatrix' ]
-endif
-if !exists("g:atp_toggle_environment_8")
-    let g:atp_toggle_environment_8=[ 'tabbing', 'tabular']
-endif
-if !exists("g:atp_toggle_labels")
-    let g:atp_toggle_labels=1
-endif
-"}}}
-
 " the argument specifies the speed (if -1 then toggle back)
 " default is '1'
 function! s:ToggleEnvironment(...)
@@ -366,14 +373,24 @@ nnoremap <silent> <Plug>ToggleEnvForward		:call <SID>ToggleEnvironment(1)
 nnoremap <silent> <Plug>ToggleEnvBackward		:call <SID>ToggleEnvironment(-1)
 "}}}
 
+
 "{{{ Help 
 function! s:TeXdoc(...)
-    let texdoc_arg=""
+    let texdoc_arg	= ""
     for i in range(1,a:0)
 	let texdoc_arg.=" " . a:{i}
     endfor
-    echo system("texdoc " . texdoc_arg )
+    if texdoc_arg == ""
+	let texdoc_arg 	= "-m " . g:atp_TeXdocDefault
+    endif
+    " If the file is a text file texdoc is 'cat'-ing it into the terminal,
+    " we use echo to capture the output. 
+    " The rediraction prevents showing texdoc info messages which are not that
+    " important, if a document is not found texdoc sends a message to the standard
+    " output not the error.
+    echo system("texdoc " . texdoc_arg . " 2>/dev/null")
 endfunction
+
 function! s:TeXdoc_complete(ArgLead, CmdLine, CursorPos)
     let texdoc_alias_files=split(system("texdoc -f"), '\n')
     call filter(texdoc_alias_files, "v:val =~ 'active'")
@@ -385,22 +402,23 @@ function! s:TeXdoc_complete(ArgLead, CmdLine, CursorPos)
 
     call filter(aliases, "v:val =~ 'alias'")
     call filter(map(aliases, "matchstr(v:val, '^\\s*alias\\s*\\zs\\S*\\ze\\s*=')"),"v:val !~ '^\\s*$'")
-    let b:files=copy(aliases)
 
     return filter(copy(aliases), "v:val =~ '^' . a:ArgLead")
 endfunction
 command -buffer -nargs=* -complete=customlist,<SID>TeXdoc_complete TeXdoc 	:call <SID>TeXdoc(<f-args>)
-nnoremap <silent> <buffer> <Plug>TeXdoc		:TeXdoc 
+nnoremap <silent> <buffer> <Plug>TeXdoc						:TeXdoc 
 "}}}
 
 " This function deletes tex specific output files (exept the pdf/dvi file, unless
 " g:atp_delete_output is set to 1 - then also delets the current output file)
 "{{{1 Delete
-if !exists("*Delete")
-function! Delete()
+function! s:Delete()
+
     call atplib#outdir()
+
     let l:atp_tex_extensions=deepcopy(g:atp_tex_extensions)
-    let s:error=0
+    let error=0
+
     if g:atp_delete_output
 	if b:atp_TexCompiler == "pdftex" || b:atp_TexCompiler == "pdflatex"
 	    let l:ext="pdf"
@@ -409,38 +427,70 @@ function! Delete()
 	endif
 	call add(l:atp_tex_extensions,l:ext)
     endif
+
     for l:ext in l:atp_tex_extensions
 	if executable(g:rmcommand)
 	    if g:rmcommand =~ "^\s*rm\p*" || g:rmcommand =~ "^\s*perltrash\p*"
 		if l:ext != "dvi" && l:ext != "pdf"
 		    let l:rm=g:rmcommand . " " . shellescape(b:atp_OutDir) . "*." . l:ext . " 2>/dev/null && echo Removed ./*" . l:ext . " files"
 		else
+
 		    let l:rm=g:rmcommand . " " . fnamemodify(b:atp_MainFile,":r").".".l:ext . " 2>/dev/null && echo Removed " . fnamemodify(b:atp_MainFile,":r").".".l:ext
 		endif
 	    endif
-" 	    echomsg "DEBUG " l:rm
-	echo system(l:rm)
+	    echo system(l:rm)
 	else
-	    let s:error=1
-		let l:file=b:atp_OutDir . fnamemodify(expand("%"),":t:r") . "." . l:ext
-		if delete(l:file) == 0
-		    echo "Removed " . l:file 
-		endif
+	    let error=1
+	    let l:file=b:atp_OutDir . fnamemodify(expand("%"),":t:r") . "." . l:ext
+	    if delete(l:file) == 0
+		echo "Removed " . l:file 
+	    endif
 	endif
     endfor
 
-
-" 	if s:error
-" 		echo "Pleas set g:rmcommand to clear the working directory"
+" 	if error
+" 		echo "Please set g:rmcommand to clear the working directory"
 " 	endif
 endfunction
-endif
+command -buffer	Delete		:call <SID>Delete()<CR>
+nmap <buffer> <Plug>Delete	:call <SID>Delete()<CR>
 "}}}1
 
 "{{{1 OpenLog, TexLog, TexLog Buffer Options, PdfFonts, YesNoCompletion
-function! OpenLog()
+"{{{2 s:Search function for Log Buffer
+function! s:Search(pattern, flag)
+    let @/	=a:pattern
+    call search(a:pattern, a:flag)
+endfunction
+function! s:Searchpair(start, middle, end, flag)
+    if getline(".")[col(".")-1] == ')' 
+	let flag	= a:flag.'b'
+    else
+	let flag	= substitute(a:flag, 'b', '', 'g')
+    endif
+    call searchpair(a:start, a:middle, a:end, flag)
+endfunction
+"}}}
+function! s:OpenLog()
     if filereadable(&l:errorfile)
-	exe "tabe +set\\ nospell\\ ruler " . &l:errorfile
+	exe "rightbelow split +setl\\ nospell\\ ruler\\ syn=log_atp\\ autoread " . &l:errorfile
+	map <buffer> q :bd<CR>
+	map <silent> <buffer> w :call <SID>Search('Warning', 'W')<CR>
+	map <silent> <buffer> W :call <SID>Search('Warning', 'bW')<CR>
+	map <silent> <buffer> c :call <SID>Search('LaTeX Warning: Citation', 'W')<CR>
+	map <silent> <buffer> C :call <SID>Search('LaTeX Warning: Citation', 'bW')<CR>
+	map <silent> <buffer> r :call <SID>Search('LaTeX Warning: Reference', 'W')<CR>
+	map <silent> <buffer> R :call <SID>Search('LaTeX Warning: Reference', 'bW')<CR>
+	map <silent> <buffer> e :call <SID>Search('^!', 'W')<CR>
+	map <silent> <buffer> E :call <SID>Search('^!', 'bW')<CR>
+	map <silent> <buffer> f :call <SID>Search('Font \%(Info\\|Warning\)', 'W')<CR>
+	map <silent> <buffer> F :call <SID>Search('Font \%(Info\\|Warning\)', 'bW')<CR>
+	map <silent> <buffer> p :call <SID>Search('Package', 'W')<CR>
+	map <silent> <buffer> P :call <SID>Search('Package', 'bW')<CR>
+	map <silent> <buffer> i :call <SID>Search('Info', 'W')<CR>
+	map <silent> <buffer> I :call <SID>Search('Info', 'bW')<CR>
+	map <silent> <buffer> % :call <SID>Searchpair('(', '', ')', 'w')<CR>
+	silent execute "%g/^\s*$/d"
     else
 	echo "No log file"
     endif
@@ -453,7 +503,7 @@ if &buftype == 'quickfix'
 	setlocal modifiable
 	setlocal autoread
 endif	
-function! TexLog(options)
+function! s:TexLog(options)
     if executable("texloganalyser")
        let s:command="texloganalyser " . a:options . " " . &l:errorfile
        echo system(s:command)
@@ -464,7 +514,7 @@ endfunction
 command! -buffer TexLog			:call <SID>TexLog()
 nnoremap <silent> <buffer> <Plug>TexLog	:call <SID>TexLog()<CR>
 
-function! PdfFonts()
+function! s:PdfFonts()
     if b:atp_OutDir !~ "\/$"
 	b:atp_OutDir=b:atp_OutDir . "/"
     endif
@@ -575,8 +625,8 @@ endfun
     endif
 endfunction
 " The command only prints the output file.
-command! -complete=custom,ListPrinters  -buffer -nargs=* SshPrint :call <SID>SshPrint("", <f-args>)
-nnoremap <silent> <buffer> <Plug>SshPrint	:SshPrint
+command! -complete=custom,<SID>ListPrinters  -buffer -nargs=* SshPrint 	:call <SID>SshPrint("", <f-args>)
+nnoremap <silent> <buffer> <Plug>SshPrint				:SshPrint
 
 fun! s:Lpstat()
     if exists("g:apt_ssh") 
@@ -590,12 +640,11 @@ fun! s:Lpstat()
 	echo system("ssh " . g:atp_ssh . " lpstat -l ")
     endif
 endfunction
-command! -buffer Lpstat	:call <SID>Lpstat()
-nnoremap <silent> <buffer> <Plug>Lpstat		:call <SID>Lpstat()<CR>
+command! -buffer Lpstat			:call <SID>Lpstat()
+nnoremap <silent> <buffer> <Plug>Lpstat	:call <SID>Lpstat()<CR>
 
 " it is used for completetion of the command SshPrint
-if !exists("*ListPrinters")
-function! ListPrinters(A,L,P)
+function! s:ListPrinters(A,L,P)
     if exists("g:atp_ssh") && g:atp_ssh !~ '@localhost' && g:atp_ssh != ""
 	let l:com="ssh -q " . g:atp_ssh . " lpstat -a | awk '{print $1}'"
     else
@@ -603,14 +652,14 @@ function! ListPrinters(A,L,P)
     endif
     return system(l:com)
 endfunction
-endif
+command! -buffer ListPrinters	:echo <SID>ListPrinters("", "", "")
 "}}}1
 
 " ToDo noto
 " {{{1 ToDo
 "
 " TODO if the file was not found ask to make one.
-function! s:ToDo(keyword,stop,...)
+function! ToDo(keyword,stop,...)
 
     if a:0 == 0
 	let bufname	= bufname("%")
@@ -665,8 +714,8 @@ function! s:ToDo(keyword,stop,...)
     endfor
     echohl None
 endfunction
-command! -buffer -nargs=? -complete=buffer ToDo		:call <SID>ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
-command! -buffer -nargs=? -complete=buffer Note		:call <SID>ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
+command! -buffer -nargs=? -complete=buffer ToDo		:call ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
+command! -buffer -nargs=? -complete=buffer Note		:call ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
 " }}}1
 
 " This functions reloads ATP (whole or just a function)

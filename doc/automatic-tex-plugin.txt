@@ -255,8 +255,8 @@ your tex compiler, see |atp-variable-b:texcommand|.
 
 Below I explain commands (functions) which are accesible: 
 
-							*atp-TEX()*
-map \l, map \d,imap \l, :TEX [mode]
+:TEX [mode]						*atp-command-TEX*
+map \l, map \d,imap \l
 	If anyway you want to run TeX yourself but you do not want to see the
 	output this is the right tool. This runs TeX in 'nonstopmode'. You can
 	specify an argument <runs> which tells how many consecutive runs of
@@ -285,12 +285,11 @@ map \l, map \d,imap \l, :TEX [mode]
 	\d is mapped to :TEX debug and \l to :TEX (thus it uses your default
 	debug mode).
 
-							*atp-command-VTEX*
-map <F5>,imap <F5>, :VTEX 
+:VTEX 							*atp-command-VTEX*
+map <F5>,imap <F5> 
 	This is equivalent to ':TEX verbose'.
 
-						*atp-command-ShowErrors*
-:ShowErrors <flag>
+:ShowErrors <flag>					*atp-command-ShowErrors*
 	This command shows error/warning messages. It sets the |'errorformat'|
 	variable accordingly to the flag, which is a word made of letters:
 >
@@ -306,13 +305,14 @@ map <F5>,imap <F5>, :VTEX
 					for example fd files that LaTeX is using
 		p		- show packages loaded by tex 
 				    (messages which start with 'Package: ')
+		all		- show all the log file		    
+		o		- open the log file in a new buffer (split).
 <
-	If none flag is given 'e' is used.
-	Example:
->
+	If none flag is given 'e' is used.  If 'o' flag is uesd the split
+	buffer with log message has a map 'q' to ':bd'.  
+	Example: >
 		:ShowErrors rc
-<
-	will show all reference and citation warnings.
+<	will show all reference and citation warnings.
 
 ShowErrors maps:					*atp-command-ShowErrors-maps* 
 
@@ -323,8 +323,8 @@ ShowErrors maps:					*atp-command-ShowErrors-maps*
 <F6>+f			to see font warnings 	(:ShowErrors f)
 
 this is not a texloganalyzer mapping but it is a good place to mention it:
-<F6>+l			to open log file in another tab
-			this is a mapping to a function called |OpenLog()|.
+<F6>+l			to open log file in a new split window
+			this is a mapping to the |atp-command-OpenLog|.
 
 	
 						*atp-command-SetErrorFormat* 
@@ -444,11 +444,11 @@ map \v,map <F3>, imap \v, imap <F3>
 
 							*atp-command-OpenLog*
 :OpenLog, map <F6>l, imap <F6>l
-	Opens log file in a new tab with two options (which are set
-	locally): ruler, nospell.	
+	Opens log file in a new split window with two options (which are set
+	locally): ruler, nospell, and a map 'q' to ':bd'.	
 
-	You can also use the standard command (distributed with Vim)
-	":Texplore" to see log,aux,... files.
+	You can also use the command ':Explore' to see log,aux,... files
+	(which is a part of 'netrw' vim plugin).
 
 							*atp-command-Delete*
 map <F6>d
@@ -492,8 +492,7 @@ map \p, :SshPrint
 		:ShowOptions v
 <		
 							*atp-command-WrapSelection*
-WrapSelection(<begin_wrapper>,[<end_wrapper>,<cursor_pos>,<new_lines>])				
-:WrapSelection
+:WrapSelection <begin_wrapper>,[<end_wrapper>,<cursor_pos>,<new_lines>]
 
 	Puts selected text inside begin_wrapper:<end_wrapper> and sets the
 	cursor position according to the variables <cursor_pos>. Possible values
@@ -506,71 +505,83 @@ WrapSelection(<begin_wrapper>,[<end_wrapper>,<cursor_pos>,<new_lines>])
 	in seperate lines (the begin line and end line are split), this is
 	useful for puting text into and evinronment \begin{}:\end{}. 
 
-	These are the provided vmaps:	
->
-	    vmap <LocalLeader>rm	:WrapSelection '\textrm{'<CR>
-	    vmap <LocalLeader>em	:WrapSelection '\emph{'<CR>
-	    vmap <LocalLeader>it	:WrapSelection '\textit{'<CR>
-	    vmap <LocalLeader>sf	:WrapSelection '\textsf{'<CR>
-	    vmap <LocalLeader>tt	:WrapSelection '\texttt{'<CR>
-	    vmap <LocalLeader>bf	:WrapSelection '\textbf{'<CR>
-	    vmap <LocalLeader>sl	:WrapSelection '\textsl{'<CR>
-	    vmap <LocalLeader>sc	:WrapSelection '\textsc{'<CR>
-	    vmap <LocalLeader>up	:WrapSelection '\textup{'<CR>
-	    vmap <LocalLeader>mbf	:WrapSelection '\mathbf{'<CR>
-	    vmap <LocalLeader>mit	:WrapSelection '\mathit{'<CR>
-	    vmap <LocalLeader>msf	:WrapSelection '\mathsf{'<CR>
-	    vmap <LocalLeader>mtt	:WrapSelection '\mathtt{'<CR>
-	    vmap <LocalLeader>mn	:WrapSelection '\mathnormal{'<CR>
-	    vmap <LocalLeader>mcal	:WrapSelection '\mathcal{'<CR>
-	    vmap <LocalLeader>mcal	:WrapSelection '\mathcal{'<CR>
-	    vmap <LocalLeader>c		:WrapSelection '\textcolor{}{','}','10'<CR>
-	    vmap <LocalLeader>c		:WrapSelection '\textcolor{}{','}','10'<CR>
-	    vmap <LocalLeader>f		:WrapSelection '{\usefont{'.g:atp_font_encoding.'}{}{}{}\selectfont ', '}',(len(g:atp_font_encoding)+11)<CR>
-<
-	The variable:						 *atp-variable-g:atp_font_encoding*
->
+	The command arguments should be separated with commas (see |<args>|).
+
+							*atp-command-InteligentWrapSelection*
+:InteligentWrapSelection <math_wrapper_pair>,<text_wrapper_pair>,[<cursor_pos>,<new_lines>]
+
+	Puts the selected text inside <math_wrapper_pair> if the cursor stands
+	in mathematics otherwise inside <text_wrapper_pair>.
+	<math_wrapper_pair> <text_wrapper_pair> are vim lists of length at
+	least 1, the first wrapper is the opening and the second is the
+	closing one (if not given the default '}' is used. The other arguments
+	are as for |atp-command-WrapSelection|. If the opening leader in is not
+	given then this command is not wrapping the text (see below for the
+	suggested map '\tx') 
+
+	The command arguments should be separated with commas (see |<args>|).
+
+	These are the provided maps in visual mode: >
+	    vmap <buffer> \rm	:<C-U>InteligentWrapSelection ['\\textrm{'],	['\\mathrm{']<CR>
+	    vmap <buffer> \em	:<C-U>InteligentWrapSelection ['\\emph{'],	['\\mathit{']<CR>
+	    vmap <buffer> \it	:<C-U>InteligentWrapSelection ['\\textit{'],	['\\mathit{']<CR>
+	    vmap <buffer> \sf	:<C-U>InteligentWrapSelection ['\\textsf{'],	['\\mathsf{']<CR>
+	    vmap <buffer> \tt	:<C-U>InteligentWrapSelection ['\\texttt{'], 	['\\mathtt{']<CR>
+	    vmap <buffer> \bf	:<C-U>InteligentWrapSelection ['\\textbf{'],	['\\mathbf{']<CR>
+	    vmap <buffer> \bb	:<C-U>InteligentWrapSelection ['\\textbf{'],	['\\mathbb{']<CR>
+	    vmap <buffer> \sl	:<C-U>WrapSelection '\\textsl{'<CR>
+	    vmap <buffer> \sc	:<C-U>WrapSelection '\\textsc{'<CR>
+	    vmap <buffer> \up	:<C-U>WrapSelection '\\textup{'<CR>
+	    vmap <buffer> \md	:<C-U>WrapSelection '\\textmd{'<CR>
+	    vmap <buffer> \n	:<C-U>InteligentWrapSelection ['\\textnormal{'],['\\mathnormal{']<CR>
+	    vmap <buffer> \cal	:<C-U>InteligentWrapSelection [''],['\\mathcal{']<CR>
+	    vmap <LocalLeader>f					:WrapSelection '{\usefont{'.g:atp_font_encoding.'}{}{}{}\selectfont ', '}',(len(g:atp_font_encoding)+11)<CR>
+<   	Suggested maps: >
+	    vmap <buffer> \tx	:<C-U>InteligentWrapSelection [''],['\\text{']<CR>
+	    vmap <buffer> \in	:<C-U>InteligentWrapSelection [''],['\\intertext{']<CR>"
+<	The leader '\' in above commands is configurable: the value of
+	g:atp_vmap_text_font_leader is used (the default is '\').
+
+	Another provided wrapper: >
+	    vmap <buffer> \f :WrapSelection 
+	         \ '{\\usefont{".g:atp_font_encoding."}{}{}{}\\selectfont ', '}', '(len(g:atp_font_encoding)+11)'<CR>
+<	Where the variable: >
 	    g:atp_font_encoding
-<
-	stores the default encoding which is 'OT1', unless you use fontenc
+<	stores the default encoding which is 'OT1', unless you use fontenc
 	package, then the default for fontenc is used (the last defined in
 	\usepackage[...]{fontenc} see the 'Latex2e font selection'
 	/font user guide/ available on CTAN).
->
-		vmap m				:WrapSelection '\(', '\)'<CR>
-		vmap M				:WrapSelection '\[', '\]'<CR>
-		vmap <LocalLeader>(		:WrapSelection '(', ')', 'begin'<CR>
-		vmap <LocalLeader>[		:WrapSelection '[', ']', 'begin'<CR>
-		vmap <LocalLeader>{		:WrapSelection '{', '}', 'begin'<CR>
-		vmap <LocalLeader>)		:WrapSelection '(', ')', 'end'<CR>
-		vmap <LocalLeader>]		:WrapSelection '[', ']', 'end'<CR>
-		vmap <LocalLeader>}		:WrapSelection '{', '}', 'end'<CR>
-		vmap <LocalLeader>b(		:WrapSelection '\left(', '\right)', 'begin'<CR>
-		vmap <LocalLeader>b[		:WrapSelection '\left[', '\right]', 'begin'<CR>
-		vmap <LocalLeader>b(		:WrapSelection '\left(', '\right)', 'begin'<CR>
-		vmap <LocalLeader>b[		:WrapSelection '\left[', '\right]', 'end'<CR>
-		vmap <LocalLeader>b{		:WrapSelection '\left{', '\right}', 'end'<CR>
-		vmap <LocalLeader>b{		:WrapSelection '\left{', '\right}', 'end'<CR>
-< 	And the maps to put the selected text into an environment:
->
-		vmap <LocalLeader>C	:WrapSelection '\begin{center}','\end{center}','0','1'<CR>
-		vmap <LocalLeader>R	:WrapSelection '\begin{flushright}','\end{flushright}','0','1'<CR>
-		vmap <LocalLeader>L	:WrapSelection '\begin{flushleft}','\end{flushleft}','0','1'<CR>
->
-		:WrapSelection 'textbf'
-<
-	(note that the arguments for this command must be put in ':' or ":")
-   	the highlighted text will put inside \textbf{ }. You can also use
-	a wrapper which was yanked into a register:
->
-		:WrapSelection(@a)
-<
-  	This will work not only in visual mode, but always will operate on
-	last selected text. So if you accidentaly lost the selection you can
-	still use this commad (but not the maps)!
 
-TOC([skip])							*atp-command-TOC*
-map \t, :TOC
+	Other wrappers: >
+	    vmap m			:WrapSelection '\(', 	'\)'<CR>
+	    vmap M			:WrapSelection '\[', 	'\]'<CR>
+	    vmap <LocalLeader>(		:WrapSelection '(', 	')', 	'begin'<CR>
+	    vmap <LocalLeader>[		:WrapSelection '[', 	']', 	'begin'<CR>
+	    vmap <LocalLeader>{		:WrapSelection '{', 	'}', 	'begin'<CR>
+	    vmap <LocalLeader>)		:WrapSelection '(', 	')', 	'end'<CR>
+	    vmap <LocalLeader>]		:WrapSelection '[', 	']', 	'end'<CR>
+	    vmap <LocalLeader>}		:WrapSelection '{', 	'}', 	'end'<CR>
+	    vmap <LocalLeader>b(	:WrapSelection '\left(', '\right)', 'begin'<CR>
+	    vmap <LocalLeader>b[	:WrapSelection '\left[', '\right]', 'begin'<CR>
+	    vmap <LocalLeader>b(	:WrapSelection '\left(', '\right)', 'begin'<CR>
+	    vmap <LocalLeader>b[	:WrapSelection '\left[', '\right]', 'end'<CR>
+	    vmap <LocalLeader>b{	:WrapSelection '\left{', '\right}', 'end'<CR>
+	    vmap <LocalLeader>b{	:WrapSelection '\left{', '\right}', 'end'<CR>
+< 	And the maps to put the selected text into an environment: >
+	    vmap <LocalLeader>C	:WrapSelection '\begin{center}',	'\end{center}',		'0','1'<CR>
+	    vmap <LocalLeader>R	:WrapSelection '\begin{flushright}',	'\end{flushright}',	'0','1'<CR>
+	    vmap <LocalLeader>L	:WrapSelection '\begin{flushleft}',	'\end{flushleft}',	'0','1'<CR>
+<	(note that the arguments for this command must be put in ':' or ":")
+   	the highlighted text will put inside \textbf{ }. 
+
+	You can also use a wrapper which was yanked into register 'a': >
+		:WrapSelection @a
+<  	This will work not only in visual mode. It will operate on last
+	selected text. So if you accidentaly lost the selection you can still
+	use this commad (but not the maps)!
+
+:TOC [skip] 							*atp-command-TOC*
+map \t
 	Shows Table of Contents of your document. It do not yet support the
 	started version of chapter, section,... environemnts. 
 
@@ -619,8 +630,8 @@ map \t, :TOC
 	see the returned value. If you added a section unit the function will
 	not update the database, run ':TOC' to do that (map \t).
 
-							*atp-command-Labels*
-map \L, :Labels
+:Labels							*atp-command-Labels*
+map \L 
 	Shows labels defined in your file. You can also use the mappings
 	'e','c','p','s','q' and <Enter> as above.
 
@@ -655,10 +666,10 @@ map \L, :Labels
 :PPart, :PChap, PSec, map \PP, map \PC, map PS
 	Goes to previous <section>.
 
-ToDo(<keyword>,<stop>,[bufname])			*atp-command-ToDo*
-:ToDo [bufname]
-:Note [bufname]
-	This function list all the lines of the buffer [bufname] which match
+ToDo(<keyword>,<stop>,[bufname])		*atp-function-ToDo*
+:ToDo [bufname]					*atp-command-ToDo*
+:Note [bufname]					*atp-command-Note*
+	The function list all the lines of the buffer [bufname] which match
 	for the pattern '%.*<keyword>'. The <stop> argument is the pattern to
 	before which to stop. The optional argument is the buffer
 	name (the buffer name completion is set on). If not given the
@@ -670,7 +681,7 @@ ToDo(<keyword>,<stop>,[bufname])			*atp-command-ToDo*
 	sets keyowrd='\c\<note\>' and stop='\s*%.*\c\<todo\>'. This prevent
 	from listing ToDo lines with Notes and vice versa. 
 	 
-:ToggleSpace, map <F2>					*atp-command-ToggleSpace*
+:ToggleSpace, map <F2>				*atp-command-ToggleSpace*
 	This function (command) sets, if it is undefined or removes if it is
 	defined, the mapping:
 >
@@ -713,22 +724,18 @@ map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7
 	|'errorfile'| option use this command. It will show you the value to
 	which |'errorfile'| was set. 
 
-ATPStatus						*atp-command-ATPStatus*
-:ATPStatus
+:ATPStatus						*atp-command-ATPStatus*
 	This function (command) sets the status line, which include: the name
 	of currently eddited   chapter (or section) the value of 'b:atp_OutDir' and
 	it will warn you if 'b:atp_OutDir' variable is not set. This function is
 	called at startup unless the variable 'g:atp_statusline=0' is set (for
-	example in you $VIMRC file). The status is set by the autocommand:
->
+	example in you $VIMRC file). The status is set by the autocommand: >
 		au BufWinEnter *.tex :call ATPStatus()
-<
-	In this way every opened window with a '*.tex' file will get the correct
+<	In this way every opened window with a '*.tex' file will get the correct
 	status line.
 
 
-FontSearch([<pattern>, <match_option>])			*atp-command-FontSearch*
-:FontSearch [<pattern> <match_option>]
+:FontSearch [<pattern> <match_option>]			*atp-command-FontSearch*
 	
 	For example:
 	:FontSearch ^t1
@@ -778,12 +785,11 @@ FontSearch([<pattern>, <match_option>])			*atp-command-FontSearch*
 
 	Hopefully, this will help your documents to become beautiful :)
 
-FontPreview(<fd_file>, [<encoding>, <keep_tex>])	*atp-command-FontPreview*
-:FontPreview
-	Previews all fonts defined in fd file matching the pattern <fd_file> for fonts in
-	encoding <encoding> (optional). If <keep_tex> is 1 (defualt is 0) it
-	will keep the tex file for the font preview, so you can debug why the
-	font doesn't show up.
+							*atp-command-FontPreview*
+:FontPreview <fd_file> [<encoding> <keep_tex>]
+	Previews all fonts defined in fd file matching the pattern <fd_file>
+	with encoding <encoding> (optional). If <keep_tex> is 1 (defualt is 0)
+	it will keep the latex source file for debuging purpoposes.
 
 	It returns a list of fonts which fd files matches the <fontname> and
 	<encoding>. You will be asked to chose for which files make a preview,
@@ -793,10 +799,9 @@ FontPreview(<fd_file>, [<encoding>, <keep_tex>])	*atp-command-FontPreview*
 			1-3
 <	you can also mix this notation: >
 			1,2-5,7	
-<
-	As in FontSearch function/command the keep_tex variable specifies if
-	the source file will be shown (for debugging purposes, or looking how
-	to use the font :) ) or not.
+<	As in FontSearch command the <keep_tex> variable specifies if
+	the source file will be shown (for debugging purposes, or just to look how
+	to use the font :).
 
 :PID 							*atp-command-PID*
 	Prints PIDs of all running instances of |atp-variable-b:atp_TexComopiler|.
@@ -1919,7 +1924,8 @@ using the variables:
 	    g:atp_imap_fourth_leader == "["
 	    	for extra environments in the old layout.
 All other mappings (map, vmap, nmap, ...) are using <LocalLeader> which can be
-altered with the option |maplocalleader|.
+altered with the option |maplocalleader|. A good alternate solution is to use "_"
+instead of "##".
 
 Maps are using the <buffer> option thus are local to the buffer. To unmap you
 also have to use this option, for example to unmap \l issue the command:
@@ -1941,25 +1947,25 @@ map can differ).
 ShowOptions()						
 :ShowOptions, :ShowOptions v
 
-TEX()						
-map \l,imap \l, :TEX 
+:TEX
+map \l,imap \l
 
-VTEX()					
+:VTEX
 map <F5>,imap <F5>, :VTEX 
 
-ViewOutput()			
+ViewOutput
 map \v,map <F3>, imap \v, imap <F3>  
 
-Bibtex()		
-map \b, :Bibtex
+:Bibtex		/run also latex/
+map \b
 
-SimpleBibtex()	
-map \sb, :SBibtex
+:SBibtex 	/Simple Bibtex - run only bibtex/
+map \sb
 
-OpenLog()
+:OpenLog
 map <F6>l, imap <F6>l
 
-Delete()
+:Delete
 map <F6>d
 	Deletes all the files with an extension which belongs to
 	g:atp_tex_extensions in the directory b:atp_OutDir. By default
@@ -1968,7 +1974,7 @@ map <F6>d
 	g:atp_delete_output=1 the function will delete also the current output
 	file (but not any other!).
 
-Print()
+:SShPrint
 map \p
 	This calls the function Printer(g:printeroptions) (see |Print()|).
 
@@ -1978,16 +1984,12 @@ map \t
 	This is a mapping to the command ':TOC'
 
 
-:Label
+:Labels
 map \L
 	This is a mapping to the command ':Labels'
 
 
-:call UpdateLabels(bufname)	
-map \UL			<-- is mapped to UpdateLabels(bufname("%"))
-
-								
-texdoc:
+TeXdoc:
 <F1> 	   
 	This is both map and imap. Then you have to type what you are looking
 	for and press enter. The option 'keywordprg' is set to 'texdoc -m',
@@ -1995,21 +1997,13 @@ texdoc:
 	then you should see the package document file (if it is named
 	after the package).
 
-	Note: if you are using: 
-		au! BufWinEnter *.tex silent loadview
-		au! BufWinLeave *.tex mkview
-	in your $VIMRC file, you will need to change this option in all
-	~/.Vim/view/*.tex= files. To check if this option was set from a view
-	file type 
-		:verbose set keywordprg?
-	Type in your terminal 
-		Vim ~/.Vim/view/*.tex=
-	then issue the command
-		:bufdo %s/setlocal keywordprg=\p*/setlocal keywordprg=texdoc\ -m/g | w
-		
+	Without any argument it will open "g:atp_TeXdocDefault", by default it
+	is eqaul to "-a lshort", i.e. "The not so short introduction to LaTeX
+	2e" by Tobias Oetiker. You can change the default for something that
+	you use more often, for example you can set it to "-a faq", i.e. 'The
+	UK TeX FAQ' (or even to "-a lshort faq" if you want them both :). 
 
-								
-pdffonts is mapped to <F6>+g	
+pdffonts is mapped to <F6>g	
 There is also a command ':PdfFonts' which does the same. 
 
 " FONT COMMANDS
@@ -2130,8 +2124,8 @@ Requirements							*atp-requirements*
 
 This plugin requires Vim version higher than 7. 
 
-It is nice to have 'texdoc' program. This plugin maps <F1> to :!texdoc -m ...
-and allows to speed up your searches for documentation. Also the option
+It is nice to have 'texdoc' program. This plugin maps <F1> to a function which
+calls it. This allows to speed up searches for documentation. Also the option
 'keywordprg' has the value "texdoc -m", thus pressing 'K' (see |K|) over a tex
 package should open you the package documentation. The same applies to this
 help file.

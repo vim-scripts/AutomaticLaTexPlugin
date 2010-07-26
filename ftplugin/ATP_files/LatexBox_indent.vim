@@ -4,7 +4,7 @@
 let b:did_indent = 1
 
 setlocal indentexpr=LatexBox_TexIndent()
-setlocal indentkeys==\end,=\item,),],},o,0\\
+setlocal indentkeys==\end,=\item,),],},o,O,0\\
 
 let s:itemize_envs = ['itemize', 'enumerate', 'description']
 
@@ -38,7 +38,7 @@ function! s:ComputeLevel(lnum_prev, open_pat, close_pat)
 	if line_prev =~ '^\s*\%(' . a:close_pat . '\)'
 		let n += 1
 	endif
-	
+
 	return n
 endfunction
 " }}}

@@ -81,7 +81,7 @@ highlight Boolean        cterm=none           	ctermfg=161  ctermbg=233	guifg=De
 "highlight Float
 
 highlight Identifier     		      	ctermfg=39			guifg=DodgerBlue
-highlight Function       cterm=none           	ctermfg=51   ctermbg=233	guifg=Turquoise1
+highlight Function       cterm=bold           	ctermfg=White   		guifg=White 		gui=bold
 
 highlight Statement      cterm=none           	ctermfg=135			guifg=MediumOrchid
 "248
@@ -152,11 +152,57 @@ highlight texRefZone							guifg=DeepPink2		gui=bold
 highlight texCite							guifg=DeepPink4
 highlight texRefOption							guifg=HotPink4
 
-" Testing:
-hi texBfText 		gui=bold
-hi texItText 		gui=italic
-hi texUnderlineText 	gui=underline
+" " Testing:
+" hi texBfText 		gui=bold
+" hi texItText 		gui=italic
+" hi texUnderlineText 	gui=underline
 
+" texlog /syntax file available in Automatic Tex Package/
+hi texlogKeyword		ctermfg=90 cterm=bold		guifg=magenta4	gui=bold
+hi texlogLatexKeyword		ctermfg=white cterm=bold 	guifg=white gui=bold
+" hi texlogBrackets		Special
+hi texlogOpenOut		guibg=magenta4	guifg=white
+hi texlogWarningKeyword		guifg=DeepPink4 gui=bold
+hi texlogPath			guifg=PaleVioletRed4
+ 
+hi texlogLatexInfo 		ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+ 
+hi texlogOutputWritten		ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+hi texlogFileName		guifg=magenta4 gui=bold
+hi texlogPages			guifg=magenta4 gui=bold
+hi texlogChapter		ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+" 
+hi texlogLatexFontInfo 		ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+hi texlogLatexWarning 		guifg=OrangeRed guibg=DeepPink4 gui=bold
+hi texlogLatexFontWarning 			guifg=DeepPink4 gui=bold
+hi texlogPackageWarning		                guifg=DeepPink4 gui=bold
+hi texlogPdfTeXWarning		guifg=OrangeRed guibg=DeepPink4 gui=bold
+hi texlogPackageInfo 		ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+" hi texlogError 		Error
+" 
+hi texlogLineNr			guifg=OrangeRed3
+hi texlogPageNr			guifg=OrangeRed3
+" 
+hi texlogDocumentClass		ctermfg=57 cterm=none guifg=BlueViolet gui=none
+hi texlogPackage		ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+hi texlogFile			ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+hi texlogCitation		ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+hi texlogReference		ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+hi texlogOverfullBox		guifg=PaleGoldenRod
+hi texlogUnderfullBox		guifg=PaleGoldenRod
+hi texlogTooWide		guifg=PaleGoldenRod
+hi texlogRedefining		guifg=PaleGoldenRod
+hi texlogRedeclaring		guifg=PaleGoldenRod
+hi texlogMultiplyDefined	guifg=PaleGoldenRod
+hi texlogScope			guifg=DarkOrange3 
+
+hi texlogFont			guifg=DarkOrange4
+hi texlogFontB			guifg=DarkOrange4
+hi texlogFontSize		guifg=DarkOrange4
+hi texlogFontShapes		ctermfg=90 cterm=bold	guifg=magenta4	gui=bold
+" 
+hi texlogDate			guifg=purple3
+hi texlogVersion		guifg=purple3
 " \chapter, \section, ... {theorem} {definition}
 
 highlight Error          ctermfg=196         	ctermbg=233
@@ -166,7 +212,7 @@ highlight SpellCap       ctermfg=202         	ctermbg=233
 highlight SpellRare      ctermfg=203         	ctermbg=233
 highlight SpellLocal     ctermfg=202         	ctermbg=233
 
-hi bibsearchInfo 	ctermfg=33			guifg=DeepPink
+hi bibsearchInfo 	ctermfg=33			guibg=DeepPink
 hi bibsearchComment	cterm=bold 	ctermfg=27	guifg=blue		gui=bold 
 hi bibComment2		cterm=bold 	ctermfg=30	guifg=SeaGreen4		gui=bold
 hi bibsearchCommentContents cterm=none	ctermfg=30	guifg=SeaGreen4		gui=none
@@ -201,29 +247,6 @@ highlight atp_statussection 	cterm=bold	ctermfg=yellow 	ctermbg=233
 highlight atp_statusoutdir 			ctermfg=grey 	ctermbg=233 
 
 highlight link atp_Todo Normal
-
-" hi texlogKeyword		Keyword
-hi texlogPath			guifg=gray38 gui=bold
-
-hi texlogLatexInfo 		guifg=DeepPink4
-hi texlogEndInfo 		guifg=DeepPink4
-hi texlogLatexFontInfo 		guifg=DeepPink4
-hi texlogLatexWarning 		guifg=white gui=bold
-hi texlogLatexFontWarning 	guifg=white gui=bold
-hi texlogPackageWarning		guifg=white gui=bold
-hi texlogPackageInfo 		guifg=DeepPink3
-" hi texlogError 		Error
-hi texlogLineNr			guifg=SlateBlue3
-hi texlogPageNr			guifg=SlateBlue3
-
-hi texlogDocumentClass		guifg=DeepPink3
-hi texlogPackage		guifg=DeepPink3
-hi texlogFile			guifg=DeepPink3
-hi texlogCitation		guifg=DeepPink3
-hi texlogReference		guifg=DeepPink3
-hi texlogScope			guifg=green1 
-
-
 
 highlight ywtxt_todo	guifg=yellow gui=bold
 highlight ywtxt_note	guifg=yellow gui=bold

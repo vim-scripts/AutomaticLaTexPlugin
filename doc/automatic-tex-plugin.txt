@@ -22,29 +22,31 @@ and preview fonts in your tex distribution. The features include an extended
 tab completion for: commands, environment names, packages, input files, bib
 files, bst files, colors, closing brackets and environments (preserves
 nesting),... etc. To have full functionality you need: pdffonts available in
-the package app-text/poppler-utils (at least in Gentoo). Another good tool is
+the package 'app-text/poppler' (at least in Gentoo). Another good tool is
 texdoc, which is a part of texlive - these days standard TeX distribution for
 Linux, and MikTeX on Windows.
 ------------------------------------------------------------------------------
 
-Features include:
+FEATURES INCLUDE:
 -----------------
+* background compilation with debugging mode 
 * completion for commands, closing environments (even nested), package names,
-  citations and labels.
+  citations and labels. Support for some latex packages.
 	See |atp-Completion|, 
-* a powerful function to search in bibliographic files (bib files):
-	See |atp-bibsearch|,
-* table of contents which allows to switch between different '.tex' files:
+* table of contents which allows to switch between different sections, files, 
+  but also to delete and paste sections:
 	See |atp-command-TOC|,
 * list of labels which allows to see the context of a label:
 	See |atp-command-Labels|,
+* a powerful function to search in bibliographic files (bib files):
+	See |atp-bibsearch|,
 * a command to list ToDo lines:
 	See |atp-command-ToDo|.
 * a command to search for a macro definition (multi-line support):
  	See |atp-command-DefiSearch|
 * a command to search and PREVIEW fonts in your latex distribution:
  	See |atp-command-FontSearch|, and |atp-command-FontPreview|
-
+* indentation
 
 			Table of Contents
 -----------------------------------------------------------------------------
@@ -70,72 +72,153 @@ Note on usage: type :help atp<CTRL>d to see all the helptags. To see help tags
 for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>d
 
 ================================================================================
+NEWS							*atp-news*
+>
+	New Features in TOC
+<			Using ':DeleteSection' you can delete the section
+			under cursor together with all its subsections.
+			/Section can be one of: part, chapter, section,
+			subsection, subsubsection, or bibliography/.  Deleted
+			section will be added to a stack which can be shown
+			using the command ':SectionStack' There is a command
+			to paste the section from section stack
+			':PasteSection'. By default it pastes the most recent
+			element in the stack.  Passing a number will paste
+			that element of the stack /bear in mind that then
+			numbers of sections in the stack will change/.
 
-							*atp-news*
-News: >
+				':PasteSection' pusts the section just before
+				where next section starts.
+
+			Note: If you use bibtex commands to make
+			bibliography ATP finds the line which contains
+			'\bibliography' command. And then searches backward
+			for the first line which is a blank line. The next
+			line is assumed to be the first line of bibliography.
+			Thus to move the last section before bibliography or
+			the bibliography itself its better you put a blank
+			line before bibliography commands.  The same applies
+			for bibliographies put in the middle of document (end
+			of a chapter, part, etc.) The end of bibliography is
+			found in the same way as the end of subsubsection.  If
+			you use \begin{thebibliography}:\end{thebibliography}
+			there is no such a problem.
+
+			If you want to paste a section before the first
+			section, use the line with the file name. >
+ :Undo, nnoremap u, nnoremap U, nnoremap g-, nnoremap g+ 
+<			You can use undo. The :Undo command will undo in the
+			buffer under the cursor (it simly switches to the
+			correct window, usese the vim undo function, and runs
+			:TOC command - so after all your back in ToC.). The
+			':Undo' command has one argument - the vim undo
+			command to use, it is one of: 'u/U/g-/g+' (the default
+			is 'u'). They are mapped to 'u','U', 'g-' and 'g+'.
+			(only in the ToC buffer).  Note: ':Undo' command
+			doesn't changes the Section Stack.
+
+			There is one more level of security: There is a global
+			variable which stores all the deleted sections
+			together with some information about them: >
+					g:atp_SectionBackup
+<			it is a vim list (see |List|). Each entry is a list of
+			the following format: >
+			[ <title>, <type>, <deleted_section>, <section_nr>, <file> ]
+<			where <title> is the section title, <type> is one of:
+			part, chapter, section, subsection, subsubsection
+			bibliography or abstract.  Deleted section is a list
+			of deleted lines, <section_nr> is the number of the
+			section that it had before deletetion, <file> is the
+			full path to the file which it comes from.  If you
+			need to use it, you can use the vim function
+			|append()| to put the <deleted_section> in the right
+			place.
+
+		    NOTE:
+			You may want to have a map: >
+					:au FileType toc_atp nnoremap dd :DeleteSection<CR>
+<			this can be put in your '$HOME/.atp.vim' configuration 
+			file.	
+>
+	Tab Completion for Labels
+<			Tab Completion for labels (|atp-completion|)
+			allows to specify the number of the counter, e.g. >
+					\ref{3.1<Tab>
+<			will complete into the label of the counter with value
+			'3.1'. As for now you can not specify which counter to
+			complete.  You can also write '\ref{3.1$' the part
+			'3.1$' is used as a pattern!
+
+			Also the window with labels has changed, it shows the
+			label number, label name, and the line number where is
+			was defined.  
+
+			For this two work you there must be aux file.  As for
+			now the aux file if it is not present is not made.
+
+			This is working with the main document classes:
+			article, book, review, amsart, amsbook, memoir. If for
+			some class it is not working thanks for reporting me
+			(it's enough to email me just the document class). 
+>
 	$HOME/.atprc.vim	
-<				A configuration file for ATP. Now you do not
-				have to use autocommands to set local-buffer
-				options, just place them here.
+<			A configuration file for ATP. Now you do not have to
+			use autocommands to set local-buffer options, just
+			place them here.
 >
 	call back/debug mode	
-<				|atp-debug-mode| This was rewritten so you
-				should read it! There are NEW FEATURES !!!
-				Note: you need use gvim or >
+<			|atp-debug-mode| This was rewritten so you should read
+			it! There are NEW FEATURES !!!  Note: you need use
+			gvim or >
 					vim --servername VIM
-<				for this.   
+<			for this.   
 >
 	b:atp_TexFlavour	
-<				if you are editting a plain tex file it is
-				automatically set to 'plaintex', then you get
-				hihglighting for $$:$$. Some other features
-				are planned (you can also set this while
-				editting a 'tex' file, i.e. latex document but
-				using $$:$$ is latex is not recommended it is
-				know to break some latex specific things).
+<			if you are editing a plain tex file it is automatically 
+			set to 'plaintex', then you get highlighting for
+			$$:$$. Some other features are planned (you can also
+			set this while editing a 'tex' file, i.e. latex
+			document but using $$:$$ is latex is not recommended
+			it is know to break some latex specific things).
 >
 	New Feature in version 7.1
 	g:atp_MathVimOptions	= { 'textwidth' : '0' }
-<				This variable is a dictionary of vim settings
-				and its values which will be valid when you
-				edit mathematics inside the pairs \(:\), $:$,
-				\[:\], $$:$$ (only in plain tex files or if
-				g:atp_TexFlavour = 'plaintex'). For example,
-				the default value will toggle between your
-				'textwidth' in non-math and 0 in math.
-				The dictionary may contain short option names
-				eqally well as long names.
+<			This variable is a dictionary of vim settings and its
+			values which will be valid when you edit mathematics
+			inside the pairs \(:\), $:$, \[:\], $$:$$ (only in
+			plain tex files or if g:atp_TexFlavour = 'plaintex').
+			For example, the default value will toggle between
+			your 'textwidth' in non-math and 0 in math.  The
+			dictionary may contain short option names equally well
+			as long names.
 
-				Note: the standard tex syntax file defines 
-				other zones: for example for align and
-				equation environments (and many others) but
-				some how they are not accessible using
-				synstack() function. 
-				
-				This feature can be turned off using setting
-				variable >
+			Note: the standard tex syntax file defines other
+			zones: for example for align and equation environments
+			(and many others) but some how they are not accessible
+			using synstack() function. 
+			
+			This feature can be turned off using setting variable >
 					g:atp_SetMathVimOptions
-<				to '0', the default is '1'.
+<			to '0', the default is '1'.
 
 	New Editing Tools	vie, viE, vae, vi$ and va$ or when in visual
 	written by 		mode ie, iE, ae i$, a$.
 	David Munger		They select the current environment in two
 				ways:
-				i 	- innner
-				a 	- auter
+				i 	- inner
+				a 	- outer
 				e 	- environment 
 				$	- one of math zones \(:\), $:$, \[:\]
 					  plain tex $$:$$ is not yet supported.
 
-				'viE' selects a bit more than 'vie' but less
-				than 'vae', it selects a bracket pair before
-				the begining of the inner part of an
-				environment, so it can be environment name or
-				an option just after. 						
+			'viE' selects a bit more than 'vie' but less than
+			'vae', it selects a bracket pair before the beginning
+			of the inner part of an environment, so it can be
+			environment name or an option just after. 						
 
 
 ================================================================================
-Installation                               		*atp-installation*
+INSTALLATION                               		*atp-installation*
 >
 	 :filetype plugin on is required to run this plugin, see
 	 |:filetype-plugin-on| and |:filetype-indent-on| if you want to have
@@ -147,7 +230,7 @@ and that's all, now you can just type your story ... :)
 
 
 ================================================================================
-Commands	                               		*atp-commands*
+COMMANDS	                               		*atp-commands*
 							
 
 The main function is not seen by the user (it is called s:compiler, for those
@@ -205,7 +288,7 @@ forth between you b:atp_OutDir and the temporary directory)
 	version, if you invoke 'vim' from command line you need to add
 	'servername' variable, it might be desirable to alias vim to to >
 			vim --servername VIM 
-< 	you have additinal funcionalities:
+< 	you have additional functionalities:
 
 	* STATUS LINE NOTIFICATION: status line can show if tex is running >
 		    let g:atp_status_notification = 1
@@ -219,7 +302,7 @@ forth between you b:atp_OutDir and the temporary directory)
 
 				= 'debug'
 			   After the end of compilation (invoked by the user
-			   or atocommand) you will get a message with the
+			   or autocommand) you will get a message with the
 			   return status of the compilator.
 
 			   If you open the error window with :copen or with
@@ -233,9 +316,9 @@ forth between you b:atp_OutDir and the temporary directory)
 
 	Note: the 'verbose' mode in 'vim' (in console) needs to be run, when
 	there is no other latex instance running. Now you get a message to
-	wait until compelation ends. In future releases, a better solution
-	will be worked out. Gui version 'gvim' works better (as it dosn't  
-	susspend the edditor).
+	wait until compilation ends. In future releases, a better solution
+	will be worked out. Gui version 'gvim' works better (as it doesn't  
+	suspend the editor).
 
 	 The background compilation is always done in g:atp_DefaultDebugMode.
 	 Unless it is set to 'verbose' in which case 'debug' mode is used. 
@@ -279,8 +362,8 @@ map \l, map \d,imap \l
 	a mistake giving the range of the command to be the current line
 	number).
 
-	mode is one of '', 'silent', 'debug', 'verbose'. When '' the value of
-	g:atp_DefaultDebugMode is used. See descriptino of |atp-debug-mode|.
+	<mode> is one of '', 'silent', 'debug', 'verbose'. When '' the value of
+	g:atp_DefaultDebugMode is used. See description of |atp-debug-mode|.
 
 	\d is mapped to :TEX debug and \l to :TEX (thus it uses your default
 	debug mode).
@@ -351,7 +434,7 @@ map \b, :Bibtex, :Bibtex v
 							*atp-variable-g:atp_bibinputs*
 	Tex is looking for the date base files in the path: `kpsewhich
 	-show-path bib`. The variable g:atp_bibinputs contains Vim list of
-	these direcrories. Thus if atp cannot find your bib file, tex also
+	these directories. Thus if atp cannot find your bib file, tex also
 	won't be able. 
 
 							*atp-command-SimpleBibtex*
@@ -381,7 +464,7 @@ map \v,map <F3>, imap \v, imap <F3>
 	This command sets the options for xpdf viewer (as for now the
 	inverse/reverse searching in pdf files is not implemented)
 	It will read the xpdf viewer options from the variable g:xpdfOptions
-	(to the varaible b:atp_ViewerOptions).
+	(to the variable b:atp_ViewerOptions).
 
 							see |atp-command-BibSearch|
 :BibSearch
@@ -442,10 +525,10 @@ map \v,map <F3>, imap \v, imap <F3>
 	The bibliographis declared are also listed. The command searches for
 	them in the any of g:atp_bibinputs directory (see |atp-variable-g:atp_bibinputs|.
 
-							*atp-command-OpenLog*
+:ShowErrors o						*atp-command-OpenLog*
 :OpenLog, map <F6>l, imap <F6>l
 	Opens log file in a new split window with two options (which are set
-	locally): ruler, nospell, and a map 'q' to ':bd'.	
+	locally): 'ruler', 'nospell', and a map 'q' to ':bd'.	
 
 	You can also use the command ':Explore' to see log,aux,... files
 	(which is a part of 'netrw' vim plugin).
@@ -471,7 +554,7 @@ map \p, :SshPrint
 	arguments of the command SshPrint are |<f-agrs>|. 
 	
 	Both arguments are optional (the default system printer is used, and
-	only the options 'g:printeroptions' applay).
+	only the options 'g:printeroptions' apply).
 
 	The map '\p' will print on the default printer.
 
@@ -498,12 +581,12 @@ map \p, :SshPrint
 	cursor position according to the variables <cursor_pos>. Possible values
 	are: a number (indicates the character of <begin_wrapper> to put the
 	cursor on (see and check vmap \c below), or 'end' put the cursor at
-	the end of <end_wrapper> or 'begin' leave the cursor at the begining
+	the end of <end_wrapper> or 'begin' leave the cursor at the beginning
 	(to be precise at the end of the starting wrapper).  
 	The default <end_wrapper> is '}'.  The last argument <new_lines>
-	0/1 (defult is 0): if 1 then the begin_wrapper and end_wrapper are put
+	0/1 (default is 0): if 1 then the begin_wrapper and end_wrapper are put
 	in seperate lines (the begin line and end line are split), this is
-	useful for puting text into and evinronment \begin{}:\end{}. 
+	useful for putting text into and environment \begin{}:\end{}. 
 
 	The command arguments should be separated with commas (see |<args>|).
 
@@ -577,8 +660,8 @@ map \p, :SshPrint
 	You can also use a wrapper which was yanked into register 'a': >
 		:WrapSelection @a
 <  	This will work not only in visual mode. It will operate on last
-	selected text. So if you accidentaly lost the selection you can still
-	use this commad (but not the maps)!
+	selected text. So if you accidentally lost the selection you can still
+	use this command (but not the maps)!
 
 :TOC [skip] 							*atp-command-TOC*
 map \t
@@ -593,7 +676,7 @@ map \t
 	The function opens new window in which you can use the mappings: 
 
 		'e' 	to echo the line from your tex file
-		'y' 	to yank the label of the chapter under the curosor
+		'y' 	to yank the label of the chapter under the cursor
 				to a register, if it exists,
 	 	'p' 	to paste it directly to your tex file (just after the
 				current cursor position), 
@@ -621,7 +704,7 @@ map \t
 
 	The variable t:toc_window_width sets the width of table of contents
 	window. By default t:toc_window_width=30. You can set a global
-	variable g:toc_window_width to overide the default value.
+	variable g:toc_window_width to override the default value.
 
 							*atp-command-CTOC*
 :CTOC	
@@ -648,7 +731,7 @@ map \L
 						*atp-move-command-NEnv*
 :NEnv <environment>
 	Move to next environment, for example ':NEnv definition'. Completion
-	is set, which finds environemts defined in current tex source file.
+	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
 
 						*atp-move-command-PEnv*
@@ -659,12 +742,18 @@ map \L
 
 
 						*atp-move-command-NextSection*
-:NPart, :NChap, NSec, map \NP, map \NS, map \NS
+:NPart, :NChap, NSec, 
+map <LocalLeaader>np, map <LocalLeader>ns, map <LocalLeader>ns
 	Goes to next <section>, the commands need not to be explained.
+	Note: the maps work in visual mode and operator pending mode ('d\ns'
+	will delete till the end of the section). You can use 'n' and 'N' vim
+	in normal or visual mode to go further. 
 
 						*atp-move-command-PrevSection*
-:PPart, :PChap, PSec, map \PP, map \PC, map PS
+:PPart, :PChap, PSec, 
+map <LocalLeader>pp, map <LocalLeader>pc, map <LocalLeader>ps
 	Goes to previous <section>.
+	Note: as above. Use 'N' to go backward.
 
 ToDo(<keyword>,<stop>,[bufname])		*atp-function-ToDo*
 :ToDo [bufname]					*atp-command-ToDo*
@@ -676,9 +765,9 @@ ToDo(<keyword>,<stop>,[bufname])		*atp-function-ToDo*
 	current buffer is assumed.
 	You can set highlighting for this command by:
 		highlight atp-Todo ctermfg=... 	guifg=...
-	The command :ToDo sets keyowrd='\c\<todo\>' and
+	The command :ToDo sets keyword='\c\<todo\>' and
 	stop='\s*%.*\c\<note\>', and the command :Note
-	sets keyowrd='\c\<note\>' and stop='\s*%.*\c\<todo\>'. This prevent
+	sets keyword='\c\<note\>' and stop='\s*%.*\c\<todo\>'. This prevent
 	from listing ToDo lines with Notes and vice versa. 
 	 
 :ToggleSpace, map <F2>				*atp-command-ToggleSpace*
@@ -743,7 +832,7 @@ map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7
 		names starts with t1 (i.e. which describes fonts in encoding
 		'T1')
 	:FontSearch bookman 1
-		will list all fd files which full path mathes 'bookman'.
+		will list all fd files which full path matches 'bookman'.
 
 	The <match_option> argument has two values 0/1, if it is not given
 	0 is assumed.
@@ -777,7 +866,7 @@ map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7
 	|\usefont|, |\fontsize|, |\selectfont| and other such commands.
 	The 'Latex 2e font selection' by 'LeTeX3 Project Team' might be very
 	useful. It is available on the net (you probably have it in your tex
-	distriution if it is installed with the documentation, if not check
+	distribution if it is installed with the documentation, if not check
 	the CTAN archive).
 
 	ATP also has a very nice completion for various font declaration
@@ -789,7 +878,7 @@ map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7
 :FontPreview <fd_file> [<encoding> <keep_tex>]
 	Previews all fonts defined in fd file matching the pattern <fd_file>
 	with encoding <encoding> (optional). If <keep_tex> is 1 (defualt is 0)
-	it will keep the latex source file for debuging purpoposes.
+	it will keep the latex source file for debugging purposes.
 
 	It returns a list of fonts which fd files matches the <fontname> and
 	<encoding>. You will be asked to chose for which files make a preview,
@@ -807,7 +896,7 @@ map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7
 	Prints PIDs of all running instances of |atp-variable-b:atp_TexComopiler|.
 
 ================================================================================
-Searching in bib files 		                        *atp-bibsearch*
+SEARCHING IN BIB FILES 		                        *atp-bibsearch*
 
 		___________________________
 		Tabel of Contents:
@@ -1144,7 +1233,7 @@ s:notreadablebibfiles
 			
 
 ================================================================================
-Completion			                        *atp-completion*
+COMPLETION			                        *atp-completion*
 
 The completion is by default mapped to <Tab>. For example if you type
 \math<Tab> you will get a list of choices which completes this command. (See
@@ -1574,7 +1663,8 @@ g:atp_completion_active_modes	= g:atp_completion_modes
 <
 
 ================================================================================
-OmniCompletion by David Munger (LatexBox plugin)	*atp-omnicompletion*
+OMNI-COMPLETION 					*atp-omnicompletion*
+by David Munger (LatexBox plugin)
 
 Completion is achieved through omni completion |compl-omni|, with default
 bindings <CTRL-X><CTRL-O>. There are four types of completion:
@@ -1695,7 +1785,7 @@ Associated settings:
 	|atp-omnicompletion-commands|.
 
 ================================================================================
-How to configure ATP to your needs                      *atp-configure*
+HOW TO CONFIGURE ATP TO YOUR NEEDS                      *atp-configure*
 							*atp-variables*
 
 There are several options you can set, and they might be set in your Vimrc
@@ -1906,7 +1996,7 @@ let b:atp_TruncateStatuSection=40
 	characters.
 
 ================================================================================
-Maps and Commands                     			*atp-maps*
+MAPS 		                     			*atp-maps*
 
 Lots of mappings which are given here uses #. This is a convenient map on
 British keyboards, but not in the US layout, you can change them for '`' or
@@ -2097,8 +2187,8 @@ imap ^^ ^{}<Left>
 imap ]m \[\]<Left><Left>
 
 ================================================================================
-Error Handling							*atp-errors*
-	
+DEBUGGING						*atp-errors*
+ 	
 This plugins sets the option 
 >
 	set errorfile=  log file in your b:atp_OutDir directory
@@ -2120,7 +2210,7 @@ begin with @string are removed, so that the brackets in comment lines do not
 count.)
 
 ================================================================================
-Requirements							*atp-requirements*
+REQUIREMENTS							*atp-requirements*
 
 This plugin requires Vim version higher than 7. 
 
@@ -2134,7 +2224,7 @@ Another good programs are texloganalyzer (which is now not used) and pdffonts
 There is a map to use pdffonts, see: |pdffonts|.
 
 ================================================================================
-Notes on Viewers                               			*atp-viewers*
+NOTES ON VIEWERS                               			*atp-viewers*
 
 xpdf								*atp-viewers-xpdf*
 	It is fully supported. It is configured in the way that when your tex
@@ -2232,7 +2322,7 @@ map \is, :RevSearch
 	    b:reverse_search and in the file there is full path).
 
 ================================================================================
-Color highliting and syntax groups				*atp-color-highlight*
+COLOUR HIGHLIGHTING AND SYNTAX GROUPS				*atp-color-highlight*
 
 There is a color scheme included: coots-beauty-256 you need 256 colors to use
 it. These are the highlights groups defined for various files:
@@ -2271,7 +2361,7 @@ it. These are the highlights groups defined for various files:
     I'm happy to get it, if you like to share it.
 
 ================================================================================
-Final Remarks                               			*atp-remarks*
+FINAL REMARKS                               			*atp-remarks*
 	
 	To see some messages that are issued you can use :messages command
 	(see |:mes|).
@@ -2298,7 +2388,7 @@ Final Remarks                               			*atp-remarks*
 	
 	
 ================================================================================
-Copy Rights							*atp-copy-rights*
+COPY RIGHTS							*atp-copy-rights*
 
 
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby

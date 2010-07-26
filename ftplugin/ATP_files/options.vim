@@ -1,5 +1,5 @@
 " This file contains all the options defined on startup of ATP
-" you can add your local settings to ftplugin/ATP_files/atprc file
+" you can add your local settings to ~/.atprc.vim or ftplugin/ATP_files/atprc.vim file
 
 
 " Some options (functions) should be set once:
@@ -12,6 +12,11 @@ if filereadable(fnameescape($HOME . '/.atprc.vim'))
 	" variables without using autocommands
 	execute 'source ' . fnameescape($HOME . '/.atprc.vim')
 
+else
+    let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), '\n'), 0, "")
+    if path != ""
+	execute 'source ' . path
+    endif
 endif
 
 "{{{ tab-local variables
@@ -28,12 +33,16 @@ endif
 " These autocommands are used to remember the last opened buffer number and its
 " window number:
 if !s:did_options
-    au BufLeave *.tex 	let t:atp_bufname	= resolve(fnamemodify(bufname(""),":p"))
-    au BufLeave *.tex 	let t:atp_bufnr		= bufnr("")
-    " t:atp_winnr the last window used by tex, ToC or Labels buffers:
-    au WinEnter *.tex 	let t:atp_winnr		= winnr("#")
-    au WinEnter __ToC__ 	let t:atp_winnr		= winnr("#")
-    au WinEnter __Labels__ 	let t:atp_winnr		= winnr("#")
+    augroup ATP_TabLocalVariables
+	au!
+	au BufLeave *.tex 	let t:atp_bufname	= resolve(fnamemodify(bufname(""),":p"))
+	au BufLeave *.tex 	let t:atp_bufnr		= bufnr("")
+	" t:atp_winnr the last window used by tex, ToC or Labels buffers:
+	au WinEnter *.tex 	let t:atp_winnr		= winnr("#")
+	au WinEnter __ToC__ 	let t:atp_winnr		= winnr("#")
+	au WinEnter __Labels__ 	let t:atp_winnr		= winnr("#")
+	au TabEnter *.tex	let t:atp_SectionStack 	= ( exists("t:atp_SectionStack") ? t:atp_SectionStack : [] ) 
+    augroup END
 endif
 "}}}
 
@@ -92,9 +101,12 @@ setl keywordprg=texdoc\ -m
 " It is used by EditInputFile which copies the value of this variable to every
 " input file included in the main source file. 
 " ToDo: CHECK IF THIS IS WORKS RECURSIVELY?
-" {{{ s:setprojectname
+" ToDo: THIS FUNCTION SHUOLD NOT SET AUTOCOMMANDS FOR AuTeX function! 
+" 	every tex file should be compiled (the compiler function calls the  
+" 	right file to compile!
+" {{{ s:SetProjectName
 " store a list of all input files associated to some file
-fun! s:setprojectname()
+fun! s:SetProjectName()
     " if the project name was already set do not set it for the second time
     " (which sets then b:atp_MainFile to wrong value!)  
     if &filetype == "fd_atp"
@@ -126,25 +138,25 @@ fun! s:setprojectname()
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
 	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":t")][1],":p")
 	    let s:pn_return="input file 1"
-	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
-		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call s:auTeX()"
-	    endif
+" 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
+" 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
+" 	    endif
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
 	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":t:r")][1],":p")
 	    let s:pn_return="input file 2"
-	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
-		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call s:auTeX()"
-	    endif
+" 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
+" 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
+" 	    endif
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":p:r")) != '-1' 
 	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":p:r")][1],":p")
-	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
-		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call s:auTeX()"
-	    endif
+" 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
+" 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
+" 	    endif
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":p"))   != '-1' 
 	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":p")][1],":p")
-	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
-		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call s:auTeX()"
-	    endif
+" 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
+" 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
+" 	    endif
 	endif
 	let s:pn_return 	= " set"
     elseif exists("g:atp_project")
@@ -161,46 +173,52 @@ command! SetProjectName	:call <SID>setprojectname()
 " }}}
 
 if !s:did_options
-    au BufEnter *.tex :call s:setprojectname()
-    au BufEnter *.fd  :call s:setprojectname()
+    augroup ATP_SetProjectName
+	au BufEnter *.tex :call s:SetProjectName()
+	au BufEnter *.fd  :call s:SetProjectName()
+    augroup END
 endif
 "}}}
 
 " This function sets vim 'errorfile' option.
 " {{{ Set error file (function and autocommands)
 " let &l:errorfile=b:atp_OutDir . fnameescape(fnamemodify(expand("%"),":t:r")) . ".log"
-"{{{
+"{{{ s:SetErrorFile
 function! s:SetErrorFile()
 
     " set b:atp_OutDir if it is not set
     if !exists("b:atp_OutDir")
-	call s:setoutdir(0)
+	call s:SetOutDir(0)
     endif
 
     " set the b:atp_MainFile varibale if it is not set (the project name)
     if !exists("b:atp_MainFile")
-	call s:setprojectname()
+	call s:SetProjectName()
     endif
 
-"     let l:ef=b:atp_OutDir . fnamemodify(expand("%"),":t:r") . ".log"
-    let l:ef=atplib#append(b:atp_OutDir,'/') . fnamemodify(b:atp_MainFile,":t:r") . ".log"
-    let &l:errorfile=l:ef
+    " vim doesn't like escaped spaces in file names ( cg, filereadable(),
+    " writefile(), readfile() - all acepts a non-escaped white spaces)
+    let errorfile	= substitute(atplib#append(b:atp_OutDir, '/') . fnamemodify(b:atp_MainFile,":t:r") . ".log", '\\\s', ' ', 'g') 
+    let &l:errorfile	= errorfile
     return &l:errorfile
 endfunction
 command! -buffer SetErrorFile		:call s:SetErrorFile()
 "}}}
 
 if !s:did_options
-    au BufEnter *.tex 		call 		<SID>SetErrorFile()
-    au BufRead 	$l:errorfile 	setlocal 	autoread 
+    augroup ATP_SetErrorFile
+	au BufEnter *.tex 		call 		<SID>SetErrorFile()
+	au BufRead 	$l:errorfile 	setlocal 	autoread 
+    augroup END
 endif
 "}}}
 
 " This functions sets the value of b:atp_OutDir variable
-" {{{ s:setoutdir
+" {{{ s:SetOutDir
 " This options are set also when editing .cls files.
 " It can overwrite the value of b:atp_OutDir
-function! s:setoutdir(arg)
+" if arg != 0 then set errorfile option accordingly to b:atp_OutDir
+function! s:SetOutDir(arg)
     " first we have to check if this is not a project file
     if exists("g:atp_project") || exists("s:inputfiles") && 
 		\ ( index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1' || 
@@ -208,9 +226,9 @@ function! s:setoutdir(arg)
 	    " if we are in a project input/include file take the correct value of b:atp_OutDir from the atplib#s:outdir_dict dictionary.
 	    
 	    if index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
-		let b:atp_OutDir=g:outdir_dict[s:inputfiles[fnamemodify(bufname("%"),":t:r")][1]]
+		let b:atp_OutDir=substitute(g:outdir_dict[s:inputfiles[fnamemodify(bufname("%"),":t:r")][1]], '\\\s', ' ', 'g')
 	    elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
-		let b:atp_OutDir=g:outdir_dict[s:inputfiles[fnamemodify(bufname("%"),":t")][1]]
+		let b:atp_OutDir=substitute(g:outdir_dict[s:inputfiles[fnamemodify(bufname("%"),":t")][1]], '\\\s', ' ', 'g')
 	    endif
     else
 	
@@ -219,18 +237,18 @@ function! s:setoutdir(arg)
 
 	    " if the user want to be asked for b:atp_OutDir
 	    if g:askfortheoutdir == 1 
-		let b:atp_OutDir=input("Where to put output? do not escape white spaces ")
+		let b:atp_OutDir=substitute(input("Where to put output? do not escape white spaces "), '\\\s', ' ', 'g')
 	    endif
 
 	    if ( get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" 
 			\ && g:askfortheoutdir != 1 
 			\ || b:atp_OutDir == "" && g:askfortheoutdir == 1 )
 			\ && !exists("$TEXMFOUTPUT")
-		 let b:atp_OutDir=fnamemodify(resolve(expand("%:p")),":h") . "/"
+		 let b:atp_OutDir=substitute(fnamemodify(resolve(expand("%:p")),":h") . "/", '\\\s', ' ', 'g')
 		 echoh WarningMsg | echomsg "Output Directory "b:atp_OutDir | echoh None
 
 	    elseif exists("$TEXMFOUTPUT")
-		 let b:atp_OutDir=$TEXMFOUTPUT 
+		 let b:atp_OutDir=substitute($TEXMFOUTPUT, '\\\s', ' ', 'g') 
 	    endif	
 
 	    " if arg != 0 then set errorfile option accordingly to b:atp_OutDir
@@ -239,13 +257,14 @@ function! s:setoutdir(arg)
 	    endif
 
 	    if exists("g:outdir_dict")
-		let g:outdir_dict=extend(g:outdir_dict, {fnamemodify(bufname("%"),":p") : b:atp_OutDir })
+		let g:outdir_dict	= extend(g:outdir_dict, {fnamemodify(bufname("%"),":p") : b:atp_OutDir })
 	    else
-		let g:outdir_dict={ fnamemodify(bufname("%"),":p") : b:atp_OutDir }
+		let g:outdir_dict	= { fnamemodify(bufname("%"),":p") : b:atp_OutDir }
 	    endif
     endif
     return b:atp_OutDir
 endfunction
+command! -buffer SetOutDir	:call <SID>SetOutDir(1)
 " }}}
 
 " Almost all global variables 
@@ -311,9 +330,19 @@ if !exists("g:atp_no_star_environments")
 endif
 let s:ask={ "ask" : "0" }
 if !exists("g:atp_sizes_of_brackets")
-    let g:atp_sizes_of_brackets={'\left': '\right', '\bigl' : '\bigr', 
-		\ '\Bigl' : '\Bigr', '\biggl' : '\biggr' , 
-		\ '\Biggl' : '\Biggr', '\' : '\' }
+    let g:atp_sizes_of_brackets={'\left': '\right', 
+			    \ '\bigl' 	: '\bigr', 
+			    \ '\Bigl' 	: '\Bigr', 
+			    \ '\biggl' 	: '\biggr' , 
+			    \ '\Biggl' 	: '\Biggr', 
+			    \ '\big'	: '\big',
+			    \ '\Big'	: '\Big',
+			    \ '\bigg'	: '\bigg',
+			    \ '\Bigg'	: '\Bigg',
+			    \ '\' 	: '\',
+			    \ }
+   " the last one is not a size of a bracket is to a hack to close \(:\), \[:\] and
+   " \{:\}
 endif
 if !exists("g:atp_bracket_dict")
     let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']'  }
@@ -458,14 +487,16 @@ let s:optionsDict= { 	"atp_TexOptions" 	: "",
 		\ "atp_autex" 			: "1", 
 		\ "atp_Viewer" 			: "xpdf", 	
 		\ "atp_OutputFlavour" 		: "pdf", 
-		\ "atp_TexFlavour" 		: &filetype, 
+		\ "atp_TexFlavour" 		: &l:filetype, 
 		\ "atp_ViewerOptions" 		: "", 
 		\ "atp_XpdfServer" 		: fnamemodify(expand("%"),":t"), 
-		\ "atp_OutDir" 			: fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/",
+		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
 		\ "atp_TexCompiler" 		: "pdflatex",	
 		\ "atp_auruns"			: "1",
 		\ "atp_TruncateStatusSection"	: "40", 
 		\ "atp_LastBibPattern"		: "" }
+" the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
+" remember what is the default used by s:SetOutDir().
 
 " We changed some variable names and we want to be nice :)
 " {{{ Be Nice :)
@@ -521,22 +552,27 @@ function! s:SetOptions()
     "for each key in s:optionsKeys set the corresponding variable to its default
     "value unless it was already set in .vimrc file.
     for l:key in s:optionsKeys
-	if string(get(s:optionsinuseDict,l:key, "optionnotset")) == string("optionnotset") && l:key != "outdir" && l:key != "atp_autex"
+	if string(get(s:optionsinuseDict,l:key, "optionnotset")) == string("optionnotset") && l:key != "atp_OutDir" && l:key != "atp_autex"
 	    call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
 	elseif l:key == "atp_OutDir"
 	    call BeNice(l:key)
 	    
 	    " set b:atp_OutDir and the value of errorfile option
 	    if !exists("b:atp_OutDir")
-		call s:setoutdir(1)
+		call s:SetOutDir(1)
 	    endif
 	    let s:ask["ask"] 	= 1
 	endif
     endfor
+    " Do not run tex on tex files which are in texmf tree
+    " Exception: if it is opened using the command ':EditInputFile'
+    " 		 which sets this itself.
     if string(get(s:optionsinuseDict,"atp_autex", 'optionnotset')) == string('optionnotset')
-	let l:atp_texinputs=split(substitute(substitute(system("kpsewhich -show-path tex"),'\/\/\+','\/','g'),'!\|\n','','g'),':')
-	call remove(l:atp_texinputs,'.')
-	call filter(l:atp_texinputs,'v:val =~ b:atp_OutDir')
+	let atp_texinputs=split(substitute(substitute(system("kpsewhich -show-path tex"),'\/\/\+','\/','g'),'!\|\n','','g'),':')
+	let g:debug1 = copy(atp_texinputs)
+	call remove(atp_texinputs, '.')
+	call filter(atp_texinputs, 'v:val =~ b:atp_OutDir')
+	let g:debug2 = copy(atp_texinputs)
 	if len(l:atp_texinputs) == 0
 	    let b:atp_autex	= 1
 	else
@@ -563,7 +599,7 @@ command! -buffer -nargs=? ShowOptions		:call <SID>ShowOptions(<f-args>)
 "}}}
 
 " Variables for the Debug Mode
-" {{{
+" {{{ Debug Mode
 " ToDo: to doc.
 let t:atp_DebugMode	= g:atp_DefaultDebugMode 
 " there are three possible values of t:atp_DebugMode
@@ -571,12 +607,14 @@ let t:atp_DebugMode	= g:atp_DefaultDebugMode
 let t:atp_QuickFixOpen	= 0
 
 if !s:did_options
-    au FileType *.tex 	let t:atp_DebugMode	= g:atp_DefaultDebugMode
-    " When opening the quickfix error buffer:  
-    au FileType qf 		let t:atp_QuickFixOpen=1
-    " When closing the quickfix error buffer (:close, :q) also end the Debug Mode.
-    au FileType qf 		au BufUnload <buffer> let t:atp_DebugMode = g:atp_DefaultDebugMode | let t:atp_QuickFixOpen = 0
-    au FileType qf		setl nospell
+    augroup ATP_DebugMode
+	au FileType *.tex let t:atp_DebugMode	= g:atp_DefaultDebugMode
+	" When opening the quickfix error buffer:  
+	au FileType qf 	let t:atp_QuickFixOpen=1
+	" When closing the quickfix error buffer (:close, :q) also end the Debug Mode.
+	au FileType qf 	au BufUnload <buffer> let t:atp_DebugMode = g:atp_DefaultDebugMode | let t:atp_QuickFixOpen = 0
+	au FileType qf	setl nospell
+    augroup END
 endif
 "}}}
 
@@ -606,7 +644,7 @@ fun! s:SetXdvi()
     map <buffer> <LocalLeader>rs				:call RevSearch()<CR>
     nmenu 550.65 &LaTeX.Reverse\ Search<Tab>:map\ <LocalLeader>rs	:RevSearch<CR>
 endfun
-command! -buffer SetXdvi		:call <SID>SetXdvi()
+command! -buffer SetXdvi			:call <SID>SetXdvi()
 nnoremap <silent> <buffer> <Plug>SetXdvi	:call <SID>SetXdvi()<CR>
 " }}}
 
@@ -614,7 +652,7 @@ nnoremap <silent> <buffer> <Plug>SetXdvi	:call <SID>SetXdvi()<CR>
 " copy the output file but not reload the viewer if there were errors during
 " compilation (b:atp_ReloadOnError variable)
 " {{{ SetXpdf
-fun! SetXpdf()
+fun! s:SetXpdf()
     let b:atp_TexCompiler	= "pdflatex"
     let b:atp_TexOptions	= ""
     let b:atp_Viewer		= "xpdf"
@@ -629,7 +667,7 @@ fun! SetXpdf()
     if exists("RevSearch")
 	delcommand RevSearch
     endif
-    aunmenu LaTeX.Reverse\ Search
+    silent aunmenu LaTeX.Reverse\ Search
 endfun
 command! -buffer SetXpdf			:call <SID>SetXpdf()
 nnoremap <silent> <buffer> <Plug>SetXpdf	:call <SID>SetXpdf()<CR>
@@ -652,7 +690,7 @@ function! s:ToggleAuTeX()
   endif
 endfunction
 command! -buffer 	ToggleAuTeX 		:call <SID>ToggleAuTeX()
-nnoremap <silent> <Plug>ToggleAuTeX 		:ToggleAuTeX
+nnoremap <silent> <Plug>ToggleAuTeX 		:call <SID>ToggleAuTeX()<CR>
 "}}}
 " {{{ ToggleSpace
 " Special Space for Searching 
@@ -677,30 +715,30 @@ function! s:ToggleSpace()
     endif
 endfunction
 command! -buffer 	ToggleSpace 	:call <SID>ToggleSpace()
-nnoremap <silent> <Plug>ToggleSpace 	:ToggleSpace
+nnoremap <silent> <Plug>ToggleSpace 	:call <SID>ToggleSpace()<CR>
 "}}}
 " {{{ ToggleCheckMathOpened
 " This function toggles if ATP is checking if editing a math mode.
 " This is used by insert completion.
 " ToDo: to doc.
 function! s:ToggleCheckMathOpened()
-    if g:atp_math_opened
+    if g:atp_MathOpened
 	echomsg "check if in math environment is off"
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [on]
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
-	nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_math_opened			
+	nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_MathOpened			
 		    \ :ToggleCheckMathOpened<CR>
     else
 	echomsg "check if in math environment is on"
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
-	nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_math_opened
+	nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_MathOpened
 		    \ :ToggleCheckMathOpened<CR>
     endif
-    let g:atp_math_opened=!g:atp_math_opened
+    let g:atp_MathOpened=!g:atp_MathOpened
 endfunction
 command! -buffer 	ToggleCheckMathOpened 	:call <SID>ToggleCheckMathOpened()
-nnoremap <silent> <Plug>ToggleCheckMathOpened	:ToggleCheckMathOpened
+nnoremap <silent> <Plug>ToggleCheckMathOpened	:call <SID>ToggleCheckMathOpened()<CR>
 "}}}
 " {{{ ToggleCallBack
 function! s:ToggleCallBack()
@@ -720,7 +758,7 @@ function! s:ToggleCallBack()
     let g:atp_callback=!g:atp_callback
 endfunction
 command! -buffer 	ToggleCallBack 		:call <SID>ToggleCallBack()
-nnoremap <silent> <Plug>ToggleCallBack		:ToggleCallBack
+nnoremap <silent> <Plug>ToggleCallBack		:call <SID>ToggleCallBack()<CR>
 "}}}
 " {{{ ToggleDebugMode
 " ToDo: to doc.
@@ -762,10 +800,12 @@ function! s:ToggleDebugMode()
     endif
 endfunction
 command! -buffer 	ToggleDebugMode 	:call <SID>ToggleDebugMode()
-nnoremap <silent> <Plug>ToggleDebugMode		:ToggleDebugMode
+nnoremap <silent> <Plug>ToggleDebugMode		:call <SID>ToggleDebugMode()<CR>
 if !s:did_options
-    au FileType qf command! -buffer ToggleDebugMode 		:call <SID>ToggleDebugMode()
-    au FileType qf nnoremap <silent> <LocalLeader>D		:ToggleDebugMode<CR>
+    augroup ATP_DebugModeCommandsAndMaps
+	au FileType qf command! -buffer ToggleDebugMode 	:call <SID>ToggleDebugMode()
+	au FileType qf nnoremap <silent> <LocalLeader>D		:ToggleDebugMode<CR>
+    augroup END
 endif
 " }}}
 " {{{ ToggleTab
@@ -792,7 +832,8 @@ function! s:ToggleTab()
     endif
 endfunction
 command! -buffer 	ToggleTab	 	:call <SID>ToggleTab()
-nnoremap <silent> <Plug>ToggleTab		:ToggleTab
+nnoremap <silent> <Plug>ToggleTab		:call <SID>ToggleTab()<CR>
+inoremap <silent> <Plug>ToggleTab		<Esc>:call <SID>ToggleTab()<CR>
 " }}}
 endif
 "}}}
@@ -832,7 +873,7 @@ endif
 
 " ToDo: there is second such a list! line 3150
 	let g:atp_Environments=['array', 'abstract', 'center', 'corollary', 
-		\ 'definition', 'document', 'description',
+		\ 'definition', 'document', 'description', 'displaymath',
 		\ 'enumerate', 'example', 'eqnarray', 
 		\ 'flushright', 'flushleft', 'figure', 'frontmatter', 
 		\ 'keywords', 
@@ -849,31 +890,31 @@ endif
 	" if short name is no_short_name or '' then both means to do not put
 	" anything, also if there is no key it will not get a short name.
 	let g:atp_shortname_dict = { 'theorem' : 'thm', 
-		    \ 'proposition' : 'prop', 	'definition' : 'defi',
-		    \ 'lemma' : 'lem',		'array' : 'ar',
-		    \ 'abstract' : 'no_short_name',
-		    \ 'tikzpicture' : 'tikz',	'tabular' : 'table',
-		    \ 'table' : 'table', 	'proof' : 'pr',
-		    \ 'corollary' : 'cor',	'enumerate' : 'enum',
-		    \ 'example' : 'ex',		'itemize' : 'it',
-		    \ 'item'	: 'itm',
-		    \ 'remark' : 'rem',		'notation' : 'not',
-		    \ 'center' : '', 		'flushright' : '',
-		    \ 'flushleft' : '', 	'quotation' : 'quot',
-		    \ 'quot' : 'quot',		'tabbing' : '',
-		    \ 'picture' : 'pic',	'minipage' : '',	
-		    \ 'list' : 'list',		'figure' : 'fig',
-		    \ 'verbatim' : 'verb', 	'verse' : 'verse',
-		    \ 'thebibliography' : '',	'document' : 'no_short_name',
-		    \ 'titlepave' : '', 	'align' : 'eq',
-		    \ 'alignat' : 'eq',		'equation' : 'eq',
-		    \ 'gather'  : 'eq', 	'multiline' : '',
-		    \ 'split'	: 'eq', 	'substack' : '',
-		    \ 'flalign' : 'eq',
-		    \ 'part'	: 'prt',	'chapter' : 'chap',
-		    \ 'section' : 'sec',	'subsection' : 'ssec',
-		    \ 'subsubsection' : 'sssec', 'paragraph' : 'par',
-		    \ 'subparagraph' : 'spar' }
+		    \ 'proposition' 	: 'prop', 	'definition' 	: 'defi',
+		    \ 'lemma' 		: 'lem',	'array' 	: 'ar',
+		    \ 'abstract' 	: 'no_short_name',
+		    \ 'tikzpicture' 	: 'tikz',	'tabular' 	: 'table',
+		    \ 'table' 		: 'table', 	'proof' 	: 'pr',
+		    \ 'corollary' 	: 'cor',	'enumerate' 	: 'enum',
+		    \ 'example' 	: 'ex',		'itemize' 	: 'it',
+		    \ 'item'		: 'itm',
+		    \ 'remark' 		: 'rem',	'notation' 	: 'not',
+		    \ 'center' 		: '', 		'flushright' 	: '',
+		    \ 'flushleft' 	: '', 		'quotation' 	: 'quot',
+		    \ 'quot' 		: 'quot',	'tabbing' 	: '',
+		    \ 'picture' 	: 'pic',	'minipage' 	: '',	
+		    \ 'list' 		: 'list',	'figure' 	: 'fig',
+		    \ 'verbatim' 	: 'verb', 	'verse' 	: 'verse',
+		    \ 'thebibliography' : '',		'document' 	: 'no_short_name',
+		    \ 'titlepave' 	: '', 		'align' 	: 'eq',
+		    \ 'alignat' 	: 'eq',		'equation' 	: 'eq',
+		    \ 'gather'  	: 'eq', 	'multiline' 	: '',
+		    \ 'split'		: 'eq', 	'substack' 	: '',
+		    \ 'flalign' 	: 'eq',		'displaymath' 	: 'eq',
+		    \ 'part'		: 'prt',	'chapter' 	: 'chap',
+		    \ 'section' 	: 'sec',	'subsection' 	: 'ssec',
+		    \ 'subsubsection' 	: 'sssec', 	'paragraph' 	: 'par',
+		    \ 'subparagraph' 	: 'spar' }
 
 	" ToDo: Doc.
 	" Usage: \label{l:shorn_env_name . g:atp_separator
@@ -918,13 +959,13 @@ endif
 	\ "\\input", "\\include", "\\includeonly", "\\inlucegraphics",  
 	\ "\\savebox", "\\sbox", "\\usebox", "\\rule", "\\raisebox{", 
 	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
-	\ "\\bigskip", "\\medskip", "\\smallskip", "\\vfill", "\\vspace{", 
-	\ "\\hspace", "\\hrulefill", "\\hfill", "\\dots", "\\dotfill",
+	\ "\\bigskip", "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", 
+	\ "\\hspace", "\\hrulefill", "\hfil", "\\hfill", "\\dots", "\\dotfill",
 	\ "\\thispagestyle", "\\mathnormal", "\\markright", "\\pagestyle", "\\pagenumbering",
 	\ "\\author{", "\\date{", "\\thanks{", "\\title{",
-	\ "\\maketitle", "\\overbrace{", "\\underbrace{",
+	\ "\\maketitle", "\\overbrace{", "\\overline", "\\underline{", "\\underbrace{",
 	\ "\\marginpar", "\\indent", "\\par", "\\sloppy", "\\pagebreak", "\\nopagebreak",
-	\ "\\newpage", "\\newline", "\\newtheorem{", "\\linebreak", "\\hyphenation{", "\\fussy",
+	\ "\\newpage", "\\newline", "\\newtheorem{", "\\linebreak", "\\line", "\\hyphenation{", "\\fussy",
 	\ "\\enlagrethispage{", "\\clearpage", "\\cleardoublepage",
 	\ "\\caption{",
 	\ "\\opening{", "\\name{", "\\makelabels{", "\\location{", "\\closing{", "\\address{", 
@@ -944,7 +985,7 @@ endif
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
 	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
 	\ "\\tableofcontents", "\\newfont{", 
-	\ "\\DeclareRobustCommand", "\\show", "\\CheckCommand" ]
+	\ "\\DeclareRobustCommand", "\\show", "\\CheckCommand", "\\mathnormal" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -955,9 +996,9 @@ endif
 	" ToDo: MAKE COMMANDS FOR PREAMBULE.
 
 	let g:atp_math_commands=["\\forall", "\\exists", "\\emptyset", "\\aleph", "\\partial",
-	\ "\\nabla", "\\Box", "\\Diamond", "\\bot", "\\top", "\\flat", "\\sharp",
+	\ "\\nabla", "\\Box", "\\bot", "\\top", "\\flat", "\\sharp",
 	\ "\\mathbf{", "\\mathsf{", "\\mathrm{", "\\mathit{", "\\mathbb{", "\\mathtt{", "\\mathcal{", 
-	\ "\\mathop{", "\\limits", "\\text{", "\\leqslant", "\\leq", "\\geqslant", "\\geq",
+	\ "\\mathop{", "\\mathversion", "\\limits", "\\text{", "\\leqslant", "\\leq", "\\geqslant", "\\geq",
 	\ "\\gtrsim", "\\lesssim", "\\gtrless", "\\left", "\\right", 
 	\ "\\rightarrow", "\\Rightarrow", "\\leftarrow", "\\Leftarrow", "\\iff", 
 	\ "\\leftrightarrow", "\\Leftrightarrow", "\\downarrow", "\\Downarrow", "\\Uparrow",
@@ -982,7 +1023,7 @@ endif
 	\ "\\bigr", "\\Bigr", "\\biggr", "\\Biggr",
 	\ "\\bigl", "\\Bigl", "\\biggl", "\\Biggl",
 	\ "\\hat", "\\grave", "\\bar", "\\acute", "\\mathring", "\\check", "\\dot", "\\vec", "\\breve",
-	\ "\\tilde", "\\widetilde " , "\\widehat", "\\ddot", 
+	\ "\\tilde", "\\widetilde" , "\\widehat", "\\ddot", 
 	\ "\\sqrt", "\\frac{", "\\binom{", "\\cline", "\\vline", "\\hline", "\\multicolumn{", 
 	\ "\\nouppercase", "\\sqsubset", "\\sqsupset", "\\square", "\\blacksquare", "\\triangledown", "\\triangle", 
 	\ "\\diagdown", "\\diagup", "\\nexists", "\\varnothing", "\\Bbbk", "\\circledS", 
@@ -994,7 +1035,7 @@ endif
 	\ "\\setminus", "\\sqcup", "\\sqcap", 
 	\ "\\lnot", "\\notin", "\\neq", "\\smile", "\\frown", "\\equiv", "\\perp",
 	\ "\\quad", "\\qquad", "\\stackrel", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle",
-	\ "\\langle", "\\rangle" ]
+	\ "\\langle", "\\rangle", "\\Diamond"  ]
 
 	" commands defined by the user in input files.
 	" ToDo: to doc.
@@ -1082,48 +1123,6 @@ endif
 	" tikz keywords = begin without '\'!
 	" ToDo: add mote keywords: done until page 145.
 	" ToDo: put them in a correct order!!!
-	let g:atp_tikz_keywords=[ 'draw', 'node', 'matrix', 'anchor', 'top', 'bottom',  
-		    \ 'west', 'east', 'north', 'south', 'at', 'thin', 'thick', 'semithick', 'rounded', 'corners',
-		    \ 'controls', 'and', 'circle', 'step', 'grid', 'very', 'style', 'line', 'help',
-		    \ 'color', 'arc', 'curve', 'scale', 'parabola', 'line', 'ellipse', 'bend', 'sin', 'rectangle', 'ultra', 
-		    \ 'right', 'left', 'intersection', 'xshift', 'yshift', 'shift', 'near', 'start', 'above', 'below', 
-		    \ 'end', 'sloped', 'coordinate', 'cap', 'shape', 'transition', 'place', 'label', 'every', 
-		    \ 'edge', 'point', 'loop', 'join', 'distance', 'sharp', 'rotate', 'blue', 'red', 'green', 'yellow', 
-		    \ 'black', 'white', 'gray',
-		    \ 'text', 'width', 'inner', 'sep', 'baseline', 'current', 'bounding', 'box', 
-		    \ 'canvas', 'polar', 'radius', 'barycentric', 'angle', 'opacity', 
-		    \ 'solid', 'phase', 'loosly', 'dashed', 'dotted' , 'densly', 
-		    \ 'latex', 'diamond', 'double', 'smooth', 'cycle', 'coordinates', 'distance',
-		    \ 'even', 'odd', 'rule', 'pattern', 
-		    \ 'stars', 'fivepointed', 'shading', 'ball', 'axis', 'middle', 'outer', 'transorm',
-		    \ 'fading', 'horizontal', 'vertical', 'light', 'crosshatch', 'button', 'postaction', 'out',
-		    \ 'circular', 'shadow', 'scope', 'borders', 'spreading', 'false', 'position' ]
-	let g:atp_tikz_library_arrows_keywords=[ "reversed'", "stealth'", 'triangle', 'open', 
-		    \ 'hooks', 'round', 'fast', 'cap', 'butt'] 
-	let g:atp_tikz_library_automata_keywords=[ 'state', 'accepting', 'initial', 'swap', 'edge',
-		    \ 'loop', 'nodepart', 'lower', 'output']  
-	let g:atp_tikz_library_backgrounds_keywords=[ 'background', 'show', 'inner', 'frame', 'framed',
-		    \ 'tight', 'loose', 'xsep', 'ysep']
-
-	" NEW:
-	let g:atp_tikz_library_calendar=[ '\calendar', '\tikzmonthtext' ]
-	let g:atp_tikz_library_calendar_keywords=[ 'week list', 'dates', 'day', 'day list', 'month', 'year', 'execute', 
-		    \ 'before', 'after', 'downward', 'upward' ]
-	let g:atp_tikz_library_chain=[ '\chainin' ]
-	let g:atp_tikz_library_chain_keywords=[ 'chain', 'start chain', 'on chain', 'continue chain', 
-		    \ 'start branch', 'branch', 'going', 'numbers', 'greek' ]
-" 	let g:atp_tikz_library_decoration=[]
-	let g:atp_tikz_library_decoration_keywords=[ 'decorate', 'decoration', 'lineto', 'straight', 'zigzag',
-		    \ 'saw', 'random steps', 'bent', 'aspect', 'bumps', 'coil', 'curveto', 'snake', 
-		    \ 'border', 'brace', 'segment lenght', 'waves', 'ticks', 'expanding', 
-		    \ 'crosses', 'triangles', 'dart', 'shape sep', 'shape backgrounds', 'between', 'text along path', 
-		    \ 'Koch curve type 1', 'Koch curve type 1', 'Koch snowflake', 'Cantor set', 'footprints',
-		    \ 'foot lenght',  'stride lenght', 'foot sep', 'foot angle', 'foot of', 'gnome', 'human', 
-		    \ 'bird', 'felis silvestris' ]
-	" for tikz keywords we can complete sentences, like 'matrix of
-	" math nodes'!
-	let g:atp_tikz_library_matrix_keywords=['matrix of nodes', 'matrix of math nodes', 'nodes', 'delimiter', 
-		    \ 'rmoustache', 'column sep=', 'row sep=' ] 
 	" ToDo: completion for arguments in brackets [] for tikz commands.
 	let g:atp_tikz_commands=[ "\\begin", "\\end", "\\matrix", "\\node", "\\shadedraw", 
 		    \ "\\draw", "\\tikz", "\\tikzset",
@@ -1131,20 +1130,85 @@ endif
 		    \ "\\useasboundingbox", "\\tikztostart", "\\tikztotarget", "\\tikztonodes", "\\tikzlastnode",
 		    \ "\\pgfextra", "\\endpgfextra", "\\verb", "\\coordinate", 
 		    \ "\\pattern", "\\shade", "\\shadedraw", "\\colorlet", "\\definecolor" ]
+	let g:atp_tikz_keywords=[ 'draw', 'node', 'matrix', 'anchor', 'top', 'bottom',  
+		    \ 'west', 'east', 'north', 'south', 'at', 'thin', 'thick', 'semithick', 'rounded', 'corners',
+		    \ 'controls', 'and', 'circle', 'step', 'grid', 'very', 'style', 'line', 'help',
+		    \ 'color', 'arc', 'curve', 'scale', 'parabola', 'line', 'ellipse', 'bend', 'sin', 'rectangle', 'ultra', 
+		    \ 'right', 'left', 'intersection', 'xshift', 'yshift', 'shift', 'near', 'start', 'above', 'below', 
+		    \ 'end', 'sloped', 'coordinate', 'cap', 'shape', 'label', 'every', 
+		    \ 'edge', 'point', 'loop', 'join', 'distance', 'sharp', 'rotate', 'blue', 'red', 'green', 'yellow', 
+		    \ 'black', 'white', 'gray',
+		    \ 'text', 'width', 'inner', 'sep', 'baseline', 'current', 'bounding', 'box', 
+		    \ 'canvas', 'polar', 'radius', 'barycentric', 'angle', 'opacity', 
+		    \ 'solid', 'phase', 'loosly', 'dashed', 'dotted' , 'densly', 
+		    \ 'latex', 'diamond', 'double', 'smooth', 'cycle', 'coordinates', 'distance',
+		    \ 'even', 'odd', 'rule', 'pattern', 
+		    \ 'stars', 'shading', 'ball', 'axis', 'middle', 'outer', 'transorm',
+		    \ 'fading', 'horizontal', 'vertical', 'light', 'dark', 'button', 'postaction', 'out',
+		    \ 'circular', 'shadow', 'scope', 'borders', 'spreading', 'false', 'position' ]
+	let g:atp_tikz_library_arrows_keywords	= [ 'reversed', 'stealth', 'triangle', 'open', 
+		    \ 'hooks', 'round', 'fast', 'cap', 'butt'] 
+	let g:atp_tikz_library_automata_keywords=[ 'state', 'accepting', 'initial', 'swap', 
+		    \ 'loop', 'nodepart', 'lower', 'output']  
+	let g:atp_tikz_library_backgrounds_keywords=[ 'background', 'show', 'inner', 'frame', 'framed',
+		    \ 'tight', 'loose', 'xsep', 'ysep']
 
+	" NEW:
+	let g:atp_tikz_library_calendar_commands=[ '\calendar', '\tikzmonthtext' ]
+	let g:atp_tikz_library_calendar_keywords=[ 'week list', 'dates', 'day', 'day list', 'month', 'year', 'execute', 
+		    \ 'before', 'after', 'downward', 'upward' ]
+	let g:atp_tikz_library_chain_commands=[ '\chainin' ]
+	let g:atp_tikz_library_chain_keywords=[ 'chain', 'start chain', 'on chain', 'continue chain', 
+		    \ 'start branch', 'branch', 'going', 'numbers', 'greek' ]
+	let g:atp_tikz_library_decoration_commands=[ '\\arrowreversed' ]
+	let g:atp_tikz_library_decoration_keywords=[ 'decorate', 'decoration', 'lineto', 'straight', 'zigzag',
+		    \ 'saw', 'random steps', 'bent', 'aspect', 'bumps', 'coil', 'curveto', 'snake', 
+		    \ 'border', 'brace', 'segment lenght', 'waves', 'ticks', 'expanding', 
+		    \ 'crosses', 'triangles', 'dart', 'shape', 'width', 'size', 'sep', 'shape backgrounds', 
+		    \ 'between', 'along', 'path', 
+		    \ 'Koch curve type 1', 'Koch curve type 1', 'Koch snowflake', 'Cantor set', 'footprints',
+		    \ 'foot',  'stride lenght', 'foot', 'foot', 'foot of', 'gnome', 'human', 
+		    \ 'bird', 'felis silvestris', 'evenly', 'spread', 'scaled', 'star', 'height', 'text',
+		    \ 'mark', 'reset', 'marks' ]
+	let g:atp_tikz_library_er_keywords	= [ 'entity', 'relationship', 'attribute', 'key']
+	let g:atp_tikz_library_fadings_keywords	= [ 'with', 'fuzzy', 'percent', 'ring' ]
+	let g:atp_tikz_library_fit_keywords	= [ 'fit']
+	let g:atp_tikz_library_matrix_keywords	= ['matrix', 'of', 'nodes', 'math', 'matrix of math nodes', 
+		    \ 'matrix of nodes', 'delimiter', 
+		    \ 'rmoustache', 'column sep=', 'row sep=' ] 
+	let g:atp_tikz_library_mindmap_keywords	= [ 'mindmap', 'concept', 'large', 'huge', 'extra', 'root', 'level',
+		    \ 'connection', 'bar', 'switch', 'annotation' ]
+	let g:atp_tikz_library_folding_commands	= ["\\tikzfoldingdodecahedron"]
+	let g:atp_tikz_library_folding_keywords	= ['face', 'cut', 'fold'] 
+        let g:atp_tikz_library_patterns_keywords	= ['lines', 'fivepointed', 'sixpointed', 'bricks', 'checkerboard',
+		    \ 'crosshatch', 'dots']
+	let g:atp_tikz_library_petri_commands	= ["\\tokennumber" ]
+        let g:atp_tikz_library_petri_keywords	= ['place', 'transition', 'pre', 'post', 'token', 'child', 'children', 
+		    \ 'are', 'tokens', 'colored', 'structured' ]
+	let g:atp_tikz_library_pgfplothandlers_commands	= ["\\pgfplothandlercurveto", "\\pgfsetplottension",
+		    \ "\\pgfplothandlerclosedcurve", "\\pgfplothandlerxcomb", "\\pgfplothandlerycomb",
+		    \ "\\pgfplothandlerpolarcomb", "\\pgfplothandlermark{", "\\pgfsetplotmarkpeat{", 
+		    \ "\\pgfsetplotmarkphase", "\\pgfplothandlermarklisted{", "\\pgfuseplotmark", 
+		    \ "\\pgfsetplotmarksize{", "\\pgfplotmarksize" ]
+        let g:atp_tikz_library_plotmarks_keywords	= [ 'asterisk', 'star', 'oplus', 'oplus*', 'otimes', 'otimes*', 
+		    \ 'square', 'square*', 'triangle', 'triangle*', 'diamond', 'diamond*', 'pentagon', 'pentagon*']
 " ToDo: to doc.
 " adding commands to completion list whether to check or not if we are in the
 " correct environment (for example \tikz or \begin{tikzpicture})
-if !exists("g:atp_check_if_opened")
-    let g:atp_check_if_opened=1
-endif
-" This is as the above, but works only if one uses \(:\), \[:\]
-if !exists("g:atp_math_opened")
-    if search('\%([^\\]\|^\)\$\$\?','wnc') != 0
-	let g:atp_math_opened=0
-    else
-	let g:atp_math_opened=1
-    endif
+" This variable is not used (it was only used for tikzpicture which is better to
+" check.
+" if !exists("g:atp_check_if_opened")
+"     let g:atp_check_if_opened	= 1
+" endif
+" The default value of g:atp_MathOpened is 0, unless the syntax file was sourced for
+" tex files. This assumes that you use the standard names for syntax math zones if
+" you use non-standard syntax file.
+if !exists("g:atp_MathOpened")
+    let g:atp_MathOpened = 0 
+    augroup ATP_MathOpened
+	au!
+	au Syntax tex :let g:atp_MathOpened = 1
+    augroup END
 endif
 " ToDo: Think about even better math modes patterns.
 " \[ - math mode \\[ - not mathmode (this can be at the end of a line as: \\[3pt])
@@ -1161,7 +1225,7 @@ let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\
 	    \ ['\\begin{\%(display\)\?math', '\\end{\%(display\)\?mat\zsh'] ] 
 " ToDo: user command list, env list g:atp_Commands, g:atp_Environments, 
 " }}}
-"
+
 " Some of the autocommands (Status Line, LocalCommands, Log File):
 " {{{ Autocommands:
 
@@ -1169,15 +1233,30 @@ let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\
 if !s:did_options
 
     if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
-	 au BufWinEnter 	*.tex 	call ATPStatus()
+	augroup ATP_Status
+	    au!
+	    au BufWinEnter *.tex 	call ATPStatus()
+	augroup END
     endif
 
     if g:atp_local_completion == 2 
-	au BufEnter *.tex call LocalCommands()
+	augroup ATP_LocaCommands
+	    au!
+	    au BufEnter *.tex 	call LocalCommands()
+	augroup END
     endif
 
-    au FileType *tex let b:atp_TexFlavour = &filetype
-    
+    augroup ATP_TeXFlavour
+	au!
+	au FileType *tex 	let b:atp_TexFlavour = &filetype
+    augroup END
+    " Idea:
+    " au 		*.log if LogBufferFileDiffer | silent execute '%g/^\s*$/d' | w! | endif
+    " or maybe it is better to do that after latex made the log file in the call back
+    " function, but this adds something to every compilation process !
+    " This changes the cursor position in the log file which is NOT GOOD.
+"     au WinEnter	*.log	execute "normal m'" | silent execute '%g/^\s*$/d' | execute "normal ''"
+
     " Experimental:
 	" This doesn't work !
 " 	    let g:debug=0
@@ -1276,14 +1355,17 @@ endfunction
 
 if !s:did_options
 
-    " if leaving the insert mode set the non-math options
-    au InsertLeave 	*.tex :call s:SetMathVimOptions(0)
-    " if entering the insert mode or in the insert mode check if the cursor is in
-    " math or not and set the options acrodingly
-    au InsertEnter	*.tex :call s:SetMathVimOptions()
-    au CursorMovedI 	*.tex :call s:SetMathVimOptions()
-"   This makes vim slow down when moving cursor:
-"     au CursorMoved 	*.tex :call s:SetMathVimOptions()
+    augroup ATP_SetMathVimOptions
+	au!
+	" if leaving the insert mode set the non-math options
+	au InsertLeave 	*.tex 	:call s:SetMathVimOptions(0)
+	" if entering the insert mode or in the insert mode check if the cursor is in
+	" math or not and set the options acrodingly
+	au InsertEnter	*.tex 	:call s:SetMathVimOptions()
+	au CursorMovedI *.tex 	:call s:SetMathVimOptions()
+	" This slows down vim when moving the cursor:
+	" au CursorMoved *.tex :call s:SetMathVimOptions()
+    augroup END
 
 endif
 "}}}

@@ -8,17 +8,6 @@
 " Some things is enough to source once
 let s:did_script = exists("s:did_script") ? 1 : 0
 
-" From latex-box/common.vim 
-" In Comment {{{
-" LatexBox_InComment([line], [col])
-" return true if inside comment
-function! LatexBox_InComment(...)
-	let line	= a:0 >= 1 ? a:1 : line('.')
-	let col		= a:0 >= 2 ? a:2 : col('.')
-	return synIDattr(synID(line("."), col("."), 0), "name") =~# '^texComment'
-endfunction
-" }}}
-
 " s:HasSyntax(syntaxName, [line], [col])
 function! s:HasSyntax(syntaxName, ...)
 	let line	= a:0 >= 1 ? a:1 : line('.')
@@ -117,7 +106,7 @@ function! s:JumpToMatch(mode, ...)
 		endif
 	else
 
-		" match other pairs
+	" match other pairs
 	for i in range(len(open_pats))
 		let open_pat = open_pats[i]
 		let close_pat = close_pats[i]
@@ -149,6 +138,13 @@ vnoremap <silent> <Plug>LatexBox_BackJumpToMatch 	:<C-U>call <SID>JumpToMatch('v
 function! s:SelectInlineMath(seltype)
 
     	let saved_pos		= getpos('.')
+
+	let synstack		= map(synstack(line("."),col(".")), 'synIDattr(v:val, "name")')
+
+	if len(filter(synstack, "v:val =~ '^texMathZone[A-L]S\\?'"))
+	    call s:SelectCurrentEnv(a:seltype)
+	    return
+	endif
 
 	let ZoneX_pat_O 	= '\\\@<!\$'
 	let ZoneX_pat_C 	= '\\\@<!\$'
@@ -231,6 +227,10 @@ vnoremap <silent> <Plug>LatexBox_SelectInlineMathOuter :<C-U>call <SID>SelectInl
 
 " {{{ select current bracket
 " a:seltype		= 'inner' / 'outer' / 'INNER' / 'OUTER'
+"
+" ToDo: a nice feature to work is to make it chose the apropriate bracket
+" level (nesting) in an intuitive way (for example consecutive runs math less
+" nested region of brackets)
 function! s:SelectCurrentBracket(seltype) 
 
     let bracket_dict	= { '{' : '}', '(': ')', '[' : '\]' }
@@ -299,10 +299,10 @@ vnoremap <silent> <Plug>SelectOuterBracket :call <SID>SelectCurrentBracket('oute
 vnoremap <silent> <Plug>SelectINNERBracket :call <SID>SelectCurrentBracket('INNER')<CR>
 vnoremap <silent> <Plug>SelectOUTERBracket :call <SID>SelectCurrentBracket('OUTER')<CR>
 " These maps should be moved to mappings.vim:
-vmap i)		<ESC>:call <SID>SelectCurrentBracket('inner')<CR>
-vmap a)		<ESC>:call <SID>SelectCurrentBracket('outer')<CR>
-vmap A)		<ESC>:call <SID>SelectCurrentBracket('OUTER')<CR>
-vmap I)		<ESC>:call <SID>SelectCurrentBracket('INNER')<CR>
+vmap <buffer> i)		<ESC>:call <SID>SelectCurrentBracket('inner')<CR>
+vmap <buffer> a)		<ESC>:call <SID>SelectCurrentBracket('outer')<CR>
+vmap <buffer> A)		<ESC>:call <SID>SelectCurrentBracket('OUTER')<CR>
+vmap <buffer> I)		<ESC>:call <SID>SelectCurrentBracket('INNER')<CR>
 " }}}
 
 " {{{ select syntax
@@ -316,6 +316,8 @@ function! s:SelectSyntax(syntax)
     normal! m'
 
     let synstack	= map(synstack(line("."),col(".")), 'synIDattr(v:val, "name")')
+    " there are better method for texDocZone and texSectionZone: 
+    call filter(synstack, "v:val != 'texDocZone' && v:val != 'texSectionZone'")
     if  synstack == []
 	return
 
@@ -332,11 +334,6 @@ function! s:SelectSyntax(syntax)
     else
 	let syntax	= a:syntax
 
-    endif
-
-    " there are better method 
-    if count([ 'texDocZone', 'texSectionZone'], syntax)
-	return
     endif
 
     let save_ww		= &l:ww
@@ -407,8 +404,8 @@ function! s:SelectSyntax(syntax)
 endfunction
 vnoremap <silent> <buffer> <Plug>SelectInnerSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('inner')<CR>
 vnoremap <silent> <buffer> <Plug>SelectOuterSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('outer')<CR>
-vmap as		<ESC>:<C-U>call <SID>SelectSyntax('outer')<CR>
-vmap is		<ESC>:<C-U>call <SID>SelectSyntax('inner')<CR>
+vmap <buffer> <silent> as		<ESC>:<C-U>call <SID>SelectSyntax('outer')<CR>
+vmap <buffer> <silent> is		<ESC>:<C-U>call <SID>SelectSyntax('inner')<CR>
 " }}}
 
 " select current environment {{{
@@ -511,8 +508,7 @@ function! s:HighlightMatchingPair()
 		" check if next or previous character is \$
 		let two_dollars = ( getline('.')[col('.') - 2] == '$' ? 'p' : 
 			    			\ ( getline('.')[col('.') ] == '$' ? 'n' : '0' ) )
-		let b:two_dollars = two_dollars
-	
+
 		if two_dollars == '0' || b:atp_TexFlavour == 'tex'
 
 		    " check if next character is in inline math

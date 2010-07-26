@@ -89,10 +89,10 @@ nmenu 550.70 &LaTeX.&Options.Remove\ Command<Tab>g:rmcommand			:let g:rmcommand=
 nmenu 550.70 &LaTeX.&Options.Default\ Bib\ Flags<Tab>g:defaultbibflags		:let g:defaultbibflags="
 "
 nmenu 550.78 &LaTeX.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+ 	:ToggleSpace<CR>
-if g:atp_math_opened
-    nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_math_opened  :ToggleCheckMathOpened<CR>
+if g:atp_MathOpened
+    nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_MathOpened  :ToggleCheckMathOpened<CR>
 else
-    nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_math_opened :ToggleCheckMathOpened<CR>
+    nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_MathOpened :ToggleCheckMathOpened<CR>
 endif
 tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
 " ToDo: add menu for printing.

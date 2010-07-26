@@ -10,10 +10,10 @@ vmap <buffer> iE <Plug>LatexBox_SelectCurrentEnVInner
 vmap <buffer> ae <Plug>LatexBox_SelectCurrentEnvOuter
 omap <buffer> ie :normal vie<CR>
 omap <buffer> ae :normal vae<CR>
-vmap <buffer> i$ <Plug>LatexBox_SelectInlineMathInner
-vmap <buffer> a$ <Plug>LatexBox_SelectInlineMathOuter
-omap <buffer> i$ :normal vi$<CR>
-omap <buffer> a$ :normal va$<CR>
+vmap <buffer> im <Plug>LatexBox_SelectInlineMathInner
+vmap <buffer> am <Plug>LatexBox_SelectInlineMathOuter
+omap <buffer> im :normal vim<CR>
+omap <buffer> am :normal vam<CR>
 
 setlocal omnifunc=LatexBox_Complete
 

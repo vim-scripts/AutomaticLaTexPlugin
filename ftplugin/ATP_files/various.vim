@@ -1,5 +1,6 @@
-"Author		Marcin Szamotulski	
-"These are various tools.
+"Author:	Marcin Szamotulski	
+"Email:		mszamot/AT/gmail/DOT/com
+"These are various editting tools used in ATP.
 
 " This is the wrap selection function.
 " {{{ WrapSelection
@@ -199,6 +200,40 @@ command! -buffer -nargs=? -range InteligentWrapSelection	:call <SID>InteligentWr
 vmap <Plug>InteligentWrapSelection				:<C-U>call <SID>InteligentWrapSelection('')<CR>i
 "}}}
 
+" Insert() function, which is used to insert text depending on mode: text/math. 
+" {{{ Insert()
+" Should be called via an imap:
+" imap <lhs> 	<Esc>:call Insert(text, math)<CR>a
+" a:text	= text to insert in text mode
+" a:math	= text to insert in math mode	
+function! Insert(text, math)
+
+    let MathZones = copy(g:atp_MathZones)
+    if b:atp_TexFlavour == 'plaintex'
+	call add(MathZones, 'texMathZoneY')
+    endif
+
+    " select the correct wrapper
+    if atplib#CheckSyntaxGroups(MathZones)
+	let insert	= a:math
+    else
+	let insert	= a:text
+    endif
+
+    " if the insert variable is empty return
+    if empty(insert)
+	return
+    endif
+
+    let line		= getline(".")
+    let col		= col(".")
+
+    let new_line	= strpart(line, 0, col) . insert . strpart(line, col)
+    call setline(line("."), new_line)
+    call cursor(line("."), col(".")+len(insert))
+    return ""
+endfunction
+" }}}
 
 " Editing Toggle Functions
 "{{{ Variables
@@ -271,8 +306,8 @@ function! s:ToggleStar()
 	endif
     endif
 endfunction
-command! -buffer 	ToggleStar   		:call <SID>ToggleStar()
-nnoremap <silent> <Plug>ToggleStar		:ToggleStar
+command! -buffer 	ToggleStar   		:call <SID>ToggleStar()<CR>
+nnoremap <silent> <Plug>ToggleStar		:call <SID>ToggleStar()<CR>
 "}}}
 "{{{ ToggleEnvironment
 " this function toggles envrionment name.
@@ -405,7 +440,7 @@ function! s:TeXdoc_complete(ArgLead, CmdLine, CursorPos)
 
     return filter(copy(aliases), "v:val =~ '^' . a:ArgLead")
 endfunction
-command -buffer -nargs=* -complete=customlist,<SID>TeXdoc_complete TeXdoc 	:call <SID>TeXdoc(<f-args>)
+command! -buffer -nargs=* -complete=customlist,<SID>TeXdoc_complete TeXdoc 	:call <SID>TeXdoc(<f-args>)
 nnoremap <silent> <buffer> <Plug>TeXdoc						:TeXdoc 
 "}}}
 
@@ -452,8 +487,8 @@ function! s:Delete()
 " 		echo "Please set g:rmcommand to clear the working directory"
 " 	endif
 endfunction
-command -buffer	Delete		:call <SID>Delete()<CR>
-nmap <buffer> <Plug>Delete	:call <SID>Delete()<CR>
+command! -buffer Delete		:call <SID>Delete()
+nmap <buffer>	 <Plug>Delete	:call <SID>Delete()<CR>
 "}}}1
 
 "{{{1 OpenLog, TexLog, TexLog Buffer Options, PdfFonts, YesNoCompletion
@@ -473,24 +508,31 @@ endfunction
 "}}}
 function! s:OpenLog()
     if filereadable(&l:errorfile)
-	exe "rightbelow split +setl\\ nospell\\ ruler\\ syn=log_atp\\ autoread " . &l:errorfile
-	map <buffer> q :bd<CR>
-	map <silent> <buffer> w :call <SID>Search('Warning', 'W')<CR>
-	map <silent> <buffer> W :call <SID>Search('Warning', 'bW')<CR>
-	map <silent> <buffer> c :call <SID>Search('LaTeX Warning: Citation', 'W')<CR>
-	map <silent> <buffer> C :call <SID>Search('LaTeX Warning: Citation', 'bW')<CR>
-	map <silent> <buffer> r :call <SID>Search('LaTeX Warning: Reference', 'W')<CR>
-	map <silent> <buffer> R :call <SID>Search('LaTeX Warning: Reference', 'bW')<CR>
-	map <silent> <buffer> e :call <SID>Search('^!', 'W')<CR>
-	map <silent> <buffer> E :call <SID>Search('^!', 'bW')<CR>
-	map <silent> <buffer> f :call <SID>Search('Font \%(Info\\|Warning\)', 'W')<CR>
-	map <silent> <buffer> F :call <SID>Search('Font \%(Info\\|Warning\)', 'bW')<CR>
-	map <silent> <buffer> p :call <SID>Search('Package', 'W')<CR>
-	map <silent> <buffer> P :call <SID>Search('Package', 'bW')<CR>
-	map <silent> <buffer> i :call <SID>Search('Info', 'W')<CR>
-	map <silent> <buffer> I :call <SID>Search('Info', 'bW')<CR>
+	exe "rightbelow split +setl\\ nospell\\ ruler\\ syn=log_atp\\ autoread " . fnameescape(&l:errorfile)
+	map <buffer> q :bd!<CR>
+	map <silent> <buffer> <LocalLeader>w :call <SID>Search('Warning', 'w')<CR>
+	map <silent> <buffer> <LocalLeader>W :call <SID>Search('Warning', 'bw')<CR>
+	map <silent> <buffer> <LocalLeader>c :call <SID>Search('LaTeX Warning: Citation', 'w')<CR>
+	map <silent> <buffer> <LocalLeader>C :call <SID>Search('LaTeX Warning: Citation', 'bw')<CR>
+	map <silent> <buffer> <LocalLeader>r :call <SID>Search('LaTeX Warning: Reference', 'w')<CR>
+	map <silent> <buffer> <LocalLeader>R :call <SID>Search('LaTeX Warning: Reference', 'bw')<CR>
+	map <silent> <buffer> <LocalLeader>e :call <SID>Search('^!', 'w')<CR>
+	map <silent> <buffer> <LocalLeader>E :call <SID>Search('^!', 'bw')<CR>
+	map <silent> <buffer> <LocalLeader>f :call <SID>Search('Font \%(Info\\|Warning\)', 'w')<CR>
+	map <silent> <buffer> <LocalLeader>F :call <SID>Search('Font \%(Info\\|Warning\)', 'bw')<CR>
+	map <silent> <buffer> <LocalLeader>p :call <SID>Search('Package', 'w')<CR>
+	map <silent> <buffer> <LocalLeader>P :call <SID>Search('Package', 'bw')<CR>
+	map <silent> <buffer> <LocalLeader>i :call <SID>Search('Info', 'w')<CR>
+	map <silent> <buffer> <LocalLeader>I :call <SID>Search('Info', 'bw')<CR>
 	map <silent> <buffer> % :call <SID>Searchpair('(', '', ')', 'w')<CR>
-	silent execute "%g/^\s*$/d"
+"	This prevents vim from reloading with 'autoread' option: the buffer is
+"	modified outside and inside vim.
+" 	execute "normal m'"
+	silent execute '%g/^\s*$/d'
+	execute "normal ''"
+" 	To deal with the above we save the log file.
+" 	silent w!
+		   
     else
 	echo "No log file"
     endif
@@ -626,7 +668,7 @@ endfun
 endfunction
 " The command only prints the output file.
 command! -complete=custom,<SID>ListPrinters  -buffer -nargs=* SshPrint 	:call <SID>SshPrint("", <f-args>)
-nnoremap <silent> <buffer> <Plug>SshPrint				:SshPrint
+nnoremap <buffer> <Plug>SshPrint					:SshPrint 
 
 fun! s:Lpstat()
     if exists("g:apt_ssh") 
@@ -787,7 +829,7 @@ fun! Reload(...)
 	    endfor
 	endif
     endif
-    au! CursorHold *.tex
+    augroup! ATP_auTeX
     w
 "   THIS IS THE SLOW WAY:
     bd!
@@ -797,7 +839,7 @@ fun! Reload(...)
 "     execute "source " . l:file_path[0]
 endfunction
 endif
-command -buffer -nargs=* -complete=function Reload	:call Reload(<f-args>)
+command! -buffer -nargs=* -complete=function Reload	:call Reload(<f-args>)
 " }}}1
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

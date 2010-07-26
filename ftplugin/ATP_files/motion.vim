@@ -1,373 +1,275 @@
 " Author:	Marcin Szamotulski
 " This file contains motion and highlight functions of ATP.
 
+" Load once variable
+let s:loaded	= !exists("s:loaded") ? 1 : 2
+
 " All table  of contents stuff: variables, functions and commands. 
 " {{{ Table Of Contents
+" {{{2 Variabels
 let g:atp_sections={
     \	'chapter' 	: [           '^\s*\(\\chapter\*\?\s*{\)',	'\\chapter\*'],	
     \	'section' 	: [           '^\s*\(\\section\*\?\s*{\)',	'\\section\*'],
     \ 	'subsection' 	: [	   '^\s*\(\\subsection\*\?\s*{\)',	'\\subsection\*'],
     \	'subsubsection' : [ 	'^\s*\(\\subsubsection\*\?\s*{\)',	'\\subsubsection\*'],
-    \	'bibliography' 	: ['^\s*\(\\begin\s*{bibliography}\|\\bibliography\s*{\)' , 'nopattern'],
-    \	'abstract' 	: ['^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern']}
-
-"     \   'part'		: [ 		 '^\s*\(\\part.*\)',	'\\part\*'],
+    \	'bibliography' 	: ['^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
+    \	'abstract' 	: ['^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
+    \   'part'		: [ 		 '^\s*\(\\part\*\?\s*{\)',	'\\part\*']}
 
 "--Make TOC -----------------------------
 " This makes sense only for latex documents.
 "
-" It makes the t:atp_toc - a dictionary (with keys: full path of the buffer name)
-" which values are dictionaries which keys are: line numbers and values lists:
-" [ 'section-name', 'number', 'title'] where section name is element of
-" keys(g:atp_sections), number is the total number, 'title=\1' where \1 is
-" returned by the g:section['key'][0] pattern.
-" {{{ maketoc_fromaux
-" function! s:maketoc_fromaux(filename)
-"     let l:toc={}
-"     " if the dictinary with labels is not defined, define it
-"     if !exists("t:atp_labels")
-" 	let t:atp_labels={}
-"     endif
-"     " TODO we could check if there are changes in the file and copy the buffer
-"     " to this variable only if there where changes.
-"     let l:auxfile=[]
-"     " getbufline reads only loaded buffers, unloaded can be read from file.
-"     let l:auxfname=fnamemodify(a:filename,":r").'.aux'
-"     if filereadable(l:auxfname)
-" 	let l:auxfile=readfile(l:auxfname)
-"     else
-" 	echohl WarningMsg
-" 	echomsg "No aux file, run ".b:atp_TexCompiler."."
-" 	echohl Normal
-"     endif
-"     call filter(l:auxfile,' v:val =~ "\\\\@writefile{toc}"') 
-" "     while l:line in l:auxfile
-"     for l:line in l:auxfile
-" 	let l:sec_unit=matchstr(l:line,'\\contentsline\s*{\zs[^}]*\ze}')
-" 	let l:sec_number=matchstr(l:line,'\\numberline\s*{\zs[^}]*\ze}')
-" " 	echomsg l:sec_number
-" 	" To Do: how to match the long_title
-" 	let l:long_title=matchstr(l:line,'\\contentsline\s*{[^}]*}{\%(\\numberline\s*{[^}]*}\)\?\s*\zs.*') 
-" 	if l:long_title =~ '\\GenericError'
-" 	    let l:long_title=substitute(l:long_title,'\\GenericError\s*{[^}]*}{[^}]*}{[^}]*}{[^}]*}','','g')
-" 	endif
-" 	if l:long_title =~ '\\relax\s'
-" 	    let l:long_title=substitute(l:long_title,'\\relax\s','','g')
-" 	endif	   
-" 	if l:long_title =~ '\\unhbox '
-" 	    let l:long_title=substitute(l:long_title,'\\unhbox\s','','g')
-" 	endif	   
-" 	if l:long_title =~ '\\nobreakspace'
-" 	    let l:long_title=substitute(l:long_title,'\\nobreakspace\s*{}',' ','g')
-" 	endif	   
-" 	let l:i=0
-" 	let l:braces=0
-" 	while l:braces >= 0 && l:i < len(l:long_title)
-" 	    if l:long_title[l:i] == '{'
-" 		let l:braces+=1
-" 	    elseif l:long_title[l:i] == '}'
-" 		let l:braces-=1
-" 	    endif
-" 	    let l:i+=1
-" 	endwhile
-" " 	echo "len " len(l:long_title) . " l:i" . l:i
-" 	let l:long_title=strpart(l:long_title,0,l:i-1)
-" 
-" " 	let l:star_c=matchstr(l:line,'\\contentsline\s*{[^}]*}{\%(\\numberline\s*{[^}]*}\)\?\s*\%([^}]*\|{[^}]*}\)*}{\zs[^}]*\ze}')
-" 	let l:star_version= l:line =~ l:sec_unit.'\*'
-" 
-" 	" find line number in the current tex file (this is not the best!) we
-" 	" should check if we are in mainfile.
-" 	let l:line_nr=search('\\'.l:sec_unit.'.*'.l:long_title,'n')
-" 	let l:tex_line=getline(l:line_nr)
-" " 	echomsg "tex_line=".l:tex_line."sec_unit=".l:sec_unit." sec_number=".l:sec_number." l:long_title=".l:long_title." star=".l:star_version 
-" 	" find short title
-" 	let l:short_title=l:line
-" 	let l:start=stridx(l:short_title,'[')+1
-" 	if l:start == 0
-" 	    let l:short_title=''
-" 	else
-" 	    let l:short_title=strpart(l:short_title,l:start)
-" 	    " we are looking for the maching ']' 
-" 	    let l:count=1
-" 	    let l:i=-1
-" 	    while l:i<=len(l:short_title)
-" 		let l:i+=1
-" 		if strpart(l:short_title,l:i,1) == '['	
-" 		    let l:count+=1
-" 		elseif strpart(l:short_title,l:i,1) == ']'
-" 		    let l:count-=1
-" 		endif
-" 		if l:count==0
-" 		    break
-" 		endif
-" 	    endwhile	
-" 	    let l:short_title=strpart(l:short_title,0,l:i)
-" 	endif
-" 	call extend(l:toc, { l:line_nr : [l:sec_unit, l:sec_number, l:long_title, l:star_version, l:short_title] }) 
-"     endfor
-"     let t:atp_toc_new={ a:filename : l:toc }
-"     return t:atp_toc_new
-" endfunction
-" }}}2
+" Notes: Makeing toc from aux file:
+" 	+ is fast
+" 	+ one gets correct numbers
+" 	- one doesn't get line numbers
+" 		/ the title might be modified thus one can not make a pattern
+" 		    which works in all situations, while this is important for 
+" 		    :DeleteSection command /
+"
 " {{{2 s:find_toc_lines
 function! s:find_toc_lines()
-    let l:toc_lines_nr=[]
-    let l:toc_lines=[]
-    let b:toc_lines_nr=l:toc_lines_nr
+    let toc_lines_nr=[]
+    let toc_lines=[]
+    let b:toc_lines_nr=toc_lines_nr
 
-    let l:pos_saved=getpos(".")
-    let l:pos=[0,1,1,0]
-    keepjumps call setpos(".",l:pos)
+    let pos_saved=getpos(".")
+    let pos=[0,1,1,0]
+    keepjumps call setpos(".",pos)
 
     " Pattern:
-    let l:j=0
-    for l:section in keys(g:atp_sections)
-	if l:j == 0 
-	    let l:filter=g:atp_sections[l:section][0] . ''
+    let j=0
+    for section in keys(g:atp_sections)
+	if j == 0 
+	    let filter=g:atp_sections[section][0] . ''
 	else
-	    let l:filter=l:filter . '\|' . g:atp_sections[l:section][0] 
+	    let filter=filter . '\|' . g:atp_sections[section][0] 
 	endif
-	let l:j+=1
+	let j+=1
     endfor
-"     let b:filter=l:filter
+"     let b:filter=filter
 
     " Searching Loop:
-    let l:line=search(l:filter,'W')
-    while l:line
-	call add(l:toc_lines_nr,l:line)
-	let l:line=search(l:filter,'W')
+    let line=search(filter,'W')
+    while line
+	call add(toc_lines_nr,line)
+	let line=search(filter,'W')
     endwhile
-    keepjumps call setpos(".",l:pos_saved)
-    for l:line in l:toc_lines_nr
-	call add(l:toc_lines,getline(l:line))
+    keepjumps call setpos(".",pos_saved)
+    for line in toc_lines_nr
+	call add(toc_lines,getline(line))
     endfor
-    return l:toc_lines
+    return toc_lines
 endfunction
-" }}}2
 " {{{2 s:maketoc 
+" this will store information: 
+" { 'linenumber' : ['chapter/section/..', 'sectionnumber', 'section title', '0/1=not starred/starred'] }
 function! s:maketoc(filename)
-    
-    " this will store information { 'linenumber' : ['chapter/section/..', 'sectionnumber', 'section title', '0/1=not starred/starred'] }
-    let l:toc={}
+    let toc={}
 
     " if the dictinary with labels is not defined, define it
     if !exists("t:atp_labels")
-	let t:atp_labels={}
+	let t:atp_labels = {}
     endif
-    " TODO we could check if there are changes in the file and copy the buffer
-    " to this variable only if there where changes.
-    let l:texfile=[]
+
+    let texfile		= []
     " getbufline reads only loaded buffers, unloaded can be read from file.
-    let l:bufname=fnamemodify(a:filename,":t")
-    let b:bufname=l:bufname
-    if bufloaded(l:bufname)
-	let l:texfile=getbufline("^" . l:bufname . "$","1","$")
-    else
-" 	w
-	let l:texfile=readfile(a:filename)
-    endif
-    let l:true=1
-    let l:i=0
+    let bufname		= fnamemodify(a:filename,":t")
+    let texfile 	= ( bufloaded(bufname)  ? getbufline("^" . bufname . "$","1","$") : readfile(a:filename) )
+    let texfile_copy	= deepcopy(texfile)
+
+    let true	= 1
+    let i	= 0
     " remove the part before \begin{document}
-    while l:true == 1 && len(l:texfile)>0
-	if l:texfile[0] =~ '\\begin\s*{document}'
-		let l:true=0
-	endif
-	call remove(l:texfile,0)
-	let l:i+=1
+    while true == 1 && len(texfile)>0
+	let true = ( texfile[0] =~ '\\begin\s*{document}' ? 0 : 1 )
+	call remove(texfile,0)
+	let i+=1
     endwhile
-    let l:bline=l:i
-    let l:i=1
+    let bline		= i
+    let i		= 1
     " set variables for chapter/section numbers
-    for l:section in keys(g:atp_sections)
-	let l:ind{l:section}=0
+    for section in keys(g:atp_sections)
+	let ind{section} = 0
     endfor
     " make a filter
-    let l:j=0
-    for l:section in keys(g:atp_sections)
-	if l:j == 0 
-	    let l:filter=g:atp_sections[l:section][0] . ''
-	else
-	    let l:filter=l:filter . '\|' . g:atp_sections[l:section][0] 
-	endif
-	let l:j+=1
+    let j = 0
+    for section in keys(g:atp_sections)
+	let filter = ( j == 0 ? g:atp_sections[section][0] . '' : filter . '\|' . g:atp_sections[section][0] )
+	let j+=1
     endfor
-    let b:filter=l:filter " DEBUG
     " ToDo: HOW TO MAKE THIS FAST?
-    let s:filtered=filter(deepcopy(l:texfile),'v:val =~ l:filter')
-    let b:filtered=s:filtered
-    let b:texfile=l:texfile
-" this works but only for one file:
-"     let s:filtered=s:find_toc_lines()
-    for l:line in s:filtered
-	for l:section in keys(g:atp_sections)
-	    if l:line =~ g:atp_sections[l:section][0] 
-		if l:line !~ '^\s*%'
+    let s:filtered	= filter(deepcopy(texfile), 'v:val =~ filter')
+
+    for line in s:filtered
+	for section in keys(g:atp_sections)
+	    if line =~ g:atp_sections[section][0] 
+		if line !~ '^\s*%'
 		    " THIS DO NOT WORKS WITH \abstract{ --> empty set, but with
 		    " \chapter{title} --> title, solution: the name of
 		    " 'Abstract' will be plased, as we know what we have
 		    " matched
-		    let l:title=l:line
+		    let title	= line
 
 		    " test if it is a starred version.
-		    let l:star=0
-		    if g:atp_sections[l:section][1] != 'nopattern' && l:line =~ g:atp_sections[l:section][1] 
-			let l:star=1 
+		    let star=0
+		    if g:atp_sections[section][1] != 'nopattern' && line =~ g:atp_sections[section][1] 
+			let star=1 
 		    else
-			let l:star=0
+			let star=0
 		    endif
-		    let l:i=index(l:texfile,l:line)
-		    let l:tline=l:i+l:bline+1
+
+		    " Problem: If there are two sections with the same title, this
+		    " does 't work:
+		    let idx	= index(texfile,line)
+		    call remove(texfile, idx)
+		    let i	= idx
+		    let tline	= i+bline+1
+		    let bline	+=1
 
 		    " Find Title:
-		    let l:start=stridx(l:title,'{')+1
-		    let l:title=strpart(l:title,l:start)
+		    let start	= stridx(title,'{')+1
+		    let title	= strpart(title,start)
 		    " we are looking for the maching '}' 
-		    let l:count=1
-		    let l:i=-1
-		    while l:i<=len(l:title)
-			let l:i+=1
-			if strpart(l:title,l:i,1) == '{'	
+		    let l:count	= 1
+		    let i=-1
+		    while i<=len(title)
+			let i+=1
+			if strpart(title,i,1) == '{'	
 			    let l:count+=1
-			elseif strpart(l:title,l:i,1) == '}'
+			elseif strpart(title,i,1) == '}'
 			    let l:count-=1
 			endif
-			if l:count==0
+			if l:count == 0
 			    break
 			endif
 		    endwhile	
-		    let l:title=strpart(l:title,0,l:i)
+		    let title = strpart(title,0,i)
 
 		    " Section Number:
 		    " if it is not starred version add one to the section number
 		    " or it is not an abstract 
-		    if l:star == 0  
-			if !(l:section == 'chapter' && l:title =~ '^\cabstract$')
-			    let l:ind{l:section}+=1
-" 			else
-" 			    echomsg "XXXXXXXXX" l:section . " " . l:title . "  " . l:ind{l:section}
+		    if star == 0  
+			if !(section == 'chapter' && title =~ '^\cabstract$')
+			    let ind{section}+=1
 			endif
 		    endif
 
-		    if l:section == 'part'
-			let l:indchapter=0
-			let l:indsection=0
-			let l:indsubsection=0
-			let l:indsubsubsection=0
-		    elseif l:section ==  'chapter'
-			let l:indsection=0
-			let l:indsubsection=0
-			let l:indsubsubsection=0
-		    elseif l:section ==  'section'
-			let l:indsubsection=0
-			let l:indsubsubsection=0
-		    elseif l:section ==  'subsection'
-			let l:indsubsubsection=0
+		    if section == 'part'
+			let indchapter		= 0
+			let indsection		= 0
+			let indsubsection	= 0
+			let indsubsubsection	= 0
+		    elseif section ==  'chapter'
+			let indsection		= 0
+			let indsubsection	= 0
+			let indsubsubsection	= 0
+		    elseif section ==  'section'
+			let indsubsection	= 0
+			let indsubsubsection	= 0
+		    elseif section ==  'subsection'
+			let indsubsubsection	= 0
 		    endif
 
 		    " Find Short Title:
-		    let l:shorttitle=l:line
-		    let l:start=stridx(l:shorttitle,'[')+1
-		    if l:start == 0
-			let l:shorttitle=''
+		    let shorttitle=line
+		    let start=stridx(shorttitle,'[')+1
+		    if start == 0
+			let shorttitle=''
 		    else
-			let l:shorttitle=strpart(l:shorttitle,l:start)
+			let shorttitle=strpart(shorttitle,start)
 			" we are looking for the maching ']' 
 			let l:count=1
-			let l:i=-1
-			while l:i<=len(l:shorttitle)
-			    let l:i+=1
-			    if strpart(l:shorttitle,l:i,1) == '['	
+			let i=-1
+			while i<=len(shorttitle)
+			    let i+=1
+			    if strpart(shorttitle,i,1) == '['	
 				let l:count+=1
-			    elseif strpart(l:shorttitle,l:i,1) == ']'
+			    elseif strpart(shorttitle,i,1) == ']'
 				let l:count-=1
 			    endif
 			    if l:count==0
 				break
 			    endif
 			endwhile	
-			let l:shorttitle=strpart(l:shorttitle,0,l:i)
+			let shorttitle = strpart(shorttitle,0,i)
 		    endif
-		    call extend(l:toc, { l:tline : [ l:section, l:ind{l:section}, l:title, l:star, l:shorttitle] }) 
 
-		    " Extend t:atp_labels
-		    let l:lname=matchstr(l:line,'\\label\s*{.*','')
-		    let l:start=stridx(l:lname,'{')+1
-		    let l:lname=strpart(l:lname,l:start)
-		    let l:end=stridx(l:lname,'}')
-		    let l:lname=strpart(l:lname,0,l:end)
-" 		    let b:lname=l:lname
-		    if	l:lname != ''
-			" if there was no t:atp_labels for a:filename make an entry in
-			" t:atp_labels
-			if !has_key(t:atp_labels,a:filename)
-			    let t:atp_labels[a:filename] = {}
-			endif
-			call extend(t:atp_labels[a:filename],{ l:tline : l:lname },"force")
+		    "ToDo: if section is bibliography (using bib) then find the first
+		    " empty line:
+		    if section == "bibliography" && line !~ '\\begin\s*{\s*thebibliography\s*}'
+			let idx	= tline-1
+			while texfile_copy[idx] !~ '^\s*$'
+			    let idx-= 1
+			endwhile
+" 			" We add 1 as we want the first non blank line, and one more
+" 			" 1 as we want to know the line number not the list index
+" 			" number:
+			let tline=idx+1
 		    endif
+
+		    " Add results to the dictionary:
+		    call extend(toc, { tline : [ section, ind{section}, title, star, shorttitle] }) 
+
 		endif
 	    endif
 	endfor
     endfor
     if exists("t:atp_toc")
-	call extend(t:atp_toc, { a:filename : l:toc },"force")
+	call extend(t:atp_toc, { a:filename : toc }, "force")
     else
-	let t:atp_toc={ a:filename : l:toc }
+	let t:atp_toc = { a:filename : toc }
     endif
     return t:atp_toc
 endfunction
-" }}}2
-" {{{2 Make a List of Buffers
+" {{{2 s:buflist
 if !exists("t:buflist")
     let t:buflist=[]
 endif
 function! s:buflist()
     " this names are used in TOC and passed to s:maketoc, which
-    " makes a dictionary whose keys are the values of l:name defined
+    " makes a dictionary whose keys are the values of name defined
     " just below:
-    let l:name=resolve(fnamemodify(bufname("%"),":p"))
+    let name=resolve(fnamemodify(bufname("%"),":p"))
     " add an entry to the list t:buflist if it is not there.
-    if bufname("") =~ ".tex" && index(t:buflist,l:name) == -1
-	call add(t:buflist,l:name)
+    if bufname("") =~ ".tex" && index(t:buflist,name) == -1
+	call add(t:buflist,name)
     endif
     return t:buflist
 endfunction
 call s:buflist()
-" }}}2
 " {{{2 RemoveFromBufList
 if !exists("*RemoveFromBufList")
     function RemoveFromBufList()
-	let l:i=1
-	for l:f in t:buflist
-	    echo "(" . l:i . ") " . l:f
-	    let l:i+=1
+	let i=1
+	for f in t:buflist
+	    echo "(" . i . ") " . f
+	    let i+=1
 	endfor
-	let l:which=input("Which file to remove (press <Enter> for none)")
-	if l:which != "" && l:which =~ '\d\+'
-	    call remove(t:buflist,l:f-1)
+	let which=input("Which file to remove (press <Enter> for none)")
+	if which != "" && which =~ '\d\+'
+	    call remove(t:buflist,f-1)
 	endif
     endfunction
 endif
-" }}}2
 " {{{2 s:showtoc
 function! s:showtoc(toc,...)
-    let l:new=0
+    let new=0
     if a:0 == 1
-	let l:new=a:1
+	let new=a:1
     endif
     " this is a dictionary of line numbers where a new file begins.
-    let l:cline=line(".")
+    let cline=line(".")
 "     " Open new window or jump to the existing one.
 "     " Remember the place from which we are coming:
 "     let t:atp_bufname=bufname("")
 "     let t:atp_winnr=winnr()	 these are already set by TOC()
-    let l:bname="__ToC__"
-    let l:tocwinnr=bufwinnr("^" . l:bname . "$") 
-"     echomsg "DEBUG a " . l:tocwinnr
-    if l:tocwinnr != -1
+    let bname="__ToC__"
+    let tocwinnr=bufwinnr("^" . bname . "$") 
+"     echomsg "DEBUG a " . tocwinnr
+    if tocwinnr != -1
 	" Jump to the existing window.
-	    exe l:tocwinnr . " wincmd w"
+	    exe tocwinnr . " wincmd w"
 	    silent exe "%delete"
     else
 	" Open new window if its width is defined (if it is not the code below
@@ -376,206 +278,203 @@ function! s:showtoc(toc,...)
 	    echoerr "t:toc_window_width not set"
 	    return
 	endif
-	let l:openbuffer=t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ filetype=toc_atp\\ nowrap __ToC__"
-	silent exe l:openbuffer
+	let openbuffer=t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
+	silent exe openbuffer
 	" We are setting the address from which we have come.
 	silent call atplib#setwindow()
     endif
-    setlocal tabstop=4
-    let l:number=1
+    let number=1
     " this is the line number in ToC.
-    " l:number is a line number relative to the file listed in ToC.
-    " the current line number is l:linenumber+l:number
-    " there are two loops: one over l:linenumber and the second over l:number.
-    let l:numberdict={}
+    " number is a line number relative to the file listed in ToC.
+    " the current line number is linenumber+number
+    " there are two loops: one over linenumber and the second over number.
+    let numberdict={}
     " this variable will be used to set the cursor position in ToC.
-    for l:openfile in keys(a:toc)
-	call extend(l:numberdict,{ l:openfile : l:number })
-	let l:part_on=0
-	let l:chap_on=0
-	let l:chnr=0
-	let l:secnr=0
-	let l:ssecnr=0
-	let l:sssecnr=0
-	let l:path=fnamemodify(bufname(""),":p:h")
-	for l:line in keys(a:toc[l:openfile])
-	    if a:toc[l:openfile][l:line][0] == 'chapter'
-		let l:chap_on=1
+    for openfile in keys(a:toc)
+	call extend(numberdict,{ openfile : number })
+	let part_on=0
+	let chap_on=0
+	let chnr=0
+	let secnr=0
+	let ssecnr=0
+	let sssecnr=0
+	let path=fnamemodify(bufname(""),":p:h")
+	for line in keys(a:toc[openfile])
+	    if a:toc[openfile][line][0] == 'chapter'
+		let chap_on=1
 		break
-	    elseif a:toc[l:openfile][l:line][0] == 'part'
-		let l:part_on=1
+	    elseif a:toc[openfile][line][0] == 'part'
+		let part_on=1
 	    endif
 	endfor
-	let l:sorted=sort(keys(a:toc[l:openfile]),"atplib#CompareList")
-	let l:len=len(l:sorted)
+	let sorted	= sort(keys(a:toc[openfile]),"atplib#CompareList")
+	let len		= len(sorted)
 	" write the file name in ToC (with a full path in paranthesis)
-	call setline(l:number,fnamemodify(l:openfile,":t") . " (" . fnamemodify(l:openfile,":p:h") . ")")
-	let l:number+=1
-	for l:line in l:sorted
-	    let l:lineidx=index(l:sorted,l:line)
-	    let l:nlineidx=l:lineidx+1
-	    if l:nlineidx< len(l:sorted)
-		let l:nline=l:sorted[l:nlineidx]
+	call setline(number,fnamemodify(openfile,":t") . " (" . fnamemodify(openfile,":p:h") . ")")
+	let number+=1
+	for line in sorted
+	    let lineidx=index(sorted,line)
+	    let nlineidx=lineidx+1
+	    if nlineidx< len(sorted)
+		let nline=sorted[nlineidx]
 	    else
-		let l:nline=line("$")
+		let nline=line("$")
 	    endif
-	    let l:lenght=len(l:line) 	
-	    if l:lenght == 0
-		let l:showline="     "
-	    elseif l:lenght == 1
-		let l:showline="    " . l:line
-	    elseif l:lenght == 2
-		let l:showline="   " . l:line
-	    elseif l:lenght == 3
-		let l:showline="  " . l:line
-	    elseif l:lenght == 4
-		let l:showline=" " . l:line
-	    elseif l:lenght>=5
-		let l:showline=l:line
+	    let lenght=len(line) 	
+	    if lenght == 0
+		let showline="     "
+	    elseif lenght == 1
+		let showline="    " . line
+	    elseif lenght == 2
+		let showline="   " . line
+	    elseif lenght == 3
+		let showline="  " . line
+	    elseif lenght == 4
+		let showline=" " . line
+	    elseif lenght>=5
+		let showline=line
 	    endif
 	    " Print ToC lines.
-	    if a:toc[l:openfile][l:line][0] == 'abstract' || a:toc[l:openfile][l:line][2] =~ '^\cabstract$'
-		call setline(l:number, l:showline . "\t" . "  " . "Abstract" )
-	    elseif a:toc[l:openfile][l:line][0] =~ 'bibliography\|references'
-		call setline (l:number, l:showline . "\t" . "  " . a:toc[l:openfile][l:line][2])
-	    elseif a:toc[l:openfile][l:line][0] == 'chapter'
-		let l:chnr=a:toc[l:openfile][l:line][1]
-		let l:nr=l:chnr
-" 		if l:new
-" 		    let l:nr=a:toc[l:openfile][l:line][1]
-" 		endif
-		if a:toc[l:openfile][l:line][3]
-		    "if it is stared version" 
-		    let l:nr=substitute(l:nr,'.',' ','')
+	    if a:toc[openfile][line][0] == 'abstract' || a:toc[openfile][line][2] =~ '^\cabstract$'
+		call setline(number, showline . "\t" . "  " . "Abstract" )
+	    elseif a:toc[openfile][line][0] =~ 'bibliography\|references'
+		call setline (number, showline . "\t" . "  " . a:toc[openfile][line][2])
+	    elseif a:toc[openfile][line][0] == 'part'
+		let partnr=a:toc[openfile][line][1]
+		let nr=partnr
+		if a:toc[openfile][line][3]
+		    "if it is stared version
+		    let nr=substitute(nr,'.',' ','')
 		endif
-		if a:toc[l:openfile][l:line][4] != ''
-		    call setline (l:number, l:showline . "\t" . l:nr . " " . a:toc[l:openfile][l:line][4])
+		if a:toc[openfile][line][4] != ''
+" 		    call setline (number, showline . "\t" . nr . " " . a:toc[openfile][line][4])
+		    call setline (number, showline . "\t" . " " . a:toc[openfile][line][4])
 		else
-		    call setline (l:number, l:showline . "\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+" 		    call setline (number, showline . "\t" . nr . " " . a:toc[openfile][line][2])
+		    call setline (number, showline . "\t" . " " . a:toc[openfile][line][2])
 		endif
-	    elseif a:toc[l:openfile][l:line][0] == 'section'
-		let l:secnr=a:toc[l:openfile][l:line][1]
-		if l:chap_on
-		    let l:nr=l:chnr . "." . l:secnr  
-" 		    if l:new
-" 			let l:nr=a:toc[l:openfile][l:line][1]
-" 		    endif
-		    if a:toc[l:openfile][l:line][3]
-			"if it is stared version" 
-			let l:nr=substitute(l:nr,'.',' ','g')
-		    endif
-		    if a:toc[l:openfile][l:line][4] != ''
-			call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:openfile][l:line][4])
-		    else
-			call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
-		    endif
+	    elseif a:toc[openfile][line][0] == 'chapter'
+		let chnr=a:toc[openfile][line][1]
+		let nr=chnr
+		if a:toc[openfile][line][3]
+		    "if it is stared version
+		    let nr=substitute(nr,'.',' ','')
+		endif
+		if a:toc[openfile][line][4] != ''
+		    call setline (number, showline . "\t" . nr . " " . a:toc[openfile][line][4])
 		else
-		    let l:nr=l:secnr 
-" 		    if l:new
-" 			let l:nr=a:toc[l:openfile][l:line][1]
-" 		    endif
-		    if a:toc[l:openfile][l:line][3]
-			"if it is stared version" 
-			let l:nr=substitute(l:nr,'.',' ','g')
-		    endif
-		    if a:toc[l:openfile][l:line][4] != ''
-			call setline (l:number, l:showline . "\t" . l:nr . " " . a:toc[l:openfile][l:line][4])
-		    else
-			call setline (l:number, l:showline . "\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
-		    endif
+		    call setline (number, showline . "\t" . nr . " " . a:toc[openfile][line][2])
 		endif
-	    elseif a:toc[l:openfile][l:line][0] == 'subsection'
-		let l:ssecnr=a:toc[l:openfile][l:line][1]
-		if l:chap_on
-		    let l:nr=l:chnr . "." . l:secnr  . "." . l:ssecnr
-" 		    if l:new
-" 			let l:nr=a:toc[l:openfile][l:line][1]
-" 		    endif
-		    if a:toc[l:openfile][l:line][3]
-			"if it is stared version" 
-			let l:nr=substitute(l:nr,'.',' ','g')
+	    elseif a:toc[openfile][line][0] == 'section'
+		let secnr=a:toc[openfile][line][1]
+		if chap_on
+		    let nr=chnr . "." . secnr  
+		    if a:toc[openfile][line][3]
+			"if it is stared version
+			let nr=substitute(nr,'.',' ','g')
 		    endif
-		    if a:toc[l:openfile][l:line][4] != ''
-			call setline (l:number, l:showline . "\t\t\t" . l:nr . " " . a:toc[l:openfile][l:line][4])
+		    if a:toc[openfile][line][4] != ''
+			call setline (number, showline . "\t\t" . nr . " " . a:toc[openfile][line][4])
 		    else
-			call setline (l:number, l:showline . "\t\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+			call setline (number, showline . "\t\t" . nr . " " . a:toc[openfile][line][2])
 		    endif
 		else
-		    let l:nr=l:secnr  . "." . l:ssecnr
-" 		    if l:new
-" 			let l:nr=a:toc[l:openfile][l:line][1]
-" 		    endif
-		    if a:toc[l:openfile][l:line][3]
-			"if it is stared version" 
-			let l:nr=substitute(l:nr,'.',' ','g')
+		    let nr=secnr 
+		    if a:toc[openfile][line][3]
+			"if it is stared version
+			let nr=substitute(nr,'.',' ','g')
 		    endif
-		    if a:toc[l:openfile][l:line][4] != ''
-			call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:openfile][l:line][4])
+		    if a:toc[openfile][line][4] != ''
+			call setline (number, showline . "\t" . nr . " " . a:toc[openfile][line][4])
 		    else
-			call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+			call setline (number, showline . "\t" . nr . " " . a:toc[openfile][line][2])
 		    endif
 		endif
-	    elseif a:toc[l:openfile][l:line][0] == 'subsubsection'
-		let l:sssecnr=a:toc[l:openfile][l:line][1]
-		if l:chap_on
-		    let l:nr=l:chnr . "." . l:secnr . "." . l:sssecnr  
-" 		    if l:new
-" 			let l:nr=a:toc[l:openfile][l:line][1]
-" 		    endif
-		    if a:toc[l:openfile][l:line][3]
-			"if it is stared version" 
-			let l:nr=substitute(l:nr,'.',' ','g')
+	    elseif a:toc[openfile][line][0] == 'subsection'
+		let ssecnr=a:toc[openfile][line][1]
+		if chap_on
+		    let nr=chnr . "." . secnr  . "." . ssecnr
+		    if a:toc[openfile][line][3]
+			"if it is stared version 
+			let nr=substitute(nr,'.',' ','g')
 		    endif
-		    if a:toc[l:openfile][l:line][4] != ''
-			call setline(l:number, a:toc[l:openfile][l:line][0] . "\t\t\t" . l:nr . " " . a:toc[l:openfile][l:line][4])
+		    if a:toc[openfile][line][4] != ''
+			call setline (number, showline . "\t\t\t" . nr . " " . a:toc[openfile][line][4])
 		    else
-			call setline(l:number, a:toc[l:openfile][l:line][0] . "\t\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+			call setline (number, showline . "\t\t\t" . nr . " " . a:toc[openfile][line][2])
 		    endif
 		else
-		    let l:nr=l:secnr  . "." . l:ssecnr . "." . l:sssecnr
-" 		    if l:new
-" 			let l:nr=a:toc[l:openfile][l:line][1]
-" 		    endif
-		    if a:toc[l:openfile][l:line][3]
-			"if it is stared version" 
-			let l:nr=substitute(l:nr,'.',' ','g')
+		    let nr=secnr  . "." . ssecnr
+		    if a:toc[openfile][line][3]
+			"if it is stared version 
+			let nr=substitute(nr,'.',' ','g')
 		    endif
-		    if a:toc[l:openfile][l:line][4] != ''
-			call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:openfile][l:line][4])
+		    if a:toc[openfile][line][4] != ''
+			call setline (number, showline . "\t\t" . nr . " " . a:toc[openfile][line][4])
 		    else
-			call setline (l:number, l:showline . "\t\t" . l:nr . " " . a:toc[l:openfile][l:line][2])
+			call setline (number, showline . "\t\t" . nr . " " . a:toc[openfile][line][2])
+		    endif
+		endif
+	    elseif a:toc[openfile][line][0] == 'subsubsection'
+		let sssecnr=a:toc[openfile][line][1]
+		if chap_on
+		    let nr=chnr . "." . secnr . "." . sssecnr  
+		    if a:toc[openfile][line][3]
+			"if it is stared version
+			let nr=substitute(nr,'.',' ','g')
+		    endif
+		    if a:toc[openfile][line][4] != ''
+			call setline(number, a:toc[openfile][line][0] . "\t\t\t" . nr . " " . a:toc[openfile][line][4])
+		    else
+			call setline(number, a:toc[openfile][line][0] . "\t\t\t" . nr . " " . a:toc[openfile][line][2])
+		    endif
+		else
+		    let nr=secnr  . "." . ssecnr . "." . sssecnr
+		    if a:toc[openfile][line][3]
+			"if it is stared version 
+			let nr=substitute(nr,'.',' ','g')
+		    endif
+		    if a:toc[openfile][line][4] != ''
+			call setline (number, showline . "\t\t" . nr . " " . a:toc[openfile][line][4])
+		    else
+			call setline (number, showline . "\t\t" . nr . " " . a:toc[openfile][line][2])
 		    endif
 		endif
 	    else
-		let l:nr=""
+		let nr=""
 	    endif
-	    let l:number+=1
+	    let number+=1
 	endfor
     endfor
     " set the cursor position on the correct line number.
     " first get the line number of the begging of the ToC of t:atp_bufname
     " (current buffer)
-" 	let t:numberdict=l:numberdict	"DEBUG
+" 	let t:numberdict=numberdict	"DEBUG
 " 	t:atp_bufname is the full path to the current buffer.
-    let l:num=l:numberdict[t:atp_bufname]
-    let l:sorted=sort(keys(a:toc[t:atp_bufname]),"atplib#CompareList")
-    let t:sorted=l:sorted
-    for l:line in l:sorted
-	if l:cline>=l:line
-	    let l:num+=1
+    let num		= numberdict[t:atp_bufname]
+    let sorted		= sort(keys(a:toc[t:atp_bufname]),"atplib#CompareList")
+    let t:sorted	= sorted
+    for line in sorted
+	if cline>=line
+	    let num+=1
 	endif
-    keepjumps call setpos('.',[bufnr(""),l:num,1,0])
+    keepjumps call setpos('.',[bufnr(""),num,1,0])
     endfor
    
     " Help Lines:
-    let l:number=len(getbufline("%",1,"$"))
-    call setline(l:number+1,"") 
-    call setline(l:number+2,"<Space> jump") 
-    call setline(l:number+3,"<Enter> jump and close") 
-    call setline(l:number+4,"s       jump and split") 
-    call setline(l:number+5,"y or c  yank label") 
-    call setline(l:number+6,"p       paste label") 
-    call setline(l:number+7,"q       close") 
+    if search('<Enter> jump and close', 'nW') == 0
+	call append('$', [ '', 			
+		\ '<Space> jump', 
+		\ '<Enter> jump and close', 	
+		\ 's       jump and split', 
+		\ 'y or c  yank label', 	
+		\ 'p       paste label', 
+		\ 'q       close', 		
+		\ ':DeleteSection', 
+		\ ':PasteSection', 		
+		\ ':SectionStack', 
+		\ ':Undo' ])
+    endif
 endfunction
 "}}}2
 
@@ -583,29 +482,29 @@ endfunction
 "{{{2 TOC
 function! s:TOC(...)
     " skip generating t:atp_toc list if it exists and if a:0 != 0
-    let l:skip = 0
+    let skip = 0
     if a:0 >= 1 && a:1 == 1
-	let l:skip = 1
+	let skip = 1
     endif
-    let l:new=0
+    let new=0
     if a:0 >= 1
-	let l:new=1
+	let new=1
     endif
-    if &filetype != 'tex'    
+    if &l:filetype != 'tex'    
 	echoerr "Wrong 'filetype'. This function works only for latex documents."
 	return
     endif
     " for each buffer in t:buflist (set by s:buflist)
-    if l:skip == 0 || ( l:skip == 1 && !exists("t:atp_toc") )
-	for l:buffer in t:buflist 
-    " 	    let t:atp_toc=s:make_toc(l:buffer)
-		let t:atp_toc=s:maketoc(l:buffer)
+    if skip == 0 || ( skip == 1 && !exists("t:atp_toc") )
+	for buffer in t:buflist 
+    " 	    let t:atp_toc=s:make_toc(buffer)
+		let t:atp_toc=s:maketoc(buffer)
 	endfor
     endif
-    call s:showtoc(t:atp_toc,l:new)
+    call s:showtoc(t:atp_toc,new)
 endfunction
-nnoremap <Plug>ATP_TOC	:call <SID>TOC(1)
-command! -buffer TOC	:call <SID>TOC()
+command! -buffer -nargs=? TOC	:call <SID>TOC(<f-args>)
+nnoremap <Plug>ATP_TOC		:call <SID>TOC(1)<CR>
 
 " }}}2
 
@@ -617,30 +516,30 @@ command! -buffer TOC	:call <SID>TOC()
 " respect to the dictionary a:section={ 'line number' : 'section name', ... }
 " it returns the [ section_name, section line, next section line ]
 function! s:nearestsection(section)
-    let l:cline=line('.')
+    let cline=line('.')
 
-    let l:sorted=sort(keys(a:section),"atplib#CompareList")
-    let l:x=0
-    while l:x<len(l:sorted) && l:sorted[l:x]<=l:cline
-       let l:x+=1 
+    let sorted=sort(keys(a:section),"atplib#CompareList")
+    let x=0
+    while x<len(sorted) && sorted[x]<=cline
+       let x+=1 
     endwhile
-    if l:x>=1 && l:x < len(l:sorted)
-	let l:section_name=a:section[l:sorted[l:x-1]]
-	return [l:section_name, l:sorted[l:x-1], l:sorted[l:x]]
-    elseif l:x>=1 && l:x >= len(l:sorted)
-	let l:section_name=a:section[l:sorted[l:x-1]]
-	return [l:section_name,l:sorted[l:x-1], line('$')]
-    elseif l:x<1 && l:x < len(l:sorted)
+    if x>=1 && x < len(sorted)
+	let section_name=a:section[sorted[x-1]]
+	return [section_name, sorted[x-1], sorted[x]]
+    elseif x>=1 && x >= len(sorted)
+	let section_name=a:section[sorted[x-1]]
+	return [section_name,sorted[x-1], line('$')]
+    elseif x<1 && x < len(sorted)
 	" if we are before the first section return the empty string
-	return ['','0', l:sorted[l:x]]
-    elseif l:x<1 && l:x >= len(l:sorted)
+	return ['','0', sorted[x]]
+    elseif x<1 && x >= len(sorted)
 	return ['','0', line('$')]
     endif
 endfunction
 " }}}3
 " {{{3 s:ctoc
 function! s:ctoc()
-    if &filetype != 'tex' 
+    if &l:filetype != 'tex' 
 " TO DO:
 " 	if  exists(g:tex_flavor)
 " 	    if g:tex_flavor != "latex"
@@ -659,74 +558,74 @@ function! s:ctoc()
 	silent let t:atp_toc=s:maketoc(t:atp_bufname)
     endif
 
-    " count where the preambule ends
-    let l:buffer=getbufline(bufname("%"),"1","$")
-    let l:i=0
-    let l:line=l:buffer[0]
-    while l:line !~ '\\begin\s*{document}' && l:i < len(l:buffer)
-	let l:line=l:buffer[l:i]
-	if l:line !~ '\\begin\s*{document}' 
-	    let l:i+=1
+    " l:count where the preambule ends
+    let buffer=getbufline(bufname("%"),"1","$")
+    let i=0
+    let line=buffer[0]
+    while line !~ '\\begin\s*{document}' && i < len(buffer)
+	let line=buffer[i]
+	if line !~ '\\begin\s*{document}' 
+	    let i+=1
 	endif
     endwhile
 	
     " if we are before the '\\begin{document}' line: 
-    if line(".") <= l:i
-	let l:return=['Preambule']
-	return l:return
+    if line(".") <= i
+	let return=['Preambule']
+	return return
     endif
 
-    let l:chapter={}
-    let l:section={}
-    let l:subsection={}
+    let chapter={}
+    let section={}
+    let subsection={}
 
-    for l:key in keys(t:atp_toc[t:atp_bufname])
-	if t:atp_toc[t:atp_bufname][l:key][0] == 'chapter'
+    for key in keys(t:atp_toc[t:atp_bufname])
+	if t:atp_toc[t:atp_bufname][key][0] == 'chapter'
 	    " return the short title if it is provided
-	    if t:atp_toc[t:atp_bufname][l:key][4] != ''
-		call extend(l:chapter, {l:key : t:atp_toc[t:atp_bufname][l:key][4]},'force')
+	    if t:atp_toc[t:atp_bufname][key][4] != ''
+		call extend(chapter, {key : t:atp_toc[t:atp_bufname][key][4]},'force')
 	    else
-		call extend(l:chapter, {l:key : t:atp_toc[t:atp_bufname][l:key][2]},'force')
+		call extend(chapter, {key : t:atp_toc[t:atp_bufname][key][2]},'force')
 	    endif
-	elseif t:atp_toc[t:atp_bufname][l:key][0] == 'section'
+	elseif t:atp_toc[t:atp_bufname][key][0] == 'section'
 	    " return the short title if it is provided
-	    if t:atp_toc[t:atp_bufname][l:key][4] != ''
-		call extend(l:section, {l:key : t:atp_toc[t:atp_bufname][l:key][4]},'force')
+	    if t:atp_toc[t:atp_bufname][key][4] != ''
+		call extend(section, {key : t:atp_toc[t:atp_bufname][key][4]},'force')
 	    else
-		call extend(l:section, {l:key : t:atp_toc[t:atp_bufname][l:key][2]},'force')
+		call extend(section, {key : t:atp_toc[t:atp_bufname][key][2]},'force')
 	    endif
-	elseif t:atp_toc[t:atp_bufname][l:key][0] == 'subsection'
+	elseif t:atp_toc[t:atp_bufname][key][0] == 'subsection'
 	    " return the short title if it is provided
-	    if t:atp_toc[t:atp_bufname][l:key][4] != ''
-		call extend(l:subsection, {l:key : t:atp_toc[t:atp_bufname][l:key][4]},'force')
+	    if t:atp_toc[t:atp_bufname][key][4] != ''
+		call extend(subsection, {key : t:atp_toc[t:atp_bufname][key][4]},'force')
 	    else
-		call extend(l:subsection, {l:key : t:atp_toc[t:atp_bufname][l:key][2]},'force')
+		call extend(subsection, {key : t:atp_toc[t:atp_bufname][key][2]},'force')
 	    endif
 	endif
     endfor
 
     " Remove $ from chapter/section/subsection names to save the space.
-    let l:chapter_name=substitute(s:nearestsection(l:chapter)[0],'\$','','g')
-    let l:chapter_line=s:nearestsection(l:chapter)[1]
-    let l:chapter_nline=s:nearestsection(l:chapter)[2]
+    let chapter_name=substitute(s:nearestsection(chapter)[0],'\$','','g')
+    let chapter_line=s:nearestsection(chapter)[1]
+    let chapter_nline=s:nearestsection(chapter)[2]
 
-    let l:section_name=substitute(s:nearestsection(l:section)[0],'\$','','g')
-    let l:section_line=s:nearestsection(l:section)[1]
-    let l:section_nline=s:nearestsection(l:section)[2]
-"     let b:section=s:nearestsection(l:section)		" DEBUG
+    let section_name=substitute(s:nearestsection(section)[0],'\$','','g')
+    let section_line=s:nearestsection(section)[1]
+    let section_nline=s:nearestsection(section)[2]
+"     let b:section=s:nearestsection(section)		" DEBUG
 
-    let l:subsection_name=substitute(s:nearestsection(l:subsection)[0],'\$','','g')
-    let l:subsection_line=s:nearestsection(l:subsection)[1]
-    let l:subsection_nline=s:nearestsection(l:subsection)[2]
-"     let b:ssection=s:nearestsection(l:subsection)		" DEBUG
+    let subsection_name=substitute(s:nearestsection(subsection)[0],'\$','','g')
+    let subsection_line=s:nearestsection(subsection)[1]
+    let subsection_nline=s:nearestsection(subsection)[2]
+"     let b:ssection=s:nearestsection(subsection)		" DEBUG
 
-    let l:names	= [ l:chapter_name ]
-    if (l:section_line+0 >= l:chapter_line+0 && l:section_line+0 <= l:chapter_nline+0) || l:chapter_name == '' 
-	call add(l:names, l:section_name) 
-    elseif l:subsection_line+0 >= l:section_line+0 && l:subsection_line+0 <= l:section_nline+0
-	call add(l:names, l:subsection_name)
+    let names	= [ chapter_name ]
+    if (section_line+0 >= chapter_line+0 && section_line+0 <= chapter_nline+0) || chapter_name == '' 
+	call add(names, section_name) 
+    elseif subsection_line+0 >= section_line+0 && subsection_line+0 <= section_nline+0
+	call add(names, subsection_name)
     endif
-    return l:names
+    return names
 endfunction
 " }}}3
 " {{{3 CTOC
@@ -735,14 +634,14 @@ function! CTOC(...)
     " (used by ATPStatus()), otherwise it echoes the section/subsection
     " title. It returns only the first b:atp_TruncateStatusSection
     " characters of the the whole titles.
-    let l:names=s:ctoc()
-    let b:names=l:names
-" 	echo " DEBUG CTOC " . join(l:names)
-    let l:chapter_name=get(l:names,0,'')
-    let l:section_name=get(l:names,1,'')
-    let l:subsection_name=get(l:names,2,'')
+    let names=s:ctoc()
+    let b:names=names
+" 	echo " DEBUG CTOC " . join(names)
+    let chapter_name=get(names,0,'')
+    let section_name=get(names,1,'')
+    let subsection_name=get(names,2,'')
 
-    if l:chapter_name == "" && l:section_name == "" && l:subsection_name == ""
+    if chapter_name == "" && section_name == "" && subsection_name == ""
 
     if a:0 == '0'
 	echo "" 
@@ -750,46 +649,46 @@ function! CTOC(...)
 	return ""
     endif
 	
-    elseif l:chapter_name != ""
-	if l:section_name != ""
+    elseif chapter_name != ""
+	if section_name != ""
 " 		if a:0 == '0'
-" 		    echo "XXX" . l:chapter_name . "/" . l:section_name 
+" 		    echo "XXX" . chapter_name . "/" . section_name 
 " 		else
 	    if a:0 != 0
-		return substitute(strpart(l:chapter_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','') . "/" . substitute(strpart(l:section_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','')
+		return substitute(strpart(chapter_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','') . "/" . substitute(strpart(section_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','')
 	    endif
 	else
 " 		if a:0 == '0'
-" 		    echo "XXX" . l:chapter_name
+" 		    echo "XXX" . chapter_name
 " 		else
 	    if a:0 != 0
-		return substitute(strpart(l:chapter_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
+		return substitute(strpart(chapter_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
 	    endif
 	endif
 
-    elseif l:chapter_name == "" && l:section_name != ""
-	if l:subsection_name != ""
+    elseif chapter_name == "" && section_name != ""
+	if subsection_name != ""
 " 		if a:0 == '0'
-" 		    echo "XXX" . l:section_name . "/" . l:subsection_name 
+" 		    echo "XXX" . section_name . "/" . subsection_name 
 " 		else
 	    if a:0 != 0
-		return substitute(strpart(l:section_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','') . "/" . substitute(strpart(l:subsection_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','')
+		return substitute(strpart(section_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','') . "/" . substitute(strpart(subsection_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','')
 	    endif
 	else
 " 		if a:0 == '0'
-" 		    echo "XXX" . l:section_name
+" 		    echo "XXX" . section_name
 " 		else
 	    if a:0 != 0
-		return substitute(strpart(l:section_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
+		return substitute(strpart(section_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
 	    endif
 	endif
 
-    elseif l:chapter_name == "" && l:section_name == "" && l:subsection_name != ""
+    elseif chapter_name == "" && section_name == "" && subsection_name != ""
 " 	    if a:0 == '0'
-" 		echo "XXX" . l:subsection_name
+" 		echo "XXX" . subsection_name
 " 	    else
 	if a:0 != 0
-	    return substitute(strpart(l:subsection_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
+	    return substitute(strpart(subsection_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
 	endif
     endif
 endfunction
@@ -803,72 +702,75 @@ command! -buffer CTOC		:call CTOC()
 " {{{ Labels
 function! s:Labels()
     let t:atp_bufname=bufname("%")
-    let l:bufname=resolve(fnamemodify(t:atp_bufname,":p"))
+    let bufname=resolve(fnamemodify(t:atp_bufname,":p"))
     " Generate the dictionary with labels
-    let t:atp_labels=atplib#generatelabels(l:bufname)
+    let t:atp_labels=atplib#generatelabels(bufname)
     " Show the labels in seprate window
-    call atplib#showlabels(t:atp_labels[l:bufname])
+    call atplib#showlabels(t:atp_labels[bufname])
 endfunction
-nnoremap <Plug>ATP_Labels	:call <SID>Labels()
+nnoremap <Plug>ATP_Labels	:call <SID>Labels()<CR>
 command! -buffer Labels		:call <SID>Labels()
 " }}}
 
 " Edit Input Files
+" This functoin is used to open input files, it also sets up correctly some variables
+" which are important for project files.
 " {{{1 Edit Input Files 
+if s:loaded == 1
 function! EditInputFile(...)
 
-    let l:mainfile=b:atp_MainFile
+    let mainfile=b:atp_MainFile
 
     if a:0 == 0
-	let l:inputfile=""
-	let l:bufname=b:atp_MainFile
-	let l:opencom="edit"
+	let inputfile	= ""
+	let bufname	= b:atp_MainFile
+	let opencom	= "edit"
     elseif a:0 == 1
-	let l:inputfile=a:1
-	let l:bufname=b:atp_MainFile
-	let l:opencom="edit"
+	let inputfile	= a:1
+	let bufname	= b:atp_MainFile
+	let opencom	= "edit"
     else
-	let l:inputfile=a:1
-	let l:opencom=a:2
+	let inputfile	= a:1
+	let opencom	= a:2
 
 	" the last argument is the bufername in which search for the input files 
 	if a:0 > 2
-	    let l:bufname=a:3
+	    let bufname = a:3
 	else
-	    let l:bufname=b:atp_MainFile
+	    let bufname	= b:atp_MainFile
 	endif
     endif
 
-    let l:dir=fnamemodify(b:atp_MainFile,":p:h")
+    let dir	= fnamemodify(b:atp_MainFile,":p:h")
 
     if a:0 == 0
-	let l:inputfiles=FindInputFiles(l:bufname)
+	let inputfiles=FindInputFiles(bufname)
     else
-	let l:inputfiles=FindInputFiles(l:bufname,0)
+	let inputfiles=FindInputFiles(bufname,0)
     endif
 
-    if !len(l:inputfiles) > 0
+    if !len(inputfiles) > 0
 	return 
     endif
 
-    if index(keys(l:inputfiles),l:inputfile) == '-1'
-	let l:which=input("Which file to edit? <enter> for none ","","customlist,EI_compl")
-	if l:which == ""
+    if index(keys(inputfiles),inputfile) == '-1'
+	let which=input("Which file to edit? <enter> for none ","","customlist,EI_compl")
+	if which == ""
 	    return
 	endif
     else
-	let l:which=l:inputfile
+	let which=inputfile
     endif
 
-    if l:which =~ '^\s*\d\+\s*$'
-	let l:ifile=keys(l:inputfiles)[l:which-1]
+    if which =~ '^\s*\d\+\s*$'
+	let ifile=keys(inputfiles)[which-1]
     else
-	let l:ifile=l:which
+	let ifile=which
     endif
 
     "if the choosen file is the main file put the whole path.
-"     if l:ifile == fnamemodify(b:atp_MainFile,":t")
-" 	let l:ifile=b:atp_MainFile
+"     if ifile == fnamemodify(b:atp_MainFile,":t")
+" 	let ifile=b:atp_MainFile
 "     endif
 
     "g:texmf should end with a '/', if not add it.
@@ -878,82 +780,84 @@ function! EditInputFile(...)
 
     " remove all '"' from the line (latex do not supports file names with '"')
     " this make the function work with lines like: '\\input "file name with spaces.tex"'
-    let l:ifile=substitute(l:ifile,'^\s*\"\|\"\s*$','','g')
+    let ifile=substitute(ifile,'^\s*\"\|\"\s*$','','g')
     " add .tex extension if it was not present
-    if l:inputfiles[l:ifile][0] == 'input' || l:inputfiles[l:ifile][0] == 'include'
-	let l:ifilename=atplib#append(l:ifile,'.tex')
-    elseif l:inputfiles[l:ifile][0] == 'bib'
-	let l:ifilename=atplib#append(l:ifile,'.bib')
-    elseif  l:inputfiles[l:ifile][0] == 'main file'
-	let l:ifilename=b:atp_MainFile
+    if inputfiles[ifile][0] == 'input' || inputfiles[ifile][0] == 'include'
+	let ifilename=atplib#append(ifile,'.tex')
+    elseif inputfiles[ifile][0] == 'bib'
+	let ifilename=atplib#append(ifile,'.bib')
+    elseif  inputfiles[ifile][0] == 'main file'
+	let ifilename=b:atp_MainFile
     endif
-    if l:ifile !~ '\s*\/'
-	if filereadable(l:dir . "/" . l:ifilename) 
-	    let s:ft=&filetype
-	    exe "edit " . fnameescape(b:atp_OutDir . l:ifilename)
+    if ifile !~ '\s*\/'
+	if filereadable(dir . "/" . ifilename) 
+	    let s:ft=&l:filetype
+	    exe "edit " . fnameescape(b:atp_OutDir . ifilename)
 	    let &l:filetype=s:ft
 	else
-	    if l:inputfiles[l:ifile][0] == 'input' || l:inputfiles[l:ifile][0] == 'include'
-		let l:ifilename=findfile(l:ifile,g:texmf . '**')
-		let s:ft=&filetype
-		exe l:opencom . " " . fnameescape(l:ifilename)
+	    if inputfiles[ifile][0] == 'input' || inputfiles[ifile][0] == 'include'
+		let ifilename=findfile(ifile,g:texmf . '**')
+		let s:ft=&l:filetype
+		exe opencom . " " . fnameescape(ifilename)
 		let &l:filetype=s:ft
-		let b:atp_MainFile=l:mainfile
-	    elseif l:inputfiles[l:ifile][0] == 'bib' 
-		let s:ft=&filetype
-		exe l:opencom . " " . l:inputfiles[l:ifile][2]
+		let b:atp_MainFile=mainfile
+	    elseif inputfiles[ifile][0] == 'bib' 
+		let s:ft=&l:filetype
+		exe opencom . " " . inputfiles[ifile][2]
 		let &l:filetype=s:ft
-		let b:atp_MainFile=l:mainfile
-	    elseif  l:inputfiles[l:ifile][0] == 'main file' 
-		exe l:opencom . " " . b:atp_MainFile
-		let b:atp_MainFile=l:mainfile
+		let b:atp_MainFile=mainfile
+	    elseif  inputfiles[ifile][0] == 'main file' 
+		exe opencom . " " . b:atp_MainFile
+		let b:atp_MainFile=mainfile
 	    endif
 	endif
     else
-	exe l:opencom . " " . fnameescape(l:ifilename)
-	let b:atp_MainFile=l:mainfile
+	exe opencom . " " . fnameescape(ifilename)
+	let b:atp_MainFile=mainfile
     endif
+    let b:atp_autex	= 1
 endfunction
-command! -buffer -nargs=* -complete=customlist,<SID>EI_compl	EditInputFile 	:call <SID>EditInputFile(<f-args>)
-nnoremap <silent> <buffer> <Plug>EditInputFile			:call <SID>EditInputFile(<f-args>)<CR>
+endif
+command! -buffer -nargs=* -complete=customlist,EI_compl		EditInputFile 	:call EditInputFile(<f-args>)
+nnoremap <silent> <buffer> <Plug>EditInputFile			:call EditInputFile(<f-args>)<CR>
 
 
-fun! s:EI_compl(A,P,L)
-"     let l:inputfiles=FindInputFiles(bufname("%"),1)
+fun! EI_compl(A,P,L)
+"     let inputfiles=FindInputFiles(bufname("%"),1)
 
-    let l:inputfiles=filter(FindInputFiles(b:atp_MainFile,1), 'v:key !~ fnamemodify(bufname("%"),":t:r")')
+    let inputfiles=filter(FindInputFiles(b:atp_MainFile,1), 'v:key !~ fnamemodify(bufname("%"),":t:r")')
     " rewrite the keys of FindInputFiles the order: input files, bibfiles
-    let l:oif=[]
-    for l:key in keys(l:inputfiles)
-	if l:inputfiles[l:key][0] == 'main file'
-	    call add(l:oif,fnamemodify(l:key,":t"))
+    let oif=[]
+    for key in keys(inputfiles)
+	if inputfiles[key][0] == 'main file'
+	    call add(oif,fnamemodify(key,":t"))
 	endif
     endfor
-    for l:key in keys(l:inputfiles)
-	if l:inputfiles[l:key][0] == 'input'
-	    call add(l:oif,l:key)
+    for key in keys(inputfiles)
+	if inputfiles[key][0] == 'input'
+	    call add(oif,key)
 	endif
     endfor
-    for l:key in keys(l:inputfiles)
-	if l:inputfiles[l:key][0] == 'include'
-	    call add(l:oif,l:key)
+    for key in keys(inputfiles)
+	if inputfiles[key][0] == 'include'
+	    call add(oif,key)
 	endif
     endfor
-    for l:key in keys(l:inputfiles)
-	if l:inputfiles[l:key][0] == 'bib'
-	    call add(l:oif,l:key)
+    for key in keys(inputfiles)
+	if inputfiles[key][0] == 'bib'
+	    call add(oif,key)
 	endif
     endfor
 
     " check what is already written, if it matches something return only the
     " matching strings
-    let l:return_oif=[]
-    for l:i in l:oif
-	if l:i =~ '^' . a:A 
-	    call add(l:return_oif,l:i)
+    let return_oif=[]
+    for i in oif
+	if i =~ '^' . a:A 
+	    call add(return_oif,i)
 	endif
     endfor
-    return l:return_oif
+    return return_oif
 endfun
 " }}}1
 
@@ -961,66 +865,108 @@ endfun
 " {{{ Motion functions
 " Move to next environment which name is given as the argument. Do not wrap
 " around the end of the file.
-function! s:NextEnv(...)
-    let env_name = ( a:0 == 0 ? '[^}]*' : a:1 )
-    call search('\%(%.*\)\@<!\\begin{' . env_name . '.*}', 'W')
-    let @/='\%(%.*\)\@<!\\begin{' . env_name . '.*}'
+function! s:GoToEnvironment(...)
+    let env_name 	= ( a:0 >= 1 ? a:1 	: '[^}]*' )
+    let flag		= ( a:0 >= 2 ? a:2	: 'W' )
+    if env_name == 'math'
+	silent call search('\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
+	call histadd("search", '\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)')
+	let @/ 	 = '\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)'
+	if getline(".")[col(".")-1] == '$' && col(".") > 1 && 
+		    \ ( count(map(synstack(line("."),col(".")-1), 'synIDattr(v:val, "name")'), 'texMathZoneX') == 0 ||
+		    \ 	count(map(synstack(line("."),col(".")-1), 'synIDattr(v:val, "name")'), 'texMathZoneY') == 0 )
+	    silent call search('\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
+	endif
+    else
+	silent call search('\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}', flag)
+	call histadd("search", '\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}')
+	let @/	= '\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}'
+    endif
 endfunction
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv		:call <SID>NextEnv(<f-args>)
-nnoremap <silent> <Plug>NextEnv		:call <SID>NextEnv('[^}]*')
-
-function! s:PrevEnv(...)
-    let env_name = a:0 == 0 ? '[^}]*' : a:1
-    call search('\%(%.*\)\@<!\\begin{' . env_name . '.*}', 'bW')
-    let @/='\%(%.*\)\@<!\\begin{' . env_name . '.*}'
-endfunction
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PEnv		:call <SID>PrevEnv(<f-args>)
-nnoremap <silent> <Plug>PreviousEnv	:call <SID>PrevEnv('[^}]*')
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv		:call <SID>GoToEnvironment(<f-args>, 'W')
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PEnv		:call <SID>GoToEnvironment(<f-args>, 'bW')
+nnoremap <silent> <Plug>GoToNextEnvironment					:call <SID>GoToEnvironment('[^}]*', 'W')<CR>
+nnoremap <silent> <Plug>GoToPreviousEnvironment					:call <SID>GoToEnvironment('[^}]*', 'bW')<CR>
 
 " Move to next section, the extra argument is a pattern to match for the
 " section title. The first, obsolete argument stands for:
 " part,chapter,section,subsection,etc.
 " This commands wrap around the end of the file.
 function! s:NextSection(secname,...)
-    let section_title_pattern = ( a:0 == 0 ? '' : '\s*{.*' . a:1 )
-    call search('\\' . a:secname . '\>' . section_title_pattern ,'w')
-    let @/='\\' . a:secname . '\>' . section_title_pattern
+    let section_title_pattern 	= ( a:0 >= 1 ? '\s*{.*' . a:1	: ''  )
+    let mode			= ( a:0 >= 2 ?  a:2		: 'n' )
+    " This is not working ?:/
+    if mode == 'v' | call cursor(getpos("'<")[1], getpos("'<")[2]) | endif
+    if mode == 'v' && visualmode() ==# 'V'
+	normal! V
+    elseif mode == 'v' 
+	normal! v
+    endif
+    silent call searchpos('\\' . a:secname . '\>' . section_title_pattern ,'w')
+
+    " In visual mode end move the cursor to the end of the section
+    if mode == 'v'
+	normal b
+    endif
+    call histadd("search", '\\' . a:secname . '\>' . section_title_pattern)
+    let @/	= '\\' . a:secname . '\>' . section_title_pattern
 endfunction
-nnoremap <silent> <Plug>GoToNextSection		:call <SID>NextSection('section')
-nnoremap <silent> <Plug>GoToNextChapter		:call <SID>NextSection('chapter')
-nnoremap <silent> <Plug>GoToNextPart		:call <SID>NextSection('part')
+nnoremap <silent> <Plug>GoToNextSection		:call <SID>NextSection('section')<CR>
+onoremap <silent> <Plug>GoToNextSection		:call <SID>NextSection('section')<CR>
+vnoremap <silent> <Plug>GoToNextSection		:call <SID>NextSection('section', '', 'v')<CR>
+nnoremap <silent> <Plug>GoToNextChapter		:call <SID>NextSection('chapter')<CR>
+onoremap <silent> <Plug>GoToNextChapter		:call <SID>NextSection('chapter')<CR>
+vnoremap <silent> <Plug>GoToNextChapter		:call <SID>NextSection('chapter', '', 'v')<CR>
+nnoremap <silent> <Plug>GoToNextPart		:call <SID>NextSection('part')<CR>
+onoremap <silent> <Plug>GoToNextPart		:call <SID>NextSection('part')<CR>
+vnoremap <silent> <Plug>GoToNextPart		:call <SID>NextSection('part', '', 'v')<CR>
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NSec		:call <SID>NextSection('section',<f-args>)
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NChap		:call <SID>NextSection('chapter',<f-args>)
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NPart		:call <SID>NextSection('part',<f-args>)
 
 function! s:PreviousSection(secname,...)
     let section_title_pattern = ( a:0 == 0 ? '' : '\s*{.*' . a:1 )
-    call search('\\' . a:secname . '\>' . section_title_pattern ,'bw')
+    let mode			= ( a:0 >= 2 ?  a:2		: 'n' )
+    " This is not working ?:/
+    if mode == 'v' | call cursor(getpos("'>")[1], getpos("'>")[2]) | endif
+    if mode == 'v' && visualmode() ==# 'V'
+	normal! V
+    elseif mode == 'v' 
+	normal! v
+    endif
+    silent call search('\\' . a:secname . '\>' . section_title_pattern ,'bw')
+    call histadd("search", '\\' . a:secname . '\>' . section_title_pattern)
     let @/='\\' . a:secname . '\>' . section_title_pattern
 endfunction
-nnoremap <silent> <Plug>GoToPreviousSection		:call <SID>PreviousSection('section')
-nnoremap <silent> <Plug>GoToPreviousChapter		:call <SID>PreviousSection('chapter')
-nnoremap <silent> <Plug>GoToPreviousPart		:call <SID>PreviousSection('part')
+nnoremap <silent> <Plug>GoToPreviousSection		:call <SID>PreviousSection('section')<CR>
+onoremap <silent> <Plug>GoToPreviousSection		:call <SID>PreviousSection('section')<CR>
+vnoremap <silent> <Plug>GoToPreviousSection		:call <SID>PreviousSection('section', '', 'v')<CR>
+nnoremap <silent> <Plug>GoToPreviousChapter		:call <SID>PreviousSection('chapter')<CR>
+onoremap <silent> <Plug>GoToPreviousChapter		:call <SID>PreviousSection('chapter')<CR>
+vnoremap <silent> <Plug>GoToPreviousChapter		:call <SID>PreviousSection('chapter', '', 'v')<CR>
+nnoremap <silent> <Plug>GoToPreviousPart		:call <SID>PreviousSection('part')<CR>
+onoremap <silent> <Plug>GoToPreviousPart		:call <SID>PreviousSection('part')<CR>
+vnoremap <silent> <Plug>GoToPreviousPart		:call <SID>PreviousSection('part', '', 'v')<CR>
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PSec		:call <SID>PreviousSection('section',<f-args>)
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PChap		:call <SID>PreviousSection('chapter',<f-args>)
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call <SID>PreviousSection('part',<f-args>)
 
 function! Env_compl(A,P,L)
-    let l:envlist=sort(['abstract', 'definition', 'equation', 'proposition', 
+    let envlist=sort(['abstract', 'definition', 'equation', 'proposition', 
 		\ 'theorem', 'lemma', 'array', 'tikzpicture', 
 		\ 'tabular', 'table', 'align\*\?', 'alignat\*\?', 'proof', 
 		\ 'corollary', 'enumerate', 'examples\?', 'itemize', 'remark', 
 		\ 'notation', 'center', 'quotation', 'quote', 'tabbing', 
-		\ 'picture', 'minipage', 'list', 'flushright', 'flushleft', 
+		\ 'picture', 'math', 'displaymath', 'minipage', 'list', 'flushright', 'flushleft', 
 		\ 'figure', 'eqnarray', 'thebibliography', 'titlepage', 
 		\ 'verbatim', 'verse' ])
-    let l:returnlist=[]
-    for l:env in l:envlist
-	if l:env =~ '^' . a:A 
-	    call add(l:returnlist,l:env)
+    let returnlist=[]
+    for env in envlist
+	if env =~ '^' . a:A 
+	    call add(returnlist,env)
 	endif
     endfor
-    return l:returnlist
+    return returnlist
 endfunction
 " }}}
 

@@ -312,12 +312,15 @@ let g:kwflagsdict={ 	  '@a' : '@article',
 
 " Set the g:{b:atp_Viewer}Options as b:atp_ViewerOptions for the current buffer
 "}}}
-fun! s:set_viewer_options()
+fun! s:SetViewerOptions()
     if exists("b:atp_Viewer") && exists("g:" . b:atp_Viewer . "Options")
 	let b:atp_ViewerOptions=g:{b:atp_Viewer}Options
     endif
 endfun
-au BufEnter *.tex :call s:set_viewer_options()
+augroup ATP_SetViewerOptions
+    au!
+    au BufEnter *.tex :call s:SetViewerOptions()
+augroup END
 
 " Hilighlting
 hi link BibResultsFileNames 	Title	
@@ -337,19 +340,18 @@ hi link CurrentSection		WarningMsg
 "  There are three arguments: {pattern}, [flags, [choose]]
 function! s:BibSearch(...)
     if a:0 == 0
-	let bib_results		= atplib#searchbib('')
-	let b:listofkeys 	= atplib#showresults( bibresults, '', '')
+	let b:atp_LastBibPattern = ""
+	call atplib#showresults( atplib#searchbib(''), '', '')
     elseif a:0 == 1
-	let bibresults		= atplib#searchbib(a:1)
-	let b:listofkeys	= atplib#showresults( bibresults, '', a:1)
+	let b:atp_LastBibPattern = a:1
+	call atplib#showresults( atplib#searchbib(a:1), '', a:1)
     else
-	let bibresults		= atplib#searchbib(a:1)
-	let b:listofkeys	= atplib#showresults( bibresults, a:2, a:1)
+	let b:atp_LastBibPattern = a:1
+	call atplib#showresults( atplib#searchbib(a:1), a:2, a:1)
     endif
-    let b:atp_LastBibPattern	= a:1
 endfunction
 command! -buffer -nargs=* BibSearch	:call <SID>BibSearch(<f-args>)
-nnoremap <silent> <Plug>BibSearchLast	:call <SID>BibSearch(b:atp_LastBibPattern, b:atp_LastBibFlags)
+nnoremap <silent> <Plug>BibSearchLast	:call <SID>BibSearch(b:atp_LastBibPattern, b:atp_LastBibFlags)<CR>
 " }}}
 "}}}
 

@@ -4,7 +4,7 @@
 " Last Changed: 2010 July 2
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 27 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 28 :AutoInstall: tex_atp.vim
 " LINE ADDED.
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
@@ -35,7 +35,7 @@ endif
 " endif
 
 
-execute 'source '  . fnameescape(prefix . '/options.vim')
+	execute 'source '  . fnameescape(prefix . '/options.vim')
 
 
 	execute 'source ' . fnameescape(prefix . '/common.vim')
@@ -53,15 +53,15 @@ execute 'source '  . fnameescape(prefix . '/options.vim')
 	execute 'source ' . fnameescape(prefix . '/various.vim')
 
 
-" Source maps and menu files.
-execute 'source ' . fnameescape(prefix . '/mappings.vim')
+	" Source maps and menu files.
+	execute 'source ' . fnameescape(prefix . '/mappings.vim')
 
-if g:atp_LatexBox
+	if g:atp_LatexBox
 
-	execute 'source ' . fnameescape(prefix . '/LatexBox_mappings.vim')
-		
-endif
+		execute 'source ' . fnameescape(prefix . '/LatexBox_mappings.vim')
+			
+	endif
 
-execute 'source ' . fnameescape(prefix . '/menu.vim')
+	execute 'source ' . fnameescape(prefix . '/menu.vim')
 
 " vim:fdm=marker:ff=unix:noet:ts=4:sw=4

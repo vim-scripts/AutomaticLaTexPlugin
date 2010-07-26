@@ -5,6 +5,12 @@
 " Some options (functions) should be set once:
 let s:sourced	 		= exists("s:sourced") ? 1 : 0
 
+if !exists("b:loaded_compiler")
+	let b:loaded_compiler = 1
+else
+	let b:loaded_compiler += 1
+endif
+
 " Internal Variables
 " {{{
 " This limits how many consecutive runs there can be maximally.
@@ -25,9 +31,9 @@ function! s:ViewOutput()
 
     let l:link=system("readlink " . shellescape(b:atp_MainFile))
     if l:link != ""
-	let l:outfile=fnamemodify(l:link,":r") . l:ext
+	let outfile=fnamemodify(l:link,":r") . l:ext
     else
-	let l:outfile=fnamemodify(b:atp_MainFile,":r"). l:ext 
+	let outfile=fnamemodify(b:atp_MainFile,":r"). l:ext 
     endif
 
     if b:atp_Viewer == "xpdf"	
@@ -36,9 +42,9 @@ function! s:ViewOutput()
 	let l:viewer=b:atp_Viewer  . " " . b:atp_ViewerOptions
     endif
 
-    let l:view=l:viewer . " " . shellescape(l:outfile)  . " &"
+    let l:view=l:viewer . " " . shellescape(outfile)  . " &"
 
-    if filereadable(l:outfile)
+    if filereadable(outfile)
 	if b:atp_Viewer == "xpdf"	
 	    call system(l:view)
 	else
@@ -47,12 +53,11 @@ function! s:ViewOutput()
 	endif
     else
 	echomsg "Output file do not exists. Calling " . b:atp_TexCompiler
-	call s:compiler(0,1,1,0,"AU",b:atp_MainFile)
+	call s:Compiler( 0, 1, 1, 'silent' , "AU" , b:atp_MainFile)
     endif	
 endfunction
-
-noremap <silent> <Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
 command! -buffer ViewOutput		:call <SID>ViewOutput()
+noremap <silent> <Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
 "}}}
 
 " This function gets the pid of the running compiler
@@ -60,7 +65,7 @@ command! -buffer ViewOutput		:call <SID>ViewOutput()
 "{{{ Get PID Functions
 function! s:getpid()
 	let s:command="ps -ef | grep -v " . $SHELL  . " | grep " . b:atp_TexCompiler . " | grep -v grep | grep " . fnameescape(expand("%")) . " | awk 'BEGIN {ORS=\" \"} {print $2}'" 
-	let s:var=system(s:command)
+	let s:var	= system(s:command)
 	return s:var
 endfunction
 function! s:GetPID()
@@ -196,6 +201,9 @@ function! s:CallBack(mode)
 	" Read the log file
 	cg
 
+	" If the log file is open re read it / it has 'autoread' opion set /
+	checktime
+
 	" redraw the status line /for the notification to appear as fast as
 	" possible/ 
 	if a:mode != 'verbose'
@@ -233,14 +241,14 @@ endfunction
 "}}}
 
 " THE MAIN COMPILER FUNCTION
-" {{{ s:compiler 
+" {{{ s:Compiler 
 " This is the MAIN FUNCTION which sets the command and calls it.
 " NOTE: the <filename> argument is not escaped!
-" make a:verbose=verbose or debug or 0
+" make a:verbose= silent/verbose/debug
 " 	debug 	-- switch to show errors after compilation.
 " 	verbose -- show compiling procedure.
-" 	0 	-- compile silently (gives status information if fails)
-function! s:compiler(bibtex, start, runs, verbose, command, filename)
+" 	silent 	-- compile silently (gives status information if fails)
+function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 
     if !has('gui') && a:verbose == 'verbose' && b:atp_running > 0
 	redraw!
@@ -296,12 +304,14 @@ function! s:compiler(bibtex, start, runs, verbose, command, filename)
 	endif
 
 	" finally, set the output file names. 
-	let l:outfile = b:atp_OutDir . fnamemodify(l:basename,":t:r") . l:ext
-	let l:outaux  = b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".aux"
-	let l:outlog  = b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".log"
+	let outfile 	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . l:ext
+	let outaux  	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".aux"
+	let tmpaux  	= fnamemodify(s:tmpfile, ":r") . ".aux"
+	let outlog  	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".log"
 
 "	COPY IMPORTANT FILES TO TEMP DIRECTORY WITH CORRECT NAME 
-	let l:list=filter(copy(g:keep),'v:val != "log"')
+"	except log and aux files.
+	let l:list=filter(copy(g:keep), 'v:val != "log" && v:val != "aux"')
 	for l:i in l:list
 	    let l:ftc=b:atp_OutDir . fnamemodify(l:basename,":t:r") . "." . l:i
 	    if filereadable(l:ftc)
@@ -313,28 +323,28 @@ function! s:compiler(bibtex, start, runs, verbose, command, filename)
 	if b:atp_Viewer == "xpdf"
 	    if a:start == 1
 		"if xpdf is not running and we want to run it.
-		let s:xpdfreload = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . shellescape(l:outfile)
+		let s:xpdfreload = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . shellescape(outfile) . " ; "
 	    else
 " TIME: this take 1/3 of time! 0.039
 		if s:xpdfpid() != ""
 		    "if xpdf is running (then we want to reload it).
 		    "This is where I use 'ps' command to check if xpdf is
 		    "running.
-		    let s:xpdfreload = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " -reload"	
+		    let s:xpdfreload = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " -reload ; "
 		else
 		    "if xpdf is not running (but we do not want
 		    "to run it).
-		    let s:xpdfreload = ""
+		    let s:xpdfreload = " "
 		endif
 	    endif
 	else
 	    if a:start == 1
 		" if b:atp_Viewer is not running and we want to open it.
-		let s:xpdfreload = b:atp_Viewer . " " . shellescape(l:outfile) 
+		let s:xpdfreload = b:atp_Viewer . " " . shellescape(outfile) . " ; "
 	    else
 		" if b:atp_Viewer is not running then we do not want to
 		" open it.
-		let s:xpdfreload = ""
+		let s:xpdfreload = " "
 	    endif	
 	endif
 
@@ -347,8 +357,8 @@ function! s:compiler(bibtex, start, runs, verbose, command, filename)
 	endif
 
 "	SET THE COMMAND 
-	let s:comp	= b:atp_TexCompiler . " " . b:atp_TexOptions . " -interaction " . s:texinteraction . " -output-directory " . s:tmpdir . " " . fnameescape(a:filename)
-	let s:vcomp	= b:atp_TexCompiler . " " . b:atp_TexOptions  . " -interaction errorstopmode -output-directory " . s:tmpdir .  " " . fnameescape(a:filename)
+	let s:comp	= b:atp_TexCompiler . " " . b:atp_TexOptions . " -interaction " . s:texinteraction . " -output-directory " . shellescape(s:tmpdir) . " " . shellescape(a:filename)
+	let s:vcomp	= b:atp_TexCompiler . " " . b:atp_TexOptions  . " -interaction errorstopmode -output-directory " . shellescape(s:tmpdir) .  " " . shellescape(a:filename)
 	if a:verbose == 'verbose' 
 	    let s:texcomp=s:vcomp
 	else
@@ -370,11 +380,11 @@ function! s:compiler(bibtex, start, runs, verbose, command, filename)
 	
 	if a:bibtex == 1
 	    " this should be decided using the log file as well.
-	    if filereadable(l:outaux)
-		call s:copy(l:outaux,s:tmpfile . ".aux")
-		let s:texcomp="bibtex " . s:tmpfile . ".aux ; " . s:comp . "  1>/dev/null 2>&1 "
+	    if filereadable(outaux)
+		call s:copy(outaux,s:tmpfile . ".aux")
+		let s:texcomp="bibtex " . shellescape(s:tmpfile) . ".aux ; " . s:comp . "  1>/dev/null 2>&1 "
 	    else
-		let s:texcomp=s:comp . " ; clear ; bibtex " . s:tmpfile . ".aux ; " . s:comp . " 1>/dev/null 2>&1 "
+		let s:texcomp=s:comp . " ; clear ; bibtex " . shellescape(s:tmpfile) . ".aux ; " . s:comp . " 1>/dev/null 2>&1 "
 	    endif
 	    if a:verbose != 'verbose'
 		let s:texcomp=s:texcomp . " ; " . s:comp
@@ -405,12 +415,12 @@ function! s:compiler(bibtex, start, runs, verbose, command, filename)
 	    " 	for xpdf it copies the out file but does not reload the xpdf
 	    " 	server for other viewers it simply doesn't copy the out file.
 	    if exists("b:atp_ReloadOnError") && b:atp_ReloadOnError
-		let s:command="(" . s:texcomp . " ; " . catchstatus_cmd . " " . s:cpoutfile . " " . s:xpdfreload 
+		let s:command="( (" . s:texcomp . " && cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . "  ) ; "  . catchstatus_cmd . " " . s:cpoutfile . " " . s:xpdfreload
 	    else
 		if b:atp_Viewer =~ '\<xpdf\>'
-		    let s:command="(" . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . s:xpdfreload . ") || (" . catchstatus_cmd . " " . s:cpoutfile . ") ; " 
+		    let s:command="( " . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . s:xpdfreload . " cp --remove-destination ". shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . " ) || (" . catchstatus_cmd . " " . s:cpoutfile . ") ; " 
 		else
-		    let s:command="(" . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . s:xpdfreload . ") || (" . catchstatus_cmd . ") ; " 
+		    let s:command="(" . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . s:xpdfreload . " cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . " ) || (" . catchstatus_cmd . ") ; " 
 		endif
 	    endif
 	endif
@@ -418,7 +428,7 @@ function! s:compiler(bibtex, start, runs, verbose, command, filename)
 	" Preserve files with extension belonging to the g:keep list variable.
 	let s:copy=""
 	let l:j=1
-	for l:i in g:keep 
+	for l:i in filter(g:keep, 'v:val != "aux"') 
 " ToDo: this can be done using internal vim functions.
 	    let s:copycmd=" cp " . s:cpoption . " " . shellescape(atplib#append(s:tmpdir,"/")) . 
 			\ "*." . l:i . " " . shellescape(atplib#append(b:atp_OutDir,"/"))  
@@ -476,6 +486,9 @@ endfunction
 " {{{1 s:auTeX
 " To Do: we can now check if the last environment is closed and run latex if it is, to
 " not run latex if the 
+" This function calles the compilers in the beckground. It Needs to be a global
+" funnction (it is used in options.vim, there is a tric to put function into
+" a dictionary ... )
 function! s:auTeX()
     let mode 	= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
 
@@ -485,13 +498,13 @@ function! s:auTeX()
     " if the file (or input file is modified) compile the document 
     if filereadable(expand("%"))
 	if s:compare(readfile(expand("%")))
-	    call s:compiler(0,0,b:atp_auruns, mode, "AU",b:atp_MainFile)
+	    call s:Compiler(0,0,b:atp_auruns, mode, "AU",b:atp_MainFile)
 	    redraw
 	    return "compile" 
 	endif
     " if compiling for the first time
     else
-	call s:compiler(0,0,b:atp_auruns, mode, "AU",b:atp_MainFile)
+	call s:Compiler(0,0,b:atp_auruns, mode, "AU",b:atp_MainFile)
 	w
 	redraw
 	return "compile for the first time"
@@ -499,9 +512,11 @@ function! s:auTeX()
     return "files does not differ"
 endfunction
 
-if !s:sourced
+" This is set by s:setprojectname (options.vim) where it should not!
+augroup ATP_auTeX
+    au!
     au CursorHold *.tex call s:auTeX()
-endif
+augroup END 
 "}}}
 
 " Related Functions
@@ -531,7 +546,7 @@ let s:name=tempname()
 	    echomsg b:atp_TexCompiler . " will run " . s:runlimit . " times."
 	endif
     endif
-    call s:compiler(0,0, a:runs, mode, "COM", b:atp_MainFile)
+    call s:Compiler(0,0, a:runs, mode, "COM", b:atp_MainFile)
 endfunction
 command! -buffer -nargs=? -count=1 TEX		:call <SID>TeX(<count>, <f-args>)
 noremap <silent> <Plug>ATP_TeXCurrent		:<C-U>call <SID>TeX(v:count1, t:atp_DebugMode)<CR>
@@ -552,7 +567,7 @@ function! s:SimpleBibtex()
 	echomsg "No aux file in " . b:atp_OutDir
     endif
 endfunction
-command! -buffer SBibtex	:call <SID>SimpleBibtex()
+command! -buffer SBibtex		:call <SID>SimpleBibtex()
 nnoremap <silent> <Plug>SimpleBibtex	:call <SID>SimpleBibtex()<CR>
 
 function! s:Bibtex(...)
@@ -562,7 +577,7 @@ function! s:Bibtex(...)
 	let mode = g:atp_DefaultDebugMode
     endif
 
-    call s:compiler(1,0,0, mode,"COM",b:atp_MainFile)
+    call s:Compiler(1,0,0, mode,"COM",b:atp_MainFile)
 endfunction
 command! -buffer -nargs=? Bibtex	:call <SID>Bibtex(<f-args>)
 nnoremap <silent> <Plug>BibtexDefault	:call <SID>Bibtex("")<CR>
@@ -737,15 +752,18 @@ command! -buffer -nargs=? 	SetErrorFormat 	:call <SID>SetErrorFormat(<f-args>)
 " g:atp_ignore_unmatched and g:atp_show_all_lines.
 function! s:ShowErrors(...)
 
+    let errorfile	= &l:errorfile
     " read the log file and merge warning lines 
-    if !filereadable(&errorfile)
+    " filereadable doesn't like shellescaped file names not fnameescaped. 
+    " The same for readfile() and writefile()  built in functions.
+    if !filereadable( errorfile)
 	echohl WarningMsg
-	echomsg "No error file: " . &errorfile  
+	echomsg "No error file: " . errorfile  
 	echohl Normal
 	return
     endif
 
-    let l:log=readfile(&errorfile)
+    let l:log=readfile(errorfile)
 
     let l:nr=1
     for l:line in l:log
@@ -756,7 +774,7 @@ function! s:ShowErrors(...)
 	endif
 	let l:nr+=1
     endfor
-    call writefile(l:log,&errorfile)
+    call writefile(l:log, errorfile)
     
     " set errorformat 
     let l:arg = ( a:0 > 0 ? a:1 : "e" )

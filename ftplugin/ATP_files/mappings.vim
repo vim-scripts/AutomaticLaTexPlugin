@@ -12,55 +12,39 @@ command! -buffer 	  CloseLastBracket	:call atplib#CloseLastBracket()
 " ToDo: to doc.
 if !exists("no_plugin_maps") && !exists("no_atp_maps")
     " ToDo to doc. + vmaps!
-    map  <buffer> <LocalLeader>ns 	<Plug>GoToNextSection<CR>
-"     vmap <buffer> <LocalLeader>ns 	<Plug>GoToNextSection<CR>
-"     omap <buffer> <LocalLeader>ns 	<Plug>GoToNextSection<CR>
-    map  <buffer> <LocalLeader>ps 	<Plug>GoToPreviousSection<CR>
-"     vmap <buffer> <LocalLeader>ps 	<Plug>GoToPreviousSection<CR>
-"     omap <buffer> <LocalLeader>ps 	<Plug>GoToPreviousSection<CR>
-    map  <buffer> <LocalLeader>nc 	<Plug>GoToNextChapter<CR>
-"     vmap <buffer> <LocalLeader>nc 	<Plug>GoToNextChapter<CR>
-"     omap <buffer> <LocalLeader>nc 	<Plug>GoToNextChapter<CR>
-    map  <buffer> <LocalLeader>pc 	<Plug>GoToPreviousChapter<CR>
-"     vmap <buffer> <LocalLeader>pc 	<Plug>GoToPreviousChapter<CR>
-"     omap <buffer> <LocalLeader>pc 	<Plug>GoToPreviousChapter<CR>
-    map  <buffer> <LocalLeader>np 	<Plug>GoToNextPart<CR>
-"     vmap <buffer> <LocalLeader>np 	<Plug>GoToNextPart<CR>
-"     omap <buffer> <LocalLeader>np 	<Plug>GoToNextPart<CR>
-    map  <buffer> <LocalLeader>pp 	<Plug>GoToPreviousPart<CR>
-"     vmap <buffer> <LocalLeader>pp 	<Plug>GoToPreviousPart<CR>
-"     omap <buffer> <LocalLeader>pp 	<Plug>GoToPreviousPart<CR>
+    map <buffer> <LocalLeader>ns 	<Plug>GoToNextSection
+    map <buffer> <LocalLeader>ps 	<Plug>GoToPreviousSection
+    map <buffer> <LocalLeader>nc 	<Plug>GoToNextChapter
+    map <buffer> <LocalLeader>pc 	<Plug>GoToPreviousChapter
+    map <buffer> <LocalLeader>np 	<Plug>GoToNextPart
+    map <buffer> <LocalLeader>pp 	<Plug>GoToPreviousPart
+    map <buffer> <LocalLeader>ne	<Plug>GoToNextEnvironment
+    map <buffer> <LocalLeader>pe	<Plug>GoToPreviousEnvironment
     " ToDo to doc.
     if exists("g:atp_no_tab_map") && g:atp_no_tab_map == 1
-	imap <buffer> <F7> 		<C-R>=atplib#TabCompletion(1)<CR>
-	nmap <buffer> <F7>		:call atplib#TabCompletion(1,1)<CR>
-	imap <buffer> <S-F7> 		<C-R>=atplib#TabCompletion(0)<CR>
-	nmap <buffer> <S-F7>		:call atplib#TabCompletion(0,1)<CR> 
+	imap <silent> <buffer> <F7> 		<C-R>=atplib#TabCompletion(1)<CR>
+	nmap <silent> <buffer> <F7>		:call atplib#TabCompletion(1,1)<CR>
+	imap <silent> <buffer> <S-F7> 		<C-R>=atplib#TabCompletion(0)<CR>
+	nmap <silent> <buffer> <S-F7>		:call atplib#TabCompletion(0,1)<CR> 
     else 
 	" the default:
-	imap <buffer> <Tab> 		<C-R>=atplib#TabCompletion(1)<CR>
-	imap <buffer> <S-Tab> 		<C-R>=atplib#TabCompletion(0)<CR>
+	imap <silent> <buffer> <Tab> 		<C-R>=atplib#TabCompletion(1)<CR>
+	imap <silent> <buffer> <S-Tab> 		<C-R>=atplib#TabCompletion(0)<CR>
 	" HOW TO: do this with <tab>? Streightforward solution interacts with
 	" other maps (e.g. after \l this map is called).
 	" when this is set it also runs after the \l map: ?!?
-" 	nmap <buffer> <Tab>		:call atplib#TabCompletion(1,1)<CR>
-	nmap <buffer> <S-Tab>		:call atplib#TabCompletion(0,1)<CR> 
-	vmap <buffer> <silent> <F7> 	:WrapSelection '\{','}','begin'<CR>
+" 	nmap <silent> <buffer> <Tab>		:call atplib#TabCompletion(1,1)<CR>
+	nmap <silent> <buffer> <S-Tab>		:call atplib#TabCompletion(0,1)<CR> 
+	vmap <buffer> <silent> <F7> 		:WrapSelection '\{','}','begin'<CR>
     endif
-
-"     nmap <buffer> <F7>c 	:call atplib#CloseLastEnvironment()<CR>
-"     imap <buffer> <F7>c 	<Esc>:call atplib#CloseLastEnvironment()<CR>i
-"     nmap <buffer> <F7>b 	:call atplib#CloseLastBracket()<CR>
-"     imap <buffer> <F7>b 	<Esc>:call atplib#CloseLastBracket()<CR>i
 
     " Fonts
-    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."f		:WrapSelection '{\\usefont{".g:atp_font_encoding."}{}{}{}\\selectfont ', '}', '".(len(g:atp_font_encoding)+11)."'<CR>"
-
     if !exists("g:atp_vmap_text_font_leader")
 	let g:atp_vmap_text_font_leader="<LocalLeader>"
-    else
-	let g:debug=1
     endif
+
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."f		:WrapSelection '{\\usefont{".g:atp_font_encoding."}{}{}{}\\selectfont ', '}', '".(len(g:atp_font_encoding)+11)."'<CR>"
+
 
     execute "vmap <buffer> ".g:atp_vmap_text_font_leader."rm	:<C-U>InteligentWrapSelection ['\\textrm{'],['\\mathrm{']<CR>"
     execute "vmap <buffer> ".g:atp_vmap_text_font_leader."em	:<C-U>InteligentWrapSelection ['\\emph{'],['\\mathit{']<CR>"
@@ -76,7 +60,8 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     execute "vmap <buffer> ".g:atp_vmap_text_font_leader."sc	:<C-U>WrapSelection '\\textsc{'<CR>"
     execute "vmap <buffer> ".g:atp_vmap_text_font_leader."up	:<C-U>WrapSelection '\\textup{'<CR>"
     execute "vmap <buffer> ".g:atp_vmap_text_font_leader."md	:<C-U>WrapSelection '\\textmd{'<CR>"
-    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."n	:<C-U>InteligentWrapSelection ['\\textnormal{'],['\\mathnormal{']<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."un	:<C-U>WrapSelection '\\underline{'<CR>"
+    execute "vmap <buffer> ".g:atp_vmap_text_font_leader."no	:<C-U>InteligentWrapSelection ['\\textnormal{'],['\\mathnormal{']<CR>"
     execute "vmap <buffer> ".g:atp_vmap_text_font_leader."cal	:<C-U>InteligentWrapSelection [''],['\\mathcal{']<CR>"
 
     " Environments
@@ -88,8 +73,8 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     execute "vmap <buffer> ".g:atp_vmap_environment_leader."L   :WrapSelection '"."\\"."begin{flushleft}','"."\\"."end{flushleft}','0','1'<CR>"
 
     " Math modes
-    vmap <buffer> m						:WrapSelection '\(', '\)'<CR>
-    vmap <buffer> M						:WrapSelection '\[', '\]'<CR>
+    vmap <buffer> m						:<C-U>WrapSelection '\(', '\)'<CR>
+    vmap <buffer> M						:<C-U>WrapSelection '\[', '\]'<CR>
 
     " Brackets
     if !exists("*atp_vmap_bracket_leader")
@@ -124,37 +109,37 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 "     vmap I)		<Esc><Plug>SelectINNERBracket<CR>
 "     vmap A)		<Esc><Plug>SelectAUTERBracket<CR>
 
-    nmap <buffer> <LocalLeader>E		<Plug>Echo<CR>
+    nmap <buffer> <LocalLeader>E		<Plug>Echo
     " Normal mode maps (mostly)
-    nmap  <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput<CR>
-    nmap  <buffer> <F2> 			<Plug>ToggleSpace<CR>
-    nmap  <buffer> <LocalLeader>s		<Plug>ToggleStar<CR>
+    nmap  <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput
+    nmap  <buffer> <F2> 			<Plug>ToggleSpace
+    nmap  <buffer> <LocalLeader>s		<Plug>ToggleStar
     " Todo: to doc:
-    nmap  <buffer> <LocalLeader>D		<Plug>ToggleDebugMode<CR>
-    nmap  <buffer> <F4>				<Plug>ToggleEnvForward<CR>
-    nmap  <buffer> <S-F4>			<Plug>ToggleEnvBackward<CR>
-    nmap  <buffer> <C-S-F4>			<Plug>LatexEnvPrompt<CR>
+    nmap  <buffer> <LocalLeader>D		<Plug>ToggleDebugMode
+    nmap  <buffer> <F4>				<Plug>ToggleEnvForward
+    nmap  <buffer> <S-F4>			<Plug>ToggleEnvBackward
+    nmap  <buffer> <C-S-F4>			<Plug>LatexEnvPrompt
 "     ToDo:
 "     if g:atp_LatexBox
 " 	nmap  <buffer> <F3>			:call <Sid>ChangeEnv()<CR>
 "     endif
-    nmap  <buffer> <F3>        			<Plug>ViewOutput<CR>
-    imap  <buffer> <F3> 			<Esc><Plug>ViewOutput<CR>
-    nmap  <buffer> <LocalLeader>g 		<Plug>Getpid<CR>
-    nmap  <buffer> <LocalLeader>t		<Plug>ATP_TOC<CR>
-    nmap  <buffer> <LocalLeader>L		<Plug>ATP_Labels<CR>
-    nmap  <buffer> <LocalLeader>l 		<Plug>ATP_TeXCurrent<CR>
-    nmap  <buffer> <LocalLeader>d 		<Plug>ATP_TeXDebug<CR>
+    nmap  <buffer> <F3>        			<Plug>ViewOutput
+    imap  <buffer> <F3> 			<Esc><Plug>ViewOutput
+    nmap  <buffer> <LocalLeader>g 		<Plug>Getpid
+    nmap  <buffer> <LocalLeader>t		<Plug>ATP_TOC
+    nmap  <buffer> <LocalLeader>L		<Plug>ATP_Labels
+    nmap  <buffer> <LocalLeader>l 		<Plug>ATP_TeXCurrent
+    nmap  <buffer> <LocalLeader>d 		<Plug>ATP_TeXDebug
     "ToDo: imaps!
-    nmap  <buffer> <F5> 			<Plug>ATP_TeXVerbose<CR>
-    nmap  <buffer> <s-F5> 			<Plug>ToggleAuTeX<CR>
-    nmap  <buffer> `<Tab>			<Plug>ToggleTab<CR>
-    imap  <buffer> `<Tab>			<Esc><Plug>ToggleTab<CR>i
-    nmap  <buffer> <LocalLeader>B		<Plug>SimpleBibtex<CR>
-    nmap  <buffer> <LocalLeader>b		<Plug>BibtexDefault<CR>
+    nmap  <buffer> <F5> 			<Plug>ATP_TeXVerbose
+    nmap  <buffer> <s-F5> 			<Plug>ToggleAuTeX
+    nmap  <buffer> `<Tab>			<Plug>ToggleTab
+    imap  <buffer> `<Tab>			<Plug>ToggleTab
+    nmap  <buffer> <LocalLeader>B		<Plug>SimpleBibtex
+    nmap  <buffer> <LocalLeader>b		<Plug>BibtexDefault
     nmap  <buffer> <F6>d 			<Plug>Delete
-    imap  <buffer> <silent> <F6>l 		<Plug>OpenLog<CR>
-    nmap  <buffer> <silent> <F6>l 		<Plug>OpenLog<CR>
+    imap  <buffer> <silent> <F6>l 		<Plug>OpenLog
+    nmap  <buffer> <silent> <F6>l 		<Plug>OpenLog
     nmap  <buffer> <LocalLeader>e 		:cf<CR> 
     nmap  <buffer> <F6> 			:ShowErrors e<CR>
     imap  <buffer> <F6>e 			:ShowErrors e<CR>
@@ -164,28 +149,36 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     nmap  <buffer> <F6>r 			:ShowErrors rc<CR>
     nmap  <buffer> <F6>f 			:ShowErrors f<CR>
     imap  <buffer> <F6>f 			:ShowErrors f<CR>
-    nmap  <buffer> <F6>g 			<Plug>PdfFonts<CR>
+    nmap  <buffer> <F6>g 			<Plug>PdfFonts
     nmap  <buffer> <F1>				:TeXdoc<space>
     imap  <buffer> <F1> <esc> 			:TeXdoc<space>
-    nmap  <buffer> <LocalLeader>p 		<Plug>SshPrint<CR>
+"     nmap  <buffer> <LocalLeader>pr 		<Plug>SshPrint
 
     " FONT MAPPINGS
-    execute 'imap <buffer> '.g:atp_imap_second_leader.'rm \textrm{}<Left>'
+"     execute 'imap <buffer> '.g:atp_imap_second_leader.'rm \textrm{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'rm <Esc>:call Insert("\\textrm{", "\\mathrm{")<Cr>a'
     execute 'imap <buffer>' .g:atp_imap_second_leader.'up \textup{}<Left>'
     execute 'imap <buffer>' .g:atp_imap_second_leader.'md \textmd{}<Left>'
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'it \textit{}<Left>'
+"     execute 'imap <buffer>' .g:atp_imap_second_leader.'it \textit{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'it <Esc>:call Insert("\\textit{", "\\mathit{")<Cr>a'
     execute 'imap <buffer>' .g:atp_imap_second_leader.'sl \textsl{}<Left>'
     execute 'imap <buffer>' .g:atp_imap_second_leader.'sc \textsc{}<Left>'
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'sf \textsf{}<Left>'
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'bf \textbf{}<Left>'
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'tt \texttt{}<Left>'
+"     execute 'imap <buffer>' .g:atp_imap_second_leader.'sf \textsf{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'sf <Esc>:call Insert("\\textsf{", "\\mathsf{")<Cr>a'
+"     execute 'imap <buffer>' .g:atp_imap_second_leader.'bf \textbf{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'bf <Esc>:call Insert("\\textbf{", "\\mathbf{")<Cr>a'
+"     execute 'imap <buffer>' .g:atp_imap_second_leader.'tt \texttt{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'tt <Esc>:call Insert("\\texttt{", "\\mathtt{")<Cr>a'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'em \emph{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'no <Esc>:call Insert("\\textnormal{", "\\mathnormal{")<Cr>a'
 	    
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'mit \mathit{}<Left>'
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'mrm \mathrm{}<Left>'
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'msf \mathsf{}<Left>'
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'mbf \mathbf{}<Left>'
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'mtt \mathtt{}<Left>'
-    execute 'imap <buffer>' .g:atp_imap_second_leader.'mcal \mathcal{}<Left>'
+"     execute 'imap <buffer>' .g:atp_imap_second_leader.'mit \mathit{}<Left>'
+"     execute 'imap <buffer>' .g:atp_imap_second_leader.'mrm \mathrm{}<Left>'
+"     execute 'imap <buffer>' .g:atp_imap_second_leader.'msf \mathsf{}<Left>'
+"     execute 'imap <buffer>' .g:atp_imap_second_leader.'mbf \mathbf{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'bb \mathbb{}<Left>'
+"     execute 'imap <buffer>' .g:atp_imap_second_leader.'mtt \mathtt{}<Left>'
+    execute 'imap <buffer>' .g:atp_imap_second_leader.'cal \mathcal{}<Left>'
 
     " GREEK LETTERS
     execute 'imap <buffer> '.g:atp_imap_first_leader.'a \alpha'
@@ -237,7 +230,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_fourth_leader.'c \begin{corollary}<CR>\end{corollary}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'d \begin{definition}<CR>\end{definition}<Esc>O'
-	    execute 'imap <buffer> '.g:atp_imap_fourth_leader.'e \begin{enumerate}<CR>\end{enumerate}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_fourth_leader.'u \begin{enumerate}<CR>\end{enumerate}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'a \begin{align}<CR>\end{align}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'i \item'
 	    execute 'imap <buffer> '.g:atp_imap_fourth_leader.'i \begin{itemize}<CR>\end{itemize}<Esc>O'
@@ -267,22 +260,22 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'P \begin{proposition}<CR>\end{proposition}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'l \begin{lemma}<CR>\end{lemma}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'r \begin{remark}<CR>\end{remark}<Esc>O'
-	    execute 'imap <buffer> '.g:atp_imap_third_leader.'o \begin{corollary}<CR>\end{corollary}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'C \begin{corollary}<CR>\end{corollary}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'p \begin{proof}<CR>\end{proof}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'x \begin{example}<CR>\end{example}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'n \begin{note}<CR>\end{note}<Esc>O'
 
-	    execute 'imap <buffer> '.g:atp_imap_third_leader.'u \begin{enumerate}<CR>\end{enumerate}<Esc>O'
-	    execute 'imap <buffer> '.g:atp_imap_third_leader.'i \begin{itemize}<CR>\end{itemize}<Esc>O'
-	    execute 'imap <buffer> '.g:atp_imap_third_leader.'I \item'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'E \begin{enumerate}<CR>\end{enumerate}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'I \begin{itemize}<CR>\end{itemize}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'i \item'
 
 
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'a \begin{align}<CR>\end{align}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'q \begin{equation}<CR>\end{equation}<Esc>O'
 
-	    execute 'imap <buffer> '.g:atp_imap_third_leader.'l \begin{flushleft}<CR>\end{flushleft}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'L \begin{flushleft}<CR>\end{flushleft}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'R \begin{flushright}<CR>\end{flushright}<Esc>O'
-	    execute 'imap <buffer> '.g:atp_imap_third_leader.'z \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'T \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'f \begin{frame}<CR>\end{frame}<Esc>O'
 	endif
 

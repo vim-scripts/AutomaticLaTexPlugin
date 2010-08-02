@@ -488,8 +488,8 @@ function! s:HighlightMatchingPair()
 		return
 	endif
 
-	let open_pats 		= ['\\begin\>\ze\(\s*{\s*document\s*}\)\@!', '\\left\>']
-	let close_pats 		= ['\\end\>\ze\(\s*{\s*document\s*}\)\@!', '\\right\>']
+	let open_pats 		= ['\\begin\>\ze\%(\s*{\s*document\s*}\)\@!', '\\left\>', '\c\\bigg\=\>\%((\|{\|\\{\|\[\)' ]
+	let close_pats 		= ['\\end\>\ze\%(\s*{\s*document\s*}\)\@!', '\\right\>', '\c\\bigg\=\>\%()\|}\|\\}\|\]\)' ]
 	let dollar_pat 		= '\\\@<!\$'
 	let two_dollar_pat 	= '\\\@<!\$\$'
 
@@ -534,11 +534,19 @@ function! s:HighlightMatchingPair()
 		    if lnum2 && s:HasSyntax('texMathZoneY', lnum2, cnum2)
 			    call s:SearchAndSkipComments(two_dollar_pat, 'W')
 		    else
-			    call s:SearchAndSkipComments(two_dollar_pat, 'bW')
+			" searching backward needs the cursor to be placed
+			" before closing $$.
+			if col(".") - 2 >= 1
+			    call cursor(line("."), col(".")-2)
+			else
+			    call cursor(line(".")-1, 1) 
+			    call cursor(line("."), col("$"))
+			endif
+			call s:SearchAndSkipComments(two_dollar_pat, 'bW')
 		    endif
-		    let cnum_e=cnum+1
-		    let cnum_E=col('.')
-		    let cnum_Ee=cnum_E+1
+		    let cnum_e	= cnum+1
+		    let cnum_E	= col('.')
+		    let cnum_Ee	= cnum_E+1
 		    execute '2match MatchParen /\%(\%' . lnum . 'l\%' . cnum . 'c\$'
 					    \	. '\|\%' . lnum . 'l\%' . cnum_e . 'c\$'
 					    \	. '\|\%' . line('.') . 'l\%' . cnum_E . 'c\$'
@@ -551,6 +559,9 @@ function! s:HighlightMatchingPair()
 
 		" find first non-alpha character to the left on the same line
 		let [lnum, cnum] = searchpos('\A', 'cbW', line('.'))
+		if strpart(getline(lnum), 0, cnum)  =~ '\\\%(begin\|end\){[^}]*}\=$'
+		    let [lnum, cnum] = searchpos('\\', 'cbW', line('.'))
+		endif
 
 		let delim = matchstr(getline(lnum), '^\m\(' . join(open_pats + close_pats, '\|') . '\)', cnum - 1)
 
@@ -571,7 +582,11 @@ function! s:HighlightMatchingPair()
 				break
 			elseif delim =~# '^' . close_pat
 				" if on closing pattern, go to opening pattern
-				call searchpair('\C' . open_pat, '', '\C' . close_pat, 'bW', 'LatexBox_InComment()')
+				if close_pat =~ '\\end'
+				    call searchpair('\C\\begin\%(\s*{\s*document\s*}\)\@!', '', '\C\\end\zs'  , 'bW', 'LatexBox_InComment()')
+				else
+				    call searchpair('\C' . open_pat, '', '\C' . close_pat, 'bW', 'LatexBox_InComment()')
+				endif
 				execute '2match MatchParen /\%(\%' . line('.') . 'l\%' . col('.') . 'c' . open_pats[i]
 							\	. '\|\%' . lnum . 'l\%' . cnum . 'c' . close_pats[i] . '\)/'
 				break

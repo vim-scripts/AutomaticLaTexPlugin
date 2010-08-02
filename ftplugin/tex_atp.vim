@@ -4,7 +4,7 @@
 " Last Changed: 2010 July 2
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 28 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 29 :AutoInstall: tex_atp.vim
 " LINE ADDED.
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without

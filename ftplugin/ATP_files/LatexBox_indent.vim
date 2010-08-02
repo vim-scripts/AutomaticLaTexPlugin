@@ -4,7 +4,7 @@
 let b:did_indent = 1
 
 setlocal indentexpr=LatexBox_TexIndent()
-setlocal indentkeys==\end,=\item,),],},o,O,0\\
+setlocal indentkeys==\end,=\item,),],},o,O,0\\,!^F 
 
 let s:itemize_envs = ['itemize', 'enumerate', 'description']
 

@@ -21,7 +21,6 @@
 " This function is needed outside the script (atplib.vim)
 function! FindInputFiles(...)    
 
-    let l:echo=1
     let l:bufname 	= ( a:0 == 0 ? bufname("%") : a:1 )
     let l:echo 		= ( a:0 >= 2 ? a:2 : 1 )
 
@@ -31,7 +30,7 @@ function! FindInputFiles(...)
     else
 	let l:texfile=readfile(fnamemodify(l:bufname,":p"))
     endif
-    let b:texfile=l:texfile
+"     let b:texfile=l:texfile
     let s:i=0
     let l:inputlines=[]
     for l:line in l:texfile
@@ -126,39 +125,33 @@ function! FindBibFiles(...)
 
 "     let b:texfile=readfile(l:bufname)
     if buflisted(fnamemodify(l:bufname,":p"))
-	let b:texfile=getbufline(l:bufname,1,'$')
+	let l:texfile=getbufline(l:bufname,1,'$')
     else
-	let b:texfile=readfile(fnameescape(fnamemodify(l:bufname,":p")))
+	let l:texfile=readfile(fnameescape(fnamemodify(l:bufname,":p")))
     endif
-    let s:i=0
+    let s:i	 =0
     let s:bibline=[]
     " find all lines which define bibliography files
-    for line in b:texfile
+    for line in l:texfile
 	" ToDo: %\bibliography should not be matched!
-	if line =~ "^[^%]*\\\\bibliography{"
+	if line =~ "^[^%]*\\\\bibliography\s*{"
 	    let s:bibline=add(s:bibline,line) 
 	    let s:i+=1
 	endif
     endfor
-    let l:nr=s:i
-    let s:i=1
-    let files=""
+    let l:nr	= s:i
+    let s:i	= 1
+    let l:allbibfiles = []
     " make a comma separated list of bibfiles
     for l:line in s:bibline
-	if s:i==1
-	    let files=substitute(l:line,"\\\\bibliography{\\(.*\\)}","\\1","") . ","
-	else
-	    let files=files . substitute(l:line,"\\\\bibliography{\\(.*\\)}","\\1","") . "," 
-	endif
+	    let file	= matchstr(l:line, '\\bibliography{\zs[^}]*\ze}')
+	    call add(l:allbibfiles, file)
 	let s:i+=1
     endfor
 
-    " rewrite files into a vim list
-    let l:allbibfiles=split(files,',')
-    
     " add the list b:bibfiles 
     if exists('b:bibfiles')
-	call extend(l:allbibfiles,b:bibfiles)
+	call extend(l:allbibfiles, b:bibfiles)
     endif
     
     " clear the list s:allbibfile from double entries 
@@ -224,13 +217,28 @@ endif
     return status
 endfunction "}}}
 
+" There is a copy of this variable in compiler.vim
+let s:CompilerMsg_Dict	= { 
+	    \ 'tex'		: 'TeX', 
+	    \ 'etex'		: 'eTeX', 
+	    \ 'pdftex'		: 'pdfTeX', 
+	    \ 'latex' 		: 'LaTeX',
+	    \ 'elatex' 		: 'eLaTeX',
+	    \ 'pdflatex'	: 'pdfLaTeX', 
+	    \ 'context'		: 'ConTeXt',
+	    \ 'luatex'		: 'LuaTeX',
+	    \ 'xetex'		: 'XeTeX'}
+
 function! ATPRunning() "{{{
     if exists("b:atp_running") && exists("g:atp_callback") && b:atp_running && g:atp_callback
 	redrawstatus
+
+	let Compiler	= get(s:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)
+
 	if b:atp_running >= 2
-	    return b:atp_running." ".b:atp_TexCompiler." "
+	    return b:atp_running." ".Compiler." "
 	else
-	    return b:atp_TexCompiler." "
+	    return Compiler." "
 	endif
     endif
     return ''

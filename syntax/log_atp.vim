@@ -23,8 +23,9 @@ syntax match texlogEndInfo		'Output written on\s\+\%(\S\|\.\|\\\s\|\n\)*' contai
 syntax match texlogOutputWritten	'Output written on' 	contained 
 syntax match texlogPages		'\zs\_d\+\_s\+pages\ze,\_s*\_d\+\_s\+bytes'
 
-syntax match texlogPath			'\%(\/\%(\w\|-\|\\.\|\s\|\n\)\+\)\+\%(\.\w\+\)\+'
-syntax match texlogFont			'\%(OT\d\|T\d\|OMS\|OML\|U\|OMX\|PD\d\)\n\?\%(\/\_w\+\)\+'
+syntax match texlogPath			'\%(\/\%(\w\|-\|\\.\|\s\|\n\)\+\)\+\%(\.\_w\+\ze\%($\|)\)\)\+'
+syntax match texlogPathB		'\%(<\|{\|\n\=\)\%(\/\%(\w\|-\|\\.\|\s\|\n\)\+\)\+\%(\.\_w\+\ze\%($\|)\|\n\=\)\)\+\%(>\|}\)'
+syntax match texlogFont			'\\\=\%(OT\d\|T\d\|OMS\|OML\|U\|OMX\|PD\d\)\n\?\%(\/\_w\+\)\+'
 syntax match texlogFontB		'\%(OT\d\|T\d\|OMS\|OML\|U\|OMX\|PD\d\)\n\?+\_w\+'
 syntax match texlogFontSize		'<\d\+\%(\.\d\+\)\?>'
 
@@ -45,6 +46,9 @@ syntax match texlogTooWide		't\n\?o\n\?o\_sw\n\?i\n\?d\n\?e'
 syntax match texlogMultiplyDefined	'm\n\?u\n\?l\n\?t\n\?i\n\?p\n\?l\n\?y\%(\_s\s\?\|\n\?-\n\?\)\n\?d\n\?e\n\?f\n\?i\n\?n\n\?e\n\?d'
 syntax match texlogRedefining		'\cr\n\?e\n\?d\n\?e\n\?f\n\?i\n\?n\n\?i\n\?n\n\?g'
 syntax match texlogRedeclaring		'\cr\n\?e\n\?d\n\?e\n\?c\n\?l\n\?a\n\?r\n\?i\n\?n\n\?g'
+syntax match texlogSourceSpecials	'S\n\?o\n\?u\n\?r\n\?c\n\?e\_ss\n\?p\n\?e\n\?c\n\?i\n\?a\n\?l\n\?s'
+syntax match texlogLineParsing		'%\n\?&\n\?-\n\?l\n\?i\n\?n\n\?e\_sp\n\?a\n\?r\n\?s\n\?i\n\?n\n\?g'
+syntax match texlogEnabled		'e\n\?n\n\?a\n\?b\n\?l\n\?e\n\?d' 
 
 syntax match texlogLineNr		'\%(^l\.\|\so\n\?n\_si\n\?n\n\?p\n\?u\n\?t\_sl\n\?i\n\?n\n\?e\_s*\)\_d\+\s\?\|\s\?a\n\?t\n\?\_sl\n\?i\n\?n\n\?e\n\?s\_s\+\_d\+--\_d\+\s\?'
 syntax match texlogPageNr		'\[\_d\+\%(\_s*{[^}]*}\)\?\]\|\s\?o\n\?n\n?\_sp\n\?a\n\?g\n\?e\_s\_d\+'
@@ -63,7 +67,7 @@ syntax match texlogChapter		'Chapter\s\+\%(\d\|\.\)\+'
 " syntax match texlogDelimiter		'(\|)'
 "
 " This works only with 'sync fromstart'.
-" syntax region texlogBracket	start="(" skip="\\[()]"	end=")" transparent contains=texlogPath,texlogLatexInfo,texlogFontInfo,texlogEndInfo,texlogOutputWritten,texlogLatexWarning,texlogLatexFontInfo,texlogLatexFontWarning,texlogPackageWarning,texlogPackageInfo,texlogError,texlogLineNr,texlogPageNr,texlogPackage,texlogDocumentClass,texlogFile,texlogCitation,texlogReference,texlogKeyword,texlogLatexKeyword,texlogScope,texlogFont,texlogFontB,texlogFontSize,texlogOverfullBox,texlogUnderfullBox,texlogTooWide,texlogRedefining,texlogRedeclaring,texlogDate,texlogVersion,texlogWarningKeyword,texlogPages,texlogFontShapes,texlogOpenOut,texlogPdfTeXWarning,texlogBrackets,texlogEndInfo,texlogFileName,texlogPages,texlogChapter,texlogMultiplyDefined
+" syntax region texlogBracket	start="(" skip="\\[()]"	end=")" transparent contains=texlogPath,texlogPathB,texlogLatexInfo,texlogFontInfo,texlogEndInfo,texlogOutputWritten,texlogLatexWarning,texlogLatexFontInfo,texlogLatexFontWarning,texlogPackageWarning,texlogPackageInfo,texlogError,texlogLineNr,texlogPageNr,texlogPackage,texlogDocumentClass,texlogFile,texlogCitation,texlogReference,texlogKeyword,texlogLatexKeyword,texlogScope,texlogFont,texlogFontB,texlogFontSize,texlogOverfullBox,texlogUnderfullBox,texlogTooWide,texlogRedefining,texlogRedeclaring,texlogDate,texlogVersion,texlogWarningKeyword,texlogPages,texlogFontShapes,texlogOpenOut,texlogPdfTeXWarning,texlogBrackets,texlogEndInfo,texlogFileName,texlogPages,texlogChapter,texlogMultiplyDefined,texlogEnabled
 " 
 " syntax sync fromstart 
 
@@ -73,6 +77,7 @@ hi def link texlogBrackets		Special
 hi def link texlogOpenOut		Statement
 hi def link texlogWarningKeyword	Identifier
 hi def link texlogPath			Include
+hi def link texlogPathB			texlogPath
 
 hi def link texlogLatexInfo 		String
 
@@ -102,6 +107,9 @@ hi def link texlogUnderfullBox		Function
 hi def link texlogTooWide		Function
 hi def link texlogRedefining		Function
 hi def link texlogRedeclaring		Function
+hi def link texlogSourceSpecials	Keyword
+hi def link texlogEnabled		Keyword
+hi def link texlogLineParsing		Keyword
 hi def link texlogMultiplyDefined	Function
 hi def link texlogScope			Label 
 

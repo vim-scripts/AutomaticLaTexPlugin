@@ -193,6 +193,9 @@ hi texlogUnderfullBox		guifg=PaleGoldenRod
 hi texlogTooWide		guifg=PaleGoldenRod
 hi texlogRedefining		guifg=PaleGoldenRod
 hi texlogRedeclaring		guifg=PaleGoldenRod
+hi link texlogSourceSpecials	texlogKeyword
+hi link texlogEnabled		texlogKeyword
+hi link texlogLineParsing	texlogKeyword
 hi texlogMultiplyDefined	guifg=PaleGoldenRod
 hi texlogScope			guifg=DarkOrange3 
 

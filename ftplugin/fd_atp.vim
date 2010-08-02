@@ -23,7 +23,7 @@ endif
 "{{{ ShowFonts
 function! ShowFonts(fd_file)
 
-    let font_commands	= atplib#ShowFont(a:fd_file)
+    let font_commands	= atplib#ShowFonts(a:fd_file)
 
     let message		= ""
     for fcom in font_commands
@@ -34,12 +34,14 @@ function! ShowFonts(fd_file)
 endfunction
 "}}}
 "{{{ Autocommand
-au CursorHold fd_list* :echo g:fd_matches[(max([line("."),'2'])-2)]
+augroup ATP_fd_list
+    au CursorHold fd_list* :echo get(g:fd_matches, max([line("."),'2'])-2, "")
+augroup END
 "}}}
 "{{{ Preview
-function! Preview(...)
+function! Preview(keep_tex)
 
-    let keep_tex = ( a:0 == 0 ? 0 : a:1 )
+    let keep_tex = ( a:keep_tex == "!" ? 1 : 0 )
 
     let b_pos	= getpos("'<")[1]
     let e_pos	= getpos("'>")[1]
@@ -56,7 +58,7 @@ endfunction
 "}}}
 "{{{ Commands
 if bufname("%") =~ 'fd_list'
-    command! -buffer -nargs=? -range Preview	:call Preview(<f-args>)
+    command! -buffer -bang -nargs=? -range Preview	:call Preview(<q-bang>, <f-args>)
     command! -buffer ShowFonts			:call ShowFonts(g:fd_matches[(max([line("."),'2'])-2)])
     map <buffer> <Enter> 			:call OpenFile()<CR>
     map <buffer> <Tab>				:call ShowFonts(g:fd_matches[(max([line("."),'2'])-2)])<CR>
@@ -65,10 +67,10 @@ else
 endif
 "}}}
 "{{{ Maps
-map 	<buffer> 	P :Preview 1<CR>
-map 	<buffer> 	p :Preview 0<CR>
-vmap 	<buffer> 	P :Preview 1<CR>
-vmap 	<buffer> 	p :Preview 0<CR>
+map 	<buffer> 	P :Preview! <CR>
+map 	<buffer> 	p :Preview <CR>
+vmap 	<buffer> 	P :Preview! <CR>
+vmap 	<buffer> 	p :Preview <CR>
 map 	<buffer> 	Q :bd!<CR>
 map 	<buffer> 	q :q!<CR>R
 "}}}

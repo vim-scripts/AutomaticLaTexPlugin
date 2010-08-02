@@ -8,13 +8,13 @@ let s:loaded	= !exists("s:loaded") ? 1 : 2
 " {{{ Table Of Contents
 " {{{2 Variabels
 let g:atp_sections={
-    \	'chapter' 	: [           '^\s*\(\\chapter\*\?\s*{\)',	'\\chapter\*'],	
-    \	'section' 	: [           '^\s*\(\\section\*\?\s*{\)',	'\\section\*'],
-    \ 	'subsection' 	: [	   '^\s*\(\\subsection\*\?\s*{\)',	'\\subsection\*'],
-    \	'subsubsection' : [ 	'^\s*\(\\subsubsection\*\?\s*{\)',	'\\subsubsection\*'],
-    \	'bibliography' 	: ['^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
-    \	'abstract' 	: ['^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
-    \   'part'		: [ 		 '^\s*\(\\part\*\?\s*{\)',	'\\part\*']}
+    \	'chapter' 	: [           '\m^\s*\(\\chapter\*\?\s*{\)',	'\m\\chapter\*'],	
+    \	'section' 	: [           '\m^\s*\(\\section\*\?\s*{\)',	'\m\\section\*'],
+    \ 	'subsection' 	: [	   '\m^\s*\(\\subsection\*\?\s*{\)',	'\m\\subsection\*'],
+    \	'subsubsection' : [ 	'\m^\s*\(\\subsubsection\*\?\s*{\)',	'\m\\subsubsection\*'],
+    \	'bibliography' 	: ['\m^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
+    \	'abstract' 	: ['\m^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
+    \   'part'		: [ 		 '\m^\s*\(\\part\*\?\s*{\)',	'\m\\part\*']}
 
 "--Make TOC -----------------------------
 " This makes sense only for latex documents.
@@ -307,7 +307,7 @@ function! s:showtoc(toc,...)
 		let part_on=1
 	    endif
 	endfor
-	let sorted	= sort(keys(a:toc[openfile]),"atplib#CompareList")
+	let sorted	= sort(keys(a:toc[openfile]),"atplib#CompareNumbers")
 	let len		= len(sorted)
 	" write the file name in ToC (with a full path in paranthesis)
 	call setline(number,fnamemodify(openfile,":t") . " (" . fnamemodify(openfile,":p:h") . ")")
@@ -452,7 +452,7 @@ function! s:showtoc(toc,...)
 " 	let t:numberdict=numberdict	"DEBUG
 " 	t:atp_bufname is the full path to the current buffer.
     let num		= numberdict[t:atp_bufname]
-    let sorted		= sort(keys(a:toc[t:atp_bufname]),"atplib#CompareList")
+    let sorted		= sort(keys(a:toc[t:atp_bufname]), "atplib#CompareNumbers")
     let t:sorted	= sorted
     for line in sorted
 	if cline>=line
@@ -518,7 +518,7 @@ nnoremap <Plug>ATP_TOC		:call <SID>TOC(1)<CR>
 function! s:nearestsection(section)
     let cline=line('.')
 
-    let sorted=sort(keys(a:section),"atplib#CompareList")
+    let sorted=sort(keys(a:section), "atplib#CompareNumbers")
     let x=0
     while x<len(sorted) && sorted[x]<=cline
        let x+=1 
@@ -865,26 +865,28 @@ endfun
 " {{{ Motion functions
 " Move to next environment which name is given as the argument. Do not wrap
 " around the end of the file.
-function! s:GoToEnvironment(...)
+function! s:GoToEnvironment(flag,...)
     let env_name 	= ( a:0 >= 1 ? a:1 	: '[^}]*' )
-    let flag		= ( a:0 >= 2 ? a:2	: 'W' )
+    let flag		= a:flag
     if env_name == 'math'
-	silent call search('\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
-	call histadd("search", '\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)')
-	let @/ 	 = '\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)'
+	let pattern = '\m\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)'
+	silent call search(pattern, flag) 
+	call histadd("search", pattern)
+	let @/ 	 = pattern
 	if getline(".")[col(".")-1] == '$' && col(".") > 1 && 
 		    \ ( count(map(synstack(line("."),col(".")-1), 'synIDattr(v:val, "name")'), 'texMathZoneX') == 0 ||
 		    \ 	count(map(synstack(line("."),col(".")-1), 'synIDattr(v:val, "name")'), 'texMathZoneY') == 0 )
-	    silent call search('\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
+	    silent call search(pattern, flag) 
 	endif
     else
-	silent call search('\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}', flag)
-	call histadd("search", '\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}')
-	let @/	= '\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}'
+	let pattern = '\m\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}'
+	silent call search(pattern, flag)
+	call histadd("search", pattern)
+	let @/	= pattern
     endif
 endfunction
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv		:call <SID>GoToEnvironment(<f-args>, 'W')
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PEnv		:call <SID>GoToEnvironment(<f-args>, 'bW')
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv		:call <SID>GoToEnvironment('W', <f-args>)
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PEnv		:call <SID>GoToEnvironment('bW', <f-args>)
 nnoremap <silent> <Plug>GoToNextEnvironment					:call <SID>GoToEnvironment('[^}]*', 'W')<CR>
 nnoremap <silent> <Plug>GoToPreviousEnvironment					:call <SID>GoToEnvironment('[^}]*', 'bW')<CR>
 
@@ -934,9 +936,10 @@ function! s:PreviousSection(secname,...)
     elseif mode == 'v' 
 	normal! v
     endif
-    silent call search('\\' . a:secname . '\>' . section_title_pattern ,'bw')
-    call histadd("search", '\\' . a:secname . '\>' . section_title_pattern)
-    let @/='\\' . a:secname . '\>' . section_title_pattern
+    let pattern = '\\' . a:secname . '\>' . section_title_pattern
+    silent call search(pattern,'bw')
+    call histadd(pattern)
+    let @/	= pattern
 endfunction
 nnoremap <silent> <Plug>GoToPreviousSection		:call <SID>PreviousSection('section')<CR>
 onoremap <silent> <Plug>GoToPreviousSection		:call <SID>PreviousSection('section')<CR>
@@ -969,5 +972,56 @@ function! Env_compl(A,P,L)
     return returnlist
 endfunction
 " }}}
+
+" Enter over input files
+" {{{1
+function! Enter()
+    let synstack=map(synstack(line("."),col(".")), 'synIDattr(v:val, "name")')
+    if count(synstack, 'texInputFile')
+	let filename	= atplib#append(matchstr(getline(line(".")), '\\input\s*{\zs[^}]*\ze}'), '.tex')
+	if filereadable(fnamemodify(filename, ":p"))
+	    silent! execute "edit " . fnamemodify(filename, ":p")
+	elseif strpart(getline("."), 0,col(".")-1) =~ '\\usepackage\s*\%(\[[^]]*]\)\=\s*{' && exists("g:atp_developer")
+	    let bcol	= searchpos('{\|,', 'bn')[1]
+	    let ecol	= searchpos('}\|,', 'n')[1]
+	    let packagename 	= strpart(getline("."), bcol, ecol-bcol-1)
+	    let g:packagename	= packagename
+	    let file	= filter(atplib#FindFiles('tex', 'sty', ':p'), "v:val =~ packagename .'.sty$'")[0]
+	    if filereadable(file)
+		silent! execute "edit " . file
+	    else
+		execute "normal j"
+	    endif
+	else
+	    execute "normal j"
+	endif
+    elseif count(synstack, 'texInput')
+	let filename	= atplib#append(matchstr(getline(line(".")), '\\input\s*\zs\S*\ze'), '.tex')
+	let g:filename	= filename
+	let filepath	= filter(atplib#FindFiles('tex', 'tex', ':p'), "v:val =~ filename .'$'")
+	let g:filepath	= copy(filepath)
+	let file	= filepath[0]
+	if filereadable(file)
+	    silent! execute "edit " . file
+	else
+	    execute "normal j"
+	endif
+    elseif strpart(getline("."), 0,col(".")-1) =~ '\\documentclass\s*\%(\[[^]]*]\)\=\s*{' && exists("g:atp_developer")
+	let bcol	= searchpos('{\|,', 'bn')[1]
+	let ecol	= searchpos('}\|,', 'n')[1]
+	let classname 	= strpart(getline("."), bcol, ecol-bcol-1)
+	let g:classname	= classname
+	let file	= filter(atplib#FindFiles('tex', 'cls', ':p'), "v:val =~ classname .'.cls$'")[0]
+	if filereadable(file)
+	    silent! execute "edit " . file
+	else
+	    execute "normal j"
+	endif
+    else
+	execute "normal j"
+    endif
+endfunction
+nmap <CR>	:silent call Enter()<CR>
+" }}}1
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

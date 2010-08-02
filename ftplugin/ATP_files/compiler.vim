@@ -11,6 +11,17 @@ else
 	let b:loaded_compiler += 1
 endif
 
+let s:CompilerMsg_Dict	= { 
+	    \ 'tex'		: 'TeX', 
+	    \ 'etex'		: 'eTeX', 
+	    \ 'pdftex'		: 'pdfTeX', 
+	    \ 'latex' 		: 'LaTeX',
+	    \ 'elatex' 		: 'eLaTeX',
+	    \ 'pdflatex'	: 'pdfLaTeX', 
+	    \ 'context'		: 'ConTeXt',
+	    \ 'luatex'		: 'LuaTeX',
+	    \ 'xetex'		: 'XeTeX'}
+
 " Internal Variables
 " {{{
 " This limits how many consecutive runs there can be maximally.
@@ -23,40 +34,49 @@ compiler tex
 " This is the function to view output. It calls compiler if the output is a not
 " readable file.
 " {{{ ViewOutput
-function! s:ViewOutput()
+" a:1 == "RevSearch" 	if run from RevSearch() function and the output file doesn't
+" exsists call compiler and RevSearch().
+function! s:ViewOutput(...)
+    let rev_search	= a:0 == 1 && a:1 == "RevSearch" ? 1 : 0
+
     call atplib#outdir()
 
     " Set the correct output extension (if nothing matches set the default '.pdf')
-    let l:ext	= get(g:atp_CompilersDict, b:atp_TexCompiler, ".pdf") 
+    let ext	= get(g:atp_CompilersDict, b:atp_TexCompiler, ".pdf") 
 
-    let l:link=system("readlink " . shellescape(b:atp_MainFile))
-    if l:link != ""
-	let outfile=fnamemodify(l:link,":r") . l:ext
+    " Follow the symbolic link
+    let link=system("readlink " . shellescape(b:atp_MainFile))
+    if link != ""
+	let outfile	= fnamemodify(link,":r") . ext
     else
-	let outfile=fnamemodify(b:atp_MainFile,":r"). l:ext 
+	let outfile	= fnamemodify(b:atp_MainFile,":r"). ext 
     endif
 
     if b:atp_Viewer == "xpdf"	
-	let l:viewer=b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . b:atp_ViewerOptions 
+	let viewer	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . b:atp_ViewerOptions 
     else
-	let l:viewer=b:atp_Viewer  . " " . b:atp_ViewerOptions
+	let viewer	= b:atp_Viewer  . " " . b:atp_ViewerOptions
     endif
 
-    let l:view=l:viewer . " " . shellescape(outfile)  . " &"
+    let view_cmd	= viewer . " " . shellescape(outfile)  . " &"
 
     if filereadable(outfile)
 	if b:atp_Viewer == "xpdf"	
-	    call system(l:view)
+	    call system(view_cmd)
 	else
-	    call system(l:view)
+	    call system(view_cmd)
 	    redraw!
 	endif
     else
 	echomsg "Output file do not exists. Calling " . b:atp_TexCompiler
-	call s:Compiler( 0, 1, 1, 'silent' , "AU" , b:atp_MainFile)
+	if rev_search
+	    call s:Compiler( 0, 2, 1, 'silent' , "AU" , b:atp_MainFile)
+	else
+	    call s:Compiler( 0, 1, 1, 'silent' , "AU" , b:atp_MainFile)
+	endif
     endif	
 endfunction
-command! -buffer ViewOutput		:call <SID>ViewOutput()
+command! -buffer -nargs=? ViewOutput		:call <SID>ViewOutput(<f-args>)
 noremap <silent> <Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
 "}}}
 
@@ -171,12 +191,14 @@ endfunction
 function! s:GetSid() "{{{
     return matchstr(expand('<sfile>'), '\zs<SNR>\d\+_\ze.*$')
 endfunction 
-let s:SID = s:GetSid() "}}}
+let s:compiler_SID = s:GetSid() "}}}
 
-let g:atp_sid={ fnamemodify(expand('<sfile>'),':t') : s:SID }
+" Make the SID visible outside the script:
+" /used in LatexBox_complete.vim file/
+let g:atp_compiler_SID	= { fnamemodify(expand('<sfile>'),':t') : s:compiler_SID }
 
 function! s:SidWrap(func) "{{{
-    return s:SID . a:func
+    return s:compiler_SID . a:func
 endfunction "}}}
 
 " CatchStatus {{{
@@ -194,8 +216,9 @@ endfunction
 " Uses b:atp_TexStatus which is equal to the value returned by tex
 " compiler.
 function! s:CallBack(mode)
-    let b:mode=a:mode
+	let b:mode	= a:mode
 
+	let Compiler	= get(s:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)
 	let b:atp_running-=1
 
 	" Read the log file
@@ -212,18 +235,18 @@ function! s:CallBack(mode)
 
 	if b:atp_TexStatus && t:atp_DebugMode != "silent"
 	    if b:atp_ReloadOnError
-		echomsg b:atp_TexCompiler." exited with status " . b:atp_TexStatus
+		echomsg Compiler." exited with status " . b:atp_TexStatus
 	    else
-		echomsg b:atp_TexCompiler." exited with status " . b:atp_TexStatus . " output file not reloaded"
+		echomsg Compiler." exited with status " . b:atp_TexStatus . " output file not reloaded"
 	    endif
 	elseif !g:atp_status_notification || !g:atp_statusline
-	    echomsg b:atp_TexCompiler." finished"
+	    echomsg Compiler." finished"
 	endif
 
 	" End the debug mode if there are no errors
 	if b:atp_TexStatus == 0 && t:atp_DebugMode == "debug"
 	    cclose
-	    echomsg b:atp_TexCompiler." finished with status " . b:atp_TexStatus . " going out of debuging mode."
+	    echomsg b :atp_TexCompiler." finished with status " . b:atp_TexStatus . " going out of debuging mode."
 	    let t:atp_DebugMode == g:atp_DefaultDebugMode
 	endif
 
@@ -240,14 +263,369 @@ endfunction
 "}}}
 "}}}
 
+" This function is called to run TeX compiler and friends as many times as necessary.
+" Makes references and bibliographies (supports bibtex), indexes.  
+"{{{1 MakeLatex
+" a:texfile		full path to the tex file
+" a:index		0/1
+" 			0 - do not check for making index in this run
+" 			1 - the opposite
+" a:0 == 0 || a:1 == 0 (i.e. the default) not run latex before /this might change in
+" 			the future/
+" a:1 != 0		run latex first, regardless of the state of log/aux files.			
+" 
+" 
+" The arguments are path to logfile and auxfile.
+" To Do: add support for TOC !
+" To Do: when I will add proper check if bibtex should be done (by checking bbl file
+" or changes in bibliographies in input files), the bang will be used to update/or
+" not the aux|log|... files.
+let g:MakeLatex_debug	= 1
+
+" Function Arguments:
+" a:texfile		= main tex file to use
+" a:did_bibtex		= the number of times bibtex was already done MINUS 1 (should be 0 on start up)
+" a:did_index		= 0/1 1 - did index 
+" 				/ to make an index it is enough to call: 
+" 					latex ; makeindex ; latex	/
+" a:time		= should be reltime()
+" a:did_firstrun	= did the first run? (see a:1 below)
+" a:run			= should be 1 on invocation: the number of the run
+" force			= '!'/'' (see :h bang)
+" 				This only makes a difference with bibtex:
+" 				    if removed citation to get the right Bibliography you need to use 
+" 				    'Force' option in all other cases 'NoForce' is enough (and faster).
+" 					
+" a:1			= do the first run (by default: NO) - to obtain/update log|aux|idx|toc|... files.
+" 				/this is a weak NO: if one of the needed files not
+" 				readable it is used/
+"
+" Some explanation notes:
+" 	references		= referes to the bibliography
+" 					the pattern to match in log is based on the
+" 					phrase: 'Citation .* undefined'
+" 	cross_references 	= referes to the internal labels
+" 					phrase to check in the log file:
+" 					'Label(s) may have changed. Rerun to get cross references right.'
+" 	table of contents	= 'No file \f*\.toc' 				
+function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, force, ...)
+
+    let b:atp_running	= a:run ? 1 : 0
+    let runtex_before	= a:0 == 0 || a:1 == 0 ? 0 : 1
+    let runtex_before	= runtex_before
+
+	if g:MakeLatex_debug
+	    if a:run == 1
+		redir! > /tmp/mk_log
+	    else
+		redir! >> /tmp/mk_log
+	    endif
+	endif
+
+    let Compiler	= get(s:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)
+
+    let compiler_SID 	= s:compiler_SID
+    let g:tm_debug 	= ""
+
+    let mode 		= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
+    let tex_options	= " -interaction nonstopmode -output-directory=" . b:atp_OutDir . " "
+    if b:atp_TexCompiler == "tex" || b:atp_TexCompiler == "latex"
+	let tex_options .= " -src-specials "
+    endif
+
+    " This supports b:atp_OutDir
+    let texfile		= b:atp_OutDir . fnamemodify(a:texfile, ":t")
+    let logfile		= fnamemodify(texfile, ":r") . ".log"
+    let auxfile		= fnamemodify(texfile, ":r") . ".aux"
+    let bibfile		= fnamemodify(texfile, ":r") . ".bbl"
+    let idxfile		= fnamemodify(texfile, ":r") . ".idx"
+    let indfile		= fnamemodify(texfile, ":r") . ".ind"
+    let tocfile		= fnamemodify(texfile, ":r") . ".toc"
+    let loffile		= fnamemodify(texfile, ":r") . ".lof"
+    let lotfile		= fnamemodify(texfile, ":r") . ".lot"
+    let thmfile		= fnamemodify(texfile, ":r") . ".thm"
+
+    if b:atp_TexCompiler =~ '^\%(pdflatex\|pdftex\|xetex\|context\|luatex\)$'
+	let ext		= ".pdf"
+    else
+	let ext		= ".dvi"
+    endif
+    let outfile		= fnamemodify(texfile, ":r") . ext
+
+	if g:MakeLatex_debug
+	silent echo a:run . " BEGIN " . strftime("%c")
+	silent echo a:run . " logfile=" . logfile . " " . filereadable(logfile) . " auxfile=" . auxfile . " " . filereadable(auxfile). " runtex_before=" . runtex_before . " a:force=" . a:force
+	endif
+
+    let saved_pos	= getpos(".")
+    keepjumps call setpos(".", [0,1,1,0])
+    keepjumps let stop_line=search('\\begin\s*{document}','nW')
+    let makeidx		= search('^[^%]*\\makeindex', 'n', stop_line)
+    keepjumps call setpos(".", saved_pos)
+	
+    " We use location list which should be restored.
+    let saved_loclist	= copy(getloclist(0))
+
+    " grep in aux file for 
+    " 'Citation .* undefined\|Rerun to get cross-references right\|Writing index file'
+    try
+	silent execute "lvimgrep /C\\n\\=i\\n\\=t\\n\\=a\\n\\=t\\n\\=i\\n\\=o\\n\\=n\\_s\\_.*\\_su\\n\\=n\\n\\=d\\n\\=e\\n\\=f\\n\\=i\\n\\=n\\n\\=e\\n\\=d\\|L\\n\\=a\\n\\=b\\n\\=e\\n\\=l\\n\\=(\\n\\=s\\n\\=)\\_sm\\n\\=a\\n\\=y\\_sh\\n\\=a\\n\\=v\\n\\=e\\_sc\\n\\=h\\n\\=a\\n\\=n\\n\\=g\\n\\=e\\n\\=d\\n\\=.\\|W\\n\\=r\\n\\=i\\n\\=t\\n\\=i\\n\\=n\\n\\=g\\_si\\n\\=n\\n\\=d\\n\\=e\\n\\=x\\_sf\\n\\=i\\n\\=l\\n\\=e/j " . logfile
+    catch /No match:/
+    endtry
+    let location_list	= copy(getloclist(0))
+
+    " Check references:
+	if g:MakeLatex_debug
+	silent echo a:run . " location_list=" . string(len(location_list))
+	silent echo a:run . " references_list=" . string(len(filter(copy(location_list), 'v:val["text"] =~ "Citation"')))
+	endif
+    let references	= len(filter(copy(location_list), 'v:val["text"] =~ "Citation"')) == 0 ? 0 : 1 
+
+    " Check what to use to make the 'Bibliography':
+    try
+	silent execute 'lvimgrep /\\bibdata\s*{/j ' . auxfile 
+    catch /No match:/
+    endtry
+    " Note: if the auxfile is not there it returns 0 but this is the best method for
+    " looking if we have to use 'bibtex' as the bibliography might be not written in
+    " the main file.
+    let bibtex		= len(getloclist(0)) == 0 ? 0 : 1
+
+	if g:MakeLatex_debug
+	silent echo a:run . " references=" . references . " bibtex=" . bibtex . " a:did_bibtex=" . a:did_bibtex
+	endif
+
+    " Check cross-references:
+    let cross_references = len(filter(copy(location_list), 'v:val["text"]=~"Rerun"'))==0?0:1
+
+	if g:MakeLatex_debug
+	silent echo a:run . " cross_references=" . cross_references
+	endif
+
+    " Check index:
+    let idx_cmd	= "" 
+    if makeidx
+
+	" The index file is written iff
+	" 	1) package makeidx is declared
+	" 	2) the preambule contains \makeindex command, then log has a line: "Writing index file"
+	" the 'index' variable is equal 1 iff the two conditions are met.
+	
+	let index	 	= len(filter(copy(location_list), 'v:val["text"] =~ "Writing index file"')) == 0 ? 0 : 1
+	if index
+	    let idx_cmd		= " makeindex " . idxfile . " ; "
+	endif
+    else
+	let index			= 0
+    endif
+
+	if g:MakeLatex_debug
+	silent echo a:run . " index=" . index . " makeidx=" . makeidx . " idx_cdm=" . idx_cmd . " a:did_index=" . a:did_index 
+	endif
+
+    " Check table of contents:
+    try
+	silent execute "lvimgrep /\\\\openout\\d\\+/j " . logfile
+    catch /No match:/
+    endtry
+
+    let open_out = map(getloclist(0), "v:val['text']")
+    if filereadable(logfile) && a:force == ""
+	let toc		= ( len(filter(deepcopy(open_out), "v:val =~ \"toc\'\"")) ? 1 : 0 )
+	let lof		= ( len(filter(deepcopy(open_out), "v:val =~ \"lof\'\"")) ? 1 : 0 )
+	let lot		= ( len(filter(deepcopy(open_out), "v:val =~ \"lot\'\"")) ? 1 : 0 )
+	let thm		= ( len(filter(deepcopy(open_out), "v:val =~ \"thm\'\"")) ? 1 : 0 )
+    else
+	" This is not an efficient way and it is not good for long files with input
+	" lines and lists in not common position.
+	let save_pos	= getpos(".")
+	call cursor(1,1)
+	let toc		= search('\\tableofcontents', 'nw')
+	call cursor(line('$'), 1)
+	call cursor(line('.'), col('$'))
+	let lof		= search('\\listoffigures', 'nbw') 
+	let lot		= search('\\listoffigures', 'nbw') 
+	if atplib#SearchPackage('ntheorem')
+	    let thm	= search('\\listheorems', 'nbw') 
+	else
+	    let thm	= 0
+	endif
+	keepjumps call setpos(".", save_pos)
+    endif
+
+
+	if g:MakeLatex_debug
+	silent echo a:run." toc=".toc." lof=".lof." lot=".lot." open_out=".string(open_out)
+	endif
+
+    " Run tex compiler for the first time:
+    let logfile_readable	= filereadable(logfile)
+    let auxfile_readable	= filereadable(auxfile)
+    let idxfile_readable	= filereadable(idxfile)
+    let tocfile_readable	= filereadable(tocfile)
+    let loffile_readable	= filereadable(loffile)
+    let lotfile_readable	= filereadable(lotfile)
+    let thmfile_readable	= filereadable(thmfile)
+
+    let condition = !logfile_readable || !auxfile_readable || !thmfile_readable && thm ||
+		\ ( makeidx && !idxfile_readable ) || 
+		\ !tocfile_readable && toc || !loffile_readable && lof || !lotfile_readable && lot || 
+		\ runtex_before
+
+	if g:MakeLatex_debug
+	silent echo a:run . " logfile=" . logfile_readable . " auxfile=" . auxfile_readable . " idxfile=" . ( makeidx && idxfile_readable ) . " runtex_before=" . runtex_before 
+	silent echo a:run . " Run First " . condition
+	endif
+
+    if condition
+	if runtex_before
+	    w
+	endif
+	let did_bibtex	= 0
+	let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID . 
+		\ "MakeLatex\(\'".texfile."\', ".did_bibtex.", 0, [".a:time[0].",".a:time[1]."], ".
+		\ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
+	let cmd	= b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
+
+	    if g:MakeLatex_debug
+	    let g:tm_debug .= "First run. (make log|aux|idx file)" . " [" . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . "]#"
+	    silent echo a:run . " Run First CMD=" . cmd 
+	    redir END
+	    endif
+
+	redraw
+	echomsg "[MakeLatex] Updating files [".Compiler."]."
+	call system("("  . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . " )&")
+	return "Making log file or aux file"
+    endif
+
+    " Run tex compiler:
+    if a:did_firstrun && !bibtex && a:run == 2
+	"Note: in this place we should now correctly if bibtex is in use or not,
+	"if not and we did first run we can count it. /the a:did_bibtex variable will
+	"not be updated/
+	let did_bibtex = a:did_bibtex + 1
+    else
+	let did_bibtex = a:did_bibtex
+    endif
+    let bib_condition_force 	= ( (references && !bibtex) || bibtex ) && did_bibtex <= 1  
+    let bib_condition_noforce	= ( references 	&& did_bibtex <= 1 )
+    let condition_force 	= bib_condition_force 	|| cross_references || index && !a:did_index || 
+		\ ( ( toc || lof || lot || thm ) && a:run < 2 )
+    let condition_noforce 	= bib_condition_noforce || cross_references || index && !a:did_index || 
+		\ ( ( toc || lof || lot || thm ) && a:run < 2 )
+
+	if g:MakeLatex_debug
+	silent echo a:run . " Run Second NoForce:" . ( condition_noforce && a:force == "" ) . " Force:" . ( condition_force && a:force == "!" )
+	silent echo a:run . " BIBTEX: did_bibtex[updated]=" . did_bibtex . " references=" . references . " CROSSREF:" . cross_references . " INDEX:" . (index  && !a:did_index)
+	endif
+
+    if ( condition_force && a:force == "!" ) || ( condition_noforce && a:force == "" )
+	  let cmd	= ''
+	  let bib_cmd 	= 'bibtex ' 	. auxfile . ' ; '
+	  let idx_cmd 	= 'makeindex ' 	. idxfile . ' ; '
+	  let message	=   "Making:"
+	  if ( bib_condition_force && a:force == "!" ) || ( bib_condition_noforce && a:force == "" )
+	      let bib_msg	 = ( bibtex  ? ( did_bibtex == 0 ? " [bibtex,".Compiler."]" : " [".Compiler."]" ) : " [".Compiler."]" )
+	      let message	.= " references".bib_msg."," 
+	      let g:tm_debug 	.= "(make references)"
+	  endif
+	  if toc && a:run <= 2
+	      let message	.= " toc,"
+	  endif
+	  if lof && a:run <= 2
+	      let message	.= " lof,"
+	  endif
+	  if lot && a:run <= 2
+	      let message	.= " lot,"
+	  endif
+	  if thm && a:run <= 2
+	      let message	.= " theorem list,"
+	  endif
+	  if cross_references
+	      let message	.= " cross-references," 
+	      let g:tm_debug	.= "(make cross-references)"
+	  endif
+	  if !a:did_index && index && idxfile_readable
+	      let message	.= " index [makeindex]." 
+	      let g:tm_debug 	.= "(make index)"
+	  endif
+	  let message	= substitute(message, ',\s*$', '.', '') 
+	  if !did_bibtex && auxfile_readable && bibtex
+	      let cmd		.= bib_cmd . " "
+	      let did_bibtex 	+= 1  
+	  else
+	      let did_bibtex	+= 1
+	  endif
+	  " If index was done:
+	  if a:did_index
+	      let did_index	=  1
+	  " If not and should be and the idx_file is readable
+	  elseif index && idxfile_readable
+	      let cmd		.= idx_cmd . " "
+	      let did_index 	=  1
+	  " If index should be done, wasn't but the idx_file is not readable (we need
+	  " to make it first)
+	  elseif index
+	      let did_index	=  0
+	  " If the index should not be done:
+	  else
+	      let did_index	=  1
+	  endif
+	  let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID .
+		      \ "MakeLatex\(\'".texfile."\', ".did_bibtex." , ".did_index.", [".a:time[0].",".a:time[1]."], ".
+		      \ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
+	  let cmd	.= b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
+
+	      if g:MakeLatex_debug
+	      silent echo a:run . " a:did_bibtex="a:did_bibtex . " did_bibtex=" . did_bibtex
+	      silent echo a:run . " Run Second CMD=" . cmd
+	      redir END
+	      endif
+
+	  echomsg "[MakeLatex] " . message
+	  call system("(" . cmd . ")&")
+	  return "Making references|cross-references|index."
+    endif
+
+	if g:MakeLatex_debug
+	silent echo a:run . " END"
+	redir END
+	endif
+
+    redraw
+    let time	= matchstr(reltimestr(reltime(a:time)), '\d\+\.\d\d')
+    if max([(a:run-1), 0]) == 1
+	echomsg "[MakeLatex] " . max([(a:run-1), 0]) . " time in " . time . "sec."
+    else
+	echomsg "[MakeLatex] " . max([(a:run-1), 0]) . " times in " . time . "sec."
+    endif
+    let b:atp_running	=  0
+    redrawstatus
+
+    " THIS is a right place to call the viewer to reload the file 
+    " and the callback mechanism /debugging stuff/.
+    if b:atp_Viewer	== 'xpdf' && s:xpdfpid() != ""
+	let pdffile		= fnamemodify(a:texfile, ":r") . ".pdf"
+	let Reload_Viewer 	= b:atp_Viewer." -remote ".shellescape(b:atp_XpdfServer)." -reload &"
+	call system(Reload_Viewer)
+    endif
+endfunction
+command! -buffer -bang MakeLatex		:call <SID>MakeLatex(b:atp_MainFile, 0,0, reltime(),1,1,<q-bang>,1)
+"}}}1
+
 " THE MAIN COMPILER FUNCTION
 " {{{ s:Compiler 
 " This is the MAIN FUNCTION which sets the command and calls it.
 " NOTE: the <filename> argument is not escaped!
-" make a:verbose= silent/verbose/debug
+" a:verbose	= silent/verbose/debug
 " 	debug 	-- switch to show errors after compilation.
 " 	verbose -- show compiling procedure.
 " 	silent 	-- compile silently (gives status information if fails)
+" a:start	= 0/1/2
+" 		1 start viewer
+" 		2 start viewer and make reverse search
+"
 function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 
     if !has('gui') && a:verbose == 'verbose' && b:atp_running > 0
@@ -307,13 +685,15 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 	let outfile 	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . l:ext
 	let outaux  	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".aux"
 	let tmpaux  	= fnamemodify(s:tmpfile, ":r") . ".aux"
+	let tmptex  	= fnamemodify(s:tmpfile, ":r") . ".tex"
 	let outlog  	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".log"
 
 "	COPY IMPORTANT FILES TO TEMP DIRECTORY WITH CORRECT NAME 
 "	except log and aux files.
-	let l:list=filter(copy(g:keep), 'v:val != "log" && v:val != "aux"')
+	let l:list	= copy(g:keep)
+	call filter(l:list, 'v:val != "log" && v:val != "aux"')
 	for l:i in l:list
-	    let l:ftc=b:atp_OutDir . fnamemodify(l:basename,":t:r") . "." . l:i
+	    let l:ftc	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . "." . l:i
 	    if filereadable(l:ftc)
 		call s:copy(l:ftc,s:tmpfile . "." . l:i)
 	    endif
@@ -321,37 +701,43 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 
 " 	HANDLE XPDF RELOAD 
 	if b:atp_Viewer == "xpdf"
-	    if a:start == 1
+	    if a:start
 		"if xpdf is not running and we want to run it.
-		let s:xpdfreload = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . shellescape(outfile) . " ; "
+		let Reload_Viewer = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . shellescape(outfile) . " ; "
 	    else
 " TIME: this take 1/3 of time! 0.039
 		if s:xpdfpid() != ""
 		    "if xpdf is running (then we want to reload it).
 		    "This is where I use 'ps' command to check if xpdf is
 		    "running.
-		    let s:xpdfreload = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " -reload ; "
+		    let Reload_Viewer = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " -reload ; "
 		else
 		    "if xpdf is not running (but we do not want
 		    "to run it).
-		    let s:xpdfreload = " "
+		    let Reload_Viewer = " "
 		endif
 	    endif
 	else
-	    if a:start == 1
+	    if a:start 
 		" if b:atp_Viewer is not running and we want to open it.
-		let s:xpdfreload = b:atp_Viewer . " " . shellescape(outfile) . " ; "
+		let Reload_Viewer = b:atp_Viewer . " " . shellescape(outfile) . " ; "
+		" If run through RevSearch command use source specials rather than
+		" just reload:
+		if str2nr(a:start) == 2
+		    let callback_rs_cmd = " vim " . " --servername " . v:servername . " --remote-expr " . "'RevSearch()' ; "
+		    let Reload_Viewer	= callback_rs_cmd
+		endif
 	    else
 		" if b:atp_Viewer is not running then we do not want to
 		" open it.
-		let s:xpdfreload = " "
+		let Reload_Viewer = " "
 	    endif	
 	endif
 
 " 	IF OPENING NON EXISTING OUTPUT FILE
 "	only xpdf needs to be run before (we are going to reload it)
-	if a:start == 1 && b:atp_Viewer == "xpdf"
-	    let s:start = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . b:atp_ViewerOptions . " & "
+	if a:start && b:atp_Viewer == "xpdf"
+	    let s:start 	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . b:atp_ViewerOptions . " & "
 	else
 	    let s:start = ""	
 	endif
@@ -359,6 +745,10 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 "	SET THE COMMAND 
 	let s:comp	= b:atp_TexCompiler . " " . b:atp_TexOptions . " -interaction " . s:texinteraction . " -output-directory " . shellescape(s:tmpdir) . " " . shellescape(a:filename)
 	let s:vcomp	= b:atp_TexCompiler . " " . b:atp_TexOptions  . " -interaction errorstopmode -output-directory " . shellescape(s:tmpdir) .  " " . shellescape(a:filename)
+	
+	" make function:
+" 	let make	= "vim --servername " . v:servername . " --remote-expr 'MakeLatex\(\"".tmptex."\",1,0\)'"
+
 	if a:verbose == 'verbose' 
 	    let s:texcomp=s:vcomp
 	else
@@ -409,18 +799,18 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 	let s:cpoutfile="cp " . s:cpoption . shellescape(atplib#append(s:tmpdir,"/")) . "*" . l:ext . " " . shellescape(atplib#append(b:atp_OutDir,"/")) . " ; "
 
 	if a:start
-	    let s:command="(" . s:texcomp . " ; (" . catchstatus_cmd . " " . s:cpoutfile . " " . s:xpdfreload . " ) || ( ". catchstatus_cmd . " " . s:cpoutfile . ") ; " 
+	    let s:command="(" . s:texcomp . " ; (" . catchstatus_cmd . " " . s:cpoutfile . " " . Reload_Viewer . " ) || ( ". catchstatus_cmd . " " . s:cpoutfile . ") ; " 
 	else
 	    " 	Reload on Error:
 	    " 	for xpdf it copies the out file but does not reload the xpdf
 	    " 	server for other viewers it simply doesn't copy the out file.
-	    if exists("b:atp_ReloadOnError") && b:atp_ReloadOnError
-		let s:command="( (" . s:texcomp . " && cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . "  ) ; "  . catchstatus_cmd . " " . s:cpoutfile . " " . s:xpdfreload
+	    if b:atp_ReloadOnError
+		let s:command="( (" . s:texcomp . " && cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . "  ) ; " . catchstatus_cmd . " " . s:cpoutfile . " " . Reload_Viewer 
 	    else
 		if b:atp_Viewer =~ '\<xpdf\>'
-		    let s:command="( " . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . s:xpdfreload . " cp --remove-destination ". shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . " ) || (" . catchstatus_cmd . " " . s:cpoutfile . ") ; " 
+		    let s:command="( " . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . Reload_Viewer . " cp --remove-destination ". shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . " ) || (" . catchstatus_cmd . " " . s:cpoutfile . ") ; " 
 		else
-		    let s:command="(" . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . s:xpdfreload . " cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . " ) || (" . catchstatus_cmd . ") ; " 
+		    let s:command="(" . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . Reload_Viewer . " cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . " ) || (" . catchstatus_cmd . ") ; " 
 		endif
 	    endif
 	endif
@@ -428,7 +818,7 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 	" Preserve files with extension belonging to the g:keep list variable.
 	let s:copy=""
 	let l:j=1
-	for l:i in filter(g:keep, 'v:val != "aux"') 
+	for l:i in filter(copy(g:keep), 'v:val != "aux"') 
 " ToDo: this can be done using internal vim functions.
 	    let s:copycmd=" cp " . s:cpoption . " " . shellescape(atplib#append(s:tmpdir,"/")) . 
 			\ "*." . l:i . " " . shellescape(atplib#append(b:atp_OutDir,"/"))  
@@ -441,10 +831,11 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 	endfor
 	let s:command=s:command . " " . s:copy . " ; "
 
+	" Callback:
 	if has('clientserver') && v:servername != "" && g:atp_callback == 1
 
-	    let callback=s:SidWrap('CallBack')
-	    let callback_cmd = ' vim ' . ' --servername ' . v:servername . ' --remote-expr ' . 
+	    let callback	= s:SidWrap('CallBack')
+	    let callback_cmd 	= ' vim ' . ' --servername ' . v:servername . ' --remote-expr ' . 
 				    \ shellescape(callback).'\(\"'.a:verbose.'\"\)'. " ; "
 
 	    let s:command = s:command . " " . callback_cmd
@@ -454,7 +845,7 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
  	let s:rmtmp="rm -r " . shellescape(s:tmpdir)
 	let s:command=s:command . " " . s:rmtmp . ")&"
 
-	if a:start == 1 
+	if str2nr(a:start) != 0 
 	    let s:command=s:start . s:command
 	endif
 
@@ -478,7 +869,7 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 	    let s:command="!clear;" . s:texcomp . " " . s:cpoutfile . " " . s:copy 
 	    exe s:command
 	endif
-	let b:texcommand=s:command
+	let g:texcommand=s:command
 endfunction
 "}}}
 
@@ -486,8 +877,8 @@ endfunction
 " {{{1 s:auTeX
 " To Do: we can now check if the last environment is closed and run latex if it is, to
 " not run latex if the 
-" This function calles the compilers in the beckground. It Needs to be a global
-" funnction (it is used in options.vim, there is a tric to put function into
+" This function calls the compilers in the background. It Needs to be a global
+" function (it is used in options.vim, there is a trick to put function into
 " a dictionary ... )
 function! s:auTeX()
     let mode 	= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
@@ -498,14 +889,14 @@ function! s:auTeX()
     " if the file (or input file is modified) compile the document 
     if filereadable(expand("%"))
 	if s:compare(readfile(expand("%")))
-	    call s:Compiler(0,0,b:atp_auruns, mode, "AU",b:atp_MainFile)
+	    call s:Compiler(0, 0, b:atp_auruns, mode, "AU", b:atp_MainFile)
 	    redraw
 	    return "compile" 
 	endif
     " if compiling for the first time
     else
-	call s:Compiler(0,0,b:atp_auruns, mode, "AU",b:atp_MainFile)
 	w
+	call s:Compiler(0,0,b:atp_auruns, mode, "AU",b:atp_MainFile)
 	redraw
 	return "compile for the first time"
     endif
@@ -515,7 +906,8 @@ endfunction
 " This is set by s:setprojectname (options.vim) where it should not!
 augroup ATP_auTeX
     au!
-    au CursorHold *.tex call s:auTeX()
+    au CursorHold 	*.tex call s:auTeX()
+    au CursorHoldI 	*.tex  if g:atp_insert_updatetime | call s:auTeX() | endif
 augroup END 
 "}}}
 
@@ -535,15 +927,17 @@ let s:name=tempname()
 	let mode = g:atp_DefaultDebugMode
     endif
 
+    let Compiler	= get(s:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)
+
     if l:mode != 'silent'
 	if a:runs > 2 && a:runs <= 5
-	    echomsg b:atp_TexCompiler . " will run " . a:1 . " times."
+	    echomsg Compiler . " will run " . a:1 . " times."
 	elseif a:runs == 2
-	    echomsg b:atp_TexCompiler . " will run twice."
+	    echomsg Compiler . " will run twice."
 	elseif a:runs == 1
-	    echomsg b:atp_TexCompiler . " will run once."
+	    echomsg Compiler . " will run once."
 	elseif a:runs > 5
-	    echomsg b:atp_TexCompiler . " will run " . s:runlimit . " times."
+	    echomsg Compiler . " will run " . s:runlimit . " times."
 	endif
     endif
     call s:Compiler(0,0, a:runs, mode, "COM", b:atp_MainFile)
@@ -567,10 +961,14 @@ function! s:SimpleBibtex()
 	echomsg "No aux file in " . b:atp_OutDir
     endif
 endfunction
-command! -buffer SBibtex		:call <SID>SimpleBibtex()
+" command! -buffer SBibtex		:call <SID>SimpleBibtex()
 nnoremap <silent> <Plug>SimpleBibtex	:call <SID>SimpleBibtex()<CR>
 
-function! s:Bibtex(...)
+function! s:Bibtex(bang,...)
+    if a:bang == ""
+	call <SID>SimpleBibtex()
+	return
+    endif
     if a:0 >= 1
 	let mode = ( a:1 != 'default' ? a:1 : g:atp_DefaultDebugMode )
     else
@@ -579,11 +977,11 @@ function! s:Bibtex(...)
 
     call s:Compiler(1,0,0, mode,"COM",b:atp_MainFile)
 endfunction
-command! -buffer -nargs=? Bibtex	:call <SID>Bibtex(<f-args>)
-nnoremap <silent> <Plug>BibtexDefault	:call <SID>Bibtex("")<CR>
-nnoremap <silent> <Plug>BibtexSilent	:call <SID>Bibtex("silent")<CR>
-nnoremap <silent> <Plug>BibtexDebug	:call <SID>Bibtex("debug")<CR>
-nnoremap <silent> <Plug>BibtexVerbose	:call <SID>Bibtex("verbose")<CR>
+command! -buffer -bang -nargs=? Bibtex	:call <SID>Bibtex(<q-bang>, <f-args>)
+nnoremap <silent> <Plug>BibtexDefault	:call <SID>Bibtex("", "")<CR>
+nnoremap <silent> <Plug>BibtexSilent	:call <SID>Bibtex("", "silent")<CR>
+nnoremap <silent> <Plug>BibtexDebug	:call <SID>Bibtex("", "debug")<CR>
+nnoremap <silent> <Plug>BibtexVerbose	:call <SID>Bibtex("", "verbose")<CR>
 "}}}
 
 " Show Errors Function

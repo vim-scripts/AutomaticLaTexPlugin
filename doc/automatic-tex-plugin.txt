@@ -30,22 +30,24 @@ Linux, and MikTeX on Windows.
 FEATURES INCLUDE:
 -----------------
 * background compilation with debugging mode 
+* command to make the document (cross references, references, index, tables
+  of contents) |atp-:MakeLatex|,
 * completion for commands, closing environments (even nested), package names,
   citations and labels. Support for some latex packages.
 	See |atp-Completion|, 
 * table of contents which allows to switch between different sections, files, 
   but also to delete and paste sections:
-	See |atp-command-TOC|,
+	See |atp-:TOC|,
 * list of labels which allows to see the context of a label:
-	See |atp-command-Labels|,
+	See |atp-:Labels|,
 * a powerful function to search in bibliographic files (bib files):
 	See |atp-bibsearch|,
 * a command to list ToDo lines:
-	See |atp-command-ToDo|.
+	See |atp-:ToDo|.
 * a command to search for a macro definition (multi-line support):
- 	See |atp-command-DefiSearch|
+ 	See |atp-:DefiSearch|
 * a command to search and PREVIEW fonts in your latex distribution:
- 	See |atp-command-FontSearch|, and |atp-command-FontPreview|
+ 	See |atp-:FontSearch|, and |atp-:FontPreview|
 * indentation
 
 			Table of Contents
@@ -74,6 +76,83 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 ================================================================================
 NEWS							*atp-news*
 >
+	New Features in version 7.3
+<							*atp-:MakeLatex*
+>
+	:MakeLatex[!]
+<			With one command you can make your whole document:
+			cross references, bibliography, index, table of
+			contents. ':MakeLatex!' should be used when you
+			deleted an entry from bibliography (when you use
+			'bibtex' this means when you deleted last citation
+			command with the entry).
+>							*atp-:S*
+>
+	:S /{pattern}/ [flags]
+<			This is command does the same job as |/| but is
+			recursive in the tree of files (so it is useful only
+			in project files). The syntax of this command is
+			similar to |:vimgrep|. 
+			
+			The supported flags are 'bcewW' (see |search()|) and
+			two more flags 'S' (see below) 'E' which means: do not
+			escape '\' with '\'. Also the 'wrapscan' vim option
+			applies.  Examples: >
+				:S /\\begin{document}/
+				:S /\\\\begin{document}/ E 
+				:S /you do not have to escape spaces/ bcw	  
+
+<			The {pattern} is added to the search history and
+			copied to the buffer '@/'. The vim 'n' 'N' normal
+			commands are forced to use this function if the file
+			is a project file (i.e. contains \input{} lines).
+
+			The input ifile must be included in the using the
+			command mathching: >
+					'\\input\s*{'		
+<			And the name after '\input{' should be a full path.
+
+			You can use any kind of pattern, but if you want to
+			include '\s' in the pattern (or any vim pattern which
+			begins with a single '\') you have to use 'E' flag
+			(which means do not escape '\'), thus to match 'XXX
+			YYY \begin' you can use something like: >
+				:S /XXX\sYYY\_s\\\\begin/ E
+<
+			You can enclose the pattern with any non-ID character
+			(see |'isident'|) instead of /, as far as it does not
+			appear in the {pattern}. Examples: >
+				:S pattern\_swith\_sspaces E
+<			will work but: >
+				:S pattern with spaces
+<			will not, but if you add the flag 'S' it will: >
+ 				:S pattern with spaces S
+<			The flag 'S' is needed if you do not pass any
+			other flag (and you do not enclose your pattern). So
+			this will also work: >
+				:S \\\\begin{theorem}\_s\\\\label{thm: cbW
+<		
+			Furthermore, the command is designed so that it can find
+			all patterns '\\input{' (and thus easily find next/previous
+			input file). You can use: >
+				:S /\\input{/
+				:S \\input{ b 
+<			and you can use 'n' and 'N' vim normal commands. Note
+			that it if you go backward, then it means that it will
+			find the most deep line, e.g.: >
+				file.tex
+					----
+					----
+					\input{file.1} ---->  -------
+							      -------
+							      \input{file.1.1}
+							      -------
+			                ----X	 			      
+<			':S /\\input/ b' in the X position fill find
+			\input{file.1.1} assuming file.1.1.tex doesn't inputs
+			any other file.
+>
+	New Features in version 7.2.1
 	New Features in TOC
 <			Using ':DeleteSection' you can delete the section
 			under cursor together with all its subsections.
@@ -106,7 +185,7 @@ NEWS							*atp-news*
 
 			If you want to paste a section before the first
 			section, use the line with the file name. >
- :Undo, nnoremap u, nnoremap U, nnoremap g-, nnoremap g+ 
+ 		:Undo, nnoremap u, nnoremap U, nnoremap g-, nnoremap g+ 
 <			You can use undo. The :Undo command will undo in the
 			buffer under the cursor (it simly switches to the
 			correct window, usese the vim undo function, and runs
@@ -181,7 +260,7 @@ NEWS							*atp-news*
 			document but using $$:$$ is latex is not recommended
 			it is know to break some latex specific things).
 >
-	New Feature in version 7.1
+	New Features in version 7.1
 	g:atp_MathVimOptions	= { 'textwidth' : '0' }
 <			This variable is a dictionary of vim settings and its
 			values which will be valid when you edit mathematics
@@ -230,7 +309,7 @@ and that's all, now you can just type your story ... :)
 
 
 ================================================================================
-COMMANDS	                               		*atp-commands*
+COMMANDS	                               		*atp-commands* *atp-:*
 							
 
 The main function is not seen by the user (it is called s:compiler, for those
@@ -264,15 +343,15 @@ On start up b:atp_autex is set to 1 if the path of opened file is not under any
 tex directory ('kpsewhich -show-path tex', except the current dir). For example,
 files located under your local texmf tree will have b:atp_autex=0.
 
-The second important variable b:atp_TexCompiler (see |atp-variable-b:atp_TexCompiler|) configures
+The second important variable b:atp_TexCompiler (see |atp-b:atp_TexCompiler|) configures
 if you use TeX, PdfTeX, LaTeX, PdfLaTeX and it should point to the program
 name so please do not use capital letters.
 
-Next variable to set is b:atp_OutDir (see |atp-variable-b:atp_OutDir|). It configures where TeX
+Next variable to set is b:atp_OutDir (see |atp-b:atp_OutDir|). It configures where TeX
 will put the output and where viewer and log analyzing tools can find
 appropriate files. 
 
-The last top most important variable is |atp-variable-g:keep| which is a list of extensions,
+The last top most important variable is |atp-g:keep| which is a list of extensions,
 by default it is
 	let g:keep = ["log","aux","toc","bbl"]
 Files with this extension will be copied from b:atp_OutDir to the temporary
@@ -326,7 +405,7 @@ forth between you b:atp_OutDir and the temporary directory)
 	 You can invoke compiler in the 'debug' mode with '<LocalLeader>d',
 	 '<LocalLeader>l' uses the default mode.
 
-						*atp-variable-b:atp_ReloadOnError*
+						*atp-b:atp_ReloadOnError*
 The variable b:atp_ReloadOnError if set to 1 (the default) reload the file
 even when the exit status of compiler was non zero. If set to 0, then the file
 will not be reloaded [actually for viewers other than xpdf it will not be
@@ -334,17 +413,17 @@ copied from the temporary directory, for xpdf it will be copied but not
 reloaded). 
 
 There is also a variable which stores the last command which executed
-your tex compiler, see |atp-variable-b:texcommand|.   
+your tex compiler, see |atp-b:texcommand|.   
 
 Below I explain commands (functions) which are accesible: 
 
-:TEX [mode]						*atp-command-TEX*
+:TEX [mode]						*atp-:TEX*
 map \l, map \d,imap \l
 	If anyway you want to run TeX yourself but you do not want to see the
 	output this is the right tool. This runs TeX in 'nonstopmode'. You can
 	specify an argument <runs> which tells how many consecutive runs of
 	TeX you need (this is important if you want to compile Table of
-	Contents, or index, or the bibliography (see |atp-command-Bibtex|)
+	Contents, or index, or the bibliography (see |atp-:Bibtex|)
 
 	If b:atp_OpenViewer=1 and there current viewer (b:Viewer) is not
 	running on the output file then this function will open a viewer. By
@@ -355,7 +434,7 @@ map \l, map \d,imap \l
 
 	It is useful when you want to make the outline (using hyperref
 	package) of your article in pdf files, the tex file has to be
-	'sourced' twice. To make the bibliography you can use |atp-command-Bibtex|.
+	'sourced' twice. To make the bibliography you can use |atp-:Bibtex|.
 
 	If <runs> > 5 it will be reduced to 5, to avoid running tex for hundreds
 	(or event thousands) of times (what could happen otherwise by
@@ -368,11 +447,11 @@ map \l, map \d,imap \l
 	\d is mapped to :TEX debug and \l to :TEX (thus it uses your default
 	debug mode).
 
-:VTEX 							*atp-command-VTEX*
+:VTEX 							*atp-:VTEX*
 map <F5>,imap <F5> 
 	This is equivalent to ':TEX verbose'.
 
-:ShowErrors <flag>					*atp-command-ShowErrors*
+:ShowErrors <flag>					*atp-:ShowErrors*
 	This command shows error/warning messages. It sets the |'errorformat'|
 	variable accordingly to the flag, which is a word made of letters:
 >
@@ -397,7 +476,7 @@ map <F5>,imap <F5>
 		:ShowErrors rc
 <	will show all reference and citation warnings.
 
-ShowErrors maps:					*atp-command-ShowErrors-maps* 
+ShowErrors maps:					*atp-:ShowErrors-maps* 
 
 <F6>+e			to see all errors 	(:ShowErrors e)
 <F6>+w			to see all warnings	(:ShowErrors w)
@@ -407,18 +486,18 @@ ShowErrors maps:					*atp-command-ShowErrors-maps*
 
 this is not a texloganalyzer mapping but it is a good place to mention it:
 <F6>+l			to open log file in a new split window
-			this is a mapping to the |atp-command-OpenLog|.
+			this is a mapping to the |atp-:OpenLog|.
 
 	
-						*atp-command-SetErrorFormat* 
+						*atp-:SetErrorFormat* 
 :SetErrorFormat <flag> 	
 	This command has the same syntax as :ShowErrors. It only sets the
 	|'erroformat'| variable.
 	
-						*atp-command-Bibtex* 
+						*atp-:Bibtex* 
 map \b, :Bibtex, :Bibtex v
 	This function will call bibtex to produce the bibliography file
-	(.bbl). If in |atp-variable-b:atp_OutDir| there is no 'aux' file it first calls tex
+	(.bbl). If in |atp-b:atp_OutDir| there is no 'aux' file it first calls tex
 	compiler. After the 'bbl' file is produced two consecutive runs of tex
 	compiler are called to make the bibliography.
 
@@ -431,27 +510,27 @@ map \b, :Bibtex, :Bibtex v
 	The command :Bibtex  will :call Bibtex(), while :Bibtex v
 	(and :Bibtex <anything>) will :call Bibtex(1)
 
-							*atp-variable-g:atp_bibinputs*
+							*atp-g:atp_bibinputs*
 	Tex is looking for the date base files in the path: `kpsewhich
 	-show-path bib`. The variable g:atp_bibinputs contains Vim list of
 	these directories. Thus if atp cannot find your bib file, tex also
 	won't be able. 
 
-							*atp-command-SimpleBibtex*
+							*atp-:SimpleBibtex*
 map \sb, :SBibtex
-	This calls bibtex on the aux file in your |atp-variable-b:atp_OutDir| directory and
+	This calls bibtex on the aux file in your |atp-b:atp_OutDir| directory and
 	shows you the output. It is useful if you are debugging your
 	bibliography database. 
 	
-							*atp-command-ViewOutput*
+							*atp-:ViewOutput*
 map \v,map <F3>, imap \v, imap <F3>  
 	You would like to see what you are editing use this function. It will
-	use the program defined in the variable b:Viewer. See |atp-variable-b:Viewer|,
-	|atp-variable-g:atp_XpdfServer|, |atp-xpdfOptions|. When there is no output file it will run
+	use the program defined in the variable b:Viewer. See |atp-b:Viewer|,
+	|atp-g:atp_XpdfServer|, |atp-xpdfOptions|. When there is no output file it will run
 	TeX and open the file. Read more about particular viewers
 	(inverse/reverse searching) in |atp-viewers|. 
 
-:SetXdvi						*atp-command-SetXdvi*
+:SetXdvi						*atp-:SetXdvi*
 	This command sets the options for xdvi viewer, which enables inverse
 	and reverse searching. It sets the command
 		:IS[earch]
@@ -460,28 +539,28 @@ map \v,map <F3>, imap \v, imap <F3>
 	xdvi viewer. It will read the xdvi options from the variable
 	g:xdviOptions (to the variable b:atp_ViewerOptions).
 
-:SetXpdf						*atp-command-SetXpdf*
+:SetXpdf						*atp-:SetXpdf*
 	This command sets the options for xpdf viewer (as for now the
 	inverse/reverse searching in pdf files is not implemented)
 	It will read the xpdf viewer options from the variable g:xpdfOptions
 	(to the variable b:atp_ViewerOptions).
 
-							see |atp-command-BibSearch|
+							see |atp-:BibSearch|
 :BibSearch
 	This function finds bib entries in bib files defined in your tex file
-	and in the variable b:bibfiles (see |atp-variable-b:bibfiles|), which match the
+	and in the variable b:bibfiles (see |atp-b:bibfiles|), which match the
 	<pattern> (a vim regular expression). The output is configurable by
 	the <flag> argument, see |atp-bibflags|.
 
-							see |atp-command-BibChoose|
+							see |atp-:BibChoose|
 :BibChoose, map c, map y, map p
 	This function is defined in the window with results of BibSearch
 	command. It is mapped to 'y' and 'c' and let you copy the bib entry key
-	to a register (see |atp-command-BibChoose|) or directly to last opened
+	to a register (see |atp-:BibChoose|) or directly to last opened
 	buffer (after the last cursor position). When you chose to paste, it
 	will close the BibSearch window.
 
-						*atp-command-FindBibFiles*
+						*atp-:FindBibFiles*
 :FindBibFiles
 	This updates the variables s:bibfiles, s:allbibfiles,
 	s:notreadablebibfiles (showed by ShowOptions command). Finds all bib
@@ -491,10 +570,10 @@ map \v,map <F3>, imap \v, imap <F3>
 	The command :FindBibFiles finds bib files in the current buffer. 
 
 	If a readable bib file was not found in any of g:atp_bibinputs
-	directories (see |atp-variable-g:atp_bibinputs|) directories it is classified as
+	directories (see |atp-g:atp_bibinputs|) directories it is classified as
 	not readable.  
 
-						*atp-command-FindInputFiles*
+						*atp-:FindInputFiles*
 :FindInputFiles [bufname]
 	This function finds all the input files, i.e. files put after the
 	tex commands: '\input', '\include' or '\includeonly'. And prints the
@@ -504,7 +583,7 @@ map \v,map <F3>, imap \v, imap <F3>
 	The bufername completion is set, hence you can use <Tab> to choose the
 	bufername.
 
-							*atp-command-EditInputFile*
+							*atp-:EditInputFile*
 :EditInputFile [input_file_name] [bufname]
 	This function finds input files (using the function FindInputFiles()
 	in the current buffer and let you choose one to edit.
@@ -517,15 +596,15 @@ map \v,map <F3>, imap \v, imap <F3>
 	The <input_file_name> may contain white spaces, but then has to be quoted
 	with '"' (this is a latex requirement).
 
-	Input files are searched in the |atp-variable-b:atp_OutDir| directory, if not found
-	there then in the directory |atp-variable-g:texmf|. The default value is 
+	Input files are searched in the |atp-b:atp_OutDir| directory, if not found
+	there then in the directory |atp-g:texmf|. The default value is 
 	g:texmf=$HOME/texmf, which is the default value of local texmf tree in
 	texlive.
 
 	The bibliographis declared are also listed. The command searches for
-	them in the any of g:atp_bibinputs directory (see |atp-variable-g:atp_bibinputs|.
+	them in the any of g:atp_bibinputs directory (see |atp-g:atp_bibinputs|.
 
-:ShowErrors o						*atp-command-OpenLog*
+:ShowErrors o						*atp-:OpenLog*
 :OpenLog, map <F6>l, imap <F6>l
 	Opens log file in a new split window with two options (which are set
 	locally): 'ruler', 'nospell', and a map 'q' to ':bd'.	
@@ -533,7 +612,7 @@ map \v,map <F3>, imap \v, imap <F3>
 	You can also use the command ':Explore' to see log,aux,... files
 	(which is a part of 'netrw' vim plugin).
 
-							*atp-command-Delete*
+							*atp-:Delete*
 map <F6>d
 	Deletes all the files with an extension which belongs to
 	g:atp_tex_extensions in the directory b:atp_OutDir. By default
@@ -542,12 +621,12 @@ map <F6>d
 	g:atp_delete_output=1 the function will delete also the current output
 	file (but not any other!).
 
-Print([<printer>, <printer_options>])			*atp-command-Print*
+Print([<printer>, <printer_options>])			*atp-:Print*
 map \p, :SshPrint
 	It will run 'lpr' command and append to it the options defined in the
 	variable 'g:printeroptions' + options given in the second argument. It
 	prints the pdf or dvi depending on the value of 'b:atp_TexCompiler' (see
-	|atp-variable-b:atp_TexCompiler|).  If you specify the variable
+	|atp-b:atp_TexCompiler|).  If you specify the variable
 	'g:atp_ssh=<user>@<host>' it will print via ssh on the <host> using
 	the <printer>. The command ':SshPrint' has a completion set for the
 	printers available on your local system or in the host. All the
@@ -562,19 +641,19 @@ map \p, :SshPrint
 	printers), press <Tab> to cycle through printers, or type first
 	letters of the printers name and press <Tab> to complete it.
 
-							*atp-command-Lpstat*
+							*atp-:Lpstat*
 :Lpstat
 	Sends "lpstat -l" remotly (using the 'g:atp_ssh' value) or locally and
 	echoes the output.
 
-							*atp-command-ShowOptions* 
+							*atp-:ShowOptions* 
 :ShowOptions, :ShowOptions v 
 	This will show values of variables that are currently set. If you specify any
 	argument the deafult values will be shown is square brackets.
 >
 		:ShowOptions v
 <		
-							*atp-command-WrapSelection*
+							*atp-:WrapSelection*
 :WrapSelection <begin_wrapper>,[<end_wrapper>,<cursor_pos>,<new_lines>]
 
 	Puts selected text inside begin_wrapper:<end_wrapper> and sets the
@@ -590,7 +669,7 @@ map \p, :SshPrint
 
 	The command arguments should be separated with commas (see |<args>|).
 
-							*atp-command-InteligentWrapSelection*
+							*atp-:InteligentWrapSelection*
 :InteligentWrapSelection <math_wrapper_pair>,<text_wrapper_pair>,[<cursor_pos>,<new_lines>]
 
 	Puts the selected text inside <math_wrapper_pair> if the cursor stands
@@ -598,7 +677,7 @@ map \p, :SshPrint
 	<math_wrapper_pair> <text_wrapper_pair> are vim lists of length at
 	least 1, the first wrapper is the opening and the second is the
 	closing one (if not given the default '}' is used. The other arguments
-	are as for |atp-command-WrapSelection|. If the opening leader in is not
+	are as for |atp-:WrapSelection|. If the opening leader in is not
 	given then this command is not wrapping the text (see below for the
 	suggested map '\tx') 
 
@@ -663,7 +742,7 @@ map \p, :SshPrint
 	selected text. So if you accidentally lost the selection you can still
 	use this command (but not the maps)!
 
-:TOC [skip] 							*atp-command-TOC*
+:TOC [skip] 							*atp-:TOC*
 map \t
 	Shows Table of Contents of your document. It do not yet support the
 	started version of chapter, section,... environemnts. 
@@ -706,14 +785,14 @@ map \t
 	window. By default t:toc_window_width=30. You can set a global
 	variable g:toc_window_width to override the default value.
 
-							*atp-command-CTOC*
+							*atp-:CTOC*
 :CTOC	
 	This function returns the name of the currently edited chapter/
 	section/subsection/subsubsection. Use ':echo CTOC()' or just ':CTOC' to
 	see the returned value. If you added a section unit the function will
 	not update the database, run ':TOC' to do that (map \t).
 
-:Labels							*atp-command-Labels*
+:Labels							*atp-:Labels*
 map \L 
 	Shows labels defined in your file. You can also use the mappings
 	'e','c','p','s','q' and <Enter> as above.
@@ -728,20 +807,20 @@ map \L
 	default t:labels_window_width=30. You can set a global
 	variable g:labels_window_width to overide the default value.
 
-						*atp-move-command-NEnv*
+						*atp-move-:NEnv*
 :NEnv <environment>
 	Move to next environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
 
-						*atp-move-command-PEnv*
+						*atp-move-:PEnv*
 :PEnv <environment>
 	Move to previous environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
 
 
-						*atp-move-command-NextSection*
+						*atp-move-:NextSection*
 :NPart, :NChap, NSec, 
 map <LocalLeaader>np, map <LocalLeader>ns, map <LocalLeader>ns
 	Goes to next <section>, the commands need not to be explained.
@@ -749,15 +828,15 @@ map <LocalLeaader>np, map <LocalLeader>ns, map <LocalLeader>ns
 	will delete till the end of the section). You can use 'n' and 'N' vim
 	in normal or visual mode to go further. 
 
-						*atp-move-command-PrevSection*
+						*atp-move-:PrevSection*
 :PPart, :PChap, PSec, 
 map <LocalLeader>pp, map <LocalLeader>pc, map <LocalLeader>ps
 	Goes to previous <section>.
 	Note: as above. Use 'N' to go backward.
 
 ToDo(<keyword>,<stop>,[bufname])		*atp-function-ToDo*
-:ToDo [bufname]					*atp-command-ToDo*
-:Note [bufname]					*atp-command-Note*
+:ToDo [bufname]					*atp-:ToDo*
+:Note [bufname]					*atp-:Note*
 	The function list all the lines of the buffer [bufname] which match
 	for the pattern '%.*<keyword>'. The <stop> argument is the pattern to
 	before which to stop. The optional argument is the buffer
@@ -770,7 +849,7 @@ ToDo(<keyword>,<stop>,[bufname])		*atp-function-ToDo*
 	sets keyword='\c\<note\>' and stop='\s*%.*\c\<todo\>'. This prevent
 	from listing ToDo lines with Notes and vice versa. 
 	 
-:ToggleSpace, map <F2>				*atp-command-ToggleSpace*
+:ToggleSpace, map <F2>				*atp-:ToggleSpace*
 	This function (command) sets, if it is undefined or removes if it is
 	defined, the mapping:
 >
@@ -781,20 +860,20 @@ ToDo(<keyword>,<stop>,[bufname])		*atp-function-ToDo*
 	contains one of the flags 't', 'v' or 'b'). Then each <Space> will
 	match for a space which also might end of the line.
 
-							*atp-command-ToggleStar*
+							*atp-:ToggleStar*
 :ToggleStar 	 		adds/removes a star from the current 
 map <LocalLeader>s		environment (if it is not one belonging 
 				to the list: >
 					g:atp_no_star_environments
 <				
-							*atp-command-ToggleEnvironment*
+							*atp-:ToggleEnvironment*
 :ToggleEnvironment 	mapped to <F4> and <S-F4>, switches environment
 map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7 
 			(you can change or add your own variables,
 			just add numbers - they must be consecutive).
 
-							*atp-command-ToggleLabels*
-							*atp-variable-g:atp_toggle_labels*
+							*atp-:ToggleLabels*
+							*atp-g:atp_toggle_labels*
 	It also changes the prefixes of labels (if there is one, which belongs
 	to g:atp_shortnames_dict) and all ref's (\ref, \eqref and \pageref).
 	You have to turn on this feature by putting g:atp_toggle_labels=1 (by
@@ -804,16 +883,16 @@ map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7
 	but as this changes your file it is turned off by default.) 
 
 
-:SetOutDir						*atp-command-SetOutDir*
+:SetOutDir						*atp-:SetOutDir*
 	This is a command which sets the 'b:atp_OutDir' variable and the |'errorfile'| option.
-	See |atp-variable-b:atp_OutDir| for the default value.
+	See |atp-b:atp_OutDir| for the default value.
 
-:SetErrorFile						*atp-command-SetErrorFile*
-	If you change |atp-variable-b:atp_OutDir| variable and you want to update the
+:SetErrorFile						*atp-:SetErrorFile*
+	If you change |atp-b:atp_OutDir| variable and you want to update the
 	|'errorfile'| option use this command. It will show you the value to
 	which |'errorfile'| was set. 
 
-:ATPStatus						*atp-command-ATPStatus*
+:ATPStatus						*atp-:ATPStatus*
 	This function (command) sets the status line, which include: the name
 	of currently eddited   chapter (or section) the value of 'b:atp_OutDir' and
 	it will warn you if 'b:atp_OutDir' variable is not set. This function is
@@ -824,14 +903,14 @@ map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7
 	status line.
 
 
-:FontSearch [<pattern> <match_option>]			*atp-command-FontSearch*
+:FontSearch[!] [<pattern>]				*atp-:FontSearch*
 	
 	For example:
 	:FontSearch ^t1
 		will list all the fd files in your tex distribution which
 		names starts with t1 (i.e. which describes fonts in encoding
 		'T1')
-	:FontSearch bookman 1
+	:FontSearch! bookman
 		will list all fd files which full path matches 'bookman'.
 
 	The <match_option> argument has two values 0/1, if it is not given
@@ -874,11 +953,14 @@ map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7
 
 	Hopefully, this will help your documents to become beautiful :)
 
-							*atp-command-FontPreview*
-:FontPreview <fd_file> [<encoding> <keep_tex>]
+							*atp-:FontPreview*
+:FontPreview[!] <fd_file> [<encoding> <keep_tex>]
 	Previews all fonts defined in fd file matching the pattern <fd_file>
 	with encoding <encoding> (optional). If <keep_tex> is 1 (defualt is 0)
 	it will keep the latex source file for debugging purposes.
+
+	Without [!] it matches just the name of the fd files, with [!] the
+	pattern <fd_file> matches for full path.
 
 	It returns a list of fonts which fd files matches the <fontname> and
 	<encoding>. You will be asked to chose for which files make a preview,
@@ -892,8 +974,8 @@ map <F4>, map <S-F4>    name. See (i.e. echo ) g:atp_toggle_environments_1...7
 	the source file will be shown (for debugging purposes, or just to look how
 	to use the font :).
 
-:PID 							*atp-command-PID*
-	Prints PIDs of all running instances of |atp-variable-b:atp_TexComopiler|.
+:PID 							*atp-:PID*
+	Prints PIDs of all running instances of |atp-b:atp_TexComopiler|.
 
 ================================================================================
 SEARCHING IN BIB FILES 		                        *atp-bibsearch*
@@ -910,12 +992,12 @@ SEARCHING IN BIB FILES 		                        *atp-bibsearch*
 			|atp-bibflags:all|
 			|atp-bibflags:last|
 			|atp-bibflags:add-flag|	
-		|atp-command-BibChoose|	
+		|atp-:BibChoose|	
 		|atp-bibsearch-highlight|
-		|atp-command-BibSearch|
+		|atp-:BibSearch|
 		|atp-bibflags:examples|
 		|atp-bibsearch-variables|
-			|atp-variable-b:bibfiles|
+			|atp-b:bibfiles|
 
 		____________________________
 		Naming Conventions:	
@@ -1121,7 +1203,7 @@ BibSearch([<pattern>,<flags>)				*atp-BibSearch*
 	you want to have a nice output put the bib entry name and that much of
 	white spaces to get 13 strings.
 		
-BibChoose							*atp-command-BibChoose*
+BibChoose							*atp-:BibChoose*
 map c, map y, map p
 	This function/command is only available in the window with BibSearch results
 	and allows to copy a bib entry key to a register or directly to the
@@ -1151,7 +1233,7 @@ map c, map y, map p
 	this is a nice set of colours for dark background 
 		
 							 	
-:BibSearch [pattern] [flag] 					*atp-command-BibSearch*
+:BibSearch [pattern] [flag] 					*atp-:BibSearch*
 	which do what you expect. The arguments should not be quoted and
 	separated by a white spaces (if you want to include a white space use
 	'\ '), for more see |f-args|. If you do not provide any argument then
@@ -1179,7 +1261,7 @@ map c, map y, map p
 	:BibSearch 'author.*Joyal\&.*Tirney'
 <
 
-:DefiSearch [pattern] [preambule_only]				*atp-command-DefiSearch*
+:DefiSearch [pattern] [preambule_only]				*atp-:DefiSearch*
 	Both argument are optional.
 	Finds all definitions which matches the pattern. It looks in the main
 	file (only in the preambule, unless the optional argument is equal
@@ -1196,7 +1278,7 @@ SOME VARIABLES:
 	command.
 
 								
-b:bibfiles							*atp-variable-b:bibfiles*
+b:bibfiles							*atp-b:bibfiles*
 	This variable is a list and you can put here additional bib files.
 	They will be parsed by the BibSearch/BibChoose functions.
 
@@ -1262,7 +1344,7 @@ will be done during first completion - this is the default, if it is set to
 	completion pop-up menu allows to cancel completion: press ctrl+p (i.e.
 	go up - some times more than once) and then press <space>.
 
-							*atp-command-ToggleTab*
+							*atp-:ToggleTab*
 There is a command to toggle the tab map off/on: :ToggleTab, it is also mapped
 to `<Tab>.
 
@@ -1309,11 +1391,11 @@ Completion modes are:
 		want it anyway: 'let g:atp_no_short_names=1' will make the
 		work.
 
-							*atp-variable-local_completion*
-							*atp-variable-b:local_commands*
-							*atp-variable-g:local_commands*
-							*atp-variable-b:local_environments*
-							*atp-variable-g:local_environments*
+							*atp-variables-local_completion*
+							*atp-b:local_commands*
+							*atp-g:local_commands*
+							*atp-b:local_environments*
+							*atp-g:local_environments*
 		By default the first time you are completing an environment
 		name or a command a list of locally defined environments and
 		commands is made (it takes a few seconds). If you do not want
@@ -1525,7 +1607,7 @@ Completion modes are:
 		If <font_family> is defined, <font_series> and <font_shape>
 		come from the particular font definition file (the declared
 		encoding is used if not the value of
-		|atp-variable-g:atp_font_encoding| is used).
+		|atp-g:atp_font_encoding| is used).
 
 		If <font_family> and <font_series> are defined then the
 		<font_shape> for this font (in the above encoding) is found.
@@ -1618,7 +1700,7 @@ g:atp_completion_active_modes	= g:atp_completion_modes
 				4 characters (not counting the leading '\' if
 				present). If 0 then complete all the defined
 				commands. This only works in the expert mode.
-								*atp-variable-g:atp_check_if_opened*
+								*atp-g:atp_check_if_opened*
 >
      	g:atp_check_if_opened	= 1     
 <
@@ -1626,14 +1708,14 @@ g:atp_completion_active_modes	= g:atp_completion_modes
 				     for example inside \begin{tikzpicture} or
 					 \tikz{}, if 1 then the tikz commands will be
 					 available only inside this environments)
-								*atp-variable-g:atp_math_opened*
+								*atp-g:atp_math_opened*
 >
      	g:atp_math_opened		
 <
 				(the default is 1 if in your tex file there was no
 				$ or $$ excluding \$, thus it will be one in any newly
 				edited file!)
-								*atp-variable-g:atp_math_modes*
+								*atp-g:atp_math_modes*
 >
      	let g:atp_math_modes	=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\))'],
 				\ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)\[','\%([^\\]\|^\)\%(\\\|\\\{3}\)\]'], 	
@@ -1682,8 +1764,8 @@ completes to >
 	\begin{
 
 Associated settings:
-	|atp-variable-g:LatexBox_completion_commands|
-	|atp-variable-g:LatexBox_completion_close_braces|
+	|atp-g:LatexBox_completion_commands|
+	|atp-g:LatexBox_completion_close_braces|
 
 
 ------------------------------------------------------------------------------
@@ -1699,8 +1781,8 @@ completes to >
 Completion of '\end{' automatically closes the last open environment.
 
 Associated settings:
-	|atp-variable-g:LatexBox_completion_environments|
-	|atp-variable-g:LatexBox_completion_close_braces|
+	|atp-g:LatexBox_completion_environments|
+	|atp-g:LatexBox_completion_close_braces|
 
 
 ------------------------------------------------------------------------------
@@ -1724,8 +1806,8 @@ It matches:
 	
 
 Associated settings:
-	|atp-variable-g:LatexBox_ref_pattern|
-	|atp-variable-g:LatexBox_completion_close_braces|
+	|atp-g:LatexBox_ref_pattern|
+	|atp-g:LatexBox_completion_close_braces|
 
 
 ------------------------------------------------------------------------------
@@ -1750,8 +1832,8 @@ Then, try: >
 You can also use regular expressions (or vim patterns) after '\cite{'.
 
 Associated settings:
-*atp-variable-g:LatexBox_cite_pattern*		Default: '\\cite\(p\|t\)\?\*\?\_\s*{'
-*atp-variable-g:LatexBox_ref_pattern*		Default: '\\v\?\(eq\|page\)\?ref\*\?\_\s*{'
+*atp-g:LatexBox_cite_pattern*		Default: '\\cite\(p\|t\)\?\*\?\_\s*{'
+*atp-g:LatexBox_ref_pattern*		Default: '\\v\?\(eq\|page\)\?ref\*\?\_\s*{'
 
 	Patterns to match \cite and \ref commands for BibTeX and label completion.
 	Must include the trailing '{'.
@@ -1761,7 +1843,7 @@ Associated settings:
 		let g:LatexBox_ref_pattern = '\c\\\a*ref\*\?\_\s*{'
 <	Both examples match commands with a trailing star too.
 
-*atp-variable-g:LatexBox_bibtex_wild_spaces*		Default: 1
+*atp-g:LatexBox_bibtex_wild_spaces*		Default: 1
 
 	If nonzero, spaces act as wildcards ('.*') in completion.
 	For example, if nonzero, >
@@ -1769,7 +1851,7 @@ Associated settings:
 <	is equivalent to >
 		\cite{Knuth.*1981
 
-*atp-variable-g:LatexBox_completion_close_braces*	Default: 1
+*atp-g:LatexBox_completion_close_braces*	Default: 1
 
 	If nonzero, omni completion will add closing brackets where relevant.
 	For example, if nonzero, >
@@ -1777,8 +1859,8 @@ Associated settings:
 <	completes to >
 		\begin{itemize}
 
-*atp-variable-g:LatexBox_completion_environments*
-*atp-variable-g:LatexBox_completion_commands*
+*atp-g:LatexBox_completion_environments*
+*atp-g:LatexBox_completion_commands*
 
 	Static completion lists for environments
 	|atp-omnicompletion-environments| and commands
@@ -1804,7 +1886,7 @@ autocommand:
 If you put just let b:atp_TexCompiler, this will also work but not always: for
 example when you open a new buffer in existing Vim session.
 
-let b:atp_TexCompiler="pdflatex" 			*atp-variable-b:atp_TexCompiler*
+let b:atp_TexCompiler="pdflatex" 			*atp-b:atp_TexCompiler*
 	Used by functions: TEX() (map \l, imap \l), VTEX() (map <F5>, imap <F5>)
 
 	You can set it to latex, tex, luatex, and so on and possibly to
@@ -1816,7 +1898,7 @@ let b:atp_TexOptions=""
 	already used. You can use this to make reverse searching with xdvi see
 	|atp-xdvi|.
 
-							*atp-variable-b:atp_OutDir*
+							*atp-b:atp_OutDir*
 let b:atp_OutDir=fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/"
 Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete() 
 			i.e. in all functions.
@@ -1837,33 +1919,33 @@ Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete()
 	You can see the current output directory in the status (it is in the
 	short notation) to see it whole type:
 		:echo b:atp_OutDir
-	or use the function ShowOptions() (see |apt-command-ShowOptions|).		
+	or use the function ShowOptions() (see |apt-:ShowOptions|).		
 
 	If in your environment the variable $TEXMFOUTDIR is set the value of
 	b:atp_OutDir will be set to its value.
 
-let b:atp_auruns=1					*atp-variable-b:atp_auruns*
+let b:atp_auruns=1					*atp-b:atp_auruns*
 	This variable control how many times the automatic function calls tex
 	compiler (consecutively). It is useful if you are working with PDF
 	files and you want to have bookmarks (you can get them using hyperref
 	package with the option: bookmarks. Then set b:atp_auruns to '2'.
 
-let g:atp_autex_check_if_closed=1  			*atp-variable-g:atp_autex_check_if_closed*
+let g:atp_autex_check_if_closed=1  			*atp-g:atp_autex_check_if_closed*
 	This feature is not implemented.
 	tex run if all environments \begin:\end, \(:\) and \[:\] are closed.
 	Set g:atp_autex_check_if_closed=0 in order to not make the checks.
 
-let g:texmf=$HOME/texmf					*atp-variable-g:texmf*
+let g:texmf=$HOME/texmf					*atp-g:texmf*
 	This variable configures where input files are placed. See
-	|atp-command-EditInputFile|.
+	|atp-:EditInputFile|.
 
-let g:askforoutdir=0					*atp-variable-g:askforoutdir*
+let g:askforoutdir=0					*atp-g:askforoutdir*
 	Its values are 1 and 0.  When it is set to 1 you will be asked for the
 	name of a directory where tex will put output files, note that this
 	name should end with a "/".
 
-let b:atp_Viewer="xpdf"					*atp-variable-b:atp_Viewer*
-    							*atp-variable-g:{b:Viewer}Options*
+let b:atp_Viewer="xpdf"					*atp-b:atp_Viewer*
+    							*atp-g:{b:Viewer}Options*
 	it was tested with xpdf, evince, epdfviewer, kpdf, okular, xdvi and
 	they all works fine. I'm using xpdf and the xpdf server options are
 	supported so that the file is automatically reloaded (other viewers,
@@ -1874,7 +1956,7 @@ let b:atp_Viewer="xpdf"					*atp-variable-b:atp_Viewer*
 	g:{b:Viewer}Options to set the options, for example if b:Viewer="xpdf"
 	then you might use:
 
-    g:xpdfOptions					*atp-variable-g:xpdfOptions*
+    g:xpdfOptions					*atp-g:xpdfOptions*
 	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
 
 	For example, if you want to have different look of one document you can
@@ -1889,27 +1971,27 @@ let b:atp_Viewer="xpdf"					*atp-variable-b:atp_Viewer*
     au BufRead *.tex let b:atp_ViewerOptions="-bg NavajoWhite4 -fg black -mattecolor burlywood"
 <
  
-let b:XpdfServer=fnamemodify(expand("%"),":t")		*atp-variable-g:atp_XpdfServer*	
+let b:XpdfServer=fnamemodify(expand("%"),":t")		*atp-g:atp_XpdfServer*	
 	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
 
 	It is equal to the name of the source file. You do not need escape
 	spaces in the name (shellescape() function is used before it is send
 	to the shell).
 
-let b:atp_OpenViewer=1					*atp-variable-b:atp_OpenViewer*
+let b:atp_OpenViewer=1					*atp-b:atp_OpenViewer*
 	If the function which calls TeX compiler do not see that you are
 	viewing the output file it will open it for you if b:atp_OpenViewer=1.
 	Otherwise, this feature is disabled.
 
-let g:rmcommand="perltrash"				*atp-variable-g:rmcommand*
+let g:rmcommand="perltrash"				*atp-g:rmcommand*
 	Used by function: Delete() (map <F6>d imap <F6>d)	
 
 	If you have another 'trash can' program you can use it here, if you do
 	not have it you can use "rm" (at your own risk). It is used to delete
 	the files produced by (La)TeX (see |apt-Delete()|). The function
 	Delete() will remove all files in the output directory (see
-	|atp-variable-b:atp_OutDir|), which ends with an extension defined in the list
-	|atp-variable-g:atp_tex_extensions|. If you set:
+	|atp-b:atp_OutDir|), which ends with an extension defined in the list
+	|atp-g:atp_tex_extensions|. If you set:
 >
 	let g:rmcommand=''
 <
@@ -1924,14 +2006,14 @@ let g:atp_delete_output=0
 	If set to 1 then Delete function (map <F6>d) will delete also the
 	output file.	
 
-							*atp-variable-g:atp_tex_extensions*	
+							*atp-g:atp_tex_extensions*	
 let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]	
 	 This list is used by the function Delete() (see |apt-Delete()|) which
 	 deletes all the files with the specified extension in the directory
-	 b:atp_OutDir, unless g:rmcommand="" (see |atp-variable-g:rmcommand|) in which case
+	 b:atp_OutDir, unless g:rmcommand="" (see |atp-g:rmcommand|) in which case
 	 Delete() deletes only the output files for the current buffer.
 									
-let g:keep=["log","aux","toc","bbl"]			*atp-variable-g:keep*
+let g:keep=["log","aux","toc","bbl"]			*atp-g:keep*
 	Files with an extension belonging to this list will be copied from
 	'b:atp_OutDir' to the temporary directory with appropriate name. Then it
 	will be used by (La)TeX. (log file will be copied after it is created,
@@ -1945,12 +2027,12 @@ let g:keep=["log","aux","toc","bbl"]			*atp-variable-g:keep*
 	You can change this variable by the command:
 		:let g:keep+=["thm","spl"]
 								
-let g:printeroptions=""					*atp-variable-g:printeroptions*
+let g:printeroptions=""					*atp-g:printeroptions*
 	You can set the printer options. These are options for the 'lpr'
 	command, which will print the output file (pdf or dvi) this depends on
 	the b:atp_TexCompiler that you use.
 
-b:texcommand						*atp-variable-b:texcommand*
+b:texcommand						*atp-b:texcommand*
 	This variable is for debugging. It stores the last executed command to
 	compile your document. This changes also when your compiler was run
 	automatically.
@@ -1987,7 +2069,7 @@ g:atp_statusline
 	let g:atp_statusline=0
 <
 	in your $VIMRC file if you do not want the status line provided by this
-	plugin. (See |atp-command-ATPStatus|).
+	plugin. (See |atp-:ATPStatus|).
 
 let b:atp_TruncateStatuSection=40
 	This variable sets how many characters of the section/subsection title
@@ -2267,7 +2349,7 @@ xdvi							*atp-viewers-xdvi*
 	
 	The command SetXdvi defines a new function:
 
-RevSearch()							*atp-command-RevSearch*
+RevSearch()							*atp-:RevSearch*
 map \is, :RevSearch
 	Which makes an reverse search (sets the xdvi position according to the
 	cursor position in gVim).

@@ -1,8 +1,8 @@
 " Author:	Marcin Szmotulski
 
 " Commands to library functions (autoload/atplib.vim)
-command! -buffer -nargs=* FontSearch	:call atplib#FontSearch(<f-args>)
-command! -buffer -nargs=* FontPreview	:call atplib#FontPreview(<f-args>)
+command! -buffer -bang -nargs=* FontSearch	:call atplib#FontSearch(<q-bang>, <f-args>)
+command! -buffer -bang -nargs=* FontPreview	:call atplib#FontPreview(<q-bang>,<f-args>)
 command! -buffer -nargs=1 -complete=customlist,atplib#Fd_completion OpenFdFile	:call atplib#OpenFdFile(<f-args>) 
 command! -buffer -nargs=* CloseLastEnvironment	:call atplib#CloseLastEnvironment(<f-args>)
 command! -buffer 	  CloseLastBracket	:call atplib#CloseLastBracket()
@@ -267,7 +267,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'E \begin{enumerate}<CR>\end{enumerate}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'I \begin{itemize}<CR>\end{itemize}<Esc>O'
-	    execute 'imap <buffer> '.g:atp_imap_third_leader.'i \item'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'i 	<Esc>:call InsertItem()<CR>a'
 
 
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'a \begin{align}<CR>\end{align}<Esc>O'

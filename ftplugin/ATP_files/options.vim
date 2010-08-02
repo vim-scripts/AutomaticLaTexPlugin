@@ -267,7 +267,17 @@ endfunction
 command! -buffer SetOutDir	:call <SID>SetOutDir(1)
 " }}}
 
-" Almost all global variables 
+" Viewer Options
+" {{{ s:SetViewerOptions
+" Set the g:{b:atp_Viewer}Options as b:atp_ViewerOptions for the current buffer
+fun! s:SetViewerOptions()
+    if exists("b:atp_Viewer") && exists("g:" . b:atp_Viewer . "Options")
+	let b:atp_ViewerOptions=g:{b:atp_Viewer}Options
+    endif
+endfun
+"}}}
+
+" Almost all GLOBAL VARIABLES 
 " {{{ global variables 
 if !exists("g:atp_TeXdocDefault")
     let g:atp_TeXdocDefault	= '-a lshort'
@@ -278,9 +288,13 @@ if !exists("g:atp_CompilersDict")
     let g:atp_CompilersDict = { 
 		\ "pdflatex" 	: ".pdf", 	"pdftex" 	: ".pdf", 
 		\ "xetex" 	: ".pdf", 	"latex" 	: ".dvi", 
-		\ "tex" 	: ".dvi",	"luatex"	: ".pdf"}
+		\ "tex" 	: ".dvi",	"elatex"	: ".dvi",
+		\ "etex"	: ".dvi", 	"luatex"	: ".pdf"}
 endif
 "ToDo: to doc.
+if !exists("g:atp_insert_updatetime")
+    let g:atp_insert_updatetime = max([ 2000, &l:updatetime])
+endif
 if !exists("g:atp_DefaultDebugMode")
     " recognised values: silent, normal, debug.
     let g:atp_DefaultDebugMode="normal"
@@ -366,7 +380,7 @@ if !exists("g:atp_env_maps_old")
     let g:atp_env_maps_old=0
 endif
 if !exists("g:atp_amsmath")
-    let g:atp_amsmath=0
+    let g:atp_amsmath=atplib#SearchPackage('ams')
 endif
 if !exists("g:atp_no_math_command_completion")
     let g:atp_no_math_command_completion=0
@@ -375,13 +389,13 @@ if !exists("g:askfortheoutdir")
     let g:askfortheoutdir=0
 endif
 if !exists("g:atp_tex_extensions")
-    let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]
+    let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]
 endif
 if !exists("g:atp_delete_output")
     let g:atp_delete_output=0
 endif
 if !exists("g:keep")
-    let g:keep=["log","aux","toc","bbl"]
+    let g:keep=[ "log", "aux", "toc", "bbl", "ind"]
 endif
 if !exists("g:printingoptions")
     let g:printingoptions=''
@@ -600,7 +614,6 @@ command! -buffer -nargs=? ShowOptions		:call <SID>ShowOptions(<f-args>)
 
 " Variables for the Debug Mode
 " {{{ Debug Mode
-" ToDo: to doc.
 let t:atp_DebugMode	= g:atp_DefaultDebugMode 
 " there are three possible values of t:atp_DebugMode
 " 	silent/normal/debug
@@ -620,39 +633,47 @@ endif
 
 " These are two functions which sets options for Xpdf and Xdvi. 
 " {{{ Xpdf, Xdvi
-if !s:did_options
 " xdvi - supports forward and reverse searching
 " {{{ SetXdvi
-fun! s:SetXdvi()
-    let b:atp_TexCompiler	= "latex"
-    let b:atp_TexOptions	= "-src-specials"
+fun! SetXdvi()
+    let b:atp_TexCompiler	= "latex "
+    let b:atp_TexOptions	= " -src-specials "
     if exists("g:xdviOptions")
 	let b:atp_ViewerOptions	= g:xdviOptions
     endif
-    let b:atp_Viewer="xdvi " . b:atp_ViewerOptions . " -editor 'gvim --servername " . v:servername . " --remote-wait +%l %f'"
+    let b:atp_Viewer="xdvi " . b:atp_ViewerOptions . " -editor '" . v:progname . " --servername " . v:servername . " --remote-wait +%l %f'"
     if !exists("*RevSearch")
-    function RevSearch()
+    function! RevSearch()
+	let dvi_file	= fnameescape(fnamemodify(expand("%"),":p:r") . ".dvi")
+	if !filereadable(dvi_file)
+	   echomsg "dvi file doesn't exist" 
+	   ViewOutput RevSearch
+	   return
+	endif
 	let b:xdvi_reverse_search="xdvi " . b:atp_ViewerOptions . 
-		\ " -editor 'gvim --servername " . v:servername . 
+		\ " -editor '" . v:progname . " --servername " . v:servername . 
 		\ " --remote-wait +%l %f' -sourceposition " . 
 		\ line(".") . ":" . col(".") . fnameescape(fnamemodify(expand("%"),":p")) . 
-		\ " " . fnameescape(fnamemodify(expand("%"),":p:r") . ".dvi")
+		\ " " . dvi_file
 	call system(b:xdvi_reverse_search)
     endfunction
     endif
     command! -buffer RevSearch 					:call RevSearch()
     map <buffer> <LocalLeader>rs				:call RevSearch()<CR>
-    nmenu 550.65 &LaTeX.Reverse\ Search<Tab>:map\ <LocalLeader>rs	:RevSearch<CR>
+    try
+	nmenu 550.65 &LaTeX.Reverse\ Search<Tab>:map\ <LocalLeader>rs	:RevSearch<CR>
+    catch /E329: No menu/
+    endtry
 endfun
-command! -buffer SetXdvi			:call <SID>SetXdvi()
-nnoremap <silent> <buffer> <Plug>SetXdvi	:call <SID>SetXdvi()<CR>
+command! -buffer SetXdvi			:call SetXdvi()
+nnoremap <silent> <buffer> <Plug>SetXdvi	:call SetXdvi()<CR>
 " }}}
 
 " xpdf - supports server option (we use the reoding mechanism, which allows to
 " copy the output file but not reload the viewer if there were errors during
 " compilation (b:atp_ReloadOnError variable)
 " {{{ SetXpdf
-fun! s:SetXpdf()
+fun! SetXpdf()
     let b:atp_TexCompiler	= "pdflatex"
     let b:atp_TexOptions	= ""
     let b:atp_Viewer		= "xpdf"
@@ -667,12 +688,14 @@ fun! s:SetXpdf()
     if exists("RevSearch")
 	delcommand RevSearch
     endif
-    silent aunmenu LaTeX.Reverse\ Search
+    try
+	silent aunmenu LaTeX.Reverse\ Search
+    catch /E329: No menu/
+    endtry
 endfun
-command! -buffer SetXpdf			:call <SID>SetXpdf()
-nnoremap <silent> <buffer> <Plug>SetXpdf	:call <SID>SetXpdf()<CR>
+command! -buffer SetXpdf			:call SetXpdf()
+nnoremap <silent> <buffer> <Plug>SetXpdf	:call SetXpdf()<CR>
 " }}}
-endif
 " }}}
 
 " These are functions which toggles some of the options:
@@ -1064,7 +1087,7 @@ endif
 		    \ "\\ntriangleright", "\\ntriangleleft", "\\ntrianglerighteq", "\\ntrianglelefteq", 
 		    \ "\\nrightarrow", "\\nleftarrow", "\\nRightarrow", "\\nLeftarrow", 
 		    \ "\\nleftrightarrow", "\\nLeftrightarrow", "\\nsucc", "\\nprec", "\\npreceq", "\\nsucceq", 
-		    \ "\\precneq", "\\succneq", "\\precnapprox" ]
+		    \ "\\precneq", "\\succneq", "\\precnapprox", "\\ltimes", "\\rtimes" ]
 
 	let g:atp_ams_negations_non_expert_mode=[ "\\lneqq", "\\ngeqq", "\\nleqq", "\\ngeqq", "\\nsubseteqq", 
 		    \ "\\nsupseteqq", "\\subsetneqq", "\\supsetneqq", "\\nsucceqq", "\\precneqq", "\\succneqq" ] 
@@ -1086,16 +1109,18 @@ endif
 		    \ "\\varUpsilon", "\\varPhi", "\\varPsi", "\\varOmega" ]
 	
 	" ToDo: integrate in TabCompletion (amsfonts, euscript packages).
-	let g:atp_amsfonts=[ "\\mathfrak", "\\mathscr" ]
+	let g:atp_amsfonts=[ "\\mathfrak{", "\\mathscr{" ]
 
 	" not yet supported: in TabCompletion:
-	let g:atp_amsxtra_commands=[ "\\sphat", "\\sptilde" ]
+	let g:atp_amsextra_commands=[ "\\sphat", "\\sptilde" ]
 	let g:atp_fancyhdr_commands=["\\lfoot{", "\\rfoot{", "\\rhead{", "\\lhead{", 
 		    \ "\\cfoot{", "\\chead{", "\\fancyhead{", "\\fancyfoot{",
 		    \ "\\fancypagestyle{", "\\fancyhf{}", "\\headrulewidth", "\\footrulewidth",
 		    \ "\\rightmark", "\\leftmark", "\\markboth", 
 		    \ "\\chaptermark", "\\sectionmark", "\\subsectionmark",
 		    \ "\\fancyheadoffset", "\\fancyfootoffset", "\\fancyhfoffset"]
+
+	let g:atp_makeidx_commands=[ "\\makeindex", "\\index{", "\\printindex" ]
 
 
 	" ToDo: remove tikzpicture from above and integrate the
@@ -1232,12 +1257,23 @@ let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\
 
 if !s:did_options
 
+    augroup ATP_updatetime
+	au VimEnter if &l:updatetime == 4000 | let &l:updatetime	= 800 | endif
+	au InsertEnter *.tex let s:updatetime=&l:updatetime | let &l:updatetime = g:atp_insert_updatetime
+	au InsertLeave *.tex let &l:updatetime=s:updatetime 
+    augroup END
+
     if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
 	augroup ATP_Status
 	    au!
 	    au BufWinEnter *.tex 	call ATPStatus()
 	augroup END
     endif
+
+    augroup ATP_SetViewerOptions
+	au!
+	au BufEnter *.tex :call s:SetViewerOptions()
+    augroup END
 
     if g:atp_local_completion == 2 
 	augroup ATP_LocaCommands
@@ -1370,4 +1406,16 @@ if !s:did_options
 endif
 "}}}
 
+" Add extra syntax groups
+function! s:ATP_SyntaxGroups()
+    if atplib#SearchPackage('tikz') || atplib#SearchPackage('pgfplots')
+	try
+	    call TexNewMathZone("T", "tikzpicture", 0)
+	catch /E117/
+	endtry
+    endif
+endfunction
+augroup ATP_Syntax_TikzZone
+    au Syntax tex :call <SID>ATP_SyntaxGroups()
+augroup END
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

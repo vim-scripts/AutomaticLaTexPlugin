@@ -14,13 +14,13 @@ function! s:GetSID()
 	return matchstr(expand('<sfile>'), '\zs<SNR>\d\+_\ze.*$')
 endfunction
 let s:SID = s:GetSID()
-call extend(g:atp_sid,{ fnamemodify(expand('<sfile>'),':t') : s:SID })
+call extend(g:atp_compiler_SID,{ fnamemodify(expand('<sfile>'),':t') : s:SID })
 " a:1 is the file where the function is defined. 
 function! s:SIDWrap(func,...)
     if a:0 == 0
 	return s:SID . a:func
     else
-	let l:sid=get(g:atp_sid, 'tex_atp.vim', 'error')
+	let l:sid=get(g:atp_compiler_SID, 'tex_atp.vim', 'error')
 	if l:sid == 'error'
 	    echoerr 'atp sid error'
 	    return ''

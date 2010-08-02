@@ -175,12 +175,27 @@ function! s:InteligentWrapSelection(text_wrapper, math_wrapper, ...)
     let new_line	= ( a:0 >= 2 ? a:3 : 0 )
 
     let MathZones = copy(g:atp_MathZones)
+    let pattern		= '^texMathZone[VWX]'
     if b:atp_TexFlavour == 'plaintex'
 	call add(MathZones, 'texMathZoneY')
+	let pattern	= '^texMathZone[VWXY]'
     endif
 
     " select the correct wrapper
-    if atplib#CheckSyntaxGroups(MathZones)
+
+    let MathZone	= get(filter(map(synstack(line("."),max([1,col(".")-1])),"synIDattr(v:val,'name')"),"v:val=~pattern"),0,"")
+    if MathZone	=~ '^texMathZone[VWY]'
+	let step 	= 2
+    elseif MathZone == 'texMathZoneX'
+	let step 	= 1
+    else
+	let step	= 0
+    endif
+
+    " Note: in visual mode col(".") returns always the column starting position of
+    " the visual area, thus it is enough to check the begining (if we stand on
+    " $:\(:\[:$$ use text wrapper). 
+    if !empty(MathZone) && col(".") > step && atplib#CheckSyntaxGroups(MathZones, line("."), max([1, col(".")-step]))
 	let begin_wrapper 	= a:math_wrapper[0]
 	let end_wrapper 	= get(a:math_wrapper,1, '}')
     else
@@ -214,7 +229,7 @@ function! Insert(text, math)
     endif
 
     " select the correct wrapper
-    if atplib#CheckSyntaxGroups(MathZones)
+    if atplib#CheckSyntaxGroups(MathZones, line("."), col("."))
 	let insert	= a:math
     else
 	let insert	= a:text
@@ -234,6 +249,91 @@ function! Insert(text, math)
     return ""
 endfunction
 " }}}
+" Insert \item update the number. 
+" {{{1 InsertItem()
+" ToDo: indent
+function! InsertItem()
+    let begin_line	= searchpair( '\\begin\s*{\s*\%(enumerate\|itemize\)\s*}', '', '\\end\s*{\s*\%(enumerate\|itemize\)\s*}', 'bnW')
+    let saved_pos	= getpos(".")
+    call cursor(line("."), 1)
+
+    " This will work with \item [[1]], but not with \item [1]]
+    let [ bline, bcol]	= searchpos('\\item\s*\zs\[', 'b', begin_line) 
+    if bline == 0
+	keepjumps call setpos(".", saved_pos)
+	let new_line	= strpart(getline("."), 0, col(".")) . '\item'. strpart(getline("."), col("."))
+	call setline(line("."), new_line)
+
+	" Indent the line:
+	if &l:indentexpr != ""
+	    execute "let indent = " . &l:indentexpr
+	    let i 	= 1
+	    let ind 	= ""
+	    while i <= indent
+		let ind	.= " "
+		let i	+= 1
+	    endwhile
+	else
+	    indent	= -1
+	    ind 	=  matchstr(getline("."), '^\s*')
+	endif
+	let g:debug=len(matchstr(getline("."), '^\s*')) . "#" . len(ind) . "#" . indent
+	call setline(line("."), ind . substitute(getline("."), '^\s*', '', ''))
+
+	" Set the cursor position
+	let saved_pos[2]	+= len('\item') + indent
+	keepjumps call setpos(".", saved_pos)
+
+	return ""
+    endif
+    let [ eline, ecol]	= searchpairpos('\[', '', '\]', 'nr', '', line("."))
+    if eline != bline
+	return ""
+    endif
+
+    let item		= strpart(getline("."), bcol, ecol - bcol - 1)
+    let bpat		= '(\|{\|\['
+    let epat		= ')\|}\|\]\|\.'
+    let number		= matchstr(item, '\d\+')
+    let space		= matchstr(getline("."), '\\item\zs\s*\ze\[')
+    if nr2char(number) != "" 
+	let new_item	= substitute(item, number, number + 1, '')
+    elseif item =~ '\%('.bpat.'\)\=\s*\w\s*\%('.epat.'\)\='
+	let alphabet 	= [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y', 'z' ] 
+	let char	= matchstr(item, '^\%('.bpat.'\)\=\s*\zs\w\ze\s*\%('.epat.'\)\=$')
+	let new_char	= get(alphabet, index(alphabet, char) + 1, 'z')
+	let new_item	= substitute(item, '^\%('.bpat.'\)\=\s*\zs\w\ze\s*\%('.epat.'\)\=$', new_char, 'g')
+    else
+	let new_item	= item
+    endif
+
+    keepjumps call setpos(".", saved_pos)
+
+    let new_line	= strpart(getline("."), 0, col(".")) . '\item' . space . '[' . new_item . ']' . strpart(getline("."), col("."))
+    call setline(line("."), new_line)
+
+    " Indent the line:
+    if &l:indentexpr != ""
+	execute "let indent = " . &l:indentexpr
+	let i 	= 1
+	let ind 	= ""
+	while i <= indent
+	    let ind	.= " "
+	    let i	+= 1
+	endwhile
+    else
+	ind 	= matchstr(getline("."), '^\s*')
+    endif
+    call setline(line("."), ind . substitute(getline("."), '^\s*', '', ''))
+
+    " Set the cursor position
+    let saved_pos[2]	+= len('\item' . space . '[' . new_item . ']') + indent
+    keepjumps call setpos(".", saved_pos)
+
+
+    return ""
+endfunction
+" }}}1
 
 " Editing Toggle Functions
 "{{{ Variables
@@ -423,6 +523,8 @@ function! s:TeXdoc(...)
     " The rediraction prevents showing texdoc info messages which are not that
     " important, if a document is not found texdoc sends a message to the standard
     " output not the error.
+    "
+    " -I prevents from using interactive menus
     echo system("texdoc " . texdoc_arg . " 2>/dev/null")
 endfunction
 
@@ -447,14 +549,14 @@ nnoremap <silent> <buffer> <Plug>TeXdoc						:TeXdoc
 " This function deletes tex specific output files (exept the pdf/dvi file, unless
 " g:atp_delete_output is set to 1 - then also delets the current output file)
 "{{{1 Delete
-function! s:Delete()
+function! s:Delete(delete_output)
 
     call atplib#outdir()
 
     let l:atp_tex_extensions=deepcopy(g:atp_tex_extensions)
     let error=0
 
-    if g:atp_delete_output
+    if a:delete_output == "!"
 	if b:atp_TexCompiler == "pdftex" || b:atp_TexCompiler == "pdflatex"
 	    let l:ext="pdf"
 	else
@@ -467,11 +569,15 @@ function! s:Delete()
 	if executable(g:rmcommand)
 	    if g:rmcommand =~ "^\s*rm\p*" || g:rmcommand =~ "^\s*perltrash\p*"
 		if l:ext != "dvi" && l:ext != "pdf"
-		    let l:rm=g:rmcommand . " " . shellescape(b:atp_OutDir) . "*." . l:ext . " 2>/dev/null && echo Removed ./*" . l:ext . " files"
+		    let l:rm=g:rmcommand . " " . shellescape(b:atp_OutDir) . "*." . l:ext . " 2>/dev/null && echo Removed: ./.*" . l:ext 
 		else
-
-		    let l:rm=g:rmcommand . " " . fnamemodify(b:atp_MainFile,":r").".".l:ext . " 2>/dev/null && echo Removed " . fnamemodify(b:atp_MainFile,":r").".".l:ext
+		    let l:rm=g:rmcommand . " " . fnamemodify(b:atp_MainFile,":r").".".l:ext . " 2>/dev/null && echo Removed: " . fnamemodify(b:atp_MainFile,":r").".".l:ext
 		endif
+	    endif
+	    if !exists("g:rm")
+		let g:rm	= [l:rm] 
+	    else
+		call add(g:rm, l:rm)
 	    endif
 	    echo system(l:rm)
 	else
@@ -487,8 +593,8 @@ function! s:Delete()
 " 		echo "Please set g:rmcommand to clear the working directory"
 " 	endif
 endfunction
-command! -buffer Delete		:call <SID>Delete()
-nmap <buffer>	 <Plug>Delete	:call <SID>Delete()<CR>
+command! -buffer -bang Delete		:call <SID>Delete(<q-bang>)
+nmap <silent> <buffer>	 <Plug>Delete	:call <SID>Delete("")<CR>
 "}}}1
 
 "{{{1 OpenLog, TexLog, TexLog Buffer Options, PdfFonts, YesNoCompletion
@@ -729,7 +835,7 @@ function! ToDo(keyword,stop,...)
 	return
     endif
     echomsg " List for '%.*" . a:keyword . "' in '" . bufname . "':"
-    let sortedkeys=sort(keys(todo),"atplib#CompareList")
+    let sortedkeys=sort(keys(todo), "atplib#CompareNumbers")
     for key in sortedkeys
 	" echo the todo line.
 	echomsg key . " " . substitute(substitute(todo[key],'%','',''),'\t',' ','g')
@@ -839,7 +945,7 @@ fun! Reload(...)
 "     execute "source " . l:file_path[0]
 endfunction
 endif
-command! -buffer -nargs=* -complete=function Reload	:call Reload(<f-args>)
+" command! -buffer -nargs=* -complete=function Reload	:call Reload(<f-args>)
 " }}}1
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

@@ -123,22 +123,18 @@ function! FindBibFiles(...)
 	let l:bufname=a:1
     endif
 
-"     let b:texfile=readfile(l:bufname)
-    if buflisted(fnamemodify(l:bufname,":p"))
-	let l:texfile=getbufline(l:bufname,1,'$')
-    else
-	let l:texfile=readfile(fnameescape(fnamemodify(l:bufname,":p")))
-    endif
     let s:i	 =0
     let s:bibline=[]
-    " find all lines which define bibliography files
-    for line in l:texfile
-	" ToDo: %\bibliography should not be matched!
-	if line =~ "^[^%]*\\\\bibliography\s*{"
-	    let s:bibline=add(s:bibline,line) 
-	    let s:i+=1
-	endif
-    endfor
+
+    let saved_llist	= getloclist(0)
+    try
+	silent execute "lvimgrep /^[^%]*\\\\bibliography\s*{/j " . l:bufname
+    catch /E480: No match:/
+    endtry
+    let loclist		= getloclist(0)
+    call setloclist(0, saved_llist)
+    let s:bibline	= map(loclist, "v:val['text']")
+
     let l:nr	= s:i
     let s:i	= 1
     let l:allbibfiles = []
@@ -233,7 +229,14 @@ function! ATPRunning() "{{{
     if exists("b:atp_running") && exists("g:atp_callback") && b:atp_running && g:atp_callback
 	redrawstatus
 
-	let Compiler	= get(s:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)
+	for cmd in keys(s:CompilerMsg_Dict) 
+	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
+		let Compiler = s:CompilerMsg_Dict[cmd]
+		break
+	    else
+		let Compiler = b:atp_TexCompiler
+	    endif
+	endfor
 
 	if b:atp_running >= 2
 	    return b:atp_running." ".Compiler." "
@@ -245,12 +248,13 @@ function! ATPRunning() "{{{
 endfunction "}}}
 
 " {{{ Syntax and Hilighting
-syntax 	match 	atp_statustitle 	/.*/ 
-syntax 	match 	atp_statussection 	/.*/ 
-syntax 	match 	atp_statusoutdir 	/.*/ 
-hi 	link 	atp_statustitle 	Number
-hi 	link 	atp_statussection 	Title
-hi 	link 	atp_statusoutdir 	String
+" ToDo:
+" syntax 	match 	atp_statustitle 	/.*/ 
+" syntax 	match 	atp_statussection 	/.*/ 
+" syntax 	match 	atp_statusoutdir 	/.*/ 
+" hi 	link 	atp_statustitle 	Number
+" hi 	link 	atp_statussection 	Title
+" hi 	link 	atp_statusoutdir 	String
 " }}}
 
 " The main status function, it is called via autocommand defined in 'options.vim'.

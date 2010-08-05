@@ -279,6 +279,28 @@ endfun
 
 " Almost all GLOBAL VARIABLES 
 " {{{ global variables 
+if !exists("g:atp_raw_kpsewhich_tex")
+    let g:atp_raw_kpsewhich_tex = substitute(substitute(substitute(system("kpsewhich -show-path tex"),'!!','','g'),'\/\/\+','\/','g'), ':\|\n', ',', 'g')
+    lockvar g:atp_raw_kpsewhich_tex
+endif
+
+if !exists("g:atp_kpsewhich_tex")
+    let path_list	= split(g:atp_raw_kpsewhich_tex, ',')
+    let idx		= index(path_list, '.')
+    if idx != -1
+	let dot = remove(path_list, index(path_list,'.')) . ","
+    else
+	let dot = ""
+    endif
+    call map(path_list, 'v:val . "**"')
+
+    let g:atp_kpsewhich_tex	= dot . join(path_list, ',')
+    lockvar g:atp_kpsewhich_tex
+endif
+
+if !exists("g:atp_developer")
+    let g:atp_developer	= 0
+endif
 if !exists("g:atp_TeXdocDefault")
     let g:atp_TeXdocDefault	= '-a lshort'
 endif
@@ -1418,4 +1440,5 @@ endfunction
 augroup ATP_Syntax_TikzZone
     au Syntax tex :call <SID>ATP_SyntaxGroups()
 augroup END
+
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

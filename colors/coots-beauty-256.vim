@@ -262,3 +262,5 @@ highlight ywtxt_bold 		cterm=bold 	gui=bold
 highlight ywtxt_italic 		cterm=italic  	gui=italic
 highlight ywtxt_underline 	cterm=underline gui=underline
 highlight ywtxt_comment guifg=honeydew4
+
+highlight Conceal ctermfg=250 ctermbg=233 guibg=#1c1c1c guifg=White

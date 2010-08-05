@@ -11,6 +11,7 @@ command! -buffer 	  CloseLastBracket	:call atplib#CloseLastBracket()
 " Add maps, unless the user didn't want this.
 " ToDo: to doc.
 if !exists("no_plugin_maps") && !exists("no_atp_maps")
+
     " ToDo to doc. + vmaps!
     map <buffer> <LocalLeader>ns 	<Plug>GoToNextSection
     map <buffer> <LocalLeader>ps 	<Plug>GoToPreviousSection
@@ -20,7 +21,12 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     map <buffer> <LocalLeader>pp 	<Plug>GoToPreviousPart
     map <buffer> <LocalLeader>ne	<Plug>GoToNextEnvironment
     map <buffer> <LocalLeader>pe	<Plug>GoToPreviousEnvironment
-    " ToDo to doc.
+
+    " Goto File map:
+    if has("path_extra")
+	nmap <buffer> <silent> gf		:call GotoFile()<CR>
+    endif
+
     if exists("g:atp_no_tab_map") && g:atp_no_tab_map == 1
 	imap <silent> <buffer> <F7> 		<C-R>=atplib#TabCompletion(1)<CR>
 	nmap <silent> <buffer> <F7>		:call atplib#TabCompletion(1,1)<CR>
@@ -251,6 +257,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 		execute 'imap <buffer> '.g:atp_imap_third_leader.'x \begin{example}<CR>\end{example}<Esc>O'
 	    endif
 	else
+	    " New mapping for the insert mode. 
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'b \begin{}<Left>'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'e \end{}<Left>'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
@@ -288,6 +295,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 	" imap {p \begin{proposition*}<CR>\end{proposition*}<Esc>O
 	" imap {r \begin{remark*}<CR>\end{remark*}<Esc>O
 	" imap {t \begin{theorem*}<CR>\end{theorem*}<Esc>O
+
     endif
 
     imap <buffer> __ _{}<Left>

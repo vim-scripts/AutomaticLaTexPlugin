@@ -218,7 +218,14 @@ endfunction
 function! s:CallBack(mode)
 	let b:mode	= a:mode
 
-	let Compiler	= get(s:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)
+	for cmd in keys(s:CompilerMsg_Dict) 
+	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
+		let Compiler = s:CompilerMsg_Dict[cmd]
+		break
+	    else
+		let Compiler = b:atp_TexCompiler
+	    endif
+	endfor
 	let b:atp_running-=1
 
 	" Read the log file
@@ -280,7 +287,7 @@ endfunction
 " To Do: when I will add proper check if bibtex should be done (by checking bbl file
 " or changes in bibliographies in input files), the bang will be used to update/or
 " not the aux|log|... files.
-let g:MakeLatex_debug	= 1
+let g:MakeLatex_debug	= 0
 
 " Function Arguments:
 " a:texfile		= main tex file to use
@@ -308,6 +315,8 @@ let g:MakeLatex_debug	= 1
 " 					phrase to check in the log file:
 " 					'Label(s) may have changed. Rerun to get cross references right.'
 " 	table of contents	= 'No file \f*\.toc' 				
+
+" needs reltime feature (used already in the command)
 function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, force, ...)
 
     let b:atp_running	= a:run ? 1 : 0
@@ -322,7 +331,14 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 	    endif
 	endif
 
-    let Compiler	= get(s:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)
+    for cmd in keys(s:CompilerMsg_Dict) 
+	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
+	    let Compiler = s:CompilerMsg_Dict[cmd]
+	    break
+	else
+	    let Compiler = b:atp_TexCompiler
+	endif
+    endfor
 
     let compiler_SID 	= s:compiler_SID
     let g:tm_debug 	= ""
@@ -368,11 +384,13 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 
     " grep in aux file for 
     " 'Citation .* undefined\|Rerun to get cross-references right\|Writing index file'
+    let saved_llist	= getloclist(0)
     try
 	silent execute "lvimgrep /C\\n\\=i\\n\\=t\\n\\=a\\n\\=t\\n\\=i\\n\\=o\\n\\=n\\_s\\_.*\\_su\\n\\=n\\n\\=d\\n\\=e\\n\\=f\\n\\=i\\n\\=n\\n\\=e\\n\\=d\\|L\\n\\=a\\n\\=b\\n\\=e\\n\\=l\\n\\=(\\n\\=s\\n\\=)\\_sm\\n\\=a\\n\\=y\\_sh\\n\\=a\\n\\=v\\n\\=e\\_sc\\n\\=h\\n\\=a\\n\\=n\\n\\=g\\n\\=e\\n\\=d\\n\\=.\\|W\\n\\=r\\n\\=i\\n\\=t\\n\\=i\\n\\=n\\n\\=g\\_si\\n\\=n\\n\\=d\\n\\=e\\n\\=x\\_sf\\n\\=i\\n\\=l\\n\\=e/j " . logfile
     catch /No match:/
     endtry
     let location_list	= copy(getloclist(0))
+    call setloclist(0, saved_llist)
 
     " Check references:
 	if g:MakeLatex_debug
@@ -382,6 +400,7 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
     let references	= len(filter(copy(location_list), 'v:val["text"] =~ "Citation"')) == 0 ? 0 : 1 
 
     " Check what to use to make the 'Bibliography':
+    let saved_llist	= getloclist(0)
     try
 	silent execute 'lvimgrep /\\bibdata\s*{/j ' . auxfile 
     catch /No match:/
@@ -390,6 +409,7 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
     " looking if we have to use 'bibtex' as the bibliography might be not written in
     " the main file.
     let bibtex		= len(getloclist(0)) == 0 ? 0 : 1
+    call setloclist(0, saved_llist)
 
 	if g:MakeLatex_debug
 	silent echo a:run . " references=" . references . " bibtex=" . bibtex . " a:did_bibtex=" . a:did_bibtex
@@ -424,12 +444,15 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 	endif
 
     " Check table of contents:
+    let saved_llist	= getloclist(0)
     try
 	silent execute "lvimgrep /\\\\openout\\d\\+/j " . logfile
     catch /No match:/
     endtry
 
     let open_out = map(getloclist(0), "v:val['text']")
+    call setloclist(0, saved_llist)
+
     if filereadable(logfile) && a:force == ""
 	let toc		= ( len(filter(deepcopy(open_out), "v:val =~ \"toc\'\"")) ? 1 : 0 )
 	let lof		= ( len(filter(deepcopy(open_out), "v:val =~ \"lof\'\"")) ? 1 : 0 )
@@ -927,7 +950,14 @@ let s:name=tempname()
 	let mode = g:atp_DefaultDebugMode
     endif
 
-    let Compiler	= get(s:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)
+    for cmd in keys(s:CompilerMsg_Dict) 
+	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
+	    let Compiler = s:CompilerMsg_Dict[cmd]
+	    break
+	else
+	    let Compiler = b:atp_TexCompiler
+	endif
+    endfor
 
     if l:mode != 'silent'
 	if a:runs > 2 && a:runs <= 5

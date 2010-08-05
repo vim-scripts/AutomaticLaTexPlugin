@@ -18,7 +18,7 @@ setlocal statusline=%{ATP_TOC_StatusLine()}
 " a:2	0/1 	0 (default) return linenr as for toc/labels
 function! s:getlinenr(...)
     let line 	=  a:0 >= 1 ? getline(a:1) : getline('.')
-    let labels 	=  a:0 >= 2 ? a:2	   : 0
+    let labels 	=  a:0 >= 2 ? a:2	   : expand("%") == "__Labels__" ? 1 : 0
 
     if labels == 0
 	return matchstr(line,'^\s*\zs\d\+')
@@ -26,6 +26,7 @@ function! s:getlinenr(...)
 	return matchstr(line,'(\zs\d\+\ze)') 
     endif
 endfunction
+" command! GL :echo <SID>getlinenr(line("."))
 
 function! s:getsectionnr(...)
     let line =  a:0 == 0 ? getline('.') : getline(a:1)
@@ -35,11 +36,14 @@ endfunction
 " Get the file name and its path from the LABELS/ToC list.
 function! s:file()
     let labels		= expand("%") == "__Labels__" ? 1 : 0
+    let g:labels	= labels
 
     let true		= 1
     let linenr		= line('.')
     while true == 1
-	let line	= s:getlinenr(linenr, labels)
+	" To do: this might not work in project files, where a label is
+	" defined in a different file
+	let line	= s:getlinenr(linenr)
 	if line != ""
 	    let linenr	-=1
 	else
@@ -47,7 +51,7 @@ function! s:file()
 	    " NOTE THAT FILE NAME SHOULD NOT INCLUDE '(' and ')' and SHOULD
 	    " NOT BEGIN WITH A NUMBER.
 	    let line	= getline(linenr)
-	    let bufname	= strpart(line,0,stridx(line,'(')-1)
+	    let bufname	= strpart(line, 0, stridx(line,'(')-1)
 	    let path	= substitute(strpart(line,stridx(line,'(')+1),')\s*$','','')
 	endif
     endwhile

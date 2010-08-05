@@ -1,11 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Author:	Marcin Szamotulski
-" Last Changed: 2010 July 2
+" Last Changed: 2010 July 5
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 29 :AutoInstall: tex_atp.vim
-" LINE ADDED.
+" GetLatestVimScripts: 2945 30 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -27,20 +26,19 @@ if &cpoptions =~ '<'
 	setl cpoptions-=<
 endif
 
-" if !exists('s:loaded')
+	" Functions needed before setting options.
+	execute 'source ' 	. fnameescape(prefix . '/common.vim')
 
-	" Functions needed before setting options
-	execute 'source ' . fnameescape(prefix . '/common.vim')
-
-" endif
-
-
-	execute 'source '  . fnameescape(prefix . '/options.vim')
+	" Options, global and local variables, autocommands.
+	execute 'source '  	. fnameescape(prefix . '/options.vim')
 
 
-	execute 'source ' . fnameescape(prefix . '/common.vim')
-	execute 'source ' . fnameescape(prefix . '/compiler.vim')
+	execute 'source ' 	. fnameescape(prefix . '/common.vim')
 
+	" Compilation related stuff.
+	execute 'source ' 	. fnameescape(prefix . '/compiler.vim')
+
+	" LatexBox addons (by D.Munger, with some modifications).
 	if g:atp_LatexBox
 		execute 'source ' . fnameescape(prefix . '/LatexBox_common.vim')
 		execute 'source ' . fnameescape(prefix . '/LatexBox_complete.vim')
@@ -58,10 +56,12 @@ endif
 
 	if g:atp_LatexBox
 
+		" LatexBox mappings.
 		execute 'source ' . fnameescape(prefix . '/LatexBox_mappings.vim')
 			
 	endif
 
+	" The menu.
 	execute 'source ' . fnameescape(prefix . '/menu.vim')
 
 " vim:fdm=marker:ff=unix:noet:ts=4:sw=4

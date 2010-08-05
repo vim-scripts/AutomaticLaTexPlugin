@@ -8,13 +8,13 @@ let s:loaded	= !exists("s:loaded") ? 1 : 2
 " {{{ Table Of Contents
 " {{{2 Variabels
 let g:atp_sections={
-    \	'chapter' 	: [           '\m^\s*\(\\chapter\*\?\s*{\)',	'\m\\chapter\*'],	
-    \	'section' 	: [           '\m^\s*\(\\section\*\?\s*{\)',	'\m\\section\*'],
-    \ 	'subsection' 	: [	   '\m^\s*\(\\subsection\*\?\s*{\)',	'\m\\subsection\*'],
-    \	'subsubsection' : [ 	'\m^\s*\(\\subsubsection\*\?\s*{\)',	'\m\\subsubsection\*'],
-    \	'bibliography' 	: ['\m^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
-    \	'abstract' 	: ['\m^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
-    \   'part'		: [ 		 '\m^\s*\(\\part\*\?\s*{\)',	'\m\\part\*']}
+    \	'chapter' 	: [           '^\s*\(\\chapter\*\?\s*{\)',	'\\chapter\*'],	
+    \	'section' 	: [           '^\s*\(\\section\*\?\s*{\)',	'\\section\*'],
+    \ 	'subsection' 	: [	   '^\s*\(\\subsection\*\?\s*{\)',	'\\subsection\*'],
+    \	'subsubsection' : [ 	'^\s*\(\\subsubsection\*\?\s*{\)',	'\\subsubsection\*'],
+    \	'bibliography' 	: ['^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
+    \	'abstract' 	: ['^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
+    \   'part'		: [ 		 '^\s*\(\\part\*\?\s*{\)',	'\\part\*']}
 
 "--Make TOC -----------------------------
 " This makes sense only for latex documents.
@@ -637,9 +637,9 @@ function! CTOC(...)
     let names=s:ctoc()
     let b:names=names
 " 	echo " DEBUG CTOC " . join(names)
-    let chapter_name=get(names,0,'')
-    let section_name=get(names,1,'')
-    let subsection_name=get(names,2,'')
+    let chapter_name	= get(names, 0, '')
+    let section_name	= get(names, 1, '')
+    let subsection_name	= get(names, 2, '')
 
     if chapter_name == "" && section_name == "" && subsection_name == ""
 
@@ -702,11 +702,11 @@ command! -buffer CTOC		:call CTOC()
 " {{{ Labels
 function! s:Labels()
     let t:atp_bufname=bufname("%")
-    let bufname=resolve(fnamemodify(t:atp_bufname,":p"))
+"     let bufname=resolve(fnamemodify(t:atp_bufname,":p"))
     " Generate the dictionary with labels
-    let t:atp_labels=atplib#generatelabels(bufname)
+    let t:atp_labels=atplib#generatelabels(b:atp_MainFile)
     " Show the labels in seprate window
-    call atplib#showlabels(t:atp_labels[bufname])
+    call atplib#showlabels(t:atp_labels[b:atp_MainFile])
 endfunction
 nnoremap <Plug>ATP_Labels	:call <SID>Labels()<CR>
 command! -buffer Labels		:call <SID>Labels()
@@ -869,20 +869,18 @@ function! s:GoToEnvironment(flag,...)
     let env_name 	= ( a:0 >= 1 ? a:1 	: '[^}]*' )
     let flag		= a:flag
     if env_name == 'math'
-	let pattern = '\m\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)'
-	silent call search(pattern, flag) 
-	call histadd("search", pattern)
-	let @/ 	 = pattern
+	silent call search('\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
+	call histadd("search", '\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)')
+	let @/ 	 = '\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)'
 	if getline(".")[col(".")-1] == '$' && col(".") > 1 && 
 		    \ ( count(map(synstack(line("."),col(".")-1), 'synIDattr(v:val, "name")'), 'texMathZoneX') == 0 ||
 		    \ 	count(map(synstack(line("."),col(".")-1), 'synIDattr(v:val, "name")'), 'texMathZoneY') == 0 )
-	    silent call search(pattern, flag) 
+	    silent call search('\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
 	endif
     else
-	let pattern = '\m\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}'
-	silent call search(pattern, flag)
-	call histadd("search", pattern)
-	let @/	= pattern
+	silent call search('\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}', flag)
+	call histadd("search", '\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}')
+	let @/	= '\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}'
     endif
 endfunction
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv		:call <SID>GoToEnvironment('W', <f-args>)
@@ -936,10 +934,9 @@ function! s:PreviousSection(secname,...)
     elseif mode == 'v' 
 	normal! v
     endif
-    let pattern = '\\' . a:secname . '\>' . section_title_pattern
-    silent call search(pattern,'bw')
-    call histadd(pattern)
-    let @/	= pattern
+    silent call search('\\' . a:secname . '\>' . section_title_pattern ,'bw')
+    call histadd("search", '\\' . a:secname . '\>' . section_title_pattern)
+    let @/='\\' . a:secname . '\>' . section_title_pattern
 endfunction
 nnoremap <silent> <Plug>GoToPreviousSection		:call <SID>PreviousSection('section')<CR>
 onoremap <silent> <Plug>GoToPreviousSection		:call <SID>PreviousSection('section')<CR>
@@ -973,55 +970,179 @@ function! Env_compl(A,P,L)
 endfunction
 " }}}
 
-" Enter over input files
-" {{{1
-function! Enter()
-    let synstack=map(synstack(line("."),col(".")), 'synIDattr(v:val, "name")')
-    if count(synstack, 'texInputFile')
-	let filename	= atplib#append(matchstr(getline(line(".")), '\\input\s*{\zs[^}]*\ze}'), '.tex')
-	if filereadable(fnamemodify(filename, ":p"))
-	    silent! execute "edit " . fnamemodify(filename, ":p")
-	elseif strpart(getline("."), 0,col(".")-1) =~ '\\usepackage\s*\%(\[[^]]*]\)\=\s*{' && exists("g:atp_developer")
-	    let bcol	= searchpos('{\|,', 'bn')[1]
-	    let ecol	= searchpos('}\|,', 'n')[1]
-	    let packagename 	= strpart(getline("."), bcol, ecol-bcol-1)
-	    let g:packagename	= packagename
-	    let file	= filter(atplib#FindFiles('tex', 'sty', ':p'), "v:val =~ packagename .'.sty$'")[0]
-	    if filereadable(file)
-		silent! execute "edit " . file
-	    else
-		execute "normal j"
-	    endif
-	else
-	    execute "normal j"
-	endif
-    elseif count(synstack, 'texInput')
-	let filename	= atplib#append(matchstr(getline(line(".")), '\\input\s*\zs\S*\ze'), '.tex')
-	let g:filename	= filename
-	let filepath	= filter(atplib#FindFiles('tex', 'tex', ':p'), "v:val =~ filename .'$'")
-	let g:filepath	= copy(filepath)
-	let file	= filepath[0]
-	if filereadable(file)
-	    silent! execute "edit " . file
-	else
-	    execute "normal j"
-	endif
-    elseif strpart(getline("."), 0,col(".")-1) =~ '\\documentclass\s*\%(\[[^]]*]\)\=\s*{' && exists("g:atp_developer")
-	let bcol	= searchpos('{\|,', 'bn')[1]
-	let ecol	= searchpos('}\|,', 'n')[1]
-	let classname 	= strpart(getline("."), bcol, ecol-bcol-1)
-	let g:classname	= classname
-	let file	= filter(atplib#FindFiles('tex', 'cls', ':p'), "v:val =~ classname .'.cls$'")[0]
-	if filereadable(file)
-	    silent! execute "edit " . file
-	else
-	    execute "normal j"
-	endif
-    else
-	execute "normal j"
+" Goto file (nmap gf)
+" {{{1 GotoFile
+" This function also sets filetype vim option.
+" It is useing '\f' pattern thus it depends on the 'isfname' vim option.
+try
+    " NOTE: if the filetype is wrong the path will not be recognized
+    " 		it is better to make it syntax independet!
+    "
+    " It let choose if there are multiple files only when this is fast
+    " (\input{,\input ) methods. However, then the file name should be unique! 
+function! GotoFile(...)
+
+    if !has("path_extra")
+	echoerr "Needs +path_extra vim feature."
+	return
+    endif	
+
+    " This is passed to the newly opened buffer.
+    let s:MainFile	= b:atp_MainFile 
+
+    let filetype 	= &l:filetype
+    let line		= getline(".")
+    let beg_line	= strpart(line, 0,col(".")-1)
+    " Find the begining columnt of the file name:
+    let bcol		= searchpos('\%({\|,\)', 'bn',  line("."))[1]
+    if bcol == 0
+	let bcol 	= searchpos('{', 'n', line("."))[1]
     endif
+    " Find the end columnt of the file name
+    let col		= searchpos('}', 'cn', line("."))[1]
+    " Current column
+    let cur_col		= col(".")
+
+"     if !col && line !~ '\\input\s*{\@!'
+" 	return 
+"     endif
+
+    " \usepackege{...,<package_name>,...}
+    if line =~ '\\usepackage' && g:atp_developer
+	let method = "usepackage"
+	    let ext 	= '.sty'
+
+	    let fname   = matchstr(strpart(getline("."), bcol), '\zs\f*\ze\%(,\|}\)')
+	    let file 	= atplib#KpsewhichFindFile('tex', atplib#append(fname, ext), g:atp_kpsewhich_tex, 1)
+	    let file_l	= [ file ]
+" 	    let file	= get(file_l, 0, "file_missing") 
+
+	    let message = "Pacakge: "
+	    let options = ""
+
+    " \input{...}, \include{...}
+    elseif line =~ '\\\(input\|include\)\s*{' 
+	let method = "input{"
+	    let ext 	= '.tex'
+
+	    " \input{} doesn't allow for {...,...} many file path. 
+	    let fname 	= atplib#append(matchstr(strpart(getline("."), bcol), '\zs\f*\ze}'), '.tex')
+
+	    " The 'file . ext' might be already a full path.
+	    if fnamemodify(fname, ":p") != fname
+		let file_l 	= atplib#KpsewhichFindFile('tex', fname, g:atp_kpsewhich_tex, -1, ':p', '^\(\/home\|\.\)', '\%(kpsewhich\|texlive\)')
+		let file	= get(file_l, 0, 'file_missing')
+	    else
+		let file_l	= [ fname ] 
+		let file	= fname
+	    endif
+
+	    let message = "File: "
+	    let options = ""
+
+    " \input 	/without {/
+    elseif line =~ '\\input\s*{\@!'
+	let method = "input"
+	    let fname	= atplib#append(matchstr(getline(line(".")), '\\input\s*\zs\f*\ze'), '.tex')
+	    let file_l	= atplib#KpsewhichFindFile('tex', fname, g:atp_kpsewhich_tex, -1, ':p', '^\(\/home\|\.\)', '\%(kpsewhich\|texlive\)')
+	    let file	= get(file_l, 0, "file_missing")
+" 	    let file_l	= [ file ]
+	    let options = ' +setl\ ft=' . &l:filetype  
+
+    " \documentclass{...}
+    elseif line =~ '\\documentclass' && g:atp_developer
+	let method = "documentclass"
+	let saved_pos	= getpos(".")
+	call cursor(line("."), 1)
+	call search('\\documentclass\zs', 'cb', line("."))
+	let bcol	= searchpos('{', 'c', line("."))[1]
+	execute "normal %"
+	let ecol	= col(".")
+	call cursor(saved_pos[0], saved_pos[1])
+	let classname 	= strpart(getline("."), bcol, ecol-bcol-1)
+
+	let fname	= atplib#append(classname, '.cls')
+	let file	= atplib#KpsewhichFindFile('tex', fname,  g:atp_kpsewhich_tex, ':p')
+	let file_l	= [ file ]
+	let options	= ""
+"     elseif line =~ '\\usefont'
+" 	let saved_pos	= getpos(".")
+" 	call search('\\', 'cb')
+" 	let pline 	= strpart(line, col("."))
+" 	let g:pline	= pline
+" 	let font	= matchlist(pline, 'usefont{\(\[^}]*}\)}{\(\[^}]*}\)}')
+" 	echo font
+" 	return
+    else
+	let method	= "all"
+	let file_l	= TreeOfFiles(b:atp_MainFile)[1]
+	let file_l 	= [ b:atp_MainFile ] + file_l
+	let bib_l	= []
+	
+" 	This works but it is slow.
+" 	Looks for bib files in every input files (this is too much)
+	for l:file in file_l
+	    let bib_d 	= FindBibFiles(l:file)
+	    for bib in keys(bib_d)
+		call add(bib_l, bib_d[bib][2])
+	    endfor
+	endfor
+
+	let file_l 	= file_l + bib_l
+	    
+
+	" If not over any above give a list of input files to open, like
+	" EditInputFile  
+    endif
+
+    if len(file_l) > 1 
+	if method == "all"
+	    let msg = "Which file to edit?"
+	else
+	    let msg = "Found many files. Which file to use?"
+	endif
+	let mods	= method == 'all' ? ":t" : ":p"
+	let i		= 1
+	let input_l	= []
+	for f in file_l
+	    call add(input_l, "(" . i . ") " . fnamemodify(f, mods))
+	    let i+=1
+	endfor
+	redraw
+	" Ask the user which file to edit:
+	redraw
+	let choice	= inputlist([ msg ] + input_l) 
+	if choice == "" || choice < 1 || choice > len(file_l) + 1
+	    return
+	endif
+	let file 	= choice == 1 ? b:atp_MainFile : file_l[choice-1]
+   endif
+
+    if file != "file_missing" && filereadable(file)
+
+	" Set the inherit the filetype if the file extension is '.tex'
+	" Thus bib, cls, sty files will have their file type (bib/plaintex).
+	let options	= file =~ '.tex$' ? ' +setl\ ft=' . &l:filetype  : ''
+	silent! execute "edit " . options . " " . file
+
+	" Set the main file variable correctly.
+	let b:atp_MainFile	= s:MainFile
+    else
+	echohl ErrorMsg
+	redraw
+	if file != "file_missing"
+	    echo "File \'" . file . "\' not readable."
+	else
+	    echo "Missing file."
+	endif
+	echohl None
+    endif
+
+    return file
+
 endfunction
-nmap <CR>	:silent call Enter()<CR>
+catch /E127: Cannot redefine function GotoFile: It is in use/
+endtry
 " }}}1
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

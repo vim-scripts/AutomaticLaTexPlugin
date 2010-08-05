@@ -288,22 +288,49 @@ command! -buffer -nargs=* DefiSearch		:call DefiSearch(<f-args>)
 "	and list:
 "		is just list of all found input files.
 "
-function! TreeOfFiles(main_file)
+
+let g:atp_inputfile_pattern = '\\input\%(\s\+\|\s*{\)'
+" let g:atp_inputfile_pattern = '\\input\%(\s\+\|\s*{\)\|\\bibliography\s*{'
+" let g:atp_inputfile_pattern = '\\input\%(\s\+\|\s*{\)\|\\include\s*{'
+" Should match till the begining of the file name and not use \zs:\ze patterns.
+
+" TreeOfFiles({main_file}, [{pattern}, [{run_nr}, [{saved_view}, [{bufnr}]]]])
+function! TreeOfFiles(main_file,...)
+"     let time	= reltime()
 
     let tree		= {}
     let main_file	= readfile(a:main_file)
+    let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
+"     let run_nr		= a:0 >= 2	? a:2 : 1 
+"     let saved_view	= a:0 >= 3	? a:3 : winsaveview()
+"     let bufnr		= a:0 >= 4	? a:4 : bufnr("%")	
 
     let line_nr	= 1
     let ifiles	= []
     let list	= []
-    for line in main_file
-	if line =~ '\\input\s*{'
-	    " To Do: It is better if kpsewhich will look for files!
-	    let iname	 = atplib#append(fnamemodify(matchstr(line, '\\input\s*{\zs*[^}]*\ze}'),':p'), '.tex')
-	    call add(ifiles, [ iname, line_nr ] )
+
+    let saved_llist	= getloclist(0)
+    try
+	silent execute "lvimgrep /".pattern."/j " . a:main_file
+    catch /E480: No match:/
+    endtry
+    let loclist	= getloclist(0)
+    call setloclist(0, saved_llist)
+    let lines	= map(loclist, "[ v:val['text'], v:val['lnum']]")
+
+    for entry in lines
+
+	    let line = entry[0]
+	    let iname	= substitute(matchstr(line, pattern . '\zs\f*\ze'), '\s*$', '', '') 
+	    if line =~ '{\s*' . iname
+		let iname	= substitute(iname, '\\\@<!}\s*$', '', '')
+	    endif
+	    let iname	= atplib#append(iname, '.tex')
+	    if iname != fnamemodify(iname, ":p")
+		let iname	= atplib#KpsewhichFindFile('tex', iname, g:atp_kpsewhich_tex, 1, ':p', '^\%(\/home\|\.\)', '\(texlive\|kpsewhich\|generic\)')
+	    endif
+	    call add(ifiles, [ iname, entry[1]] )
 	    call add(list, iname)
-	endif
-	let line_nr	+= 1
     endfor
 
 "     let input_files	 = map(filter(main_file, "v:val =~ '\\input\s*{'"), "fnamemodify(matchstr(v:val, '\\\\input\s*{\\zs*[^}]*\\ze}'),':p')")
@@ -316,6 +343,9 @@ function! TreeOfFiles(main_file)
 	 call extend(list, nlist)  
     endfor
 
+"     echomsg "TIME:" . join(reltime(time), ".") . " main_file:" . a:main_file
+" echo "TREE=". string(tree)
+" echo "LIST" . string(list)
     return [ tree, list ]
 
 endfunction
@@ -332,8 +362,8 @@ endfunction
 function! SearchInTree(tree, branch, what)
     let branch	= a:tree[a:branch][0]
     if count(keys(branch), a:what)
-	let g:branch		= a:branch
-	let g:branch_line	= a:tree[a:branch][0][a:what][1]
+	let g:ATP_branch		= a:branch
+	let g:ATP_branch_line	= a:tree[a:branch][0][a:what][1]
 	return a:branch
     else
 	for new_branch in keys(branch)
@@ -346,43 +376,51 @@ endfunction
 
 " Search in all input files recursively.
 " {{{1 Search (recursive)
-" Flags:
-" 	E 	do not escape '\' in the pattern
-" 		+ all search() function flags except 'ps' :), i.e. supports 'cebwW'.
-
-" This prevents from showing the non importnat error (see catch below the function)
 "
 " Variables are used to pass them to next runs (this function calls it self) 
 " a:main_file	= b:atp_MainFile
 " a:start_file	= expand("%:p") 	/this variable will not change untill the
 " 						last instance/ 
-" a:tree	= { a:main_file : [ TreeOfFiles(a:main_file)[0], 0] }
-" 		= { 'no_tree' : 'no_tree' } 	=> make the above tree	
+" a:tree	= make_tree 		=> make a tree
+" 		= any other value	=> use s:TreeOfFiles	
 " a:cur_branch	= expand("%") 		/this will change whenever we change a file/
 " a:call_nr	= number of the call			
 " a:wrap_nr	= if hit top/bottom a:call=0 but a:wrap_nr+=1
 " a:winsaveview = winsaveview(0)  	to resotre the view if the pattern was not found
 " a:bufnr	= bufnr("%")		to come back to begining buffer if pattern not found
 " a:strftime	= strftime(0)		to compute the time
-" a:patter	= 			pattern to search
-" a:1		=			flags: 'bcewWsE'
+" a:pattern	= 			pattern to search
+" a:1		=			flags: 'bcewWs'
 " 								
-" 		
-let s:ATP_rs_debug=1	" if 1 sets debugging messages which are appended to '/tmp/ATP_rs_debug' 
+let s:ATP_rs_debug=0	" if 1 sets debugging messages which are appended to '/tmp/ATP_rs_debug' 
+			" if 2 show time
 try
 function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wrap_nr, winsaveview, bufnr, strftime, vim_options, pattern, ... )
 
+    let time0	= reltime()
+
+    " set and restore some options:
+    " foldenable	(unset to prevent opening the folds :h winsaveview)
+    " comeback to the starting buffer
     if a:call_nr == 1 && a:wrap_nr == 1
-	let g:rpat		=  a:pattern
 	if a:vim_options	== { 'no_options' : 'no_options' }
-	    let options 	=  { 'hidden'	 : &l:hidden }
+	    let options 	=  { 'hidden'	: &l:hidden, 
+				\ 'foldenable' 	: &l:foldenable }
 	endif
-	let &l:hidden	= 1
+	let &l:hidden		= 1
+	let &l:foldenable	= 0
     endif
     	
-	" set and restore some options:
-	" foldenable	(unset to prevent opening the folds :h winsaveview)
-	" comeback to the starting buffer
+	    " Redirect debuggin messages:
+	    if s:ATP_rs_debug
+		if a:wrap_nr == 1 && a:call_nr == 1
+		    redir! > /tmp/ATP_rs_debug
+		else
+		    redir! >> /tmp/ATP_rs_debug 
+		endif
+		silent echo "________________"
+		silent echo "Args: a:pattern:".a:pattern." call_nr:".a:call_nr. " wrap_nr:".a:wrap_nr 
+	    endif
 
     	let flags_supplied = a:0 == 1 ? a:1 : ""
 	if flags_supplied =~# 'p'
@@ -392,23 +430,37 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 	    echohl Normal
 	endif
 
-    	if a:tree != { 'no_tree' : 'no_tree' }
-	    let l:tree	= a:tree
+	if a:tree == 'make_tree'
+	    let l:tree 	= { a:main_file : [ TreeOfFiles(a:main_file)[0], 0] }
+	elseif exists("s:TreeOfFiles")
+	    let l:tree	= s:TreeOfFiles
 	else
-	    let l:tree	= { a:main_file : [ TreeOfFiles(a:main_file)[0], 0] }
+	    let ttime	= reltime()
+	    let s:TreeOfFiles 	= { a:main_file : [ TreeOfFiles(a:main_file)[0], 0] }
+	    let l:tree		= s:TreeOfFiles
+		if s:ATP_rs_debug > 1
+		    silent echo "tTIME:" . reltimestr(reltime(ttime))
+		endif
 	endif
+
 	if a:cur_branch != "no cur_branch "
 	    let cur_branch	= a:cur_branch
 	else
 	    let cur_branch	= a:main_file
 	endif
 
-	if flags_supplied !~# 'E' && a:call_nr == 1 && a:wrap_nr == 1
-	    let pattern		= escape(a:pattern, '\')
-	else
-	    let pattern = a:pattern
-	    let flags_supplied	= substitute(flags_supplied, 'E', '', 'g')
-	endif
+		if s:ATP_rs_debug > 1
+		    silent echo "TIME0:" . reltimestr(reltime(time0))
+		endif
+
+" 	if flags_supplied =~# 'E' && a:call_nr == 1 && a:wrap_nr == 1
+" 	    let pattern		= escape(a:pattern, '\')
+" 	else
+" 	    let pattern = a:pattern
+" 	    let flags_supplied	= substitute(flags_supplied, 'E', '', 'g')
+" 	endif
+	let pattern		= a:pattern
+	let flags_supplied	= substitute(flags_supplied, '[^bcenswWS]', '', 'g')
 
     	" Add pattern to the search history
 	if a:call_nr == 1
@@ -416,18 +468,8 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 	    let @/	= pattern
 	endif
 
-	    if s:ATP_rs_debug
-		if a:wrap_nr == 1 && a:call_nr == 1
-		    redir! > /tmp/ATP_rs_debug
-		else
-		    redir! >> /tmp/ATP_rs_debug 
-		endif
-		silent echo ""
-		silent echo "eArgs: a:pattern:".a:pattern." pattern:".pattern." call_nr:".a:call_nr. " wrap_nr:".a:wrap_nr 
-	    endif
-
 	" Set up searching flags
-	let flag	= substitute(flags_supplied, 'E', '', 'g')
+	let flag	= flags_supplied
 	if a:call_nr > 1 
 	    let flag	= flags_supplied !~# 'c' ? flags_supplied . 'c' : flags_supplied
 	endif
@@ -441,24 +483,11 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 	    " forward searching flag for input files:
 	    let flag_i	= flags_supplied !~# 'c' ? flags_supplied . 'c' : flags_supplied
 	else
-	    if flags_supplied =~# 'c' 
-		if a:call_nr == 1
-		    let flag_i	= substitute(flags_supplied, 'c', '', 'g') . 'c'
-		else
-		    let flag_i 	= substitute(flags_supplied, 'c', '', 'g')
-		endif
-	    else
-		if a:call_nr == 1
-		    let flag_i	= substitute(flags_supplied, 'c', '', 'g')
-		else
-		    let flag_i 	= substitute(flags_supplied, 'c', '', 'g') . 'c'
-		endif
-	    endif
+	    let flag_i	= substitute(flags_supplied, 'c', '', 'g')
 	endif
 	let flag_i	= flag_i !~# 'n' ? flag_i . 'n' : flag_i
 	let flag_i	= substitute(flag_i, 'w', '', 'g') . 'W'
 	let flag_i	= substitute(flag_i, 's', '', 'g')
-	let flag_i	= substitute(flag_i, 'E', '', 'g')
 
 		if s:ATP_rs_debug
 		silent echo "      flags_supplied:".flags_supplied." flag:".flag." flag_i:".flag_i." a:1=".(a:0 != 0 ? a:1 : "")
@@ -475,10 +504,26 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 	    call setpos("''", getpos("."))
 	endif
 	keepjumps let pat_pos	= searchpos(pattern, flag)
-	keepjumps let input_pos	= searchpos('\m\\input\s*{', flag_i . 'n' )
+
+		if s:ATP_rs_debug > 1
+		    silent echo "TIME1:" . reltimestr(reltime(time0))
+		endif
+
+	" Search for input pattern (we do not need to search further than pat_pos.
+	if pat_pos == [0, 0]
+	    let stop_line	= flag !~# 'b' ? line("$")  : 1
+	else
+	    let stop_line	= pat_pos[0]
+	endif
+	keepjumps let input_pos	= searchpos('\m\\input\s*{', flag_i . 'n', stop_line )
+	let g:input		= input_pos
+
+		if s:ATP_rs_debug > 1
+		    silent echo "TIME2:" . reltimestr(reltime(time0))
+		endif
 
 		if s:ATP_rs_debug
-		silent echo "Positions: ".string(cur_pos)." ".string(pat_pos)." ".string(input_pos)." in branch: ".cur_branch."#".expand("%:p")
+		silent echo "Positions: ".string(cur_pos)." ".string(pat_pos)." ".string(input_pos)." in branch: ".cur_branch."#".expand("%:p") . " stop_line: " . stop_line 
 		endif
 
 	" Decide what to do: accept the pattern, go to higher branch, go to lower
@@ -537,7 +582,7 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 				redir END
 				endif
 
-			    keepjumps call s:RecursiveSearch(a:main_file, a:start_file, a:tree, a:cur_branch, 1, a:wrap_nr+1, a:winsaveview, a:bufnr, a:strftime, a:vim_options, pattern, new_flags) 
+			    keepjumps call s:RecursiveSearch(a:main_file, a:start_file, "", a:cur_branch, 1, a:wrap_nr+1, a:winsaveview, a:bufnr, a:strftime, a:vim_options, pattern, new_flags) 
 
 			    " restore vim options 
 			    if a:vim_options != { 'no_options' : 'no_options' }
@@ -564,7 +609,7 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 		    let goto	= "DOWN"
 		endif
 	    else
-		let goto = 'UNKNOWN' . 13
+		let goto = 'ERROR' . 13
 	    endif
 	else
 	    " BACKWARD
@@ -626,7 +671,12 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 				redir END
 				endif
 
-			    keepjumps call s:RecursiveSearch(a:main_file, a:start_file, a:tree, a:cur_branch, 1, a:wrap_nr+1, a:winsaveview, a:bufnr, a:strftime, a:vim_options, pattern, new_flags) 
+			    keepjumps call s:RecursiveSearch(a:main_file, a:start_file, "", a:cur_branch, 1, a:wrap_nr+1, a:winsaveview, a:bufnr, a:strftime, a:vim_options, pattern, new_flags) 
+
+				if s:ATP_rs_debug > 1
+				    silent echo "TIME_END:" . reltimestr(reltime(time0))
+				endif
+
 			    return
 			else
 			    let goto 	= "REJECT" . 1 . 'b'
@@ -649,7 +699,7 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 " 		    endif
 		endif
 	    else
-		let goto = 'UNKNOWN' . 13
+		let goto = 'ERROR' . 13 . 'b'
 	    endif
 	endif
 
@@ -657,47 +707,41 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 		silent echo "goto:".goto
 		endif
 
+	" When ACCEPTING the line:
 	if goto =~ '^ACCEPT'
 	    keepjumps call setpos(".", [ 0, pat_pos[0], pat_pos[1], 0])
 	    if flags_supplied =~#  'e'
-		keepjumps call search(pattern, 'e')
+		keepjumps call search(pattern, 'e', line("."))
 	    endif
-	    " 	    A Better solution must be found.
+	    "A Better solution must be found.
 " 	    if &l:hlsearch
 " 		execute '2match Search /'.pattern.'/'
 " 	    endif
 		
-	    if a:strftime[0] != 'notime'
-		let time	= matchstr(reltimestr(reltime(a:strftime)), '\d\+\.\d\d\d') . "sec."
-	    else
-		let time	= "" 
-	    endif
+	    let time	= matchstr(reltimestr(reltime(a:strftime)), '\d\+\.\d\d\d') . "sec."
 
 	    if a:wrap_nr == 2 && flags_supplied =~# 'b'
 		redraw
 		echohl WarningMsg
-		echo "search hit TOP, continuing at BOTTOM " . time
+		echo "search hit TOP, continuing at BOTTOM "
 		echohl Normal
 	    elseif a:wrap_nr == 2
 		redraw
 		echohl WarningMsg
-		echo "search hit BOTTOM, continuing at TOP " . time
+		echo "search hit BOTTOM, continuing at TOP "
 		echohl Normal
-	    else
-		echo time
 	    endif
 
 
 		if s:ATP_rs_debug
-		silent echo "FOUND PATTERN: " . a:pattern
+		silent echo "FOUND PATTERN: " . a:pattern . " time " . time
 		silent echo ""
 		redir END
 		endif
 
 	    return
 
-	" if input_pos < pat_pos
-" 	elseif input_pos != [0, 0]
+	" when going UP
 	elseif goto =~ '^UP'
 	    call setpos(".", [ 0, input_pos[0], input_pos[0], 0])
 	    " Open file and Search in it"
@@ -718,15 +762,19 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 		silent echo "Opening higher branch: " . l:file	. " pos " line(".").":".col(".") . " edit " . open . " file " . expand("%:p")
 		endif
 
+		if s:ATP_rs_debug > 1
+		    silent echo "TIME_END:" . reltimestr(reltime(time0))
+		endif
+
 " 	    let flag	= flags_supplied =~ 'W' ? flags_supplied : flags_supplied . 'W'
-	    keepjumps call s:RecursiveSearch(a:main_file, a:start_file, l:tree, expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, a:vim_options, pattern, flags_supplied)
+	    keepjumps call s:RecursiveSearch(a:main_file, a:start_file, "", expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, a:vim_options, pattern, flags_supplied)
 
 
-" 	elseif input_pos == [0, 0] && expand("%:p") != a:main_file
+	" when going DOWN
 	elseif goto =~ '^DOWN'
 	    " We have to get the element in the tree one level up + line number
-	    let g:branch 	= "nobranch"
-	    let g:branch_line	= "nobranch_line"
+	    let g:ATP_branch 	= "nobranch"
+	    let g:ATP_branch_line	= "nobranch_line"
 
 		if s:ATP_rs_debug
 		silent echo "     SearchInTree Args " . expand("%:p")
@@ -734,26 +782,45 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 
 	    call SearchInTree(l:tree, a:main_file, expand("%:p"))
 
-	    let open =  'edit +'.g:branch_line." ".g:branch
+	    if g:ATP_branch == "nobranch"
+		echohl ErrorMsg
+		echomsg "This is an internal error of ATP, please contact with the author."
+		echohl Normal
+
+		silent! echomsg "Tree=" . string(l:tree)
+		silent! echomsg "MainFile " . a:main_file . " current_file=" . expand("%:p")
+	    endif
+	    let open =  'edit +'.g:ATP_branch_line." ".g:ATP_branch
 	    silent! execute open
 	    let b:atp_MainFile=a:main_file
-" 	    call cursor(g:branch_line, 1)
+" 	    call cursor(g:ATP_branch_line, 1)
 	    if flags_supplied !~# 'b'
 		keepjumps call search('\m\\input\s*{[^}]*}', 'e', line(".")) 
 	    endif
 
 		if s:ATP_rs_debug
-		silent echo "Opening lower branch: " . g:branch . " at line " . line(".") . ":" . col(".") . " branch_line=" . g:branch_line	
+		silent echo "Opening lower branch: " . g:ATP_branch . " at line " . line(".") . ":" . col(".") . " branch_line=" . g:ATP_branch_line	
 		endif
 
-	    unlet g:branch
-	    unlet g:branch_line
+		if s:ATP_rs_debug > 1
+		    silent echo "TIME_END:" . reltimestr(reltime(time0))
+		endif
+
+	    unlet g:ATP_branch
+	    unlet g:ATP_branch_line
 " 	    let flag	= flags_supplied =~ 'W' ? flags_supplied : flags_supplied . 'W'
-	    keepjumps call s:RecursiveSearch(a:main_file, a:start_file, l:tree, expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, a:vim_options, pattern, flags_supplied)
+	    keepjumps call s:RecursiveSearch(a:main_file, a:start_file, "", expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, a:vim_options, pattern, flags_supplied)
+
+	" when REJECT
 	elseif goto =~ '^REJECT'
 	    echohl ErrorMsg
 	    echomsg "Pattern not found"
 	    echohl Normal
+
+	    if s:ATP_rs_debug > 1
+		silent echo "TIME_END:" . reltimestr(reltime(time0))
+	    endif
+	    return
 
 " 	    restore the window and buffer!
 " 		it is better to remember bufnumber
@@ -764,43 +831,55 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 		silent echo ""
 		redir END
 		endif
-	    return
-	endif
 
+	" when ERROR
+	elseif
+	    echohl ErrorMsg
+	    echomsg "This is a bug in ATP."
+	    echohl
+	    return 
+	endif
 endfunction
 
 " This is a wrapper function around s:ReverseSearch
 " It allows to pass arguments to s:ReverseSearch in a similar way to :vimgrep
 " function
-function! Search(...)
-    let arg_list	= a:000[0]
-"     echo a:000
-    for i in range(len(arg_list))
-	let arg_list[i]	= matchstr(arg_list[i], '\"\zs.*\ze\"')
-" 	let arg_list[i]	= escape(matchstr(arg_list[i], '\"\zs.*\ze\"'), '/')
-    endfor
-"     echo arg_list
-    if arg_list[-1] =~ '\/$' || arg_list[-1] !~ '\i$' 
-	let pattern 	= join(arg_list, ' ')
-	let flag	= ''
-    else
-	let p_list	= copy(arg_list)
-	let flag	= remove(p_list, -1)
-	let pattern	= join(p_list, ' ')
+function! Search(Bang, Arg)
+    let pattern		= matchstr(a:Arg, '^\(\/\|[^\i]\)\zs.*\ze\1')
+    let flag		= matchstr(a:Arg, '^\(\/\|[^\i]\).*\1\s*\zs[bcepsSwW]*\ze\s*$')
+    if pattern == ""
+	let pattern	= matchstr(a:Arg, '^\zs\S*\ze\(\s[bcepsSwW]*\)\=$')
+	let flag	= matchstr(a:Arg, '\s\zs[SbcewW]*\ze$')
     endif
-    let pattern		= matchstr(pattern, '^\(\/\|[^\i]\|\)\zs.*\ze\1')
-    let pattern		= substitute(pattern, '\\\\', '\\', 'g')
-    let flag		= substitute(flag, 'S', '', 'g')
-    call s:RecursiveSearch(b:atp_MainFile, expand("%:p"), { 'no_tree' : 'no_tree' }, expand("%:p"), 1, 1, winsaveview(), bufnr("%"), ['notime'], { 'no_options' : 'no_options' }, pattern, flag)
+
+    if pattern == ""
+	echohl ErrorMsg
+	echomsg "Enclose the pattern with /.../"
+	echohl Normal
+	return
+    endif
+
+    if a:Bang == "!"
+	call s:RecursiveSearch(b:atp_MainFile, expand("%:p"), 'make_tree', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, pattern, flag)
+    else
+	call s:RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, pattern, flag)
+    endif
 endfunction
 catch /E127: Cannot redefine function/  
 endtry
 " {{{2 Commands, Maps and Completion functions for Search() function. 
-" command! -buffer -complete=customlist,SearchHistCompletion -nargs=* RecursiveSearch	:call s:RecursiveSearch(b:atp_MainFile, expand("%:p"), { 'no_tree' : 'no_tree' }, "no cur_branch", 1, 1, winsaveview(), bufnr("%"), reltime(), <f-args>)
-command! -buffer -complete=customlist,SearchHistCompletionn -nargs=* S 			:call Search(split('<f-args>', ','))
-if &l:filetype == "tex" && search('\\input{', 'nw') || &l:filetype == "plaintex" && TreeOfFiles(b:atp_MainFile) == [ {}, []]
-    nnoremap <buffer> <silent> n	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), { 'no_tree' : 'no_tree' }, expand("%:p"), 1, 1, winsaveview(), bufnr("%"), ['notime'], { 'no_options' : 'no_options' }, @/, 'E')<CR>
-    nnoremap <buffer> <silent> N	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), { 'no_tree' : 'no_tree' }, expand("%:p"), 1, 1, winsaveview(), bufnr("%"), ['notime'], { 'no_options' : 'no_options' }, @/, 'bE')<CR>
+command! -buffer -bang -complete=customlist,SearchHistCompletion -nargs=* S 			:call Search(<q-bang>,<q-args>)
+if !exists("g:atp_grab_nN")
+    let g:atp_grab_nN = 0
+endif
+if g:atp_grab_nN
+    nnoremap <buffer> <silent> <Plug>RecusiveSearchForward	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/)<CR>
+    nnoremap <buffer> <silent> <Plug>RecursiveSearchBackward    :call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/, 'b')<CR>
+"     nnoremap n	<Plug>RecursiveSearchForward<CR>
+"     nnoremap N	<Plug>RecursiveSearchBackward<CR>
+
+    nnoremap <buffer> <silent> n    :call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/)<CR>
+    nnoremap <buffer> <silent> N    :call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/, 'b')<CR>
 endif
 
 function! SearchHistCompletion(ArgLead, CmdLine, CursorPos)

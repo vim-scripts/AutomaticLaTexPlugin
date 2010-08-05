@@ -12,13 +12,13 @@ function! atplib#outdir()
 endfunction
 "}}}
 
-" Labels tools: ReadAuxFile, SrotLabels, generatelabels and showlabes.
+" Labels tools: GrepAuxFile, SrotLabels, generatelabels and showlabes.
 " {{{1 atplib#LABELS
 " the argument should be: resolved full path to the file:
 " resove(fnamemodify(bufname("%"),":p"))
 
-" {{{2 --------------- atplib#ReadAuxFile
-function! atplib#ReadAuxFile(...)
+" {{{2 --------------- atplib#GrepAuxFile
+function! atplib#GrepAuxFile(...)
     " Aux file to read:
     let aux_filename	= a:0 == 0 ? fnamemodify(b:atp_MainFile, ":r") . ".aux" : a:1 
 
@@ -35,17 +35,26 @@ function! atplib#ReadAuxFile(...)
 	" for v:servername
 	" Here we should run latex to produce auxfile
 " 	echomsg "Running " . b:atp_TexCompiler . " to get aux file."
-" 	let labels 	= system(b:atp_TexCompiler . " -interaction nonstopmode " . b:atp_MainFile . " 1&>/dev/null  2>1 ; " . " vim --servername ".v:servername." --remote-expr 'atplib#ReadAuxFile()'")
+" 	let labels 	= system(b:atp_TexCompiler . " -interaction nonstopmode " . b:atp_MainFile . " 1&>/dev/null  2>1 ; " . " vim --servername ".v:servername." --remote-expr 'atplib#GrepAuxFile()'")
 " 	return labels
     endif
-    let aux_file	= readfile(aux_filename)
+"     let aux_file	= readfile(aux_filename)
+
+    let saved_llist	= getloclist(0)
+    silent! execute 'lvimgrep /\\newlabel\s*{/j ' . aux_filename
+    let loc_list	= getloclist(0)
+    call setloclist(0, saved_llist)
+    call map(loc_list, ' v:val["text"]')
+
     let labels		= []
-    for line in aux_file
-	if line =~ '^\\newlabel' 
+"     for line in aux_file
+    for line in loc_list
+" 	if line =~ '^\\newlabel' 
 	    " line is of the form:
 	    " \newlabel{<label>}{<rest>}
 	    " where <rest> = {<label_number}{<title>}{<counter_name>.<counter_number>}
 	    " <counter_number> is usually equal to <label_number>.
+	    "
 	    " Document classes: article, book, amsart, amsbook, review
 	    if line =~ '^\\newlabel{[^}]*}{{[^}]*}{[^}]*}{[^}]*}{[^}]*}'
 		let label	= matchstr(line, '^\\newlabel\s*{\zs[^}]*\ze}')
@@ -75,6 +84,13 @@ function! atplib#ReadAuxFile(...)
 		let number	= matchstr(line, '\\M@TitleReference\s*{\zs[^}]*\ze}') 
 		let counter	= ""
 
+	    " aamas2010 class
+	    elseif line =~ '\\newlabel{[^}]*}{{\d\%(\d\|.\)*{\d\%(\d\|.\)*}{[^}]*}}'
+		let label 	= matchstr(line, '\\newlabel{\zs[^}]*\ze}{{\d\%(\d\|.\)*{\d\%(\d\|.\)*}{[^}]*}}')
+		let number 	= matchstr(line, '\\newlabel{\zs[^}]*\ze}{{\zs\d\%(\d\|.\)*{\d\%(\d\|.\)*\ze}{[^}]*}}')
+		let number	= substitute(number, '{\|}', '', 'g')
+		let counter	= ""
+
 	    " AMSBook uses \newlabel for tocindent
 	    " which we filter out here.
 	    else
@@ -83,7 +99,7 @@ function! atplib#ReadAuxFile(...)
 	    if label != 'nolabel'
 		call add(labels, [ label, number, counter])
 	    endif
-	endif
+" 	endif
     endfor
 
     return labels
@@ -104,11 +120,11 @@ function! atplib#generatelabels(filename)
     let bufname		= fnamemodify(a:filename,":t")
 
     " getbufline reads only loaded buffers, unloaded can be read from file.
-    if bufloaded("^" . bufname . "$")
-	let texfile=getbufline("^" . bufname . "$","1","$")
-    else
-	let texfile=readfile(a:filename)
-    endif
+"     if bufloaded("^" . bufname . "$")
+" 	let texfile=getbufline("^" . bufname . "$","1","$")
+"     else
+" 	let texfile=readfile(a:filename)
+"     endif
     let true=1
     let i=0
 
@@ -121,14 +137,28 @@ function! atplib#generatelabels(filename)
 " 	let i+=1
 "     endwhile
 "
-    let aux_labels	= atplib#ReadAuxFile()
+    let aux_labels	= atplib#GrepAuxFile()
     let labels		= []
 
     let saved_pos	= getpos(".")
     call cursor(1,1)
 
+    let tree		= TreeOfFiles(a:filename)[1]
+    if count(tree, a:filename) == 0
+	call add(tree, a:filename)
+    endif
+    let saved_llist	= getloclist(0)
+    call setloclist(0, [])
+    for file in tree
+	silent! execute "lvimgrepadd /\\label\s*{/j " . file
+    endfor
+    let loc_list	= getloclist(0)
+"     call setloclist(0, saved_llist)
+    call map(loc_list, '[ v:val["lnum"], v:val["text"] ]')
+
+
     for label in aux_labels
-	keepjumps let line	= search('\\label\s*{\s*'.escape(label[0], '*\/$.') .'\s*}', 'W')
+	let line		= get(get(filter(copy(loc_list), "v:val[1] =~ '\\label\s*{\s*'.escape(label[0], '*\/$.') .'\s*}'"), 0, []), 0, "") 
 	call add(labels, [line, label[0], label[1], label[2]]) 
     endfor
 
@@ -200,7 +230,7 @@ function! atplib#showlabels(labels)
     for label in a:labels
 	" Set line in the format:
 	" /<label_numberr> \t[<counter>] <label_name> (<label_line_nr>)/
-	" if the <counter> was given in aux file (see the 'counter' variable in atplib#ReadAuxFile())
+	" if the <counter> was given in aux file (see the 'counter' variable in atplib#GrepAuxFile())
 	" print it.
 	" /it is more complecated because I want to make it as tight as
 	" possible and as nice as possible :)
@@ -298,6 +328,7 @@ function! atplib#ReadInputFile(ifile,check_texmf)
 
     return l:input_file
 endfunction
+"}}}1
 
 " These are all bibsearch realted variables and functions.
 "{{{ BIBSEARCH
@@ -367,7 +398,7 @@ function! atplib#searchbib(pattern)
 	" clear the s:bibdict values from lines which begin with %    
 	call filter(l:bibdict[l:f],' v:val !~ "^\\s*\\%(%\\|@\\cstring\\)"')
     endfor
-    let b:bibdict=deepcopy(l:bibdict)	" DEBUG
+"     let b:bibdict=deepcopy(l:bibdict)	" DEBUG
 
     " SPEED UP TODO: if a:pattern == "" there is no need to do that!
     " uncomment this when the rest will be ready!
@@ -666,9 +697,9 @@ function! atplib#showresults(bibresults,flags,pattern)
 	    let l:kwflagslist=[]
     " flags o and i are synonims: (but refer to different entry keys): 
 	if a:flags =~ '\Ci' && a:flags !~ '\Co'
-	    let a:flags=substitute(a:flags,'i','io','') 
+	    let l:flags=substitute(a:flags,'i','io','') 
 	elseif a:flags !~ '\Ci' && a:flags =~ '\Co'
-	    let a:flags=substitute(a:flags,'o','oi','')
+	    let l:flags=substitute(a:flags,'o','oi','')
 	endif
 	if a:flags !~ 'All'
 	    if a:flags =~ 'L'
@@ -906,10 +937,10 @@ fun! atplib#append(where,what)
 endfun
 " }}}1
 " This is used in several places to find all input files.
-" {{{1 atplib#FindInputFiles
+" {{{1 atplib#FindInputFilesInDir
 " this function is for completion of \bibliography and \input commands it returns a list
 " of all files under a:dir and in g:outdir with a given extension.
-function! atplib#FindInputFilesInDir(dir,in_current_dir,ext)
+function! atplib#FindInputFilesInDir(dir, in_current_dir, ext)
 	let l:raw_files=split(globpath(atplib#append(a:dir,'/'),'**'))
 	if a:in_current_dir
 	    call extend(l:raw_files,split(globpath(b:atp_OutDir,'*')))
@@ -1211,6 +1242,14 @@ function! atplib#SearchPackage(name,...)
 
     let l:possaved=getpos(".")
 
+"     if bufloaded("^" . a:file . "$")
+" 	let file=getbufline("^" . a:file . "$", "1", "$")
+" 	let g:debug = 1
+"     else
+" 	let file=readfile(a:filename)
+" 	let g:debug = 2
+"     endif
+
     if a:0 == 0
 	keepjumps call setpos(".", [0,1,1,0])
 	keepjumps let l:stopline=search('\\begin\s*{document}','nW')
@@ -1302,14 +1341,141 @@ function! atplib#DocumentClass()
     return 0
 endfunction
 " }}}1
-" {{{1 atplib#FindFiles 	/ find files: bst, cls, etc ... /
-function! atplib#FindFiles(format, ext, ...)
+" {{{1 atplib#KpsewhichGlobPath 
+" 	a:format	is the format as reported by kpsewhich --help
+" 	a:path		path if set to "", then kpse which will find the path.
+" 			The default is what 'kpsewhich -show-path tex' returns
+" 			with "**" appended. 
+" 	a:name 		can be "*" then finds all files with the given extension
+" 			or "*.cls" to find all files with a given extension.
+" 	a:1		modifiers (the default is ":t:r")
+" 	a:2		filters path names matching the pattern a:1
+" 	a:3		filters out path names not matching the pattern a:2
+"
+" 	Argument a:path was added because it takes time for kpsewhich to return the
+" 	path (usually ~0.5sec). ATP asks kpsewhich on start up
+" 	(g:atp_kpsewhich_tex) and then locks the variable (this will work
+" 	unless sb is reinstalling tex (with different personal settings,
+" 	changing $LOCALTEXMF) during vim session - not that often). 
+"
+" Example: call atplib#KpsewhichGlobPath('tex', '', '*', ':p', '^\(\/home\|\.\)','\%(texlive\|kpsewhich\|generic\)')
+" gives on my system only the path of current dir (/.) and my localtexmf. 
+" this is done in 0.13s. The long pattern is to 
+"
+" atp#KpsewhichGlobPath({format}, {path}, {expr=name}, [ {mods}, [{pattern_1}, [{pattern_2}]]]) 
+function! atplib#KpsewhichGlobPath(format, path, name, ...)
+    let time	= reltime()
     let modifiers = a:0 == 0 ? ":t:r" : a:1
-    let path	= substitute(substitute(system("kpsewhich -show-path ".a:format ),'!!','','g'),'\/\/\+','\/','g')
-    let path	= substitute(path,':\|\n',',','g')
-    let list	= split(globpath(path,"**/*.".a:ext),'\n') 
-    call map(list,'fnamemodify(v:val, modifiers)')
+    if a:path == ""
+	let path	= substitute(substitute(system("kpsewhich -show-path ".a:format ),'!!','','g'),'\/\/\+','\/','g')
+	let path	= substitute(path,':\|\n',',','g')
+	let path_list	= split(path, ',')
+	let idx		= index(path_list, '.')
+	if idx != -1
+	    let dot 	= remove(path_list, index(path_list,'.')) . ","
+	else
+	    let dot 	= ""
+	endif
+	call map(path_list, 'v:val . "**"')
+
+	let path	= dot . join(path_list, ',')
+    else
+	let path = a:path
+    endif
+    " If a:2 is non zero (if not given it is assumed to be 0 for compatibility
+    " reasons)
+    if get(a:000, 1, 0) != '0'
+	let path_list	= split(path, ',')
+	call filter(path_list, 'v:val =~ a:2')
+	let path	= join(path_list, ',')
+    endif
+    if get(a:000, 2, 0) != '0'
+	let path_list	= split(path, ',')
+	call filter(path_list, 'v:val !~ a:3')
+	let path	= join(path_list, ',')
+    endif
+
+    let list	= split(globpath(path, "**/" . a:name),'\n') 
+    call map(list, 'fnamemodify(v:val, modifiers)')
+    echomsg "TIME:" . join(reltime(time), ".")
     return list
+endfunction
+" }}}1
+" {{{1 atplib#KpsewhichFindFile
+" the arguments are similar to atplib#KpsewhichGlob except that the a:000 list
+" is shifted:
+" a:1		= path	
+" 			if set to "" then kpsewhich finds the path.
+" a:2		= count (as for findfile())
+" a:3		= modifiers 
+" a:4		= positive filter for path (see KpsewhichGLob a:1)
+" a:5		= negative filter for path (see KpsewhichFind a:2)
+"
+" needs +path_extra vim feature
+"
+" atp#KpsewhichFindFile({format}, {expr=name}, [{path}, [ {count}, [{mods}, [{pattern_1}, [{pattern_2}]]]]]) 
+function! atplib#KpsewhichFindFile(format, name, ...)
+
+    " Unset the suffixadd option
+    let saved_sua	= &l:suffixesadd
+    let &l:sua	= ""
+
+"     let time	= reltime()
+    let path	= a:0 >= 1 ? a:1 : ""
+    let l:count	= a:0 >= 2 ? a:2 : 0
+    let g:count = l:count
+    let modifiers = a:0 >= 3 ? a:3 : ""
+    let g:mods	= modifiers
+    " This takes most of the time!
+    if path == ""
+	let path	= substitute(substitute(system("kpsewhich -show-path ".a:format ),'!!','','g'),'\/\/\+','\/','g')
+	let path	= substitute(path,':\|\n',',','g')
+	let path_list	= split(path, ',')
+	let idx		= index(path_list, '.')
+	if idx != -1
+	    let dot 	= remove(path_list, index(path_list,'.')) . ","
+	else
+	    let dot 	= ""
+	endif
+	call map(path_list, 'v:val . "**"')
+
+	let path	= dot . join(path_list, ',')
+	unlet path_list
+    endif
+
+
+    " If a:2 is non zero (if not given it is assumed to be 0 for compatibility
+    " reasons)
+    if get(a:000, 3, 0) != 0
+	let path_list	= split(path, ',')
+	call filter(path_list, 'v:val =~ a:4')
+	let path	= join(path_list, ',')
+    endif
+    if get(a:000, 4, 0) != 0
+	let path_list	= split(path, ',')
+	call filter(path_list, 'v:val !~ a:5')
+	let path	= join(path_list, ',')
+    endif
+    let g:path = path
+
+    if l:count >= 1
+	let result	= findfile(a:name, path, l:count)
+    elseif l:count == 0
+	let result	= findfile(a:name, path)
+    elseif l:count < 0
+	let result	= findfile(a:name, path, -1)
+    endif
+	
+
+    if l:count >= 0 && modifiers != ""
+	let result	= fnamemodify(result, modifiers) 
+    elseif l:count < 0 && modifiers != ""
+	call map(result, 'fnamemodify(v:val, modifiers)')
+    endif
+"     echomsg "TIME:" . join(reltime(time), ".")
+
+    let &l:sua	= saved_sua
+    return result
 endfunction
 " }}}1
 " atplib#Extend {{{1
@@ -1973,6 +2139,7 @@ endfunction
 "ToDo: the completion should be only done if the completed text is different
 "from what it is. But it might be as it is, there are reasons to keep this.
 "
+try
 function! atplib#TabCompletion(expert_mode,...)
     " {{{2 Match the completed word 
     let l:normal_mode=0
@@ -2365,7 +2532,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	endif
     "{{{3 ------------ PACKAGES
     elseif l:completion_method == 'package'
-	let l:completion_list=atplib#FindFiles("tex","sty")
+	let l:completion_list=atplib#KpsewhichGlobPath("tex", "", "*.sty")
     "{{{3 ------------ COLORS
     elseif l:completion_method == 'colors'
 	" To Do: make a predefined lists of colors depending on package
@@ -2566,10 +2733,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	call sort(l:completion_list)
     " {{{3 ------------ BIBSTYLES
     elseif l:completion_method == 'bibstyles'
-	let l:completion_list=atplib#FindFiles("bst","bst")
+	let l:completion_list=atplib#KpsewhichGlobPath("bst", "", "*.bst")
     "{{{3 ------------ DOCUMENTCLASS
     elseif l:completion_method == 'documentclass'
-	let l:completion_list=atplib#FindFiles("tex","cls")
+	let l:completion_list=atplib#KpsewhichGlobPath("tex", "", "*.cls")
 	" \documentclass must be closed right after the name ends:
 	if l:nchar != "}"
 	    call map(l:completion_list,'v:val."}"')
@@ -2802,7 +2969,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    " {{{4 --------- Labels
 	    elseif l:completion_method == 'labels'
 		" Complete label by string or number:
-		let aux_data	= atplib#ReadAuxFile()
+		let aux_data	= atplib#GrepAuxFile()
 		let l:completions 	= []
 		for data in aux_data
 		    " match label by string or number
@@ -2948,6 +3115,8 @@ function! atplib#TabCompletion(expert_mode,...)
     return ''
     "}}}2
 endfunction
+catch /E127: Cannot redefine function atplib#TabCompletion: It is in use/
+endtry
 " }}}1
 
 " Font Preview Functions

@@ -1,4 +1,4 @@
-*atp* 		Automatic TeX Plugin
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 August 5 
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -52,6 +52,7 @@ FEATURES INCLUDE:
 
 			Table of Contents
 -----------------------------------------------------------------------------
+								*atp*
                                                 		*atp-help-toc*
 	|atp-news|			News
 	|atp-installation| 		Installation								
@@ -76,8 +77,25 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 ================================================================================
 NEWS							*atp-news*
 >
-	New Features in version 7.3
+	New Features in version 7.3.1 (some changes after version 7.3)
 <							*atp-:MakeLatex*
+	Things works faster in this version: generating the lables and
+	recursive looking for input files (by using vimgrep). 
+>
+	nmap gf
+<			To go to file over a cursor or it let choose an input 
+			file from the list. Over: 
+			    \input{<fname>}, \input <fname>, \include{<fname>}
+			it edits the <fname>
+			If g:atp_developer is set to one also works over:
+			    \documentclass{<classname>}, \usepakcage{<packagename} 
+			Otherwise, i.e if the cursor position is not over any
+			of the above it lets you choose which input file to
+			use. The command :EditInputFile is now depreceted,
+			'gf' supports project files , while the command
+			doesn't.  
+
+			
 >
 	:MakeLatex[!]
 <			With one command you can make your whole document:
@@ -88,54 +106,44 @@ NEWS							*atp-news*
 			command with the entry).
 >							*atp-:S*
 >
-	:S /{pattern}/ [flags]
-<			This is command does the same job as |/| but is
+	:S[!] /{pattern}/ [flags]
+<			Changes after versionn 7.3: The E and S flags are
+			removed. The pattern is a vim pattern (with
+			'magic'). With bang ! it regenerates the tree
+			of input files.
+
+			This is command does the same job as |/| but is
 			recursive in the tree of files (so it is useful only
 			in project files). The syntax of this command is
 			similar to |:vimgrep|. 
+
+			The {pattern} is any vim pattern as desribed in
+			|pattern| (it was only tested with 'magic' set on).
 			
-			The supported flags are 'bcewW' (see |search()|) and
-			two more flags 'S' (see below) 'E' which means: do not
-			escape '\' with '\'. Also the 'wrapscan' vim option
-			applies.  Examples: >
-				:S /\\begin{document}/
-				:S /\\\\begin{document}/ E 
-				:S /you do not have to escape spaces/ bcw	  
+			The supported flags are 'bcewW' (see |search()|). 
 
-<			The {pattern} is added to the search history and
-			copied to the buffer '@/'. The vim 'n' 'N' normal
-			commands are forced to use this function if the file
-			is a project file (i.e. contains \input{} lines).
-
-			The input ifile must be included in the using the
-			command mathching: >
-					'\\input\s*{'		
-<			And the name after '\input{' should be a full path.
-
-			You can use any kind of pattern, but if you want to
-			include '\s' in the pattern (or any vim pattern which
-			begins with a single '\') you have to use 'E' flag
-			(which means do not escape '\'), thus to match 'XXX
-			YYY \begin' you can use something like: >
-				:S /XXX\sYYY\_s\\\\begin/ E
-<
 			You can enclose the pattern with any non-ID character
 			(see |'isident'|) instead of /, as far as it does not
 			appear in the {pattern}. Examples: >
-				:S pattern\_swith\_sspaces E
+				:S pattern\_swith\_sspaces
 <			will work but: >
 				:S pattern with spaces
-<			will not, but if you add the flag 'S' it will: >
- 				:S pattern with spaces S
-<			The flag 'S' is needed if you do not pass any
-			other flag (and you do not enclose your pattern). So
-			this will also work: >
-				:S \\\\begin{theorem}\_s\\\\label{thm: cbW
-<		
+<			will not.		
+
+			There is a new function to check where the input file
+			is on the hard drive if the name in the input command
+			doesn't inlcude the full path. It asks kpsewhich which
+			directories to search, filters out some directories
+			(which are not under '/home', I assume that there is
+			your local texmf tree, and also directories which name
+			contains one of the two keywords 'texlive' and
+			'kpsewhich'). This makes the searching faster. 
+
+			<THIS FEATURE DOESN'T WORK, YET>
 			Furthermore, the command is designed so that it can find
 			all patterns '\\input{' (and thus easily find next/previous
 			input file). You can use: >
-				:S /\\input{/
+				:S \\input{
 				:S \\input{ b 
 <			and you can use 'n' and 'N' vim normal commands. Note
 			that it if you go backward, then it means that it will
@@ -413,7 +421,7 @@ copied from the temporary directory, for xpdf it will be copied but not
 reloaded). 
 
 There is also a variable which stores the last command which executed
-your tex compiler, see |atp-b:texcommand|.   
+your tex compiler, see |atp-g:texcommand|.   
 
 Below I explain commands (functions) which are accesible: 
 
@@ -2013,7 +2021,7 @@ let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm"
 	 b:atp_OutDir, unless g:rmcommand="" (see |atp-g:rmcommand|) in which case
 	 Delete() deletes only the output files for the current buffer.
 									
-let g:keep=["log","aux","toc","bbl"]			*atp-g:keep*
+let g:keep=["log", "aux", "toc", "bbl", "ind"]		*atp-g:keep*
 	Files with an extension belonging to this list will be copied from
 	'b:atp_OutDir' to the temporary directory with appropriate name. Then it
 	will be used by (La)TeX. (log file will be copied after it is created,
@@ -2032,15 +2040,15 @@ let g:printeroptions=""					*atp-g:printeroptions*
 	command, which will print the output file (pdf or dvi) this depends on
 	the b:atp_TexCompiler that you use.
 
-b:texcommand						*atp-b:texcommand*
+g:texcommand						*atp-g:texcommand*
 	This variable is for debugging. It stores the last executed command to
 	compile your document. This changes also when your compiler was run
 	automatically.
 >
 		:TEX
-		:echo b:texcommand
+		:echo g:texcommand
 		:TEX 2
-		:echo b:texcommand
+		:echo g:texcommand
 <		
 		
 g:defaultbibflags		see |atp-bibflags:default|
@@ -2076,6 +2084,14 @@ let b:atp_TruncateStatuSection=40
 	(or chapter/section titles if you write a book) should be shown in the
 	status line.  Section title and subsection title gets equal amount of
 	characters.
+
+g:atp_kpsewhich_tex	
+g:atp_raw_kpsewhich_tex
+	This two variables stores the information returned by 
+	    'kpsewhich -show-path tex'
+	They are locked. The first one has pretended '**' wildcards to every
+	directory, which is done for using with globpath() and findfile()
+	functions.
 
 ================================================================================
 MAPS 		                     			*atp-maps*
@@ -2324,7 +2340,34 @@ xpdf								*atp-viewers-xpdf*
 <
 evince
 	Works fine.
+								*atp-viewers-okular*
 okular
+	Works fine. Note that okular has supports syncing in pdf. Just use
+	'pdfsync' package and set the option in okular: >
+		settings>Configure Okular>Editor
+<	and set >
+		Editor		Custom Text Editor
+		Command		gvim --servername GVIMTEX --remote-wait +%l %f 
+<	Then you can use <Shift>+<Left_Mouse> in okular to syncronize the gvim
+	with pdf. 
+	Limitations:
+			This has one serious limitation: settings the
+			servername in okular is not the best idea. Imagine you
+			are editing the tex source in 'gvim --servername
+			GVIM1' and you ask okular to sync, then it opens new
+			instance of gvim rather than sync your currently
+			opened gvim session. 
+
+			IF YOU KNOW HOW TO FIX THIS: do not hesitate to write,
+			so I can include it in atp. I see two solutions:
+				(1) run okular with a specific option which
+				    sets the above editor command.  
+				(2) make a vim script which is finds out the
+				    proper servername, so that the command
+				    above would be: >
+				gvim --servername GVIM --remote-expr FindAndRunGvim(%f,%l)
+<
+
 kpdf
 	Works fine (moves page a little bit when updates a file).
 epdfview

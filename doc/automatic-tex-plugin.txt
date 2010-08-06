@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 August 5 
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 August 6
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -76,6 +76,18 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 
 ================================================================================
 NEWS							*atp-news*
+>
+	Changes in version 7.3.2
+<
+	New variable: >
+		g:atp_sort_completion_list	= 12
+<	If the length of completion list for Tab Completion is longer than
+	this value, entries will be sorted alphabetically, else they are
+	provided in, I hope, useful order. If set to 0 the list will not be
+	sorted (if set to 1 it will be always sorted).
+
+	Tab Completion is now working in project files (tab completion
+	checks for packages defined in the preambule of the main file). 
 >
 	New Features in version 7.3.1 (some changes after version 7.3)
 <							*atp-:MakeLatex*
@@ -518,11 +530,20 @@ map \b, :Bibtex, :Bibtex v
 	The command :Bibtex  will :call Bibtex(), while :Bibtex v
 	(and :Bibtex <anything>) will :call Bibtex(1)
 
-							*atp-g:atp_bibinputs*
+							*atp-g:atp_raw_bibinputs*
 	Tex is looking for the date base files in the path: `kpsewhich
-	-show-path bib`. The variable g:atp_bibinputs contains Vim list of
-	these directories. Thus if atp cannot find your bib file, tex also
-	won't be able. 
+	-show-path bib`. The variable g:atp_bibinputs contains
+	these directories separated by commas. If atp cannot find your
+	bib file, tex also won't be able. 
+							*atp-g:atp_raw_texinputs*
+	Similarly this variable stores all of path reported by `kpsewhich
+	-show-path tex`.
+							*atp-g:atp_bibinputs*
+	This is a list of directories as g:atp_raw_bibinputs with appended '**' 
+	see ':h file-searching'.
+							*atp-g:atp_texinputs*
+	This is a list of directories as g:atp_raw_texinputs with appended '**' 
+	see ':h file-searching'.
 
 							*atp-:SimpleBibtex*
 map \sb, :SBibtex
@@ -577,9 +598,9 @@ map \v,map <F3>, imap \v, imap <F3>
 	internally be the script functions BibSearch/BibChoose/ShowOptions.
 	The command :FindBibFiles finds bib files in the current buffer. 
 
-	If a readable bib file was not found in any of g:atp_bibinputs
-	directories (see |atp-g:atp_bibinputs|) directories it is classified as
-	not readable.  
+	If a readable bib file was not found under one of path listed in of
+	g:atp_bibinputs variable (see |atp-g:atp_bibinputs|) it is classified
+	as not readable.  
 
 						*atp-:FindInputFiles*
 :FindInputFiles [bufname]
@@ -610,7 +631,7 @@ map \v,map <F3>, imap \v, imap <F3>
 	texlive.
 
 	The bibliographis declared are also listed. The command searches for
-	them in the any of g:atp_bibinputs directory (see |atp-g:atp_bibinputs|.
+	them in anydirectory listed in g:atp_bibinputs (see |atp-g:atp_bibinputs|).
 
 :ShowErrors o						*atp-:OpenLog*
 :OpenLog, map <F6>l, imap <F6>l
@@ -1953,7 +1974,6 @@ let g:askforoutdir=0					*atp-g:askforoutdir*
 	name should end with a "/".
 
 let b:atp_Viewer="xpdf"					*atp-b:atp_Viewer*
-    							*atp-g:{b:Viewer}Options*
 	it was tested with xpdf, evince, epdfviewer, kpdf, okular, xdvi and
 	they all works fine. I'm using xpdf and the xpdf server options are
 	supported so that the file is automatically reloaded (other viewers,
@@ -1961,23 +1981,27 @@ let b:atp_Viewer="xpdf"					*atp-b:atp_Viewer*
 	for acroread. Read more about viewers in |atp-viewers|. 
 
 	If you use program b:Viewer then you can use the variable
-	g:{b:Viewer}Options to set the options, for example if b:Viewer="xpdf"
+	b:{b:atp_Viewer}Options to set the options, for example if b:Viewer="xpdf"
 	then you might use:
 
-    g:xpdfOptions					*atp-g:xpdfOptions*
+							*atp-Viewer_Options*
+							*atp-b:xdviOptions*
+    							*atp-b:xpdfOptions*
+    							*atp-b:okularOptions*
+    							*atp-b:evinceOptions*
+    b:xpdfOptions					
+    b:xdviOptions
+    b:okularOptions
+    b:evinceOptions, etc ...
 	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
 
 	For example, if you want to have different look of one document you can
-	set it to "-bg gray20". Other example:
+	set it to "-bg gray20". Some examples:
 >
- 	let g:XpdfOptions="-bg Grey30 -mattecolor SlateBlue2 -papercolor White"
-<
-	This variable will be copied to b:atp_ViewerOptions, so if you want to
-	make changes on the fly use this variable. You can also set it
-	directly using autocommand:
->
-    au BufRead *.tex let b:atp_ViewerOptions="-bg NavajoWhite4 -fg black -mattecolor burlywood"
-<
+ 	let b:xpdfOptions	= "-bg Grey30 -mattecolor SlateBlue2 -papercolor White"
+	let b:xpdfOptions	= "-bg NavajoWhite4 -fg black -mattecolor burlywood"
+	let b:xdviOptions	= "-expertmode 0 -s 6"
+<	
  
 let b:XpdfServer=fnamemodify(expand("%"),":t")		*atp-g:atp_XpdfServer*	
 	Used by function: ViewOutput() (map \v, map <F3>, imap <F3>)
@@ -2015,7 +2039,7 @@ let g:atp_delete_output=0
 	output file.	
 
 							*atp-g:atp_tex_extensions*	
-let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]	
+let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync" , "ind"]	
 	 This list is used by the function Delete() (see |apt-Delete()|) which
 	 deletes all the files with the specified extension in the directory
 	 b:atp_OutDir, unless g:rmcommand="" (see |atp-g:rmcommand|) in which case
@@ -2343,30 +2367,31 @@ evince
 								*atp-viewers-okular*
 okular
 	Works fine. Note that okular has supports syncing in pdf. Just use
-	'pdfsync' package and set the option in okular: >
+	'pdfsync' package ('\usepackage{pdfsync}') and set the option in
+	okular: >
 		settings>Configure Okular>Editor
 <	and set >
 		Editor		Custom Text Editor
-		Command		gvim --servername GVIMTEX --remote-wait +%l %f 
+		Command		gvim --servername GVIM --remote-expr "atplib#FindAndOpen('%f','%l')"
 <	Then you can use <Shift>+<Left_Mouse> in okular to syncronize the gvim
-	with pdf. 
-	Limitations:
-			This has one serious limitation: settings the
-			servername in okular is not the best idea. Imagine you
-			are editing the tex source in 'gvim --servername
-			GVIM1' and you ask okular to sync, then it opens new
-			instance of gvim rather than sync your currently
-			opened gvim session. 
+	with pdf. This syncing is not 100% accurate and you can find on the
+	pdfsync webpage that this is not a bug. For me syning in xdvi works
+	better. 
+	
+	The function atplib#FindAndOpen asks each running gvim server if is is
+	"hosting" source of the file %f. Then it uses this server to set the
+	line (but it doesn't check if the cursor is in the right window!).
 
-			IF YOU KNOW HOW TO FIX THIS: do not hesitate to write,
-			so I can include it in atp. I see two solutions:
-				(1) run okular with a specific option which
-				    sets the above editor command.  
-				(2) make a vim script which is finds out the
-				    proper servername, so that the command
-				    above would be: >
-				gvim --servername GVIM --remote-expr FindAndRunGvim(%f,%l)
-<
+	To do:
+	The function 'atplib#FindAndOpen' will not start gvim if it is not
+	running.
+
+	Alternative configuration would be to run okular from vim and
+	set the Command to >
+		Command 	gvim --servername GVIM --remote-wait +%l %f
+<	but I don't know how to set this from the command line. If you know,
+	Many Thanks for Reporting!
+
 
 kpdf
 	Works fine (moves page a little bit when updates a file).

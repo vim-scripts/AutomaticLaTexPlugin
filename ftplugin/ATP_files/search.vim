@@ -46,7 +46,7 @@ function! s:make_defi_dict(...)
 
     let l:defi_dict={}
 
-    let l:inputfiles=FindInputFiles(l:bufname,"0")
+    let l:inputfiles=FindInputFiles(l:bufname, "0")
     let l:input_files=[]
     let b:input_files=l:input_files
 
@@ -126,7 +126,7 @@ function! LocalCommands(...)
 	let l:pattern=a:1
     endif
     echo "Makeing lists of commands and environments found in input files ... "
-" 	    call s:setprojectname()
+" 	    call SetProjectName()
     let l:CommandNames=[]
     let l:EnvironmentNames=[]
     let l:ColorNames=[]
@@ -279,74 +279,117 @@ command! -buffer -nargs=* DefiSearch		:call DefiSearch(<f-args>)
 " {{{1 TreeOfFiles
 " this is needed to make backward searching.
 " It returns:
-" 	[ tree, list ]
-" 	where tree:
+" 	[ {tree}, {list} , {type_dict} ]
+" 	where {tree}:
 " 		is a tree of files of the form
 " 			{ file : [ subtree, linenr ] }
 "		where the linenr is the linenr of \input{file} iline the one level up
 "		file.
-"	and list:
+"	{list}:
 "		is just list of all found input files.
+"	{type_dict}: 
+"		is a dictionary of types for files in {list}
+"		type is one of: preambule, input, bib. 
 "
 
-let g:atp_inputfile_pattern = '\\input\%(\s\+\|\s*{\)'
-" let g:atp_inputfile_pattern = '\\input\%(\s\+\|\s*{\)\|\\bibliography\s*{'
-" let g:atp_inputfile_pattern = '\\input\%(\s\+\|\s*{\)\|\\include\s*{'
 " Should match till the begining of the file name and not use \zs:\ze patterns.
+let g:atp_inputfile_pattern = '\\\(input\s*{\=\|include\s*{\|bibliography\s*{\)'
 
-" TreeOfFiles({main_file}, [{pattern}, [{run_nr}, [{saved_view}, [{bufnr}]]]])
+" TreeOfFiles({main_file}, [{pattern}, {flat}, {run_nr}])
 function! TreeOfFiles(main_file,...)
 "     let time	= reltime()
 
     let tree		= {}
     let main_file	= readfile(a:main_file)
     let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
-"     let run_nr		= a:0 >= 2	? a:2 : 1 
-"     let saved_view	= a:0 >= 3	? a:3 : winsaveview()
-"     let bufnr		= a:0 >= 4	? a:4 : bufnr("%")	
+    " flat = do a flat search, i.e. fo not search in input files at all.
+    let flat		= a:0 >= 2	? a:2 : 0	
+    let run_nr		= a:0 >= 3	? a:3 : 1 
+"     let saved_view	= a:0 >= 4	? a:4 : winsaveview()
+"     let bufnr		= a:0 >= 5	? a:5 : bufnr("%")	
 
-    let line_nr	= 1
-    let ifiles	= []
-    let list	= []
+    let line_nr		= 1
+    let ifiles		= []
+    let list		= []
+    let type_dict	= {}
 
     let saved_llist	= getloclist(0)
+    if run_nr == 1 && &l:filetype == "tex"
+	try
+	    silent execute 'lvimgrep /\\begin\s*{\s*document\s*}/j ' . a:main_file
+	catch /E480: No match:/
+	endtry
+	let end_preamb	= get(get(getloclist(0), 0, {}), 'lnum', 0)
+    else
+	let end_preamb	= 0
+    endif
+    let g:end_preamb	= end_preamb
     try
-	silent execute "lvimgrep /".pattern."/j " . a:main_file
+	silent execute "lvimgrep /".pattern."/jg " . a:main_file
     catch /E480: No match:/
     endtry
     let loclist	= getloclist(0)
     call setloclist(0, saved_llist)
-    let lines	= map(loclist, "[ v:val['text'], v:val['lnum']]")
+    let lines	= map(loclist, "[ v:val['text'], v:val['lnum'], v:val['col'] ]")
 
     for entry in lines
 
 	    let line = entry[0]
+	    let lnum = entry[1]
+	    let cnum = entry[2]
+	    " input name (iname) as appears in the source file
 	    let iname	= substitute(matchstr(line, pattern . '\zs\f*\ze'), '\s*$', '', '') 
 	    if line =~ '{\s*' . iname
 		let iname	= substitute(iname, '\\\@<!}\s*$', '', '')
 	    endif
-	    let iname	= atplib#append(iname, '.tex')
-	    if iname != fnamemodify(iname, ":p")
-		let iname	= atplib#KpsewhichFindFile('tex', iname, g:atp_kpsewhich_tex, 1, ':p', '^\%(\/home\|\.\)', '\(texlive\|kpsewhich\|generic\)')
+
+	    " type: preambule,bib,input.
+	    if lnum < end_preamb && run_nr == 1
+		let type	= "preambule"
+	    elseif strpart(line, cnum-1)  =~ '^\\bibliography'
+		let type	= "bib"
+	    else
+		let type	= "input"
 	    endif
-	    call add(ifiles, [ iname, entry[1]] )
+
+	    echomsg iname . " " . type
+
+	    if type != "bib"
+		let iname		= atplib#append(iname, '.tex')
+	    else
+		let iname		= atplib#append(iname, '.bib')
+	    endif
+
+	    " Find the full path only if it is not already given. 
+	    if iname != fnamemodify(iname, ":p")
+		if type != "bib"
+		    let iname	= atplib#KpsewhichFindFile('tex', iname, g:atp_texinputs . "," . b:atp_OutDir, 1, ':p', '^\%(\/home\|\.\)', '\(texlive\|kpsewhich\|generic\)')
+		else
+		    let iname	= atplib#KpsewhichFindFile('bib', iname, g:atp_bibinputs . "," . b:atp_OutDir, 1, ':p')
+		endif
+	    endif
+
+	    call add(ifiles, [ iname, lnum] )
 	    call add(list, iname)
+	    call extend(type_dict, { iname : type } )
     endfor
 
-"     let input_files	 = map(filter(main_file, "v:val =~ '\\input\s*{'"), "fnamemodify(matchstr(v:val, '\\\\input\s*{\\zs*[^}]*\\ze}'),':p')")
-"     call map(input_files, "atplib#append(v:val, '.tex')")
-
-    
+    " Be recursive if: flat is off, file is of input type.
+    if !flat
     for [ifile, line] in ifiles	
-	let [ ntree, nlist] = TreeOfFiles(ifile)
-	 call extend(tree, { ifile : [ ntree, line ] } )
-	 call extend(list, nlist)  
+	if type_dict[ifile] == "input"
+	     let [ ntree, nlist, ntype_dict ] = TreeOfFiles(ifile, pattern, flat, run_nr+1)
+	     call extend(tree, { ifile : [ ntree, line ] } )
+	     call extend(list, nlist)  
+	     call extend(type_dict, ntype_dict)
+	endif
     endfor
+    endif
 
 "     echomsg "TIME:" . join(reltime(time), ".") . " main_file:" . a:main_file
 " echo "TREE=". string(tree)
 " echo "LIST" . string(list)
-    return [ tree, list ]
+    return [ tree, list, type_dict ]
 
 endfunction
 " let s:TreeOfFiles	= TreeOfFiles(b:atp_MainFile)
@@ -393,6 +436,8 @@ endfunction
 " a:1		=			flags: 'bcewWs'
 " 								
 let s:ATP_rs_debug=0	" if 1 sets debugging messages which are appended to '/tmp/ATP_rs_debug' 
+			" you can :set errorfile=/tmp/ATP_rs_debug
+			" and	  :set efm=.*
 			" if 2 show time
 try
 function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wrap_nr, winsaveview, bufnr, strftime, vim_options, pattern, ... )
@@ -539,7 +584,7 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 		" wrapscan is on
 		" ACCEPT if 'c' and wrapscan is off or there is another match below,
 		" if there is not go UP.
-		let wrapscan	= ( flags_supplied =~# 'w' || &l:wrapscan )
+		let wrapscan	= ( flags_supplied =~# 'w' || &l:wrapscan && flags_supplied !~# 'W' )
 		if flag =~# 'c'
 		    let goto 	= 'ACCEPT'  . 2
 		elseif wrapscan
@@ -572,7 +617,7 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 	    elseif input_pos == [0, 0]
 		if expand("%:p") == fnamemodify(a:main_file, ":p")
 		    " wrapscan
-		    if ( flags_supplied =~# 'w' || &l:wrapscan )
+		    if ( flags_supplied =~# 'w' || &l:wrapscan  && flags_supplied !~# 'W' )
 			let new_flags	= substitute(flags_supplied, 'w', '', 'g') . 'W'  
 			if a:wrap_nr <= 2
 			    call cursor(1,1)
@@ -626,7 +671,7 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 	    elseif cur_pos == pat_pos && atplib#CompareCoordinates_leq(input_pos, pat_pos) && input_pos != [0, 0]
 		" this means that the 'flag' variable has to contain 'c' or the
 		" wrapscan is on
-		let wrapscan	= ( flags_supplied =~# 'w' || &l:wrapscan )
+		let wrapscan	= ( flags_supplied =~# 'w' || &l:wrapscan  && flags_supplied !~# 'W' )
 		if flag =~# 'c'
 		    let goto 	= 'ACCEPT'  . 2 . 'b'
 		elseif wrapscan
@@ -661,7 +706,7 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 		" I claim that then cur < pat or pat=0
 		if expand("%:p") == fnamemodify(a:main_file, ":p")
 		    " wrapscan
-		    if ( flags_supplied =~# 'w' || &l:wrapscan )
+		    if ( flags_supplied =~# 'w' || &l:wrapscan  && flags_supplied !~# 'W' )
 			let new_flags	= substitute(flags_supplied, 'w', '', 'g') . 'W'  
 			if a:wrap_nr <= 2
 			    call cursor(line("$"), col("$"))
@@ -820,7 +865,6 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 	    if s:ATP_rs_debug > 1
 		silent echo "TIME_END:" . reltimestr(reltime(time0))
 	    endif
-	    return
 
 " 	    restore the window and buffer!
 " 		it is better to remember bufnumber
@@ -831,6 +875,8 @@ function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wr
 		silent echo ""
 		redir END
 		endif
+
+	    return
 
 	" when ERROR
 	elseif

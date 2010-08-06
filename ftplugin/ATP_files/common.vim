@@ -28,7 +28,12 @@ function! FindInputFiles(...)
     if buflisted(fnamemodify(l:bufname,":t"))
 	let l:texfile=getbufline(fnamemodify(l:bufname,":t"),1,'$')
     else
-	let l:texfile=readfile(fnamemodify(l:bufname,":p"))
+	try
+	    let l:texfile=readfile(fnamemodify(l:bufname,":p"))
+	catch /E484: Cannot open file/
+" 	    echoerr "FindInputFiles Error. Cannot open file " . fnamemodify(l:bufname,":p")
+	    return {}
+	endtry
     endif
 "     let b:texfile=l:texfile
     let s:i=0
@@ -63,7 +68,7 @@ function! FindInputFiles(...)
     call extend(l:inputfiles, FindBibFiles(l:bufname))
     " this function is used to set b:atp_MainFile, but at this stage there is no
     " need to add b:atp_MainFile to the list of input files (this is also
-    " a requirement for the function s:setprojectname.
+    " a requirement for the function SetProjectName.
     if exists("b:atp_MainFile")
 	call extend(l:inputfiles, { fnamemodify(b:atp_MainFile,":t") : ['main file', b:atp_MainFile]}, "error") 
     endif
@@ -74,7 +79,7 @@ function! FindInputFiles(...)
 	    echohl WarningMsg | echomsg "Found input files:" 
 	else
 	    echohl WarningMsg | echomsg "No input files found." | echohl None
-	    return []
+	    return {}
 	endif
 	echohl texInput
 	let l:nr=1
@@ -105,7 +110,7 @@ function! FindInputFiles(...)
 	echohl None
     endif
     let s:inputfiles=l:inputfiles
-    return l:inputfiles
+return l:inputfiles
 endfunction
 command! -buffer -nargs=? -complete=buffer	FindInputFiles	:call FindInputFiles(<f-args>)
 " }}}
@@ -171,12 +176,12 @@ function! FindBibFiles(...)
     " Make a list of all bib files which tex can find.
     let l:bibfiles_list=[]
     let b:bibfiles_list=l:bibfiles_list " DEBUG
-    for l:dir in g:atp_bibinputs
+    for l:dir in split(g:atp_raw_bibinputs, ',')
 	let l:bibfiles_list=extend(l:bibfiles_list,atplib#FindInputFilesInDir(l:dir,0,".bib"))
     endfor
 
     for l:f in l:allbibfiles
-	" ToDo: change this to find in any directory under g:atp_bibinputs. 
+	" ToDo: change this to find in any directory under g:atp_raw_bibinputs. 
 	" also change in the line 1406 ( atplib#s:searchbib )
 	for l:bibfile in l:bibfiles_list
 	    if count(l:allbibfiles,fnamemodify(l:bibfile,":t:r"))

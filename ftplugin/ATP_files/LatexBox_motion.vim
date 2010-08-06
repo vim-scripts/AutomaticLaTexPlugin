@@ -8,13 +8,16 @@
 " Some things is enough to source once
 let s:did_script = exists("s:did_script") ? 1 : 0
 
+" HasSyntax {{{
 " s:HasSyntax(syntaxName, [line], [col])
 function! s:HasSyntax(syntaxName, ...)
 	let line	= a:0 >= 1 ? a:1 : line('.')
 	let col		= a:0 >= 2 ? a:2 : col('.')
 	return index(map(synstack(line, col), 'synIDattr(v:val, "name") == "' . a:syntaxName . '"'), 1) >= 0
 endfunction
+" }}}
 
+" Search and Skip Comments {{{
 " s:SearchAndSkipComments(pattern, [flags], [stopline])
 function! s:SearchAndSkipComments(pat, ...)
 	let flags	= a:0 >= 1 ? a:1 : ''
@@ -44,6 +47,7 @@ function! s:SearchAndSkipComments(pat, ...)
 
 	return ret
 endfunction
+" }}}
 
 " begin/end pairs {{{
 "

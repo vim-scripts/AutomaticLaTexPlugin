@@ -1,10 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Author:	Marcin Szamotulski
-" Last Changed: 2010 July 5
+" Last Changed: 2010 July 6
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 30 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 31 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -37,6 +37,11 @@ endif
 
 	" Compilation related stuff.
 	execute 'source ' 	. fnameescape(prefix . '/compiler.vim')
+
+	let compiler_file = findfile('tex_atp.vim', &rtp)
+	if compiler_file
+		execute 'source ' 	. fnameescape(compiler_file)
+	endif
 
 	" LatexBox addons (by D.Munger, with some modifications).
 	if g:atp_LatexBox

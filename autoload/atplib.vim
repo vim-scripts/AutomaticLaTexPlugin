@@ -12,6 +12,33 @@ function! atplib#outdir()
 endfunction
 "}}}
 
+" Find vim server 'hosting' a file and move to the line.
+" Can be used to sync gvim with okular.
+" just set in okular:
+" 	settings>okular settings>Editor
+" 		Editor		Custom Text Editor
+" 		Command		gvim --servername GVIM --remote-expr "atplib#FindAndOpen('%f','%l')"
+" You can also use this with vim but you should start vim with
+" 		vim --servername VIM
+" and use servername VIM in the Command above.		
+" {{{1 atplib#FindAndOpen
+function! atplib#FindAndOpen(file, line)
+    let file		= fnamemodify(a:file, ":p:r") . ".tex"
+    let server_list	= split(serverlist(), "\n")
+    for server in server_list
+	if remote_expr(server, "bufexists('".file."')")
+	    let use_server	= server
+	    break
+	else
+	    let use_server	= "GVIM"
+	endif
+    endfor
+    call system("gvim --servername " . use_server . " --remote-wait +" . a:line . " " . file . " &")
+    return "File:".file." line:".line. " server name:".use_server." Hitch-hiking server:".v:servername 
+endfunction
+"}}}1
+
+
 " Labels tools: GrepAuxFile, SrotLabels, generatelabels and showlabes.
 " {{{1 atplib#LABELS
 " the argument should be: resolved full path to the file:
@@ -41,7 +68,10 @@ function! atplib#GrepAuxFile(...)
 "     let aux_file	= readfile(aux_filename)
 
     let saved_llist	= getloclist(0)
-    silent! execute 'lvimgrep /\\newlabel\s*{/j ' . aux_filename
+    try
+	silent execute 'lvimgrep /\\newlabel\s*{/j ' . aux_filename
+    catch /E480: No match:/
+    endtry
     let loc_list	= getloclist(0)
     call setloclist(0, saved_llist)
     call map(loc_list, ' v:val["text"]')
@@ -385,10 +415,10 @@ function! atplib#searchbib(pattern)
     for l:f in s:bibfiles
 	let s:bibdict[l:f]=[]
 
-	" read the bibfile if it is in b:atp_OutDir or in g:atp_bibinputs directory
-	" ToDo: change this to look in directories under g:atp_bibinputs. 
+	" read the bibfile if it is in b:atp_OutDir or in g:atp_raw_bibinputs directory
+	" ToDo: change this to look in directories under g:atp_raw_bibinputs. 
 	" (see also ToDo in FindBibFiles 284)
-	for l:path in g:atp_bibinputs 
+	for l:path in split(g:atp_raw_bibinputs, ',') 
 	    " it might be problem when there are multiple libraries with the
 	    " same name under different locations (only the last one will
 	    " survive)
@@ -1148,7 +1178,7 @@ endfunction
 " }}}1
 " This functions makes a test if inline math is closed. This works well with
 " \(:\) and \[:\] but not yet with $:$ and $$:$$.  
-" {{{1 a atplib#CheckOneLineMath
+" {{{1 atplib#CheckOneLineMath
 " a:mathZone	= texMathZoneV or texMathZoneW or texMathZoneX or texMathZoneY
 " The function return 1 if the mathZone is not closed 
 function! atplib#CheckOneLineMath(mathZone)
@@ -1232,15 +1262,27 @@ endfunction
 " atplib#SearchPackage {{{1
 "
 " This function searches if the package in question is declared or not.
-" Returns 1 if it is and 0 if it is not.
+" Returns the line number of the declaration  or 0 if it was not found.
+"
 " It was inspired by autex function written by Carl Mueller, math at carlm e4ward c o m
+" and made work for project files using lvimgrep.
+"
+" This function doesn't support plaintex filse (\\input{})
+" ATP support plaintex input lines in a different way (but not that flexible
+" as this: for plaintex I use atplib#GrepPackageList on startup (only!) and
+" then match input name with the list).
+"
 " name = package name (tikz library name)
 " a:1  = stop line (number of the line \\begin{document} 
 " a:2  = pattern matching the command (without '^[^%]*\\', just the name)
 " to match \usetikzlibrary{...,..., - 
 function! atplib#SearchPackage(name,...)
 
-    let l:possaved=getpos(".")
+    if getbufvar("%", "atp_MainFile") == ""
+	    call SetProjectName()
+    endif
+
+"     let time	= reltime()
 
 "     if bufloaded("^" . a:file . "$")
 " 	let file=getbufline("^" . a:file . "$", "1", "$")
@@ -1250,52 +1292,90 @@ function! atplib#SearchPackage(name,...)
 " 	let g:debug = 2
 "     endif
 
-    if a:0 == 0
-	keepjumps call setpos(".", [0,1,1,0])
-	keepjumps let l:stopline=search('\\begin\s*{document}','nW')
+    if a:0 != 0
+	let stop_line	= a:1
     else
-	if a:1 != 0
-	    let l:stopline=a:1
-	else
+	if expand("%:p") == b:atp_MainFile
+	    let saved_pos=getpos(".")
 	    keepjumps call setpos(".", [0,1,1,0])
-	    keepjumps let l:stopline=search('\\begin\s*{document}','nW')
+	    keepjumps let stop_line=search('\\begin\s*{document}','nW')
+	else
+	    if &l:filetype == 'tex'
+		let saved_loclist	= getloclist(0)
+		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . b:atp_MainFile
+		let stop_line	= get(get(getloclist(0), 0, {}), 'lnum', 0)
+		call setloclist(0, saved_loclist) 
+	    else
+		let stop_line = 0
+	    endif
 	endif
     endif
 
-    if a:0 == 2
-	let l:command=a:2
+    let com	= a:0 >= 2 ? a:2 : 'usepackage\s*\%(\[[^]]*]\)\?'
+
+    " If the current file is the b:atp_MainFile
+    if expand("%:p") == b:atp_MainFile
+
+	if !exists("saved_pos")
+	    let saved_pos=getpos(".")
+	endif
+	if stop_line != 0
+
+	    keepjumps call setpos(".",[0,1,1,0])
+	    keepjumps let ret = search('^[^%]*\\'.com."\s*{[^}]*".a:name,'ncW', stop_line)
+	    keepjump call setpos(".",saved_pos)
+
+" 	    echo reltimestr(reltime(time))
+	    return ret
+
+	else
+
+	    keepjumps call setpos(".",[0,1,1,0])
+	    keepjumps let ret = search('^[^%]*\\'.com."\s*{[^}]*".a:name,'ncW')
+	    keepjump call setpos(".", saved_pos)
+
+" 	    echo reltimestr(reltime(time))
+	    return ret
+
+	endif
+
+    " If the current file is not the mainfile
     else
-	let l:command='usepackage\s*\%(\[[^]]*]\)\?'
+	" Cache the Preambule / it is not changing so this is completely safe /
+	if !exists("s:Preambule")
+	    let g:debug .= "P"
+	    let s:Preambule = readfile(b:atp_MainFile) 
+	    if stop_line != 0
+		silent! call remove(s:Preambule, stop_line+1, -1)
+	    endif
+	endif
+	let g:preambule = s:Preambule
+	let lnum = 1
+	for line in s:Preambule
+	    if line =~ '^[^%]*\\'.com."\s*{[^}]*".a:name
+
+" 		echo reltimestr(reltime(time))
+		return lnum
+	    endif
+	    let lnum += 1
+	endfor
     endif
 
-    if l:stopline != 0
+"     echo reltimestr(reltime(time))
 
-	keepjumps call setpos(".",[0,1,1,0])
-	keepjumps let l:return=search('^[^%]*\\'.l:command."\s*{[^}]*".a:name,'ncW',l:stopline)
-
-	keepjump call setpos(".",l:possaved)
-	return l:return
-
-    else
-
-	keepjumps call setpos(".",[0,1,1,0])
-	keepjumps let l:return=search('^[^%]*\\'.l:command."\s*{[^}]*".a:name,'ncW')
-
-	keepjump call setpos(".",l:possaved)
-	return l:return
-
-    endif
+    " If the package was not found return 0 
+    return 0
 
 endfunction
 " }}}1
-" Get list of all packages: {{{1
+" {{{1 atplib#GetPackageList()
 " a:1	= '\\usepackage\s*{'
 " a:2 	= stop lines
 function! atplib#GetPackageList(...)
 
     let saved_pos	= getpos(".")
     call cursor(1,1)
-    let pattern		= a:0 == 0 ? '\\usepackage\s*{' : a:1
+    let pattern		= a:0 == 0 ? '\\usepackage\s*\(\[[^]]*\]\)\=\s*{' : a:1
     let stop_line 	= a:0  > 1 ? a:2 : search('\\begin\s*{\s*document\s*}')
     call cursor(1,1)
 
@@ -1313,30 +1393,70 @@ function! atplib#GetPackageList(...)
     call cursor(saved_pos[1], saved_pos[2])
     return package_list
 endfunction
-" atplib#DocumentClass {{{1
-function! atplib#DocumentClass()
+"}}}1
+"{{{1 atplib#GrepPackageList()
+" This function returns list of packages declared in the b:atp_MainFile (or
+" a:1). If the filetype is plaintex it returns list of all \input{} files in
+" the b:atp_MainFile. 
+" I'm not shure if this will be OK for project files written in plaintex: Can
+" one declare a package in the middle of document? probably yes. So it might
+" be better to use TreeOfFiles in that case.
 
-    if &l:filetype != "tex"
-	return -1
+" This takes =~ 0.02 s. This is too long to call it in TabCompletion.
+function! atplib#GrepPackageList(...)
+" 	let time = reltime() 
+    let file	= a:0 == 0 ? getbufvar("%", "atp_MainFile") : expand("%")
+    if file == ""
+	return []
     endif
 
-    let bufnr	= bufnr(b:atp_MainFile)
+    let ftype	= getbufvar(file, "&filetype")
+    if ftype =~ '^\(ams\)\=tex$'
+	let pat	= '\\usepackage\s*\(\[[^]]*\]\)\=\s*{'
+    elseif ftype == 'plaintex'
+	let pat = '\\input\s*{'
+    else
+	echoerr "ATP doesn't recognize the filetype " . &l:filetype . ". Using empty list of packages."
+	return []
+    endif
 
-    let n	= 1
-    let line	= join(getbufline(bufnr, n))
-    let len	= len(getbufline(bufnr, 1, '$'))	
+    let saved_loclist	= getloclist(0)
+    try
+	silent execute 'lvimgrep /^[^%]*'.pat.'/j ' . file
+    catch /E480: No match:/
+	call setloclist(0, [{'text' : 'empty' }])
+    endtry
+    let loclist		= getloclist(0)
+    call setloclist(0, saved_loclist)
 
-    if line =~ '\\documentclass'
-" 	let b:line=line " DEBUG
+    let pre		= map(loclist, 'v:val["text"]')
+    let g:pre		= deepcopy(pre)
+    let pre_l		= []
+    for line in pre
+	let package_l	= matchstr(line, pat.'\zs[^}]*\ze}')
+	call add(pre_l, package_l)
+    endfor
+    let pre_string	= join(pre_l, ',')
+    let pre_list	= split(pre_string, ',')
+
+"     echo reltimestr(reltime(time))
+    return pre_list
+endfunction
+" atplib#DocumentClass {{{1
+function! atplib#DocumentClass(file)
+
+    let saved_loclist	= getloclist(0)
+    try
+	silent execute 'lvimgrep /\\documentclass/j ' . a:file
+    catch /E480: No match:/
+    endtry
+    let line		= get(get(getloclist(0), 0, "no_document_class"), 'text')
+    call setloclist(0, saved_loclist)
+
+
+    if line != 'no_document_class'
 	return substitute(l:line,'.*\\documentclass\s*\%(\[.*\]\)\?{\(.*\)}.*','\1','')
     endif
-    while line !~ '\\documentclass' && n <= len 
-	if line =~ '\\documentclass'
-	    return substitute(line,'.*\\documentclass\s*\%(\[.*\]\)\?{\(.*\)}.*','\1','')
-	endif
-	let n += 1
-	let line	= join(getbufline(bufnr,n))
-    endwhile
  
     return 0
 endfunction
@@ -1362,7 +1482,7 @@ endfunction
 " gives on my system only the path of current dir (/.) and my localtexmf. 
 " this is done in 0.13s. The long pattern is to 
 "
-" atp#KpsewhichGlobPath({format}, {path}, {expr=name}, [ {mods}, [{pattern_1}, [{pattern_2}]]]) 
+" atp#KpsewhichGlobPath({format}, {path}, {expr=name}, [ {mods}, {pattern_1}, {pattern_2}]) 
 function! atplib#KpsewhichGlobPath(format, path, name, ...)
     let time	= reltime()
     let modifiers = a:0 == 0 ? ":t:r" : a:1
@@ -1413,7 +1533,7 @@ endfunction
 "
 " needs +path_extra vim feature
 "
-" atp#KpsewhichFindFile({format}, {expr=name}, [{path}, [ {count}, [{mods}, [{pattern_1}, [{pattern_2}]]]]]) 
+" atp#KpsewhichFindFile({format}, {expr=name}, [{path}, {count}, {mods}, {pattern_1}, {pattern_2}]) 
 function! atplib#KpsewhichFindFile(format, name, ...)
 
     " Unset the suffixadd option
@@ -1423,9 +1543,7 @@ function! atplib#KpsewhichFindFile(format, name, ...)
 "     let time	= reltime()
     let path	= a:0 >= 1 ? a:1 : ""
     let l:count	= a:0 >= 2 ? a:2 : 0
-    let g:count = l:count
     let modifiers = a:0 >= 3 ? a:3 : ""
-    let g:mods	= modifiers
     " This takes most of the time!
     if path == ""
 	let path	= substitute(substitute(system("kpsewhich -show-path ".a:format ),'!!','','g'),'\/\/\+','\/','g')
@@ -2513,7 +2631,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	keepjumps call setpos(".",[0,1,1,0])
 	let l:stop_line=search('\\begin\s*{document}','cnW')
 	keepjumps call setpos(".",l:pos_saved)
-	if atplib#SearchPackage('tikz', l:stop_line) && 
+	if (atplib#SearchPackage('tikz', l:stop_line) || count(b:atp_package_list, 'tikz.tex')  ) && 
 	    \ ( atplib#CheckOpened('\\begin\s*{\s*tikzpicture\s*}', '\\end\s*{\s*tikzpicture\s*}', line('.'),g:atp_completion_limits[2]) || 
 	    \ atplib#CheckOpened('\\tikz{','}',line("."),g:atp_completion_limits[2]) )
 	    if l:end !~ '\s*}'
@@ -2523,7 +2641,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    endif
 	endif
 	" AMSMATH
-	if atplib#SearchPackage('amsmath',l:stop_line) || g:atp_amsmath != 0 || atplib#DocumentClass() =~ '^ams'
+	if atplib#SearchPackage('amsmath', l:stop_line) || g:atp_amsmath != 0 || atplib#DocumentClass() =~ '^ams'
 	    if l:end !~ '\s*}'
 		call extend(l:completion_list,atplib#Add(g:atp_amsmath_environments,'}'),0)
 	    else
@@ -2580,9 +2698,23 @@ function! atplib#TabCompletion(expert_mode,...)
 	let l:completion_list=[]
 	
 	" Find end of the preambule.
-	keepjumps call setpos(".",[0,1,1,0])
-	let l:stop_line=search('\\begin\s*{document}', 'cnW')
-	keepjumps call setpos(".", l:pos_saved)
+	if expand("%:p") == b:atp_MainFile
+	    " if the file is the main file
+	    let saved_pos=getpos(".")
+	    keepjumps call setpos(".", [0,1,1,0])
+	    keepjumps let stop_line=search('\\begin\s*{document}','nW')
+	    keepjumps call setpos(".", saved_pos)
+	else
+	    " if the file doesn't contain the preambule
+	    if &l:filetype == 'tex'
+		let saved_loclist	= getloclist(0)
+		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . b:atp_MainFile
+		let stop_line	= get(get(getloclist(0), 0, {}), 'lnum', 0)
+		call setloclist(0, saved_loclist) 
+	    else
+		let stop_line = 0
+	    endif
+	endif
 	 
 	" Are we in the math mode?
 	let l:math_is_opened	= atplib#CheckSyntaxGroups(g:atp_MathZones)
@@ -2628,7 +2760,8 @@ function! atplib#TabCompletion(expert_mode,...)
 	endif
 	" -------------------- LOCAL commands {{{4
 	if g:atp_local_completion
-	    " Make a list of local envs and commands
+
+	    " make a list of local envs and commands:
 	    if !exists("s:atp_LocalCommands") 
 		if exists("b:atp_LocalCommands")
 		    let s:atp_LocalCommands=b:atp_LocalCommands
@@ -2643,13 +2776,22 @@ function! atplib#TabCompletion(expert_mode,...)
 	" {{{4 -------------------- TIKZ commands
 	" if tikz is declared and we are in tikz environment.
 	let in_tikz=searchpair('\\begin\s*{tikzpicture}','','\\end\s*{tikzpicture}','bnW',"", max([1,(line(".")-g:atp_completion_limits[2])])) || atplib#CheckOpened('\\tikz{','}',line("."),g:atp_completion_limits[0])
+
 	if in_tikz
+	    " find all tikz libraries at once:
 	    let tikz_libraries	= atplib#GetPackageList('\\usetikzlibrary\s*{')
+
+	    " add every set of library commands:
 	    for lib in tikz_libraries  
 		if exists("g:atp_tikz_library_".lib."_commands")
-		    call extend(l:completion_list,g:atp_tikz_library_{lib}_commands)
+		    call extend(l:completion_list, g:atp_tikz_library_{lib}_commands)
 		endif   
 	    endfor
+
+	    " add common tikz commands:
+	    call extend(l:completion_list, g:atp_tikz_commands)
+
+	    " if in text mode add normal commands:
 	    if searchpair('\\\@<!{', '', '\\\@<!}', 'bnW', "", max([ 1, (line(".")-g:atp_completion_limits[0])]))
 		call extend(l:completion_list, g:atp_Commands)
 	    endif
@@ -2723,7 +2865,7 @@ function! atplib#TabCompletion(expert_mode,...)
     " {{{3 ------------ BIBFILES
     elseif l:completion_method ==  'bibfiles'
 	let l:bibfiles=[]
-	for l:dir in g:atp_bibinputs
+	for l:dir in split(g:atp_raw_bibinputs, ',')
 	    let l:bibfiles=extend(l:bibfiles,atplib#FindInputFilesInDir(l:dir,0,".bib"))
 	endfor
 	let l:completion_list=[]
@@ -3001,7 +3143,7 @@ function! atplib#TabCompletion(expert_mode,...)
 "     endif
     " if the list is long it is better if it is sorted, if it short it is
     " better if the more used things are at the beginning.
-    if len(l:completions) > 5 && l:completion_method != 'labels'
+    if g:atp_sort_completion_list && len(l:completions) >= g:atp_sort_completion_list && l:completion_method != 'labels'
 	let l:completions=sort(l:completions)
     endif
     " DEBUG

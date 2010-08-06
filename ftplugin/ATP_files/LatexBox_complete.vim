@@ -197,10 +197,10 @@ function! LatexBox_BibSearch(regexp)
     let res = []
     let curentry = ''
 
-	let lines = split(substitute(join(readfile(bblfile), "\n"), "\(\S\)\s*\n", '\1 ', 'g'), "\n")
+	let lines = split(substitute(join(readfile(bblfile), "\n"), '\n\n\@!\(\s\=\)\s*\|{\|}', '\1', 'g'), "\n")
 			
     for line in filter(lines, 'v:val =~ a:regexp')
-            let matches = matchlist(line, '^{\(.*\)}{\(.*\)}{\(.*\)}{\(.*\)}{\(.*\)}.*')
+		let matches = matchlist(line, '^\(.*\)||\(.*\)||\(.*\)||\(.*\)||\(.*\)')
             if !empty(matches) && !empty(matches[1])
                 call add(res, {'key': matches[1], 'type': matches[2],
 							\ 'author': matches[3], 'year': matches[4], 'title': matches[5]})

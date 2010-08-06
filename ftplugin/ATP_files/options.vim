@@ -46,6 +46,31 @@ if !s:did_options
 endif
 "}}}
 
+" {{{1 atp tex and bib inputs directories (kpsewhich)
+" a list where tex looks for bib files
+" It must be defined before SetProjectName function.
+if !exists("g:atp_raw_bibinputs")
+    let g:atp_raw_bibinputs=substitute(substitute(substitute(
+		\ system("kpsewhich -show-path bib"),
+		\ '\/\/\+',	'\/',	'g'),	
+		\ '!\|\n',	'',	'g'),
+		\ ':',		',' ,	'g')
+endif
+if !exists("g:atp_bibinputs")
+    let path_list	= split(g:atp_raw_bibinputs, ',')
+    let idx		= index(path_list, '.')
+    if idx != -1
+	let dot = remove(path_list, index(path_list,'.')) . ","
+    else
+	let dot = ""
+    endif
+    call map(path_list, 'v:val . "**"')
+
+    let g:atp_bibinputs	= dot . join(path_list, ',')
+"     lockvar g:atp_bibinputs
+endif
+" }}}1
+
 " vim options + indetation
 " {{{ Vim options
 
@@ -91,22 +116,39 @@ setl keywordprg=texdoc\ -m
     setlocal include=\\\\input\\\\|\\\\include{
     setlocal suffixesadd=.tex
 
-    setl includeexpr=substitute(v:fname,'\\%(.tex\\)\\?$','.tex','')
+    setlocal includeexpr=substitute(v:fname,'\\%(.tex\\)\\?$','.tex','')
     " TODO set define and work on the above settings, these settings work with [i
     " command but not with [d, [D and [+CTRL D (jump to first macro definition)
+    
+" This was throwing all autocommand groups to the command line on startup.
+" Anyway this is not very good.
+"     augroup ATP_makeprg
+" 	au VimEnter *.tex let &l:makeprg="vim --servername " . v:servername . " --remote-expr 'Make()'"
+"     augroup
+
 " }}}
 
-"{{{ Set the project name 
+" Set the project name
+"{{{ SetProjectName (function and autocommands)
 " This function sets the main project name (b:atp_MainFile)
+"
 " It is used by EditInputFile which copies the value of this variable to every
 " input file included in the main source file. 
+"
+" nmap gf (GotoFile function) is not using this function.
+"
+" the b:atp_MainFile variable is set earlier in the startup
+" (by the augroup ATP_Syntax_TikzZone), calling SetProjectName to earlier cause
+" problems (g:atp_raw_bibinputs undefined). 
+"
 " ToDo: CHECK IF THIS IS WORKS RECURSIVELY?
 " ToDo: THIS FUNCTION SHUOLD NOT SET AUTOCOMMANDS FOR AuTeX function! 
 " 	every tex file should be compiled (the compiler function calls the  
 " 	right file to compile!
-" {{{ s:SetProjectName
+"
+" {{{ SetProjectName ( function )
 " store a list of all input files associated to some file
-fun! s:SetProjectName()
+fun! SetProjectName()
     " if the project name was already set do not set it for the second time
     " (which sets then b:atp_MainFile to wrong value!)  
     if &filetype == "fd_atp"
@@ -167,21 +209,25 @@ fun! s:SetProjectName()
     " we need to escape white spaces in b:atp_MainFile but not in all places so
     " this is not done here
     let b:pn_return=s:pn_return
+
+    " This needs the project name:
+    let b:atp_package_list	= atplib#GrepPackageList()
+
     return s:pn_return
 endfun
-command! SetProjectName	:call <SID>setprojectname()
+command! SetProjectName	:call SetProjectName()
 " }}}
 
 if !s:did_options
     augroup ATP_SetProjectName
-	au BufEnter *.tex :call s:SetProjectName()
-	au BufEnter *.fd  :call s:SetProjectName()
+	au BufEnter *.tex :call SetProjectName()
+	au BufEnter *.fd  :call SetProjectName()
     augroup END
 endif
 "}}}
 
 " This function sets vim 'errorfile' option.
-" {{{ Set error file (function and autocommands)
+" {{{ s:SetErrorFile (function and autocommands)
 " let &l:errorfile=b:atp_OutDir . fnameescape(fnamemodify(expand("%"),":t:r")) . ".log"
 "{{{ s:SetErrorFile
 function! s:SetErrorFile()
@@ -193,7 +239,7 @@ function! s:SetErrorFile()
 
     " set the b:atp_MainFile varibale if it is not set (the project name)
     if !exists("b:atp_MainFile")
-	call s:SetProjectName()
+	call SetProjectName()
     endif
 
     " vim doesn't like escaped spaces in file names ( cg, filereadable(),
@@ -207,7 +253,7 @@ command! -buffer SetErrorFile		:call s:SetErrorFile()
 
 if !s:did_options
     augroup ATP_SetErrorFile
-	au BufEnter *.tex 		call 		<SID>SetErrorFile()
+	au BufEnter 	*.tex 		call 		<SID>SetErrorFile()
 	au BufRead 	$l:errorfile 	setlocal 	autoread 
     augroup END
 endif
@@ -279,13 +325,13 @@ endfun
 
 " Almost all GLOBAL VARIABLES 
 " {{{ global variables 
-if !exists("g:atp_raw_kpsewhich_tex")
-    let g:atp_raw_kpsewhich_tex = substitute(substitute(substitute(system("kpsewhich -show-path tex"),'!!','','g'),'\/\/\+','\/','g'), ':\|\n', ',', 'g')
-    lockvar g:atp_raw_kpsewhich_tex
+if !exists("g:atp_raw_texinputs")
+    let g:atp_raw_texinputs = substitute(substitute(substitute(system("kpsewhich -show-path tex"),'!!','','g'),'\/\/\+','\/','g'), ':\|\n', ',', 'g')
+"     lockvar g:atp_raw_texinputs
 endif
 
-if !exists("g:atp_kpsewhich_tex")
-    let path_list	= split(g:atp_raw_kpsewhich_tex, ',')
+if !exists("g:atp_texinputs")
+    let path_list	= split(g:atp_raw_texinputs, ',')
     let idx		= index(path_list, '.')
     if idx != -1
 	let dot = remove(path_list, index(path_list,'.')) . ","
@@ -294,8 +340,8 @@ if !exists("g:atp_kpsewhich_tex")
     endif
     call map(path_list, 'v:val . "**"')
 
-    let g:atp_kpsewhich_tex	= dot . join(path_list, ',')
-    lockvar g:atp_kpsewhich_tex
+    let g:atp_texinputs	= dot . join(path_list, ',')
+"     lockvar g:atp_texinputs
 endif
 
 if !exists("g:atp_developer")
@@ -411,13 +457,13 @@ if !exists("g:askfortheoutdir")
     let g:askfortheoutdir=0
 endif
 if !exists("g:atp_tex_extensions")
-    let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]"]
+    let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
 endif
 if !exists("g:atp_delete_output")
     let g:atp_delete_output=0
 endif
 if !exists("g:keep")
-    let g:keep=[ "log", "aux", "toc", "bbl", "ind"]
+    let g:keep=[ "log", "aux", "toc", "bbl", "ind", "pdfsync" ]
 endif
 if !exists("g:printingoptions")
     let g:printingoptions=''
@@ -434,12 +480,6 @@ if !exists("g:matchpair")
 endif
 if !exists("g:texmf")
     let g:texmf=$HOME . "/texmf"
-endif
-" a list where tex looks for bib files
-if !exists("g:atp_bibinputs")
-    let g:atp_bibinputs=split(substitute(substitute(
-		\ system("kpsewhich -show-path bib")
-		\ ,'\/\/\+','\/','g'),'!\|\n','','g'),':')
 endif
 if !exists("g:atp_compare_embedded_comments") || g:atp_compare_embedded_comments != 1
     let g:atp_compare_embedded_comments = 0
@@ -524,7 +564,6 @@ let s:optionsDict= { 	"atp_TexOptions" 	: "",
 		\ "atp_Viewer" 			: "xpdf", 	
 		\ "atp_OutputFlavour" 		: "pdf", 
 		\ "atp_TexFlavour" 		: &l:filetype, 
-		\ "atp_ViewerOptions" 		: "", 
 		\ "atp_XpdfServer" 		: fnamemodify(expand("%"),":t"), 
 		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
 		\ "atp_TexCompiler" 		: "pdflatex",	
@@ -663,7 +702,8 @@ fun! SetXdvi()
     if exists("g:xdviOptions")
 	let b:atp_ViewerOptions	= g:xdviOptions
     endif
-    let b:atp_Viewer="xdvi " . b:atp_ViewerOptions . " -editor '" . v:progname . " --servername " . v:servername . " --remote-wait +%l %f'"
+    let b:atp_Viewer="xdvi" 
+    let b:xdviOptions=" -editor '" . v:progname . " --servername " . v:servername . " --remote-wait +%l %f'"
     if !exists("*RevSearch")
     function! RevSearch()
 	let dvi_file	= fnameescape(fnamemodify(expand("%"),":p:r") . ".dvi")
@@ -672,7 +712,7 @@ fun! SetXdvi()
 	   ViewOutput RevSearch
 	   return
 	endif
-	let b:xdvi_reverse_search="xdvi " . b:atp_ViewerOptions . 
+	let b:xdvi_reverse_search="xdvi " . b:xdviOptions . 
 		\ " -editor '" . v:progname . " --servername " . v:servername . 
 		\ " --remote-wait +%l %f' -sourceposition " . 
 		\ line(".") . ":" . col(".") . fnameescape(fnamemodify(expand("%"),":p")) . 
@@ -699,11 +739,6 @@ fun! SetXpdf()
     let b:atp_TexCompiler	= "pdflatex"
     let b:atp_TexOptions	= ""
     let b:atp_Viewer		= "xpdf"
-    if exists("g:xpdfOptions")
-	let b:atp_ViewerOptions	= g:xpdfOptions
-    else
-	let b:atp_ViewerOptions	= ''
-    endif
     if hasmapto("RevSearch()",'n')
 	unmap <buffer> <LocalLeader>rs
     endif
@@ -887,19 +922,26 @@ endif
 " {{{ TAB COMPLETION variables
 " ( functions are in autoload/atplib.vim )
 "
-let g:atp_completion_modes=[ 
-	    \ 'commands', 		'labels', 		
-	    \ 'tikz libraries', 	'environment names',
-	    \ 'close environments' , 	'brackets',
-	    \ 'input files',		'bibstyles',
-	    \ 'bibitems', 		'bibfiles',
-	    \ 'documentclass',		'tikzpicture commands',
-	    \ 'tikzpicture',		'tikzpicture keywords',
-	    \ 'package names',		'font encoding',
-	    \ 'font family',		'font series',
-	    \ 'font shape' ]
-let g:atp_completion_modes_normal_mode=[ 
-	    \ 'close environments' , 	'brackets' ]
+if !exists("g:atp_completion_modes")
+    let g:atp_completion_modes=[ 
+		\ 'commands', 			'labels', 		
+		\ 'tikz libraries', 		'environment names',
+		\ 'close environments' , 	'brackets',
+		\ 'input files',		'bibstyles',
+		\ 'bibitems', 			'bibfiles',
+		\ 'documentclass',		'tikzpicture commands',
+		\ 'tikzpicture',		'tikzpicture keywords',
+		\ 'package names',		'font encoding',
+		\ 'font family',		'font series',
+		\ 'font shape' ]
+    lockvar g:atp_completion_modes
+endif
+
+if !exists("g:atp_completion_modes_normal_mode")
+    let g:atp_completion_modes_normal_mode=[ 
+		\ 'close environments' , 	'brackets' ]
+    lockvar g:atp_completion_modes_normal_mode
+endif
 
 " By defualt all completion modes are ative.
 if !exists("g:atp_completion_active_modes")
@@ -907,6 +949,10 @@ if !exists("g:atp_completion_active_modes")
 endif
 if !exists("g:atp_completion_active_modes_normal_mode")
     let g:atp_completion_active_modes_normal_mode=deepcopy(g:atp_completion_modes_normal_mode)
+endif
+
+if !exists("g:atp_sort_completion_list")
+    let g:atp_sort_completion_list = 12
 endif
 
 " Note: to remove completions: 'inline_math' or 'displayed_math' one has to
@@ -1437,6 +1483,7 @@ function! s:ATP_SyntaxGroups()
 	endtry
     endif
 endfunction
+
 augroup ATP_Syntax_TikzZone
     au Syntax tex :call <SID>ATP_SyntaxGroups()
 augroup END

@@ -989,6 +989,7 @@ function! GotoFile(...)
 
     " This is passed to the newly opened buffer.
     let s:MainFile	= b:atp_MainFile 
+    let s:OutDir	= b:atp_OutDir
 
     let filetype 	= &l:filetype
     let line		= getline(".")
@@ -1013,7 +1014,7 @@ function! GotoFile(...)
 	    let ext 	= '.sty'
 
 	    let fname   = matchstr(strpart(getline("."), bcol), '\zs\f*\ze\%(,\|}\)')
-	    let file 	= atplib#KpsewhichFindFile('tex', atplib#append(fname, ext), g:atp_kpsewhich_tex, 1)
+	    let file 	= atplib#KpsewhichFindFile('tex', atplib#append(fname, ext), g:atp_texinputs, 1)
 	    let file_l	= [ file ]
 " 	    let file	= get(file_l, 0, "file_missing") 
 
@@ -1030,7 +1031,7 @@ function! GotoFile(...)
 
 	    " The 'file . ext' might be already a full path.
 	    if fnamemodify(fname, ":p") != fname
-		let file_l 	= atplib#KpsewhichFindFile('tex', fname, g:atp_kpsewhich_tex, -1, ':p', '^\(\/home\|\.\)', '\%(kpsewhich\|texlive\)')
+		let file_l 	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(kpsewhich\|texlive\)')
 		let file	= get(file_l, 0, 'file_missing')
 	    else
 		let file_l	= [ fname ] 
@@ -1044,7 +1045,7 @@ function! GotoFile(...)
     elseif line =~ '\\input\s*{\@!'
 	let method = "input"
 	    let fname	= atplib#append(matchstr(getline(line(".")), '\\input\s*\zs\f*\ze'), '.tex')
-	    let file_l	= atplib#KpsewhichFindFile('tex', fname, g:atp_kpsewhich_tex, -1, ':p', '^\(\/home\|\.\)', '\%(kpsewhich\|texlive\)')
+	    let file_l	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(kpsewhich\|texlive\)')
 	    let file	= get(file_l, 0, "file_missing")
 " 	    let file_l	= [ file ]
 	    let options = ' +setl\ ft=' . &l:filetype  
@@ -1062,7 +1063,7 @@ function! GotoFile(...)
 	let classname 	= strpart(getline("."), bcol, ecol-bcol-1)
 
 	let fname	= atplib#append(classname, '.cls')
-	let file	= atplib#KpsewhichFindFile('tex', fname,  g:atp_kpsewhich_tex, ':p')
+	let file	= atplib#KpsewhichFindFile('tex', fname,  g:atp_texinputs, ':p')
 	let file_l	= [ file ]
 	let options	= ""
 "     elseif line =~ '\\usefont'
@@ -1074,25 +1075,23 @@ function! GotoFile(...)
 " 	echo font
 " 	return
     else
-	let method	= "all"
-	let file_l	= TreeOfFiles(b:atp_MainFile)[1]
-	let file_l 	= [ b:atp_MainFile ] + file_l
-	let bib_l	= []
-	
-" 	This works but it is slow.
-" 	Looks for bib files in every input files (this is too much)
-	for l:file in file_l
-	    let bib_d 	= FindBibFiles(l:file)
-	    for bib in keys(bib_d)
-		call add(bib_l, bib_d[bib][2])
-	    endfor
-	endfor
-
-	let file_l 	= file_l + bib_l
-	    
-
 	" If not over any above give a list of input files to open, like
 	" EditInputFile  
+	let method	= "all"
+	let dict	= TreeOfFiles(b:atp_MainFile)[2]
+	let g:dict	= deepcopy(dict)
+	" We want to show entries in a nice order:
+	" the best would be to show according to the 'global' line number.
+	let preambule_l	= keys(filter(copy(dict), 'dict[v:key] == "preambule"'))
+	let input_l	= keys(filter(copy(dict), 'dict[v:key] == "input"'))
+	let bib_l	= keys(filter(copy(dict), 'dict[v:key] == "bib"'))
+
+	let file_l 	= preambule_l + [ b:atp_MainFile ] + input_l + bib_l
+	call filter(file_l, "v:val !~ expand('%') . '$'")
+	unlet preambule_l
+	unlet input_l
+	unlet bib_l
+	
     endif
 
     if len(file_l) > 1 
@@ -1111,11 +1110,25 @@ function! GotoFile(...)
 	redraw
 	" Ask the user which file to edit:
 	redraw
-	let choice	= inputlist([ msg ] + input_l) 
+let g:len=len([ msg ] + input_l)
+	if len([ msg ] + input_l) < &l:lines
+	    let choice	= inputlist([ msg ] + input_l) 
+	else
+	    for line in [ msg ] + input_l
+		if line == msg
+		    echohl WarningMsg	
+		endif
+		echo line
+		echohl None
+	    endfor
+	    echohl MoreMsg
+	    let choice = input("Type number and <Enter> (empty cancels)")
+	    echohl None
+	endif
 	if choice == "" || choice < 1 || choice > len(file_l) + 1
 	    return
 	endif
-	let file 	= choice == 1 ? b:atp_MainFile : file_l[choice-1]
+	let file 	= file_l[choice-1]
    endif
 
     if file != "file_missing" && filereadable(file)
@@ -1127,6 +1140,7 @@ function! GotoFile(...)
 
 	" Set the main file variable correctly.
 	let b:atp_MainFile	= s:MainFile
+	let b:atp_OutDir	= s:OutDir
     else
 	echohl ErrorMsg
 	redraw

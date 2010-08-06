@@ -53,9 +53,9 @@ function! s:ViewOutput(...)
     endif
 
     if b:atp_Viewer == "xpdf"	
-	let viewer	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . b:atp_ViewerOptions 
+	let viewer	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . getbufvar("%", b:atp_Viewer.'Options') 
     else
-	let viewer	= b:atp_Viewer  . " " . b:atp_ViewerOptions
+	let viewer	= b:atp_Viewer  . " " . getbufvar("%", b:atp_Viewer.'Options')
     endif
 
     let view_cmd	= viewer . " " . shellescape(outfile)  . " &"
@@ -635,6 +635,13 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
     endif
 endfunction
 command! -buffer -bang MakeLatex		:call <SID>MakeLatex(b:atp_MainFile, 0,0, reltime(),1,1,<q-bang>,1)
+function! Make()
+    if &l:filetype =~ 'tex$'
+	call <SID>MakeLatex(b:atp_MainFile, 0,0, reltime(),1,1,0,1)
+    endif
+    return ""
+endfunction
+
 "}}}1
 
 " THE MAIN COMPILER FUNCTION
@@ -918,7 +925,14 @@ function! s:auTeX()
 	endif
     " if compiling for the first time
     else
-	w
+	try 
+	    w
+	catch /E212: Cannot open file for writing/
+	    echohl ErrorMsg
+	    echomsg expand("%") . "E212: Cannon open file for writing"
+	    echohl Normal
+	    return "Cannot write file"
+	endtry
 	call s:Compiler(0,0,b:atp_auruns, mode, "AU",b:atp_MainFile)
 	redraw
 	return "compile for the first time"
@@ -926,7 +940,7 @@ function! s:auTeX()
     return "files does not differ"
 endfunction
 
-" This is set by s:setprojectname (options.vim) where it should not!
+" This is set by SetProjectName (options.vim) where it should not!
 augroup ATP_auTeX
     au!
     au CursorHold 	*.tex call s:auTeX()

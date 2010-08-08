@@ -11,7 +11,7 @@
 
 " <SID> Wrap {{{
 function! s:GetSID()
-	return matchstr(expand('<sfile>'), '\zs<SNR>\d\+_\ze.*$')
+	return matchstr(expand('<sfile>'), '\m\zs<SNR>\d\+_\ze.*$')
 endfunction
 let s:SID = s:GetSID()
 call extend(g:atp_compiler_SID,{ fnamemodify(expand('<sfile>'),':t') : s:SID })
@@ -157,15 +157,15 @@ function! s:FindBibData(...)
 
 	let bibdata_list +=
 				\ map(filter(copy(lines), 'v:val =~ ''\C\\bibliography\s*{[^}]\+}'''),
-				\ 'matchstr(v:val, ''\C\\bibliography\s*{\zs[^}]\+\ze}'')')
+				\ 'matchstr(v:val, ''\m\C\\bibliography\s*{\zs[^}]\+\ze}'')')
 
 	let bibdata_list +=
 				\ map(filter(copy(lines), 'v:val =~ ''\C\\\%(input\|include\)\s*{[^}]\+}'''),
-				\ 's:FindBibData(LatexBox_kpsewhich(matchstr(v:val, ''\C\\\%(input\|include\)\s*{\zs[^}]\+\ze}'')))')
+				\ 's:FindBibData(LatexBox_kpsewhich(matchstr(v:val, ''\m\C\\\%(input\|include\)\s*{\zs[^}]\+\ze}'')))')
 
 	let bibdata_list +=
 				\ map(filter(copy(lines), 'v:val =~ ''\C\\\%(input\|include\)\s\+\S\+'''),
-				\ 's:FindBibData(LatexBox_kpsewhich(matchstr(v:val, ''\C\\\%(input\|include\)\s\+\zs\S\+\ze'')))')
+				\ 's:FindBibData(LatexBox_kpsewhich(matchstr(v:val, ''\m\C\\\%(input\|include\)\s\+\zs\S\+\ze'')))')
 
 	let bibdata = join(bibdata_list, ',')
 
@@ -297,7 +297,7 @@ function! s:CompleteLabels(regex, ...)
 		endif
 
 		" search for included files
-		let included_file = matchstr(line, '^\\@input{\zs[^}]*\ze}')
+		let included_file = matchstr(line, '\m^\\@input{\zs[^}]*\ze}')
 		if included_file != ''
 			let included_file = LatexBox_kpsewhich(included_file)
 			call extend(suggestions, s:CompleteLabels(a:regex, included_file))

@@ -488,7 +488,7 @@ function! s:ToggleEnvironment(...)
 
 	" check if new label is in use!
 	let l:pos_save=getpos(".")
-	let l:n=search('\C\\\(label\|\%(eq\|page\)\?ref\)\s*{'.l:new_label.'}','nwc')
+	let l:n=search('\m\C\\\(label\|\%(eq\|page\)\?ref\)\s*{'.l:new_label.'}','nwc')
 " 	let b:n=l:n
 
 	if l:short_name != "" && l:n == 0 && l:new_label != l:label
@@ -504,12 +504,13 @@ function! s:ToggleEnvironment(...)
     return  l:open_pos[0]."-".l:close_pos[0]
 endfunction
 command! -buffer -nargs=? ToggleEnvironment   		:call <SID>ToggleEnvironment(<f-args>)
-nnoremap <silent> <Plug>ToggleEnvForward		:call <SID>ToggleEnvironment(1)
-nnoremap <silent> <Plug>ToggleEnvBackward		:call <SID>ToggleEnvironment(-1)
+nnoremap <silent> <Plug>ToggleEnvForward		:call <SID>ToggleEnvironment(1)<CR>
+nnoremap <silent> <Plug>ToggleEnvBackward		:call <SID>ToggleEnvironment(-1)<CR>
 "}}}
 
 
 "{{{ Help 
+" This is non interactive !
 function! s:TeXdoc(...)
     let texdoc_arg	= ""
     for i in range(1,a:0)

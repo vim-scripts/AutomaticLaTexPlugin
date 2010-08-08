@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 August 6
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 August 8
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -61,11 +61,13 @@ FEATURES INCLUDE:
 	|atp-completion|       		How to use and configure completion
 	|atp-omnicompletion|			and omnicompletion 	(*NEW*)
 	|atp-configure| 		How to configure to your needs 
+		|atp-ProjectFiles|	A note how to write project files within ATP.
 	|atp-mappings|  		Mappings and Commands
 	|atp-errors|  			Error handling
 	|atp-requirements|  		Requirements
 	|atp-viewers| 			Note about viewers 
 					(including inverse and reverse searching for xdvi)
+	|atp-tips|			Some tex oriented tips
 	|atp-color-highlight|		Colors and syntax files
 	|atp-remarks|  			Final remarks
 	|atp-copy-rights|		Copy Rights
@@ -89,6 +91,13 @@ NEWS							*atp-news*
 	Tab Completion is now working in project files (tab completion
 	checks for packages defined in the preambule of the main file). 
 >
+	nmap gf, :GotoFile, :EditInputFile
+<	a command which behaves like 'gf' was added. With the minor
+	difference, it alsway gives the choice which input file to edit,
+	regardless of the position of the cursor.
+
+
+>
 	New Features in version 7.3.1 (some changes after version 7.3)
 <							*atp-:MakeLatex*
 	Things works faster in this version: generating the lables and
@@ -103,9 +112,7 @@ NEWS							*atp-news*
 			    \documentclass{<classname>}, \usepakcage{<packagename} 
 			Otherwise, i.e if the cursor position is not over any
 			of the above it lets you choose which input file to
-			use. The command :EditInputFile is now depreceted,
-			'gf' supports project files , while the command
-			doesn't.  
+			use.  
 
 			
 >
@@ -577,7 +584,7 @@ map \v,map <F3>, imap \v, imap <F3>
 							see |atp-:BibSearch|
 :BibSearch
 	This function finds bib entries in bib files defined in your tex file
-	and in the variable b:bibfiles (see |atp-b:bibfiles|), which match the
+	and in the variable b:atp_BibFiles (see |atp-b:atp_BibFiles|), which match the
 	<pattern> (a vim regular expression). The output is configurable by
 	the <flag> argument, see |atp-bibflags|.
 
@@ -612,23 +619,15 @@ map \v,map <F3>, imap \v, imap <F3>
 	The bufername completion is set, hence you can use <Tab> to choose the
 	bufername.
 
-							*atp-:EditInputFile*
-:EditInputFile [input_file_name] [bufname]
+							*atp-:GotoFile*
+:GotoFile
+:EditInputFile	/ the old name for this feature / 
 	This function finds input files (using the function FindInputFiles()
 	in the current buffer and let you choose one to edit.
 
-	The first as well as the second argument are optional. There is
-	completion for the <input_file_name> argument, so that you can just
-	press <Tab> to switch between input files. If you want to list the
-	first and then choose do not pass any arguments.
-
-	The <input_file_name> may contain white spaces, but then has to be quoted
-	with '"' (this is a latex requirement).
-
-	Input files are searched in the |atp-b:atp_OutDir| directory, if not found
-	there then in the directory |atp-g:texmf|. The default value is 
-	g:texmf=$HOME/texmf, which is the default value of local texmf tree in
-	texlive.
+	This command uses kpsewhich to find in which path to find input files.
+	Actually the path: |atp-g:atp_texinputs| for input files and
+	|atp-g:atp_bibinputs| for bib files are used. 
 
 	The bibliographis declared are also listed. The command searches for
 	them in anydirectory listed in g:atp_bibinputs (see |atp-g:atp_bibinputs|).
@@ -651,7 +650,7 @@ map <F6>d
 	file (but not any other!).
 
 Print([<printer>, <printer_options>])			*atp-:Print*
-map \p, :SshPrint
+:SshPrint
 	It will run 'lpr' command and append to it the options defined in the
 	variable 'g:printeroptions' + options given in the second argument. It
 	prints the pdf or dvi depending on the value of 'b:atp_TexCompiler' (see
@@ -663,8 +662,6 @@ map \p, :SshPrint
 	
 	Both arguments are optional (the default system printer is used, and
 	only the options 'g:printeroptions' apply).
-
-	The map '\p' will print on the default printer.
 
 	The command has completion for the names of printers (also remote
 	printers), press <Tab> to cycle through printers, or type first
@@ -771,15 +768,15 @@ map \p, :SshPrint
 	selected text. So if you accidentally lost the selection you can still
 	use this command (but not the maps)!
 
-:TOC [skip] 							*atp-:TOC*
+:TOC[!] 							*atp-:TOC*
 map \t
 	Shows Table of Contents of your document. It do not yet support the
 	started version of chapter, section,... environemnts. 
 
-	The optional argument skip controls if the table of contents data base
+	The optional argument bang controls if the table of contents data base
 	must be generated: by default map \t doesn't regenerate the toc data
-	base (unless if it doesn't exist), and :TOC command regenerate the
-	data base.
+	base (unless if it doesn't exist), :TOC command regenerate the
+	data base, :TOC! not.
 	
 	The function opens new window in which you can use the mappings: 
 
@@ -821,13 +818,15 @@ map \t
 	see the returned value. If you added a section unit the function will
 	not update the database, run ':TOC' to do that (map \t).
 
-:Labels							*atp-:Labels*
+:Labels[!]						*atp-:Labels*
 map \L 
 	Shows labels defined in your file. You can also use the mappings
-	'e','c','p','s','q' and <Enter> as above.
+	'e','c','p','s','q' and <Enter> in the labels window desribed in
+	|atp-:TOC|.
 
-	If you forget what are these mappings, write ':map' in the TOC or
-	LABELS window.
+	If you forget what are these mappings, write ':map <buffer>' in the
+	TOC or LABELS window, or move to the end of the LABELS buffer to see
+	some short help info.
 
 	The key 's' shows the context of the label under the cursor (your
 	current window splits).
@@ -835,6 +834,10 @@ map \L
 	The variable t:labels_window_width sets the width of labels window. By
 	default t:labels_window_width=30. You can set a global
 	variable g:labels_window_width to overide the default value.
+
+	Without bang "!" the labels data base will be not generated.
+	Different from \t map \L regenerates the database (this is quite
+	fast).
 
 						*atp-move-:NEnv*
 :NEnv <environment>
@@ -1026,7 +1029,7 @@ SEARCHING IN BIB FILES 		                        *atp-bibsearch*
 		|atp-:BibSearch|
 		|atp-bibflags:examples|
 		|atp-bibsearch-variables|
-			|atp-b:bibfiles|
+			|atp-b:atp_BibFiles|
 
 		____________________________
 		Naming Conventions:	
@@ -1953,13 +1956,23 @@ Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete()
 	If in your environment the variable $TEXMFOUTDIR is set the value of
 	b:atp_OutDir will be set to its value.
 
-let b:atp_auruns=1					*atp-b:atp_auruns*
+							*atp-ProjectFiles*
+							*atp-b:atp_MainFile*
+let b:atp_MainFile	= expand("%:p")
+	This variable points to the main file of the project, it is set on the
+	startup to the file you open. If you edit project file, start with the
+	main file and use gf (see |atp-gf|) to go to the project file you want
+	to edit. In this way all the project files will have correctly set
+	this variable. The value of this variable is used by compilation
+	functions.
+
+let b:atp_auruns	= 1				*atp-b:atp_auruns*
 	This variable control how many times the automatic function calls tex
 	compiler (consecutively). It is useful if you are working with PDF
 	files and you want to have bookmarks (you can get them using hyperref
 	package with the option: bookmarks. Then set b:atp_auruns to '2'.
 
-let g:atp_autex_check_if_closed=1  			*atp-g:atp_autex_check_if_closed*
+let g:atp_autex_check_if_closed = 1  			*atp-g:atp_autex_check_if_closed*
 	This feature is not implemented.
 	tex run if all environments \begin:\end, \(:\) and \[:\] are closed.
 	Set g:atp_autex_check_if_closed=0 in order to not make the checks.
@@ -2470,6 +2483,19 @@ map \is, :RevSearch
 	    and in the dvi file there is written just the name without the
 	    path (and vice versa, if you give just the name in
 	    b:reverse_search and in the file there is full path).
+
+================================================================================
+TIPS                               				*atp-tips*
+
+If you have any nice tip on editing (La)TeX with vim or atp you can share it
+here (my email you'll find usging gg). Here are two which I found recently: 
+
+:g/^[^%]*\\usepackge/#		List loaded packages with line numbers
+y/\\begin{document}/		When standing on 1st line - copy the preambule
+				(possibly to a register)
+:TeXdoc ams<Ctrl-d>		Show tex documention which matches ams (the
+				completion for TeXdoc command finds matches in
+				alias files of texdoc :!texdoc -f).
 
 ================================================================================
 COLOUR HIGHLIGHTING AND SYNTAX GROUPS				*atp-color-highlight*

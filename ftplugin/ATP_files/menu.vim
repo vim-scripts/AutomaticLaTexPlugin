@@ -54,8 +54,7 @@ nmenu 550.40 &LaTeX.&Go\ to.Previuos\ Part<Tab>:PPart				:PPart<CR>
 "
 nmenu 550.50 &LaTeX.-Bib-			:
 nmenu 550.50 &LaTeX.Bib\ Search<Tab>:Bibsearch\ <arg>				:BibSearch 
-nmenu 550.50 &LaTeX.Find\ Bib\ Files<Tab>:FindBibFiles				:FindBibFiles<CR> 
-nmenu 550.50 &LaTeX.Find\ Input\ Files<Tab>:FindInputFiles			:FindInputFiles<CR>
+nmenu 550.50 &LaTeX.Input\ Files<Tab>:InputFiles				:InputFiles<CR>
 "
 nmenu 550.60 &LaTeX.-Viewer-			:
 nmenu 550.60 &LaTeX.Set\ &XPdf<Tab>:SetXpdf					:SetXpdf<CR>

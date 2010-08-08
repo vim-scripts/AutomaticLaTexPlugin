@@ -46,30 +46,6 @@ if !s:did_options
 endif
 "}}}
 
-" {{{1 atp tex and bib inputs directories (kpsewhich)
-" a list where tex looks for bib files
-" It must be defined before SetProjectName function.
-if !exists("g:atp_raw_bibinputs")
-    let g:atp_raw_bibinputs=substitute(substitute(substitute(
-		\ system("kpsewhich -show-path bib"),
-		\ '\/\/\+',	'\/',	'g'),	
-		\ '!\|\n',	'',	'g'),
-		\ ':',		',' ,	'g')
-endif
-if !exists("g:atp_bibinputs")
-    let path_list	= split(g:atp_raw_bibinputs, ',')
-    let idx		= index(path_list, '.')
-    if idx != -1
-	let dot = remove(path_list, index(path_list,'.')) . ","
-    else
-	let dot = ""
-    endif
-    call map(path_list, 'v:val . "**"')
-
-    let g:atp_bibinputs	= dot . join(path_list, ',')
-"     lockvar g:atp_bibinputs
-endif
-" }}}1
 
 " vim options + indetation
 " {{{ Vim options
@@ -165,9 +141,9 @@ fun! SetProjectName()
     endif
 
     if !exists("s:inputfiles")
-	let s:inputfiles 	= FindInputFiles(expand("%"),0)
+	let s:inputfiles 	= FindInputFiles(expand("%"))
     else
-	call extend(s:inputfiles,FindInputFiles(bufname("%"),0))
+	call extend(s:inputfiles,FindInputFiles(bufname("%")))
     endif
 
     if !exists("g:atp_project")
@@ -248,6 +224,7 @@ function! s:SetErrorFile()
     let &l:errorfile	= errorfile
     return &l:errorfile
 endfunction
+call s:SetErrorFile()
 command! -buffer SetErrorFile		:call s:SetErrorFile()
 "}}}
 
@@ -259,59 +236,6 @@ if !s:did_options
 endif
 "}}}
 
-" This functions sets the value of b:atp_OutDir variable
-" {{{ s:SetOutDir
-" This options are set also when editing .cls files.
-" It can overwrite the value of b:atp_OutDir
-" if arg != 0 then set errorfile option accordingly to b:atp_OutDir
-function! s:SetOutDir(arg)
-    " first we have to check if this is not a project file
-    if exists("g:atp_project") || exists("s:inputfiles") && 
-		\ ( index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1' || 
-		\ index(keys(s:inputfiles),fnamemodify(bufname("%"),":t")) != '-1' )
-	    " if we are in a project input/include file take the correct value of b:atp_OutDir from the atplib#s:outdir_dict dictionary.
-	    
-	    if index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
-		let b:atp_OutDir=substitute(g:outdir_dict[s:inputfiles[fnamemodify(bufname("%"),":t:r")][1]], '\\\s', ' ', 'g')
-	    elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
-		let b:atp_OutDir=substitute(g:outdir_dict[s:inputfiles[fnamemodify(bufname("%"),":t")][1]], '\\\s', ' ', 'g')
-	    endif
-    else
-	
-	    " if we are not in a project input/include file set the b:atp_OutDir
-	    " variable	
-
-	    " if the user want to be asked for b:atp_OutDir
-	    if g:askfortheoutdir == 1 
-		let b:atp_OutDir=substitute(input("Where to put output? do not escape white spaces "), '\\\s', ' ', 'g')
-	    endif
-
-	    if ( get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" 
-			\ && g:askfortheoutdir != 1 
-			\ || b:atp_OutDir == "" && g:askfortheoutdir == 1 )
-			\ && !exists("$TEXMFOUTPUT")
-		 let b:atp_OutDir=substitute(fnamemodify(resolve(expand("%:p")),":h") . "/", '\\\s', ' ', 'g')
-		 echoh WarningMsg | echomsg "Output Directory "b:atp_OutDir | echoh None
-
-	    elseif exists("$TEXMFOUTPUT")
-		 let b:atp_OutDir=substitute($TEXMFOUTPUT, '\\\s', ' ', 'g') 
-	    endif	
-
-	    " if arg != 0 then set errorfile option accordingly to b:atp_OutDir
-	    if bufname("") =~ ".tex$" && a:arg != 0
-		 call s:SetErrorFile()
-	    endif
-
-	    if exists("g:outdir_dict")
-		let g:outdir_dict	= extend(g:outdir_dict, {fnamemodify(bufname("%"),":p") : b:atp_OutDir })
-	    else
-		let g:outdir_dict	= { fnamemodify(bufname("%"),":p") : b:atp_OutDir }
-	    endif
-    endif
-    return b:atp_OutDir
-endfunction
-command! -buffer SetOutDir	:call <SID>SetOutDir(1)
-" }}}
 
 " Viewer Options
 " {{{ s:SetViewerOptions
@@ -325,24 +249,6 @@ endfun
 
 " Almost all GLOBAL VARIABLES 
 " {{{ global variables 
-if !exists("g:atp_raw_texinputs")
-    let g:atp_raw_texinputs = substitute(substitute(substitute(system("kpsewhich -show-path tex"),'!!','','g'),'\/\/\+','\/','g'), ':\|\n', ',', 'g')
-"     lockvar g:atp_raw_texinputs
-endif
-
-if !exists("g:atp_texinputs")
-    let path_list	= split(g:atp_raw_texinputs, ',')
-    let idx		= index(path_list, '.')
-    if idx != -1
-	let dot = remove(path_list, index(path_list,'.')) . ","
-    else
-	let dot = ""
-    endif
-    call map(path_list, 'v:val . "**"')
-
-    let g:atp_texinputs	= dot . join(path_list, ',')
-"     lockvar g:atp_texinputs
-endif
 
 if !exists("g:atp_developer")
     let g:atp_developer	= 0
@@ -452,9 +358,6 @@ if !exists("g:atp_amsmath")
 endif
 if !exists("g:atp_no_math_command_completion")
     let g:atp_no_math_command_completion=0
-endif
-if !exists("g:askfortheoutdir")
-    let g:askfortheoutdir=0
 endif
 if !exists("g:atp_tex_extensions")
     let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
@@ -570,6 +473,7 @@ let s:optionsDict= { 	"atp_TexOptions" 	: "",
 		\ "atp_auruns"			: "1",
 		\ "atp_TruncateStatusSection"	: "40", 
 		\ "atp_LastBibPattern"		: "" }
+
 " the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
 " remember what is the default used by s:SetOutDir().
 

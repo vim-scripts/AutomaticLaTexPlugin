@@ -577,10 +577,12 @@ if expand("%") == "__ToC__"
 	endif
 	let i	= 1
 	echo "Stack Number/Type/Title"
+	let msg = []
 	for section in t:atp_SectionStack
-	    echo i . "/" .  section[1] . " " . section[3] . "/" . section[0]
+	    call add(msg, i . "/" .  section[1] . " " . section[3] . "/" . section[0])
 	    let i+=1
 	endfor
+	call input(join(msg + [ "Press <Enter>" ] , "\n"))
     endfunction
     command! -buffer SectionStack	:call <SID>SectionStack()
 endif

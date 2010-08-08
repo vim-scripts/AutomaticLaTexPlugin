@@ -8,13 +8,13 @@ let s:loaded	= !exists("s:loaded") ? 1 : 2
 " {{{ Table Of Contents
 " {{{2 Variabels
 let g:atp_sections={
-    \	'chapter' 	: [           '^\s*\(\\chapter\*\?\s*{\)',	'\\chapter\*'],	
-    \	'section' 	: [           '^\s*\(\\section\*\?\s*{\)',	'\\section\*'],
-    \ 	'subsection' 	: [	   '^\s*\(\\subsection\*\?\s*{\)',	'\\subsection\*'],
-    \	'subsubsection' : [ 	'^\s*\(\\subsubsection\*\?\s*{\)',	'\\subsubsection\*'],
-    \	'bibliography' 	: ['^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
-    \	'abstract' 	: ['^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
-    \   'part'		: [ 		 '^\s*\(\\part\*\?\s*{\)',	'\\part\*']}
+    \	'chapter' 	: [           '\m^\s*\(\\chapter\*\?\s*{\)',	'\m\\chapter\*'],	
+    \	'section' 	: [           '\m^\s*\(\\section\*\?\s*{\)',	'\m\\section\*'],
+    \ 	'subsection' 	: [	   '\m^\s*\(\\subsection\*\?\s*{\)',	'\m\\subsection\*'],
+    \	'subsubsection' : [ 	'\m^\s*\(\\subsubsection\*\?\s*{\)',	'\m\\subsubsection\*'],
+    \	'bibliography' 	: ['\m^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
+    \	'abstract' 	: ['\m^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
+    \   'part'		: [ 		 '\m^\s*\(\\part\*\?\s*{\)',	'\m\\part\*']}
 
 "--Make TOC -----------------------------
 " This makes sense only for latex documents.
@@ -253,11 +253,10 @@ if !exists("*RemoveFromBufList")
     endfunction
 endif
 " {{{2 s:showtoc
-function! s:showtoc(toc,...)
-    let new=0
-    if a:0 == 1
-	let new=a:1
-    endif
+function! s:showtoc(toc)
+
+"     let new 	= a:0 >= 1 ? a:1 : 0
+
     " this is a dictionary of line numbers where a new file begins.
     let cline=line(".")
 "     " Open new window or jump to the existing one.
@@ -480,30 +479,22 @@ endfunction
 
 " This is the User Front End Function 
 "{{{2 TOC
-function! s:TOC(...)
+function! s:TOC(bang)
     " skip generating t:atp_toc list if it exists and if a:0 != 0
-    let skip = 0
-    if a:0 >= 1 && a:1 == 1
-	let skip = 1
-    endif
-    let new=0
-    if a:0 >= 1
-	let new=1
-    endif
     if &l:filetype != 'tex'    
-	echoerr "Wrong 'filetype'. This function works only for latex documents."
+	echoerr "Wrong 'filetype'. This command works only for latex documents."
 	return
     endif
     " for each buffer in t:buflist (set by s:buflist)
-    if skip == 0 || ( skip == 1 && !exists("t:atp_toc") )
+    if a:bang == "" || ( a:bang == "!" && !exists("t:atp_toc") )
 	for buffer in t:buflist 
     " 	    let t:atp_toc=s:make_toc(buffer)
 		let t:atp_toc=s:maketoc(buffer)
 	endfor
     endif
-    call s:showtoc(t:atp_toc,new)
+    call s:showtoc(t:atp_toc)
 endfunction
-command! -buffer -nargs=? TOC	:call <SID>TOC(<f-args>)
+command! -buffer -bang -nargs=? TOC	:call <SID>TOC(<q-bang>)
 nnoremap <Plug>ATP_TOC		:call <SID>TOC(1)<CR>
 
 " }}}2
@@ -700,166 +691,28 @@ command! -buffer CTOC		:call CTOC()
 " Labels Front End Finction. The search engine/show function are in autoload/atplib.vim script
 " library.
 " {{{ Labels
-function! s:Labels()
-    let t:atp_bufname=bufname("%")
-"     let bufname=resolve(fnamemodify(t:atp_bufname,":p"))
+function! s:Labels(bang)
+    let t:atp_bufname	= bufname("%")
+    let error		= len(getqflist())
+
     " Generate the dictionary with labels
-    let t:atp_labels=atplib#generatelabels(b:atp_MainFile)
+    if a:bang == "" || ( a:bang == "!" && !exists("t:atp_labels") )
+	let t:atp_labels=atplib#generatelabels(b:atp_MainFile)
+    endif
+
     " Show the labels in seprate window
     call atplib#showlabels(t:atp_labels[b:atp_MainFile])
+
+    if error
+	echohl WarningMsg
+	redraw
+	echomsg "The compelation contains errors, aux file might be not appriopriate for labels window."
+	echohl Normal
+    endif
 endfunction
-nnoremap <Plug>ATP_Labels	:call <SID>Labels()<CR>
-command! -buffer Labels		:call <SID>Labels()
+nnoremap <Plug>ATP_Labels		:call <SID>Labels("")<CR>
+command! -buffer -bang Labels		:call <SID>Labels(<q-bang>)
 " }}}
-
-" Edit Input Files
-" This functoin is used to open input files, it also sets up correctly some variables
-" which are important for project files.
-" {{{1 Edit Input Files 
-if s:loaded == 1
-function! EditInputFile(...)
-
-    let mainfile=b:atp_MainFile
-
-    if a:0 == 0
-	let inputfile	= ""
-	let bufname	= b:atp_MainFile
-	let opencom	= "edit"
-    elseif a:0 == 1
-	let inputfile	= a:1
-	let bufname	= b:atp_MainFile
-	let opencom	= "edit"
-    else
-	let inputfile	= a:1
-	let opencom	= a:2
-
-	" the last argument is the bufername in which search for the input files 
-	if a:0 > 2
-	    let bufname = a:3
-	else
-	    let bufname	= b:atp_MainFile
-	endif
-    endif
-
-    let dir	= fnamemodify(b:atp_MainFile,":p:h")
-
-    if a:0 == 0
-	let inputfiles=FindInputFiles(bufname)
-    else
-	let inputfiles=FindInputFiles(bufname,0)
-    endif
-
-    if !len(inputfiles) > 0
-	return 
-    endif
-
-    if index(keys(inputfiles),inputfile) == '-1'
-	let which=input("Which file to edit? <enter> for none ","","customlist,EI_compl")
-	if which == ""
-	    return
-	endif
-    else
-	let which=inputfile
-    endif
-
-    if which =~ '^\s*\d\+\s*$'
-	let ifile=keys(inputfiles)[which-1]
-    else
-	let ifile=which
-    endif
-
-    "if the choosen file is the main file put the whole path.
-"     if ifile == fnamemodify(b:atp_MainFile,":t")
-" 	let ifile=b:atp_MainFile
-"     endif
-
-    "g:texmf should end with a '/', if not add it.
-    if g:texmf !~ "\/$"
-	let g:texmf=g:texmf . "/"
-    endif
-
-    " remove all '"' from the line (latex do not supports file names with '"')
-    " this make the function work with lines like: '\\input "file name with spaces.tex"'
-    let ifile=substitute(ifile,'^\s*\"\|\"\s*$','','g')
-    " add .tex extension if it was not present
-    if inputfiles[ifile][0] == 'input' || inputfiles[ifile][0] == 'include'
-	let ifilename=atplib#append(ifile,'.tex')
-    elseif inputfiles[ifile][0] == 'bib'
-	let ifilename=atplib#append(ifile,'.bib')
-    elseif  inputfiles[ifile][0] == 'main file'
-	let ifilename=b:atp_MainFile
-    endif
-    if ifile !~ '\s*\/'
-	if filereadable(dir . "/" . ifilename) 
-	    let s:ft=&l:filetype
-	    exe "edit " . fnameescape(b:atp_OutDir . ifilename)
-	    let &l:filetype=s:ft
-	else
-	    if inputfiles[ifile][0] == 'input' || inputfiles[ifile][0] == 'include'
-		let ifilename=findfile(ifile,g:texmf . '**')
-		let s:ft=&l:filetype
-		exe opencom . " " . fnameescape(ifilename)
-		let &l:filetype=s:ft
-		let b:atp_MainFile=mainfile
-	    elseif inputfiles[ifile][0] == 'bib' 
-		let s:ft=&l:filetype
-		exe opencom . " " . inputfiles[ifile][2]
-		let &l:filetype=s:ft
-		let b:atp_MainFile=mainfile
-	    elseif  inputfiles[ifile][0] == 'main file' 
-		exe opencom . " " . b:atp_MainFile
-		let b:atp_MainFile=mainfile
-	    endif
-	endif
-    else
-	exe opencom . " " . fnameescape(ifilename)
-	let b:atp_MainFile=mainfile
-    endif
-    let b:atp_autex	= 1
-endfunction
-endif
-command! -buffer -nargs=* -complete=customlist,EI_compl		EditInputFile 	:call EditInputFile(<f-args>)
-nnoremap <silent> <buffer> <Plug>EditInputFile			:call EditInputFile(<f-args>)<CR>
-
-
-fun! EI_compl(A,P,L)
-"     let inputfiles=FindInputFiles(bufname("%"),1)
-
-    let inputfiles=filter(FindInputFiles(b:atp_MainFile,1), 'v:key !~ fnamemodify(bufname("%"),":t:r")')
-    " rewrite the keys of FindInputFiles the order: input files, bibfiles
-    let oif=[]
-    for key in keys(inputfiles)
-	if inputfiles[key][0] == 'main file'
-	    call add(oif,fnamemodify(key,":t"))
-	endif
-    endfor
-    for key in keys(inputfiles)
-	if inputfiles[key][0] == 'input'
-	    call add(oif,key)
-	endif
-    endfor
-    for key in keys(inputfiles)
-	if inputfiles[key][0] == 'include'
-	    call add(oif,key)
-	endif
-    endfor
-    for key in keys(inputfiles)
-	if inputfiles[key][0] == 'bib'
-	    call add(oif,key)
-	endif
-    endfor
-
-    " check what is already written, if it matches something return only the
-    " matching strings
-    let return_oif=[]
-    for i in oif
-	if i =~ '^' . a:A 
-	    call add(return_oif,i)
-	endif
-    endfor
-    return return_oif
-endfun
-" }}}1
 
 " Motion functions through environments and sections. 
 " {{{ Motion functions
@@ -869,18 +722,18 @@ function! s:GoToEnvironment(flag,...)
     let env_name 	= ( a:0 >= 1 ? a:1 	: '[^}]*' )
     let flag		= a:flag
     if env_name == 'math'
-	silent call search('\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
-	call histadd("search", '\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)')
-	let @/ 	 = '\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)'
+	silent call search('\m\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
+	call histadd("search", '\m\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)')
+	let @/ 	 = '\m\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)'
 	if getline(".")[col(".")-1] == '$' && col(".") > 1 && 
 		    \ ( count(map(synstack(line("."),col(".")-1), 'synIDattr(v:val, "name")'), 'texMathZoneX') == 0 ||
 		    \ 	count(map(synstack(line("."),col(".")-1), 'synIDattr(v:val, "name")'), 'texMathZoneY') == 0 )
-	    silent call search('\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
+	    silent call search('\m\%(%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(dispalyed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\[\|\\(\|\\\@!\$\$\?\)', flag) 
 	endif
     else
-	silent call search('\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}', flag)
-	call histadd("search", '\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}')
-	let @/	= '\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}'
+	silent call search('\m\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}', flag)
+	call histadd("search", '\m\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}')
+	let @/	= '\m\%(%.*\)\@<!\\begin\s*{\s*' . env_name . '.*}'
     endif
 endfunction
 command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv		:call <SID>GoToEnvironment('W', <f-args>)
@@ -982,6 +835,7 @@ try
     " (\input{,\input ) methods. However, then the file name should be unique! 
 function! GotoFile(...)
 
+    let check_line	= a:0 >= 1 ? a:1 : 1 
     if !has("path_extra")
 	echoerr "Needs +path_extra vim feature."
 	return
@@ -992,17 +846,22 @@ function! GotoFile(...)
     let s:OutDir	= b:atp_OutDir
 
     let filetype 	= &l:filetype
-    let line		= getline(".")
-    let beg_line	= strpart(line, 0,col(".")-1)
-    " Find the begining columnt of the file name:
-    let bcol		= searchpos('\%({\|,\)', 'bn',  line("."))[1]
-    if bcol == 0
-	let bcol 	= searchpos('{', 'n', line("."))[1]
+
+    " Note: line is set to "" if check_line == 0 => method = "all" is used. 
+    let line		= check_line ? getline(".") : ""
+    if check_line
+	let beg_line	= strpart(line, 0,col(".")-1)
+	" Find the begining columnt of the file name:
+	let bcol		= searchpos('\%({\|,\)', 'bn',  line("."))[1]
+	if bcol == 0
+	    let bcol 	= searchpos('{', 'n', line("."))[1]
+	endif
+
+	" Find the end columnt of the file name
+	let col		= searchpos('}', 'cn', line("."))[1]
+	" Current column
+	let cur_col		= col(".")
     endif
-    " Find the end columnt of the file name
-    let col		= searchpos('}', 'cn', line("."))[1]
-    " Current column
-    let cur_col		= col(".")
 
 "     if !col && line !~ '\\input\s*{\@!'
 " 	return 
@@ -1078,20 +937,11 @@ function! GotoFile(...)
 	" If not over any above give a list of input files to open, like
 	" EditInputFile  
 	let method	= "all"
-	let dict	= TreeOfFiles(b:atp_MainFile)[2]
-	let g:dict	= deepcopy(dict)
-	" We want to show entries in a nice order:
-	" the best would be to show according to the 'global' line number.
-	let preambule_l	= keys(filter(copy(dict), 'dict[v:key] == "preambule"'))
-	let input_l	= keys(filter(copy(dict), 'dict[v:key] == "input"'))
-	let bib_l	= keys(filter(copy(dict), 'dict[v:key] == "bib"'))
 
-	let file_l 	= preambule_l + [ b:atp_MainFile ] + input_l + bib_l
+	let [tree_d, file_l, type_d, level_d ] 	= TreeOfFiles(b:atp_MainFile)
+	call extend(file_l, [ b:atp_MainFile ], 0)
+	call extend(level_d, { b:atp_MainFile : 0 })
 	call filter(file_l, "v:val !~ expand('%') . '$'")
-	unlet preambule_l
-	unlet input_l
-	unlet bib_l
-	
     endif
 
     if len(file_l) > 1 
@@ -1104,13 +954,21 @@ function! GotoFile(...)
 	let i		= 1
 	let input_l	= []
 	for f in file_l
-	    call add(input_l, "(" . i . ") " . fnamemodify(f, mods))
+	    if exists("level_d")
+		let space = ""
+		let level = level_d[f]
+		for j in range(level)
+		    let space .= "   "
+		endfor
+	    else
+		space	= ""
+	    endif
+	    call add(input_l, "(" . i . ") " . space . fnamemodify(f, mods))
 	    let i+=1
 	endfor
 	redraw
 	" Ask the user which file to edit:
 	redraw
-let g:len=len([ msg ] + input_l)
 	if len([ msg ] + input_l) < &l:lines
 	    let choice	= inputlist([ msg ] + input_l) 
 	else
@@ -1130,13 +988,17 @@ let g:len=len([ msg ] + input_l)
 	endif
 	let file 	= file_l[choice-1]
    endif
+   let g:file		= file
 
     if file != "file_missing" && filereadable(file)
 
-	" Set the inherit the filetype if the file extension is '.tex'
-	" Thus bib, cls, sty files will have their file type (bib/plaintex).
-	let options	= file =~ '.tex$' ? ' +setl\ ft=' . &l:filetype  : ''
-	silent! execute "edit " . options . " " . file
+	" Inherit tex flavour.
+	" So that bib, cls, sty files will have their file type (bib/plaintex).
+	let filetype	= &l:filetype
+	silent! execute "edit " . file
+	if &l:filetype =~ 'tex$' && file =~ '\.tex$' && &l:filetype != filetype  
+	    let &l:filetype	= filetype
+	endif
 
 	" Set the main file variable correctly.
 	let b:atp_MainFile	= s:MainFile
@@ -1157,6 +1019,8 @@ let g:len=len([ msg ] + input_l)
 endfunction
 catch /E127: Cannot redefine function GotoFile: It is in use/
 endtry
+command! -buffer GotoFile	:call GotoFile(0)
+command! -buffer EditInputFile	:call GotoFile(0)
 " }}}1
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

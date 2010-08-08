@@ -375,8 +375,8 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 
     let saved_pos	= getpos(".")
     keepjumps call setpos(".", [0,1,1,0])
-    keepjumps let stop_line=search('\\begin\s*{document}','nW')
-    let makeidx		= search('^[^%]*\\makeindex', 'n', stop_line)
+    keepjumps let stop_line=search('\m\\begin\s*{document}','nW')
+    let makeidx		= search('\m^[^%]*\\makeindex', 'n', stop_line)
     keepjumps call setpos(".", saved_pos)
 	
     " We use location list which should be restored.
@@ -767,7 +767,7 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 " 	IF OPENING NON EXISTING OUTPUT FILE
 "	only xpdf needs to be run before (we are going to reload it)
 	if a:start && b:atp_Viewer == "xpdf"
-	    let s:start 	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . b:atp_ViewerOptions . " & "
+	    let s:start 	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . b:atp_{b:atp_Viewer}Options . " & "
 	else
 	    let s:start = ""	
 	endif

@@ -46,7 +46,7 @@ function! s:make_defi_dict(...)
 
     let l:defi_dict={}
 
-    let l:inputfiles=FindInputFiles(l:bufname, "0")
+    let l:inputfiles=FindInputFiles(l:bufname)
     let l:input_files=[]
     let b:input_files=l:input_files
 
@@ -274,126 +274,6 @@ function! DefiSearch(...)
 endfunction
 command! -buffer -nargs=* DefiSearch		:call DefiSearch(<f-args>)
 "}}}
-
-" Make a tree of input files.
-" {{{1 TreeOfFiles
-" this is needed to make backward searching.
-" It returns:
-" 	[ {tree}, {list} , {type_dict} ]
-" 	where {tree}:
-" 		is a tree of files of the form
-" 			{ file : [ subtree, linenr ] }
-"		where the linenr is the linenr of \input{file} iline the one level up
-"		file.
-"	{list}:
-"		is just list of all found input files.
-"	{type_dict}: 
-"		is a dictionary of types for files in {list}
-"		type is one of: preambule, input, bib. 
-"
-
-" Should match till the begining of the file name and not use \zs:\ze patterns.
-let g:atp_inputfile_pattern = '\\\(input\s*{\=\|include\s*{\|bibliography\s*{\)'
-
-" TreeOfFiles({main_file}, [{pattern}, {flat}, {run_nr}])
-function! TreeOfFiles(main_file,...)
-"     let time	= reltime()
-
-    let tree		= {}
-    let main_file	= readfile(a:main_file)
-    let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
-    " flat = do a flat search, i.e. fo not search in input files at all.
-    let flat		= a:0 >= 2	? a:2 : 0	
-    let run_nr		= a:0 >= 3	? a:3 : 1 
-"     let saved_view	= a:0 >= 4	? a:4 : winsaveview()
-"     let bufnr		= a:0 >= 5	? a:5 : bufnr("%")	
-
-    let line_nr		= 1
-    let ifiles		= []
-    let list		= []
-    let type_dict	= {}
-
-    let saved_llist	= getloclist(0)
-    if run_nr == 1 && &l:filetype == "tex"
-	try
-	    silent execute 'lvimgrep /\\begin\s*{\s*document\s*}/j ' . a:main_file
-	catch /E480: No match:/
-	endtry
-	let end_preamb	= get(get(getloclist(0), 0, {}), 'lnum', 0)
-    else
-	let end_preamb	= 0
-    endif
-    let g:end_preamb	= end_preamb
-    try
-	silent execute "lvimgrep /".pattern."/jg " . a:main_file
-    catch /E480: No match:/
-    endtry
-    let loclist	= getloclist(0)
-    call setloclist(0, saved_llist)
-    let lines	= map(loclist, "[ v:val['text'], v:val['lnum'], v:val['col'] ]")
-
-    for entry in lines
-
-	    let line = entry[0]
-	    let lnum = entry[1]
-	    let cnum = entry[2]
-	    " input name (iname) as appears in the source file
-	    let iname	= substitute(matchstr(line, pattern . '\zs\f*\ze'), '\s*$', '', '') 
-	    if line =~ '{\s*' . iname
-		let iname	= substitute(iname, '\\\@<!}\s*$', '', '')
-	    endif
-
-	    " type: preambule,bib,input.
-	    if lnum < end_preamb && run_nr == 1
-		let type	= "preambule"
-	    elseif strpart(line, cnum-1)  =~ '^\\bibliography'
-		let type	= "bib"
-	    else
-		let type	= "input"
-	    endif
-
-	    echomsg iname . " " . type
-
-	    if type != "bib"
-		let iname		= atplib#append(iname, '.tex')
-	    else
-		let iname		= atplib#append(iname, '.bib')
-	    endif
-
-	    " Find the full path only if it is not already given. 
-	    if iname != fnamemodify(iname, ":p")
-		if type != "bib"
-		    let iname	= atplib#KpsewhichFindFile('tex', iname, g:atp_texinputs . "," . b:atp_OutDir, 1, ':p', '^\%(\/home\|\.\)', '\(texlive\|kpsewhich\|generic\)')
-		else
-		    let iname	= atplib#KpsewhichFindFile('bib', iname, g:atp_bibinputs . "," . b:atp_OutDir, 1, ':p')
-		endif
-	    endif
-
-	    call add(ifiles, [ iname, lnum] )
-	    call add(list, iname)
-	    call extend(type_dict, { iname : type } )
-    endfor
-
-    " Be recursive if: flat is off, file is of input type.
-    if !flat
-    for [ifile, line] in ifiles	
-	if type_dict[ifile] == "input"
-	     let [ ntree, nlist, ntype_dict ] = TreeOfFiles(ifile, pattern, flat, run_nr+1)
-	     call extend(tree, { ifile : [ ntree, line ] } )
-	     call extend(list, nlist)  
-	     call extend(type_dict, ntype_dict)
-	endif
-    endfor
-    endif
-
-"     echomsg "TIME:" . join(reltime(time), ".") . " main_file:" . a:main_file
-" echo "TREE=". string(tree)
-" echo "LIST" . string(list)
-    return [ tree, list, type_dict ]
-
-endfunction
-" let s:TreeOfFiles	= TreeOfFiles(b:atp_MainFile)
-"}}}1
 
 " Search in tree and return the one level up element and its line number.
 " {{{1 SearchInTree
@@ -891,11 +771,11 @@ endfunction
 " It allows to pass arguments to s:ReverseSearch in a similar way to :vimgrep
 " function
 function! Search(Bang, Arg)
-    let pattern		= matchstr(a:Arg, '^\(\/\|[^\i]\)\zs.*\ze\1')
-    let flag		= matchstr(a:Arg, '^\(\/\|[^\i]\).*\1\s*\zs[bcepsSwW]*\ze\s*$')
+    let pattern		= matchstr(a:Arg, '\m^\(\/\|[^\i]\)\zs.*\ze\1')
+    let flag		= matchstr(a:Arg, '\m^\(\/\|[^\i]\).*\1\s*\zs[bcepsSwW]*\ze\s*$')
     if pattern == ""
-	let pattern	= matchstr(a:Arg, '^\zs\S*\ze\(\s[bcepsSwW]*\)\=$')
-	let flag	= matchstr(a:Arg, '\s\zs[SbcewW]*\ze$')
+	let pattern	= matchstr(a:Arg, '\m^\zs\S*\ze\(\s[bcepsSwW]*\)\=$')
+	let flag	= matchstr(a:Arg, '\m\s\+\zs[SbcewW]*\ze$')
     endif
 
     if pattern == ""

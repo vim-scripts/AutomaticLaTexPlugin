@@ -1,10 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Author:	Marcin Szamotulski
-" Last Changed: 2010 July 6
+" Last Changed: 2010 July 8
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 31 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 32 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied

@@ -229,21 +229,21 @@ hi bibsearchEntry 				ctermfg=33	guifg=DeepSkyBlue
 	hi bibsearchVariable 			ctermfg=white	guifg=white
 
 " ATP toc file
-highlight atp_filename						guifg=FireBrick
-highlight atp_linenumber	cterm=bold	ctermfg=27	guifg=PeachPuff4
-highlight atp_number 				ctermfg=33	guifg=sienna
-highlight atp_chapter 		cterm=bold 	ctermfg=white	guifg=seashell2		gui=bold
-highlight atp_section				ctermfg=30	guifg=seashell4
-highlight atp_subsection			ctermfg=24	guifg=seashell4
-highlight atp_abstract	cterm=bold	ctermfg=gray		guifg=seashell2		gui=bold
+highlight atp_FileName						guifg=FireBrick
+highlight atp_LineNr	cterm=bold	ctermfg=27	guifg=PeachPuff4
+highlight atp_Number 				ctermfg=33	guifg=sienna
+highlight atp_Chapter 		cterm=bold 	ctermfg=white	guifg=seashell2		gui=bold
+highlight atp_Section				ctermfg=30	guifg=seashell4
+highlight atp_SubSection			ctermfg=24	guifg=seashell4
+highlight atp_Abstract	cterm=bold	ctermfg=gray		guifg=seashell2		gui=bold
 
 " ATP label file
-highlight atp_label_filename					guifg=DeepPink4		gui=bold
-highlight atp_label_linenr cterm=bold	ctermfg=white		guifg=maroon
+highlight atp_Label_FileName					guifg=DeepPink4		gui=bold
+highlight atp_Label_LineNr cterm=bold	ctermfg=white		guifg=maroon
 " highlight atp_label_name 		ctermfg=green		guifg=chartreuse
-highlight atp_label_name 					guifg=DeepPink2		gui=bold
+highlight atp_Label_Name 					guifg=DeepPink2		gui=bold
 
-highlight atp_statusline 	cterm=bold	ctermfg=green 	ctermbg=233
+highlight atp_StatusLine 	cterm=bold	ctermfg=green 	ctermbg=233
 
 highlight atp_statustitle 	cterm=bold	ctermfg=grey 	ctermbg=233  
 highlight atp_statussection 	cterm=bold	ctermfg=yellow 	ctermbg=233  

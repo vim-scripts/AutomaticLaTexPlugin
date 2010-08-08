@@ -110,7 +110,7 @@ function! LatexBox_GetCurrentEnvironment(...)
 		let line = strpart(getline(lnum1), cnum1 - 1)
 
 		if empty(env)
-			let env = matchstr(line, '^\C\\begin\_\s*{\zs[^}]*\ze}')
+			let env = matchstr(line, '\m^\C\\begin\_\s*{\zs[^}]*\ze}')
 		endif
 		if empty(env)
 			let env = matchstr(line, '^\\\[')

@@ -162,18 +162,18 @@ function! s:SelectInlineMath(seltype)
 	if 	( s:HasSyntax('texMathZoneV', line("."), max([1,col(".")-1])) ||
 		\ s:HasSyntax('texMathZoneW', line("."), max([1,col(".")-1])) ||
 		\ s:HasSyntax('texMathZoneX', line("."), max([1,col(".")-1])) ||
-		\ s:HasSyntax('texMathZoneY', line("."), max([1,col(".")-1])) && b:atp_TexFlavour == 'plaintex' )  && 
+		\ s:HasSyntax('texMathZoneY', line("."), max([1,col(".")-1])) && b:atp_TexFlavor == 'plaintex' )  && 
 		\ col(".") > 1
 	    normal! h
 	elseif 	( s:HasSyntax('texMathZoneV', line("."), max([1,col(".")-2])) ||
 		\ s:HasSyntax('texMathZoneW', line("."), max([1,col(".")-2])) ||
-		\ s:HasSyntax('texMathZoneY', line("."), max([1,col(".")-2])) && b:atp_TexFlavour == 'plaintex' )  && 
+		\ s:HasSyntax('texMathZoneY', line("."), max([1,col(".")-2])) && b:atp_TexFlavor == 'plaintex' )  && 
 		\ col(".") > 2
 	    normal! 2h
 	endif
 
 	let return 		= 1 
-	let math_zones		= ( b:atp_TexFlavour == 'plaintex' ? [ 'V', 'W', 'X', 'Y'] : [ 'V', 'W', 'X'] )
+	let math_zones		= ( b:atp_TexFlavor == 'plaintex' ? [ 'V', 'W', 'X', 'Y'] : [ 'V', 'W', 'X'] )
 	for L in math_zones
 	    if s:HasSyntax('texMathZone'. L, line(".")) ||
 			\ s:HasSyntax('texMathZone'. L, line("."), max([1, col(".")-1]))
@@ -189,7 +189,7 @@ function! s:SelectInlineMath(seltype)
 	endif
 
 	if a:seltype == 'inner'
-	    if zone =~ '^V\|W$' || zone == 'Y' && b:atp_TexFlavour == 'plaintex'
+	    if zone =~ '^V\|W$' || zone == 'Y' && b:atp_TexFlavor == 'plaintex'
 		normal! 2l
 	    elseif zone == 'X'
 		normal! l
@@ -227,86 +227,6 @@ endfunction
 
 vnoremap <silent> <Plug>LatexBox_SelectInlineMathInner :<C-U>call <SID>SelectInlineMath('inner')<CR>
 vnoremap <silent> <Plug>LatexBox_SelectInlineMathOuter :<C-U>call <SID>SelectInlineMath('outer')<CR>
-" }}}
-
-" {{{ select current bracket
-" a:seltype		= 'inner' / 'outer' / 'INNER' / 'OUTER'
-"
-" ToDo: a nice feature to work is to make it chose the apropriate bracket
-" level (nesting) in an intuitive way (for example consecutive runs math less
-" nested region of brackets)
-function! s:SelectCurrentBracket(seltype) 
-
-    let bracket_dict	= { '{' : '}', '(': ')', '[' : '\]' }
-    let OUTER_flag	= a:seltype =~  '\C^OUTER\|INNER$'  ? 'r' : ''
-
-    if getline(".")[col(".")-1] =~ '^}\|)\|\]$'
-	let line = searchpair('{\|\\\@<!(\|\\\@<!\[', '', '}\|\\\@<!)\|\\\@<!\]', 'bsW' . OUTER_flag )
-    else
-	let line = searchpair('{\|\\\@<!(\|\\\@<!\[', '', '}\|\\\@<!)\|\\\@<!\]', 'bcsW' . OUTER_flag )
-    endif
-
-    let b:pos1 = getpos(".")
-
-    " return if opening bracket was not found.
-    if !line
-	return
-    endif
-
-    let opening_bracket	= getline(".")[col(".")-1]
-    let closing_bracket = get(bracket_dict, opening_bracket, 0) 
-    let opening_bracket = opening_bracket == '[' ? '\[' : opening_bracket
-
-    let pos	= getpos(".")
-
-    if visualmode() ==# 'V'
-	normal! V
-    else
-	normal! v
-    endif
-
-    if a:seltype == 'outer'
-	call cursor(pos[1], pos[2])
-    endif
-
-    " Find closing bracket.
-    call searchpair( opening_bracket, '', closing_bracket, 'W' )
-
-    " begining offset
-    normal! o
-    if a:seltype == 'outer'
-	call search('\\\%'.col('.').'c\%'.line('.').'l', 'b')
-    elseif a:seltype == 'inner'
-	normal! l
-	if getline(".")[col(".")-1] == ' '
-	    normal! w
-	endif
-    endif
-
-    " end offset
-    normal! o
-    if a:seltype == 'inner'
-	if getline(".")[col(".")-2] =~ '^\s\|\\$'
-	    normal! ge
-	else
-	    if col(".") > 1
-		call cursor(line("."),col(".")-1)
-	    else
-		call cursor(line(".")-1, len(getline(line(".")-1)))
-	    endif
-	endif
-    endif
-
-endfunction
-vnoremap <silent> <Plug>SelectInnerBracket :call <SID>SelectCurrentBracket('inner')<CR>
-vnoremap <silent> <Plug>SelectOuterBracket :call <SID>SelectCurrentBracket('outer')<CR>
-vnoremap <silent> <Plug>SelectINNERBracket :call <SID>SelectCurrentBracket('INNER')<CR>
-vnoremap <silent> <Plug>SelectOUTERBracket :call <SID>SelectCurrentBracket('OUTER')<CR>
-" These maps should be moved to mappings.vim:
-vmap <buffer> i)		<ESC>:call <SID>SelectCurrentBracket('inner')<CR>
-vmap <buffer> a)		<ESC>:call <SID>SelectCurrentBracket('outer')<CR>
-vmap <buffer> A)		<ESC>:call <SID>SelectCurrentBracket('OUTER')<CR>
-vmap <buffer> I)		<ESC>:call <SID>SelectCurrentBracket('INNER')<CR>
 " }}}
 
 " {{{ select syntax
@@ -408,8 +328,6 @@ function! s:SelectSyntax(syntax)
 endfunction
 vnoremap <silent> <buffer> <Plug>SelectInnerSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('inner')<CR>
 vnoremap <silent> <buffer> <Plug>SelectOuterSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('outer')<CR>
-vmap <buffer> <silent> as		<ESC>:<C-U>call <SID>SelectSyntax('outer')<CR>
-vmap <buffer> <silent> is		<ESC>:<C-U>call <SID>SelectSyntax('inner')<CR>
 " }}}
 
 " select current environment {{{
@@ -513,7 +431,7 @@ function! s:HighlightMatchingPair()
 		let two_dollars = ( getline('.')[col('.') - 2] == '$' ? 'p' : 
 			    			\ ( getline('.')[col('.') ] == '$' ? 'n' : '0' ) )
 
-		if two_dollars == '0' || b:atp_TexFlavour == 'tex'
+		if two_dollars == '0' || b:atp_TexFlavor == 'tex'
 
 		    " check if next character is in inline math
 		    let [lnum2, cnum2] = searchpos('.', 'nW')
@@ -526,7 +444,7 @@ function! s:HighlightMatchingPair()
 		    execute '2match MatchParen /\%(\%' . lnum . 'l\%' . cnum . 'c\$'
 					    \	. '\|\%' . line('.') . 'l\%' . col('.') . 'c\$\)/'
 
-		elseif b:atp_TexFlavour == 'plaintex'
+		elseif b:atp_TexFlavor == 'plaintex'
 		    
 		    " check if next character is in inline math
 		    if two_dollars == 'n'
@@ -602,6 +520,49 @@ function! s:HighlightMatchingPair()
 endfunction
 " }}}
 
+" select current paragraph {{{
+function! s:SelectCurrentParagraph(seltype) 
+    if a:seltype == "inner"
+	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\)', 'ebcnW')
+	let [ eline, ecol ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\)', 'nW')
+	let emove	= "ge"
+    else
+	let [ bline, bcol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'bcnW')
+	let [ eline, ecol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'nW')
+    endif
+    if getline(bline) =~ '\\par'
+	" move to the beginning of \par
+	let bmove	= ''
+    else
+	" or to the begining of line 
+	let bmove 	=  "w"
+    endif
+
+    if getline(eline) =~ '\\par'
+	let emove	= 'gE'
+    else
+	let emove	= 'gE'
+    endif
+
+    call cursor(bline, bcol)
+    if bmove != ''
+	execute "normal " . bmove
+    endif
+
+    if mode() !~ 'v'  
+	if visualmode() ==# 'V'
+		normal! V
+	else
+		normal! v
+	endif
+    endif
+
+    call cursor(eline, ecol)
+    execute "normal " . emove
+endfunction
+vnoremap <silent> <Plug>ATP_SelectCurrentParagraphInner :<C-U>call <SID>SelectCurrentParagraph('inner')<CR>
+vnoremap <silent> <Plug>ATP_SelectCurrentParagraphOuter :<C-U>call <SID>SelectCurrentParagraph('outer')<CR>
+" }}}
 
 if !s:did_script
     augroup LatexBox_HighlightPairs

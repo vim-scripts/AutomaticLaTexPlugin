@@ -7,13 +7,15 @@
 if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1
 
-function! ATP_TOC_StatusLine()
+function! ATP_TOC_StatusLine() " {{{
     let l:return = ( expand("%") == "__ToC__" 	? "Table of Contents" 	: 0 )
     let l:return = ( expand("%") == "__Labels__" 	? "List of Labels" 	: l:return )
     return l:return
 endfunction
 setlocal statusline=%{ATP_TOC_StatusLine()}
+" }}}
 
+" {{{ s:getlinenr(...)
 " a:1 	line number to get, if not given the current line
 " a:2	0/1 	0 (default) return linenr as for toc/labels
 function! s:getlinenr(...)
@@ -21,44 +23,34 @@ function! s:getlinenr(...)
     let labels 	=  a:0 >= 2 ? a:2	   : expand("%") == "__Labels__" ? 1 : 0
 
     if labels == 0
-	return matchstr(line,'^\s*\zs\d\+')
+	return get(b:atp_Toc, line("."), ["", ""])[1]
     else
-	return matchstr(line,'(\zs\d\+\ze)') 
+	return get(b:atp_Labels, line("."), ["", ""])[1]
     endif
 endfunction
-" command! GL :echo <SID>getlinenr(line("."))
+command! -buffer GetLine :echo <SID>getlinenr(line("."))
+"}}}
 
-function! s:getsectionnr(...)
+function! s:getsectionnr(...) "{{{
     let line =  a:0 == 0 ? getline('.') : getline(a:1)
     return matchstr(l:line,'^\s*\d\+\s\+\zs\%(\d\|\.\)\+\ze\D')
 endfunction
+"}}}
 
 " Get the file name and its path from the LABELS/ToC list.
-function! s:file()
+function! s:file() "{{{
     let labels		= expand("%") == "__Labels__" ? 1 : 0
-    let g:labels	= labels
 
-    let true		= 1
-    let linenr		= line('.')
-    while true == 1
-	" To do: this might not work in project files, where a label is
-	" defined in a different file
-	let line	= s:getlinenr(linenr)
-	if line != ""
-	    let linenr	-=1
-	else
-	    let true	= 0
-	    " NOTE THAT FILE NAME SHOULD NOT INCLUDE '(' and ')' and SHOULD
-	    " NOT BEGIN WITH A NUMBER.
-	    let line	= getline(linenr)
-	    let bufname	= strpart(line, 0, stridx(line,'(')-1)
-	    let path	= substitute(strpart(line,stridx(line,'(')+1),')\s*$','','')
-	endif
-    endwhile
-    return [ path, bufname ]
+    if labels == 0
+	return get(b:atp_Toc, line("."), ["", ""])[0]
+    else
+	return get(b:atp_Labels, line("."), ["", ""])[0]
+    endif
 endfunction
-command! File	:echo s:file()
+command! -buffer File	:echo s:file()
+"}}}
  
+" {{{1 s:gotowinnr
 "---------------------------------------------------------------------
 " Notes:
 " 		(1) choose window with matching buffer name
@@ -84,31 +76,43 @@ function! s:gotowinnr()
     " t:atp_bufname
     " t:atp_winnr		were set by TOC(), they should also be set by
     " 			autocommands
-    let l:buf=s:file()
-    let l:bufname=l:buf[0] . "/" . l:buf[1]
+    let l:bufname=s:file()
 
-    if t:atp_bufname == l:bufname
-	" if t:atp_bufname agree with that found in ToC
-	" if the t:atp_winnr is still open
+    if labels_window
+	" Find labels window to go in Labels window
 	if bufwinnr(t:atp_bufname) != -1
 	    let l:gotowinnr=t:atp_winnr
 	else
 	    let l:gotowinnr=-1
 	endif
     else
- 	if bufwinnr("^" . l:bufname . "$") != 0
-	    " if not but there is a window with buffer l:bufname
-	    let l:gotowinnr=bufwinnr("^" . l:bufname . "$")
- 	else
-	    " if not and there is no window with buffer l:bufname
- 	    let l:gotowinnr=t:atp_winnr
- 	endif
+	" Find labels window to go in ToC window
+	if t:atp_bufname == l:bufname
+	    " if t:atp_bufname agree with that found in ToC
+	    " if the t:atp_winnr is still open
+	    if bufwinnr(t:atp_bufname) != -1
+		let l:gotowinnr=t:atp_winnr
+	    else
+		let l:gotowinnr=-1
+	    endif
+	else
+	    if bufwinnr("^" . l:bufname . "$") != 0
+		" if not but there is a window with buffer l:bufname
+		let l:gotowinnr=bufwinnr("^" . l:bufname . "$")
+	    else
+		" if not and there is no window with buffer l:bufname
+		let l:gotowinnr=t:atp_winnr
+	    endif
+	endif
     endif
+
     return l:gotowinnr
 endif
 endfunction
+command! -buffer GotoWinNr	:echo s:gotowinnr()
+" }}}1
 
-function! GotoLine(closebuffer)
+function! GotoLine(closebuffer) "{{{
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
     
     " if under help lines do nothing:
@@ -131,9 +135,12 @@ function! GotoLine(closebuffer)
 
     if gotowinnr != -1
  	exe gotowinnr . " wincmd w"
+	if fnamemodify(buf, ":p") != fnamemodify(bufname("%"), ":p")
+	    exe "e " . fnameescape(buf)
+	endif
     else
  	exe gotowinnr . " wincmd w"
-	exe "e " . fnameescape(buf[0] . "/" . buf[1])
+	exe "e " . fnameescape(buf)
     endif
 	
     "if we were asked to close the window
@@ -142,13 +149,13 @@ function! GotoLine(closebuffer)
     endif
 
     "finally, set the position
-    call setpos('.',[0,nr,1,0])
+    call setpos('.', [0, nr, 1, 0])
     exe "normal zt"
     
 endfunction
-" endif
+" }}}
 
-function! s:yank(arg)
+function! s:yank(arg) " {{{
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
 
     let l:toc=getbufline("%",1,"$")
@@ -158,29 +165,29 @@ function! s:yank(arg)
     endif
 
     let l:cbufnr=bufnr("")
-    let l:buf=s:file()
-    let l:bufname=l:buf[1]
-    let l:filename=l:buf[0] . "/" . l:buf[1]
+    let file_name=s:file()
 
     if !labels_window
-	if exists("t:atp_labels") || get(t:atp_labels, l:filename, "nofile") != "nofile"
-	    let l:choice	= get(get(deepcopy(t:atp_labels), l:filename), s:getlinenr(line("."), labels_window))
-	else
-	    let l:choice	= "nokey"
+	if exists("t:atp_labels") || get(t:atp_labels, file_name, "nofile") != "nofile"	 
+	    " set t:atp_labels variable
+	    call atplib#generatelabels(getbufvar(s:file(), 'atp_MainFile'), 0)
 	endif
+
+	let line	= s:getlinenr(line("."), labels_window)
+	let choice	= get(get(filter(get(deepcopy(t:atp_labels), file_name, []), 'v:val[0] ==  line'), 0, []), 1 , 'nokey')
     else
-	if exists("t:atp_labels") || get(t:atp_labels, l:filename, "nofile") != "nofile"
+	if exists("t:atp_labels") || get(t:atp_labels, file_name, "nofile") != "nofile"
 	    let line_nr		= s:getlinenr(line("."), labels_window)
-	    let choice_list	= filter(get(deepcopy(t:atp_labels), l:filename), "v:val[0] == line_nr" )
+	    let choice_list	= filter(get(deepcopy(t:atp_labels), file_name), "v:val[0] == line_nr" )
 	    " There should be just one element in the choice list
 	    " unless there are two labels in the same line.
-	    let l:choice	= choice_list[0][1]
+	    let choice	= choice_list[0][1]
 	else
-	    let l:choice	= "nokey"
+	    let choice	= "nokey"
 	endif
     endif
 
-    if l:choice	== "nokey"
+    if choice	== "nokey"
 	" in TOC, if there is a key we will give it back if not:
 	au! CursorHold __ToC__
 	echomsg "There is no key."
@@ -191,65 +198,64 @@ function! s:yank(arg)
 	if a:arg == '@'
 	    let l:letter=input("To which register? <reg name><Enter> or empty for none ")
 	    silent if l:letter == 'a'
-		let @a=l:choice
+		let @a=choice
 	    elseif l:letter == 'b'
-		let @b=l:choice
+		let @b=choice
 	    elseif l:letter == 'c'
-		let @c=l:choice
+		let @c=choice
 	    elseif l:letter == 'd'
-		let @d=l:choice
+		let @d=choice
 	    elseif l:letter == 'e'
-		let @e=l:choice
+		let @e=choice
 	    elseif l:letter == 'f'
-		let @f=l:choice
+		let @f=choice
 	    elseif l:letter == 'g'
-		let @g=l:choice
+		let @g=choice
 	    elseif l:letter == 'h'
-		let @h=l:choice
+		let @h=choice
 	    elseif l:letter == 'i'
-		let @i=l:choice
+		let @i=choice
 	    elseif l:letter == 'j'
-		let @j=l:choice
+		let @j=choice
 	    elseif l:letter == 'k'
-		let @k=l:choice
+		let @k=choice
 	    elseif l:letter == 'l'
-		let @l=l:choice
+		let @l=choice
 	    elseif l:letter == 'm'
-		let @m=l:choice
+		let @m=choice
 	    elseif l:letter == 'n'
-		let @n=l:choice
+		let @n=choice
 	    elseif l:letter == 'o'
-		let @o=l:choice
+		let @o=choice
 	    elseif l:letter == 'p'
-		let @p=l:choice
+		let @p=choice
 	    elseif l:letter == 'q'
-		let @q=l:choice
+		let @q=choice
 	    elseif l:letter == 'r'
-		let @r=l:choice
+		let @r=choice
 	    elseif l:letter == 's'
-		let @s=l:choice
+		let @s=choice
 	    elseif l:letter == 't'
-		let @t=l:choice
+		let @t=choice
 	    elseif l:letter == 'u'
-		let @u=l:choice
+		let @u=choice
 	    elseif l:letter == 'v'
-		let @v=l:choice
+		let @v=choice
 	    elseif l:letter == 'w'
-		let @w=l:choice
+		let @w=choice
 	    elseif l:letter == 'x'
-		let @x=l:choice
+		let @x=choice
 	    elseif l:letter == 'y'
-		let @y=l:choice
+		let @y=choice
 	    elseif l:letter == 'z'
-		let @z=l:choice
+		let @z=choice
 	    elseif l:letter == '*'
-		let @-=l:choice
+		let @-=choice
 	    elseif l:letter == '+'
-		let @+=l:choice
+		let @+=choice
 	    elseif l:letter == '-'
-		let @@=l:choice
+		let @@=choice
 	    endif
-	    echohl WarningMsg | echomsg "Choice yanked to the register '" . l:letter . "'" | echohl None
 	elseif a:arg =='p'
 
 	    let l:gotowinnr=s:gotowinnr()
@@ -263,12 +269,13 @@ function! s:yank(arg)
 	    let l:colpos=getpos('.')[2]
 	    let l:bline=strpart(l:line,0,l:colpos)
 	    let l:eline=strpart(l:line,l:colpos)
-	    call setline('.',l:bline . l:choice . l:eline)
-	    call setpos('.',[getpos('.')[0],getpos('.')[1],getpos('.')[2]+len(l:choice),getpos('.')[3]])
+	    call setline('.',l:bline . choice . l:eline)
+	    call setpos('.',[getpos('.')[0],getpos('.')[1],getpos('.')[2]+len(choice),getpos('.')[3]])
 	endif
     endif
 endfunction
 command! -buffer P :call Yank("p")
+" }}}
 
 if !exists("*YankToReg")
 function! YankToReg()
@@ -287,26 +294,26 @@ if !exists("*ShowLabelContext")
 function! ShowLabelContext()
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
 
-    let l:toc=getbufline("%",1,"$")
-    let l:h_line=index(reverse(copy(l:toc)),'')+1
-    if line(".") > len(l:toc)-l:h_line
+    let toc	= getbufline("%",1,"$")
+    let h_line	= index(reverse(copy(toc)),'')+1
+    if line(".") > len(toc)-h_line
 	return ''
     endif
 
-    let l:cbufname=bufname('%')
-    let l:bufname=s:file()[1]
-    let l:bufnr=bufnr("^" . l:bufname . "$")
-    let l:winnr=bufwinnr(l:bufname)
-    let l:line=s:getlinenr(line("."), labels_window)
+    let cbuf_name	= bufname('%')
+    let buf_name	= s:file()
+    let buf_nr		= bufnr("^" . buf_name . "$")
+    let win_nr		= bufwinnr(buf_name)
+    let line		= s:getlinenr(line("."), labels_window)
     if !exists("t:atp_labels")
-	let t:atp_labels=UpdateLabels(l:bufname)
+	let t:atp_labels=UpdateLabels(buf_name)
     endif
-    exe l:winnr . " wincmd w"
-	if l:winnr == -1
-	    exe "e #" . l:bufnr
+    exe win_nr . " wincmd w"
+	if win_nr == -1
+	    exe "e #" . buf_nr
 	endif
     exe "12split "
-    call setpos('.',[0,l:line,1,0])
+    call setpos('.', [0, line, 1, 0])
 endfunction
 endif
 
@@ -314,65 +321,60 @@ if !exists("*EchoLine")
 function! EchoLine()
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
 
-    let l:toc		= getbufline("%",1,"$")
-    let l:h_line	= index(reverse(copy(l:toc)),'')+1
-    if line(".") > len(l:toc)-l:h_line
+    let toc		= getbufline("%",1,"$")
+    let h_line		= index(reverse(copy(toc)),'')+1
+    if line(".") > len(toc)-h_line
 	return ''
     endif
 
-    let l:bufname	= s:file()[1]
-    let l:bufnr		= bufnr("^" . l:bufname . "$")
+    let buf_name	= s:file()
+    let buf_nr		= bufnr("^" . buf_name . "$")
     if !exists("t:atp_labels")
-	let t:atp_labels[l:bufname]	= UpdateLabels(l:bufname)[l:bufname]
+	let t:atp_labels[buf_name]	= UpdateLabels(buf_name)[buf_name]
     endif
-    let l:line		= s:getlinenr(line("."), labels_window)
-    let l:sec_line	= join(getbufline(l:bufname,l:line))
-    let l:sec_type	= ""
+    let line		= s:getlinenr(line("."), labels_window)
+    let sec_line	= join(getbufline(buf_name,line))
+    let sec_type	= ""
 
-    let b:bufname	= l:bufname
-    let b:line		= l:line
-
-    if l:sec_line =~ '\\subparagraph[^\*]'
-	let l:sec_type="subparagraph"
-    elseif l:sec_line =~ '\\subparagraph\*'
-	let l:sec_type="subparagraph*"
-    elseif l:sec_line =~ '\\paragraph[^\*]'
-	let l:sec_type="paragraph"
-    elseif l:sec_line =~ '\\paragraph\*'
-	let l:sec_type="paragraph*"
-    elseif l:sec_line =~ '\\subsubsection[^\*]'
-	let l:sec_type="subsubsection"
-    elseif l:sec_line =~ '\\subsubsection\*'
-	let l:sec_type="subsubsection*"
-    elseif l:sec_line =~ '\\subsection[^\*]'
-	let l:sec_type="subsection"
-    elseif l:sec_line =~ '\\subsection\*'
-	let l:sec_type="subsection*"
-    elseif l:sec_line =~ '\\section[^\*]'
-	let l:sec_type="section"
-    elseif l:sec_line =~ '\\section\*'
-	let l:sec_type="section*"
-    elseif l:sec_line =~ '\\chapter[^\*]'
-	let l:sec_type="chapter"
-    elseif l:sec_line =~ '\\chapter\*'
-	let l:sec_type="chapter*"
-    elseif l:sec_line =~ '\\part[^\*]'
-	let l:sec_type="part"
-    elseif l:sec_line =~ '\\part\*'
-	let l:sec_type="part*"
-    elseif l:sec_line =~ '\\bibliography'
-	let l:sec_type="bibliography"
-    elseif l:sec_line =~ '\\abstract'
-	let l:sec_type="abstract"
+    if sec_line =~ '\\subparagraph[^\*]'
+	let sec_type="subparagraph"
+    elseif sec_line =~ '\\subparagraph\*'
+	let sec_type="subparagraph*"
+    elseif sec_line =~ '\\paragraph[^\*]'
+	let sec_type="paragraph"
+    elseif sec_line =~ '\\paragraph\*'
+	let sec_type="paragraph*"
+    elseif sec_line =~ '\\subsubsection[^\*]'
+	let sec_type="subsubsection"
+    elseif sec_line =~ '\\subsubsection\*'
+	let sec_type="subsubsection*"
+    elseif sec_line =~ '\\subsection[^\*]'
+	let sec_type="subsection"
+    elseif sec_line =~ '\\subsection\*'
+	let sec_type="subsection*"
+    elseif sec_line =~ '\\section[^\*]'
+	let sec_type="section"
+    elseif sec_line =~ '\\section\*'
+	let sec_type="section*"
+    elseif sec_line =~ '\\chapter[^\*]'
+	let sec_type="chapter"
+    elseif sec_line =~ '\\chapter\*'
+	let sec_type="chapter*"
+    elseif sec_line =~ '\\part[^\*]'
+	let sec_type="part"
+    elseif sec_line =~ '\\part\*'
+	let sec_type="part*"
+    elseif sec_line =~ '\\bibliography'
+	let sec_type="bibliography"
+    elseif sec_line =~ '\\abstract'
+	let sec_type="abstract"
     endif
 
-    let l:label		= matchstr(l:sec_line,'\\label\s*{\zs[^}]*\ze}')
-    let g:sec_line	= l:sec_line
-    let g:label		= l:label
-    if l:label != ""
-	echo l:sec_type . " : '" . strpart(l:sec_line,stridx(l:sec_line,'{')+1,stridx(l:sec_line,'}')-stridx(l:sec_line,'{')-1) . "'\t label : " . l:label
+    let label		= matchstr(sec_line,'\\label\s*{\zs[^}]*\ze}')
+    if label != ""
+	echo sec_type . " : '" . strpart(sec_line,stridx(sec_line,'{')+1,stridx(sec_line,'}')-stridx(sec_line,'{')-1) . "'\t label : " . label
     else
-	echo l:sec_type . " : '" . strpart(l:sec_line,stridx(l:sec_line,'{')+1,stridx(l:sec_line,'}')-stridx(l:sec_line,'{')-1) . "'"
+	echo sec_type . " : '" . strpart(sec_line,stridx(sec_line,'{')+1,stridx(sec_line,'}')-stridx(sec_line,'{')-1) . "'"
     endif
     return 0
 endfunction
@@ -405,13 +407,12 @@ if expand("%") == "__ToC__"
 
 	" Get the name and path of the file
 	" to operato on
-	let buffer		= s:file()
-	let file_name	= buffer[0] . "/" . buffer[1]
+	let file_name	= s:file()
 
 	let begin_line	= s:getlinenr()
 	let section_nr	= s:getsectionnr()
 	let toc		= deepcopy(t:atp_toc[file_name]) 
-	let type		= toc[begin_line][0]
+	let type	= toc[begin_line][0]
 
 	" Only some types are supported:
 	if count(['bibliography', 'subsubsection', 'subsection', 'section', 'chapter', 'part'], type) == 0
@@ -465,7 +466,7 @@ if expand("%") == "__ToC__"
 	    exe gotowinnr . " wincmd w"
 	else
 	    exe gotowinnr . " wincmd w"
-	    exe "e " . fnameescape(buffer[0] . "/" . buffer[1])
+	    exe "e " . fnameescape(file_name)
 	endif
 	    
 	"finally, set the position
@@ -510,7 +511,7 @@ if expand("%") == "__ToC__"
 	" Update the stack of deleted sections
 	call extend(t:atp_SectionStack, [[title, type, deleted_section, section_nr]],0)
     endfunction
-    command! DeleteSection		:call <SID>DeleteSection()
+    command! -buffer DeleteSection	:call <SID>DeleteSection()
     " nnoremap dd			:call <SID>DeleteSection()<CR>
 
     " Paste the section from the stack
@@ -542,7 +543,7 @@ if expand("%") == "__ToC__"
 	    exe gotowinnr . " wincmd w"
 	else
 	    exe gotowinnr . " wincmd w"
-	    exe "e " . fnameescape(buffer[0] . "/" . buffer[1])
+	    exe "e " . fnameescape(buffer)
 	endif
 
 	if begin_line != ""
@@ -648,12 +649,12 @@ if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
 "   set) it calles the command instead of the function, I could add a check if
 "   mouse is over the right buffer. With mousefocuse it also do not works very
 "   well.
-    map <buffer> c 			:call YankToReg()<CR>
-    map <buffer> y 			:call YankToReg()<CR>
-    noremap <silent> <buffer> p 	:call Paste()<CR>
-    noremap <silent> <buffer> s 	:call ShowLabelContext()<CR> 
-    noremap <silent> <buffer> e 	:call EchoLine()<CR>
-    noremap <silent> <buffer> <F1>	:call Help()<CR>
+    map <silent> <buffer> c		:call YankToReg()<CR>
+    map <silent> <buffer> y 		:call YankToReg()<CR>
+    map <silent> <buffer> p 		:call Paste()<CR>
+    map <silent> <buffer> s 		:call ShowLabelContext()<CR> 
+    map <silent> <buffer> e 		:call EchoLine()<CR>
+    map <silent> <buffer> <F1>		:call Help()<CR>
 endif
 setl updatetime=200 
 augroup ATP_TOC

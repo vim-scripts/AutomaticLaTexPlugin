@@ -94,6 +94,7 @@ if version >= 508 || !exists("did_bib_syn_inits")
   HiLink bibsearchQuote		bibQuote        
   HiLink bibsearchBrace		bibBrace        
   HiLink bibsearchParen		bibParen        
+  HiLink bibsearchInfo		Number
   delcommand HiLink
 endif
 let b:current_syntax = "bibsearch"

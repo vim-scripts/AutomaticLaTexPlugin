@@ -89,7 +89,12 @@ setl keywordprg=texdoc\ -m
 	    \ . '\|\\\(re\)\=new\(boolean\|command\|counter\|environment\|font'
 	    \ . '\|if\|length\|savebox\|theorem\(style\)\=\)\s*\*\=\s*{\='
 	    \ . '\|DeclareMathOperator\s*{\=\s*'
-    setlocal include=\\\\input\\\\|\\\\include{
+    let g:filetype = &l:filetype
+    if &l:filetype != "plaintex"
+	setlocal include=\\\\input\\(\\s*{\\)\\=\\\\|\\\\include\\s*{
+    else
+	setlocal include=\\\\input
+    endif
     setlocal suffixesadd=.tex
 
     setlocal includeexpr=substitute(v:fname,'\\%(.tex\\)\\?$','.tex','')
@@ -130,7 +135,7 @@ fun! SetProjectName()
     if &filetype == "fd_atp"
 	" this is needed for EditInputFile function to come back to the main
 	" file.
-	let b:atp_MainFile	= fnamemodify(expand("%"),":p")
+	let b:atp_MainFile	= fnamemodify(expand("%"), ":p")
 	let b:did_project_name	= 1
     endif
 
@@ -141,7 +146,7 @@ fun! SetProjectName()
     endif
 
     if !exists("s:inputfiles")
-	let s:inputfiles 	= FindInputFiles(expand("%"))
+	let s:inputfiles 	= FindInputFiles(expand("%"), 1)
     else
 	call extend(s:inputfiles,FindInputFiles(bufname("%")))
     endif
@@ -153,6 +158,7 @@ fun! SetProjectName()
 	 \ index(keys(s:inputfiles),fnamemodify(bufname("%"),":p:r")) == '-1' &&
 	 \ index(keys(s:inputfiles),fnamemodify(bufname("%"),":p"))   == '-1' 
 	    let b:atp_MainFile=fnamemodify(expand("%"),":p")
+	    let s:pn_return="input file 0"
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
 	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":t")][1],":p")
 	    let s:pn_return="input file 1"
@@ -167,16 +173,18 @@ fun! SetProjectName()
 " 	    endif
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":p:r")) != '-1' 
 	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":p:r")][1],":p")
+	    let s:pn_return="input file 3"
 " 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
 " 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
 " 	    endif
 	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":p"))   != '-1' 
 	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":p")][1],":p")
+	    let s:pn_return="input file 4"
 " 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
 " 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
 " 	    endif
 	endif
-	let s:pn_return 	= " set"
+	let s:pn_return 	.= " set"
     elseif exists("g:atp_project")
 	let b:atp_MainFile	= g:atp_project
 	let s:pn_return		= " set from g:atp_project"
@@ -224,7 +232,9 @@ function! s:SetErrorFile()
     let &l:errorfile	= errorfile
     return &l:errorfile
 endfunction
-call s:SetErrorFile()
+if expand("%:e") == "tex"
+    call s:SetErrorFile()
+endif
 command! -buffer SetErrorFile		:call s:SetErrorFile()
 "}}}
 
@@ -234,17 +244,6 @@ if !s:did_options
 	au BufRead 	$l:errorfile 	setlocal 	autoread 
     augroup END
 endif
-"}}}
-
-
-" Viewer Options
-" {{{ s:SetViewerOptions
-" Set the g:{b:atp_Viewer}Options as b:atp_ViewerOptions for the current buffer
-fun! s:SetViewerOptions()
-    if exists("b:atp_Viewer") && exists("g:" . b:atp_Viewer . "Options")
-	let b:atp_ViewerOptions=g:{b:atp_Viewer}Options
-    endif
-endfun
 "}}}
 
 " Almost all GLOBAL VARIABLES 
@@ -265,6 +264,31 @@ if !exists("g:atp_CompilersDict")
 		\ "tex" 	: ".dvi",	"elatex"	: ".dvi",
 		\ "etex"	: ".dvi", 	"luatex"	: ".pdf"}
 endif
+
+if !exists("g:CompilerMsg_Dict")
+    let g:CompilerMsg_Dict	= { 
+		\ 'tex'		: 'TeX', 
+		\ 'etex'		: 'eTeX', 
+		\ 'pdftex'		: 'pdfTeX', 
+		\ 'latex' 		: 'LaTeX',
+		\ 'elatex' 		: 'eLaTeX',
+		\ 'pdflatex'	: 'pdfLaTeX', 
+		\ 'context'		: 'ConTeXt',
+		\ 'luatex'		: 'LuaTeX',
+		\ 'xetex'		: 'XeTeX'}
+endif
+
+if !exists("g:ViewerMsg_Dict")
+    let g:ViewerMsg_Dict	= {
+		\ 'xpdf'		: 'Xpdf',
+		\ 'xdvi'		: 'Xdvi',
+		\ 'kpdf'		: 'Kpdf',
+		\ 'okular'		: 'Okular', 
+		\ 'evince'		: 'Evince',
+		\ 'acroread'		: 'AcroRead',
+		\ 'epdfview'		: 'epdfView' }
+endif
+
 "ToDo: to doc.
 if !exists("g:atp_insert_updatetime")
     let g:atp_insert_updatetime = max([ 2000, &l:updatetime])
@@ -457,7 +481,7 @@ endif
 
 " Buffer-local variables
 " {{{ buffer variables
-let b:atp_running=0
+let b:atp_running	= 0
 
 " these are all buffer related variables:
 let s:optionsDict= { 	"atp_TexOptions" 	: "", 		
@@ -465,11 +489,10 @@ let s:optionsDict= { 	"atp_TexOptions" 	: "",
 		\ "atp_OpenViewer" 		: "1", 		
 		\ "atp_autex" 			: "1", 
 		\ "atp_Viewer" 			: "xpdf", 	
-		\ "atp_OutputFlavour" 		: "pdf", 
-		\ "atp_TexFlavour" 		: &l:filetype, 
+		\ "atp_TexFlavor" 		: &l:filetype, 
 		\ "atp_XpdfServer" 		: fnamemodify(expand("%"),":t"), 
 		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
-		\ "atp_TexCompiler" 		: "pdflatex",	
+		\ "atp_TexCompiler" 		: &filetype == "plaintex" ? "pdftex" : "pdflatex",	
 		\ "atp_auruns"			: "1",
 		\ "atp_TruncateStatusSection"	: "40", 
 		\ "atp_LastBibPattern"		: "" }
@@ -562,19 +585,65 @@ endfunction
 "}}}
 call s:SetOptions()
 
+"}}}
+
 " This is to be extended into a nice function which shows the important options
 " and alows to reconfigure atp
 "{{{ ShowOptions
-function! ShowOptions()
-    let message_dict=""
+let s:file	= expand('<sfile>:p')
+function! s:ShowOptions(bang,...)
+
+    let pattern	= a:0 >= 1 ? a:1 : ".*,"
+    let mlen	= max(map(copy(keys(s:optionsDict)), "len(v:val)"))
+
+    echo "Local buffer variables:"
+    redraw
     for key in keys(s:optionsDict)
-	echo key
-" 	let message.=key."\t\t".s:optionDict[key]."\n"
+	let space = ""
+	for s in range(mlen-len(key)+1)
+	    let space .= " "
+	endfor
+	if "b:".key =~ pattern
+" 	    if patn != '' && "b:".key !~ patn
+	    echo "b:".key.space.getbufvar(bufnr(""), key)
+" 	    endif
+	endif
     endfor
-    call confirm(message)
+    if a:bang == "!"
+" 	Show some global options
+	echo "\n"
+	echo "Global variables (defined in ".s:file."):"
+	let saved_loclist	= getloclist(0)
+	execute "lvimgrep /^\\s*let\\s\\+g:/j " . s:file
+	let global_vars		= getloclist(0)
+	call setloclist(0, saved_loclist)
+	let var_list		= []
+
+	for var in global_vars
+	    let var_name	= matchstr(var['text'], '^\s*let\s\+\zsg:\S*\ze=')
+	    if len(var_name) 
+		call add(var_list, var_name)
+	    endif
+	endfor
+	let g:vars	= copy(var_list)
+	call filter(var_list, 'count(var_list, v:val) == 1')
+	let g:fvars	= copy(var_list)
+	let mlen	= max(map(copy(var_list), "len(v:val)"))
+	for var_name in var_list
+	    let space = ""
+	    for s in range(mlen-len(var_name)+1)
+		let space .= " "
+	    endfor
+	    if var_name =~ pattern && var_name !~ '_command\|_amsfonts\|ams_negations\|tikz_\|keywords'
+" 		if patn != '' && var_name !~ patn
+		echo var_name.space.string({var_name})
+" 		endif
+	    endif
+	endfor
+
+    endif
 endfunction
-command! -buffer -nargs=? ShowOptions		:call <SID>ShowOptions(<f-args>)
-"}}}
+command! -buffer -bang -nargs=* ShowOptions		:call <SID>ShowOptions(<q-bang>, <q-args>)
 "}}}
 
 " Variables for the Debug Mode
@@ -601,22 +670,36 @@ endif
 " xdvi - supports forward and reverse searching
 " {{{ SetXdvi
 fun! SetXdvi()
+
+    " Remove menu entries
+    let Compiler		= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\S*'), 'Compiler')
+    let Viewer			= get(g:ViewerMsg_Dict, matchstr(b:atp_Viewer, '^\s*\S*'), 'View\ Output')
+    try
+	execute "unmenu LaTeX.".Compiler
+	execute "unmenu LaTeX.".Compiler."\\ debug"
+	execute "unmenu LaTeX.".Compiler."\\ twice"
+	execute "unmenu LaTeX.View\\ with\\ ".Viewer
+    catch /E329: No menu/
+    endtry
+
+    " Set new options:
     let b:atp_TexCompiler	= "latex "
     let b:atp_TexOptions	= " -src-specials "
-    if exists("g:xdviOptions")
-	let b:atp_ViewerOptions	= g:xdviOptions
-    endif
-    let b:atp_Viewer="xdvi" 
-    let b:xdviOptions=" -editor '" . v:progname . " --servername " . v:servername . " --remote-wait +%l %f'"
+    let b:atp_Viewer="xdvi " . " -editor '" . v:progname . " --servername " . v:servername . " --remote-wait +%l %f'" 
+    " Set Reverse Search Function.
     if !exists("*RevSearch")
     function! RevSearch()
-	let dvi_file	= fnameescape(fnamemodify(expand("%"),":p:r") . ".dvi")
+	let dvi_file	= fnameescape(fnamemodify(b:atp_MainFile,":p:r") . ".dvi")
 	if !filereadable(dvi_file)
 	   echomsg "dvi file doesn't exist" 
 	   ViewOutput RevSearch
 	   return
 	endif
-	let b:xdvi_reverse_search="xdvi " . b:xdviOptions . 
+
+	let options = (exists("g:atp_xdviOptions") ? g:atp_xdviOptions : "" ) . getbufvar(bufnr(""), "atp_xdviOptions")
+	let g:options	= options
+
+	let b:xdvi_reverse_search="xdvi " . options . 
 		\ " -editor '" . v:progname . " --servername " . v:servername . 
 		\ " --remote-wait +%l %f' -sourceposition " . 
 		\ line(".") . ":" . col(".") . fnameescape(fnamemodify(expand("%"),":p")) . 
@@ -624,12 +707,21 @@ fun! SetXdvi()
 	call system(b:xdvi_reverse_search)
     endfunction
     endif
+    " Set Reverse Search Command and Map.
     command! -buffer RevSearch 					:call RevSearch()
     map <buffer> <LocalLeader>rs				:call RevSearch()<CR>
     try
 	nmenu 550.65 &LaTeX.Reverse\ Search<Tab>:map\ <LocalLeader>rs	:RevSearch<CR>
     catch /E329: No menu/
     endtry
+
+    " Put new menu entries:
+    let Compiler	= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\zs\S*'), 'Compile')
+    let Viewer		= get(g:ViewerMsg_Dict, matchstr(b:atp_Viewer, '^\s*\zs\S*'), "View\\ Output")
+    execute "nmenu 550.5 &LaTeX.&".Compiler."<Tab>:TEX			:TEX<CR>"
+    execute "nmenu 550.6 &LaTeX.".Compiler."\\ debug<Tab>:TEX\\ debug 	:DTEX<CR>"
+    execute "nmenu 550.7 &LaTeX.".Compiler."\\ &twice<Tab>:2TEX		:2TEX<CR>"
+    execute "nmenu 550.10 LaTeX.&View\\ with\\ ".Viewer."<Tab>:ViewOutput 		:ViewOutput<CR>"
 endfun
 command! -buffer SetXdvi			:call SetXdvi()
 nnoremap <silent> <buffer> <Plug>SetXdvi	:call SetXdvi()<CR>
@@ -640,19 +732,43 @@ nnoremap <silent> <buffer> <Plug>SetXdvi	:call SetXdvi()<CR>
 " compilation (b:atp_ReloadOnError variable)
 " {{{ SetXpdf
 fun! SetXpdf()
+
+    " Remove menu entries.
+    let Compiler		= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\S*'), 'Compiler')
+    let Viewer			= get(g:ViewerMsg_Dict, matchstr(b:atp_Viewer, '^\s*\S*'), 'View\ Output')
+    try 
+	execute "unmenu LaTeX.".Compiler
+	execute "unmenu LaTeX.".Compiler."\\ debug"
+	execute "unmenu LaTeX.".Compiler."\\ twice"
+	execute "unmenu LaTeX.View\\ with\\ ".Viewer
+    catch /E329: No menu/
+    endtry
+
     let b:atp_TexCompiler	= "pdflatex"
+    " We have to clear tex options (for example -src-specials set by :SetXdvi)
     let b:atp_TexOptions	= ""
     let b:atp_Viewer		= "xpdf"
+    " Remove the maps \rs.
     if hasmapto("RevSearch()",'n')
 	unmap <buffer> <LocalLeader>rs
     endif
+    " Delete command.
     if exists("RevSearch")
 	delcommand RevSearch
     endif
+    " Delete menu entry.
     try
 	silent aunmenu LaTeX.Reverse\ Search
     catch /E329: No menu/
     endtry
+
+    " Put new menu entries:
+    let Compiler	= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\zs\S*'), 'Compile')
+    let Viewer		= get(g:ViewerMsg_Dict, matchstr(b:atp_Viewer, '^\s*\zs\S*'), 'View\ Output')
+    execute "nmenu 550.5 &LaTeX.&".Compiler.	"<Tab>:TEX			:TEX<CR>"
+    execute "nmenu 550.6 &LaTeX." .Compiler.	"\\ debug<Tab>:TEX\\ debug 	:DTEX<CR>"
+    execute "nmenu 550.7 &LaTeX." .Compiler.	"\\ &twice<Tab>:2TEX		:2TEX<CR>"
+    execute "nmenu 550.10 LaTeX.&View\\ with\\ ".Viewer.	"<Tab>:ViewOutput 		:ViewOutput<CR>"
 endfun
 command! -buffer SetXpdf			:call SetXpdf()
 nnoremap <silent> <buffer> <Plug>SetXpdf	:call SetXpdf()<CR>
@@ -664,7 +780,7 @@ nnoremap <silent> <buffer> <Plug>SetXpdf	:call SetXpdf()<CR>
 if !s:did_options
 " {{{ ToggleAuTeX
 " command! -buffer -count=1 TEX	:call TEX(<count>)		 
-function! s:ToggleAuTeX()
+function! ATP_ToggleAuTeX()
   if b:atp_autex != 1
     let b:atp_autex=1	
     echo "automatic tex processing is ON"
@@ -673,13 +789,13 @@ function! s:ToggleAuTeX()
     echo "automatic tex processing is OFF"
   endif
 endfunction
-command! -buffer 	ToggleAuTeX 		:call <SID>ToggleAuTeX()
-nnoremap <silent> <Plug>ToggleAuTeX 		:call <SID>ToggleAuTeX()<CR>
+command! -buffer 	ToggleAuTeX 		:call ATP_ToggleAuTeX()
+nnoremap <silent> <Plug>ToggleAuTeX 		:call ATP_ToggleAuTeX()<CR>
 "}}}
 " {{{ ToggleSpace
 " Special Space for Searching 
 let s:special_space="[off]"
-function! s:ToggleSpace()
+function! ATP_ToggleSpace()
     if maparg('<space>','c') == ""
 	echomsg "special space is on"
 	cmap <Space> \_s\+
@@ -698,14 +814,14 @@ function! s:ToggleSpace()
 	tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
     endif
 endfunction
-command! -buffer 	ToggleSpace 	:call <SID>ToggleSpace()
-nnoremap <silent> <Plug>ToggleSpace 	:call <SID>ToggleSpace()<CR>
+command! -buffer 	ToggleSpace 	:call ATP_ToggleSpace()
+nnoremap <silent> <Plug>ToggleSpace 	:call ATP_ToggleSpace()<CR>
 "}}}
 " {{{ ToggleCheckMathOpened
 " This function toggles if ATP is checking if editing a math mode.
 " This is used by insert completion.
 " ToDo: to doc.
-function! s:ToggleCheckMathOpened()
+function! ATP_ToggleCheckMathOpened()
     if g:atp_MathOpened
 	echomsg "check if in math environment is off"
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [on]
@@ -721,11 +837,11 @@ function! s:ToggleCheckMathOpened()
     endif
     let g:atp_MathOpened=!g:atp_MathOpened
 endfunction
-command! -buffer 	ToggleCheckMathOpened 	:call <SID>ToggleCheckMathOpened()
-nnoremap <silent> <Plug>ToggleCheckMathOpened	:call <SID>ToggleCheckMathOpened()<CR>
+command! -buffer 	ToggleCheckMathOpened 	:call ATP_ToggleCheckMathOpened()
+nnoremap <silent> <Plug>ToggleCheckMathOpened	:call ATP_ToggleCheckMathOpened()<CR>
 "}}}
 " {{{ ToggleCallBack
-function! s:ToggleCallBack()
+function! ATP_ToggleCallBack()
     if g:atp_callback
 	echomsg "call back is off"
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
@@ -741,14 +857,14 @@ function! s:ToggleCallBack()
     endif
     let g:atp_callback=!g:atp_callback
 endfunction
-command! -buffer 	ToggleCallBack 		:call <SID>ToggleCallBack()
-nnoremap <silent> <Plug>ToggleCallBack		:call <SID>ToggleCallBack()<CR>
+command! -buffer 	ToggleCallBack 		:call ATP_ToggleCallBack()
+nnoremap <silent> <Plug>ToggleCallBack		:call ATP_ToggleCallBack()<CR>
 "}}}
 " {{{ ToggleDebugMode
 " ToDo: to doc.
 " TODO: it would be nice to have this command (and the map) in quickflist (FileType qf)
 " describe DEBUG MODE in doc properly.
-function! s:ToggleDebugMode()
+function! ATP_ToggleDebugMode()
 "     call ToggleCallBack()
     if t:atp_DebugMode == "debug"
 	echomsg "debug mode is off"
@@ -783,8 +899,8 @@ function! s:ToggleDebugMode()
 	silent copen
     endif
 endfunction
-command! -buffer 	ToggleDebugMode 	:call <SID>ToggleDebugMode()
-nnoremap <silent> <Plug>ToggleDebugMode		:call <SID>ToggleDebugMode()<CR>
+command! -buffer 	ToggleDebugMode 	:call ATP_ToggleDebugMode()
+nnoremap <silent> <Plug>ToggleDebugMode		:call ATP_ToggleDebugMode()<CR>
 if !s:did_options
     augroup ATP_DebugModeCommandsAndMaps
 	au FileType qf command! -buffer ToggleDebugMode 	:call <SID>ToggleDebugMode()
@@ -794,7 +910,7 @@ endif
 " }}}
 " {{{ ToggleTab
 " switches on/off the <Tab> map for TabCompletion
-function! s:ToggleTab() 
+function! ATP_ToggleTab() 
     if mapcheck('<F7>','i') !~ 'atplib#TabCompletion'
 	if mapcheck('<Tab>','i') =~ 'atplib#TabCompletion'
 	    iunmap <buffer> <Tab>
@@ -815,9 +931,9 @@ function! s:ToggleTab()
 	endif
     endif
 endfunction
-command! -buffer 	ToggleTab	 	:call <SID>ToggleTab()
-nnoremap <silent> <Plug>ToggleTab		:call <SID>ToggleTab()<CR>
-inoremap <silent> <Plug>ToggleTab		<Esc>:call <SID>ToggleTab()<CR>
+command! -buffer 	ToggleTab	 	:call ATP_ToggleTab()
+nnoremap <silent> <Plug>ToggleTab		:call ATP_ToggleTab()<CR>
+inoremap <silent> <Plug>ToggleTab		<Esc>:call ATP_ToggleTab()<CR>
 " }}}
 endif
 "}}}
@@ -1189,24 +1305,15 @@ endif
 		    \ "\\pgfsetplotmarksize{", "\\pgfplotmarksize" ]
         let g:atp_tikz_library_plotmarks_keywords	= [ 'asterisk', 'star', 'oplus', 'oplus*', 'otimes', 'otimes*', 
 		    \ 'square', 'square*', 'triangle', 'triangle*', 'diamond', 'diamond*', 'pentagon', 'pentagon*']
-" ToDo: to doc.
-" adding commands to completion list whether to check or not if we are in the
-" correct environment (for example \tikz or \begin{tikzpicture})
-" This variable is not used (it was only used for tikzpicture which is better to
-" check.
-" if !exists("g:atp_check_if_opened")
-"     let g:atp_check_if_opened	= 1
-" endif
-" The default value of g:atp_MathOpened is 0, unless the syntax file was sourced for
-" tex files. This assumes that you use the standard names for syntax math zones if
-" you use non-standard syntax file.
+
 if !exists("g:atp_MathOpened")
-    let g:atp_MathOpened = 0 
-    augroup ATP_MathOpened
-	au!
-	au Syntax tex :let g:atp_MathOpened = 1
-    augroup END
+    let g:atp_MathOpened = 1
 endif
+" augroup ATP_MathOpened
+"     au!
+"     au Syntax tex :let g:atp_MathOpened = 1
+" augroup END
+
 " ToDo: Think about even better math modes patterns.
 " \[ - math mode \\[ - not mathmode (this can be at the end of a line as: \\[3pt])
 " \\[ - this is math mode, but tex will complain (now I'm not matching it,
@@ -1238,14 +1345,9 @@ if !s:did_options
     if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
 	augroup ATP_Status
 	    au!
-	    au BufWinEnter *.tex 	call ATPStatus()
+	    au BufWinEnter *.tex 	call ATPStatus("")
 	augroup END
     endif
-
-    augroup ATP_SetViewerOptions
-	au!
-	au BufEnter *.tex :call s:SetViewerOptions()
-    augroup END
 
     if g:atp_local_completion == 2 
 	augroup ATP_LocaCommands
@@ -1254,9 +1356,9 @@ if !s:did_options
 	augroup END
     endif
 
-    augroup ATP_TeXFlavour
+    augroup ATP_TeXFlavor
 	au!
-	au FileType *tex 	let b:atp_TexFlavour = &filetype
+	au FileType *tex 	let b:atp_TexFlavor = &filetype
     augroup END
     " Idea:
     " au 		*.log if LogBufferFileDiffer | silent execute '%g/^\s*$/d' | w! | endif
@@ -1292,7 +1394,6 @@ if !s:did_options
     
 endif
 " }}}
-
 
 " This function and the following autocommand toggles the textwidth option if
 " editting a math mode. Currently, supported are $:$, \(:\), \[:\] and $$:$$.
@@ -1335,7 +1436,7 @@ function! s:SetMathVimOptions(...)
 	endif
 
 	let MathZones = copy(g:atp_MathZones)
-	if b:atp_TexFlavour == 'plaintex'
+	if b:atp_TexFlavor == 'plaintex'
 	    call add(MathZones, 'texMathZoneY')
 	endif
 	    
@@ -1379,6 +1480,7 @@ endif
 "}}}
 
 " Add extra syntax groups
+" {{{1 ATP_SyntaxGroups
 function! s:ATP_SyntaxGroups()
     if atplib#SearchPackage('tikz') || atplib#SearchPackage('pgfplots')
 	try
@@ -1391,5 +1493,57 @@ endfunction
 augroup ATP_Syntax_TikzZone
     au Syntax tex :call <SID>ATP_SyntaxGroups()
 augroup END
+
+augroup ATP_Devel
+    au BufEnter *.sty	:setl nospell	
+    au BufEnter *.cls	:setl nospell
+    au BufEnter *.fd	:setl nospell
+augroup END
+"}}}1
+
+"{{{1 Highlightings in help file
+augroup ATP_HelpFile_Highlight
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_FileName') ? "atp_FileName" : "Title",  'highlight atp_FileName\s\+Title')
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_LineNr') 	? "atp_LineNr"   : "LineNr", 'highlight atp_LineNr\s\+LineNr')
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Number') 	? "atp_Number"   : "Number", 'highlight atp_Number\s\+Number')
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Chapter') 	? "atp_Chapter"  : "Label",  'highlight atp_Chapter\s\+Label')
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Section') 	? "atp_Section"  : "Label",  'highlight atp_Section\s\+Label')
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_SubSection') ? "atp_SubSection": "Label", 'highlight atp_SubSection\s\+Label')
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Abstract')	? "atp_Abstract" : "Label", 'highlight atp_Abstract\s\+Label')
+
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_FileName') 	? "atp_label_FileName" 	: "Title",	'^\s*highlight atp_label_FileName\s\+Title\s*$')
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_LineNr') 	? "atp_label_LineNr" 	: "LineNr",	'^\s*highlight atp_label_LineNr\s\+LineNr\s*$')
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_Name') 	? "atp_label_Name" 	: "Label",	'^\s*highlight atp_label_Name\s\+Label\s*$')
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_Counter') 	? "atp_label_Counter" 	: "Keyword",	'^\s*highlight atp_label_Counter\s\+Keyword\s*$')
+
+au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('bibsearchInfo')	? "bibsearchInfo"	: "Number",	'^\s*highlight bibsearchInfo\s*$')
+augroup END
+"}}}1
+
+" {{{1 :Viewer, :Compiler, :DebugMode
+command! -buffer -nargs=1 -complete=customlist,ViewerComp Viewer	:let b:atp_Viewer=<q-args>
+function! ViewerComp(A,L,P)
+    let view = [ 'okular', 'xpdf', 'xdvi', 'evince', 'epdfview', 'kpdf', 'acroread' ]
+    call filter(view, "v:val =~ '^' . a:A")
+    call filter(view, 'executable(v:val)')
+    return view
+endfunction
+
+command! -buffer -nargs=1 -complete=customlist,CompilerComp Compiler	:let b:atp_TexCompiler=<q-args>
+function! CompilerComp(A,L,P)
+    let compilers = [ 'tex', 'pdftex', 'latex', 'pdflatex', 'etex', 'xetex', 'luatex' ]
+    let g:compilers = copy(compilers)
+    call filter(compilers, "v:val =~ '^' . a:A")
+    call filter(compilers, 'executable(v:val)')
+    return compilers
+endfunction
+
+command! -buffer -nargs=1 -complete=customlist,DebugComp DebugMode	:let t:atp_DebugMode=<q-args>
+function! DebugComp(A,L,P)
+    let modes = [ 'silent', 'debug', 'verbose']
+    call filter(modes, "v:val =~ '^' . a:A")
+    return modes
+endfunction
+"}}}1
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

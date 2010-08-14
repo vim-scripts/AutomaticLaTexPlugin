@@ -31,7 +31,6 @@ let g:atp_sections={
 function! s:find_toc_lines()
     let toc_lines_nr=[]
     let toc_lines=[]
-    let b:toc_lines_nr=toc_lines_nr
 
     let pos_saved=getpos(".")
     let pos=[0,1,1,0]
@@ -41,23 +40,22 @@ function! s:find_toc_lines()
     let j=0
     for section in keys(g:atp_sections)
 	if j == 0 
-	    let filter=g:atp_sections[section][0] . ''
+	    let pattern=g:atp_sections[section][0] . ''
 	else
-	    let filter=filter . '\|' . g:atp_sections[section][0] 
+	    let pattern=pattern . '\|' . g:atp_sections[section][0] 
 	endif
 	let j+=1
     endfor
-"     let b:filter=filter
 
     " Searching Loop:
-    let line=search(filter,'W')
+    let line=search(pattern, 'W')
     while line
-	call add(toc_lines_nr,line)
-	let line=search(filter,'W')
+	call add(toc_lines_nr, line)
+	let line=search(pattern, 'W')
     endwhile
-    keepjumps call setpos(".",pos_saved)
+    keepjumps call setpos(".", pos_saved)
     for line in toc_lines_nr
-	call add(toc_lines,getline(line))
+	call add(toc_lines, getline(line))
     endfor
     return toc_lines
 endfunction
@@ -75,7 +73,12 @@ function! s:maketoc(filename)
     let texfile		= []
     " getbufline reads only loaded buffers, unloaded can be read from file.
     let bufname		= fnamemodify(a:filename,":t")
-    let texfile 	= ( bufloaded(bufname)  ? getbufline("^" . bufname . "$","1","$") : readfile(a:filename) )
+    try
+	let texfile = ( bufexists(bufname)  ? getbufline("^" . bufname . "$","1","$") : readfile(a:filename) )
+    catch /E484: Cannot open file/
+	echohl Warning
+	echo "File " . a:filename . " not readable."
+    endtry
     let texfile_copy	= deepcopy(texfile)
 
     let true	= 1
@@ -287,10 +290,12 @@ function! s:showtoc(toc)
     " number is a line number relative to the file listed in ToC.
     " the current line number is linenumber+number
     " there are two loops: one over linenumber and the second over number.
-    let numberdict={}
+    let numberdict	= {}
+    unlockvar b:atp_Toc
+    let b:atp_Toc	= {}
     " this variable will be used to set the cursor position in ToC.
     for openfile in keys(a:toc)
-	call extend(numberdict,{ openfile : number })
+	call extend(numberdict, { openfile : number })
 	let part_on=0
 	let chap_on=0
 	let chnr=0
@@ -306,12 +311,14 @@ function! s:showtoc(toc)
 		let part_on=1
 	    endif
 	endfor
-	let sorted	= sort(keys(a:toc[openfile]),"atplib#CompareNumbers")
+	let sorted	= sort(keys(a:toc[openfile]), "atplib#CompareNumbers")
 	let len		= len(sorted)
 	" write the file name in ToC (with a full path in paranthesis)
 	call setline(number,fnamemodify(openfile,":t") . " (" . fnamemodify(openfile,":p:h") . ")")
+	call extend(b:atp_Toc, { number : [ openfile, 1 ]}) 
 	let number+=1
 	for line in sorted
+	    call extend(b:atp_Toc,  { number : [ openfile, line ] })
 	    let lineidx=index(sorted,line)
 	    let nlineidx=lineidx+1
 	    if nlineidx< len(sorted)
@@ -450,7 +457,11 @@ function! s:showtoc(toc)
     " (current buffer)
 " 	let t:numberdict=numberdict	"DEBUG
 " 	t:atp_bufname is the full path to the current buffer.
-    let num		= numberdict[t:atp_bufname]
+    let num		= get(numberdict, t:atp_bufname, 'no_number')
+    if num == 'no_number'
+	call s:TOC("")
+	return
+    endif
     let sorted		= sort(keys(a:toc[t:atp_bufname]), "atplib#CompareNumbers")
     let t:sorted	= sorted
     for line in sorted
@@ -474,6 +485,7 @@ function! s:showtoc(toc)
 		\ ':SectionStack', 
 		\ ':Undo' ])
     endif
+    lockvar 3 b:atp_Toc
 endfunction
 "}}}2
 
@@ -495,7 +507,7 @@ function! s:TOC(bang)
     call s:showtoc(t:atp_toc)
 endfunction
 command! -buffer -bang -nargs=? TOC	:call <SID>TOC(<q-bang>)
-nnoremap <Plug>ATP_TOC		:call <SID>TOC(1)<CR>
+nnoremap <Plug>ATP_TOC			:call <SID>TOC(1)<CR>
 
 " }}}2
 
@@ -538,7 +550,7 @@ function! s:ctoc()
 " 	    endif
 " 	endif
 	" Set the status line once more, to remove the CTOC() function.
-	call ATPStatus()
+	call ATPStatus("")
 	return []
     endif
     " resolve the full path:
@@ -697,11 +709,11 @@ function! s:Labels(bang)
 
     " Generate the dictionary with labels
     if a:bang == "" || ( a:bang == "!" && !exists("t:atp_labels") )
-	let t:atp_labels=atplib#generatelabels(b:atp_MainFile)
+	let [ t:atp_labels, b:ListOfFiles ] =  atplib#generatelabels(b:atp_MainFile, 1)
     endif
 
     " Show the labels in seprate window
-    call atplib#showlabels(t:atp_labels[b:atp_MainFile])
+    call atplib#showlabels([ t:atp_labels, b:ListOfFiles ] )
 
     if error
 	echohl WarningMsg
@@ -712,6 +724,7 @@ function! s:Labels(bang)
 endfunction
 nnoremap <Plug>ATP_Labels		:call <SID>Labels("")<CR>
 command! -buffer -bang Labels		:call <SID>Labels(<q-bang>)
+
 " }}}
 
 " Motion functions through environments and sections. 
@@ -833,9 +846,14 @@ try
     "
     " It let choose if there are multiple files only when this is fast
     " (\input{,\input ) methods. However, then the file name should be unique! 
-function! GotoFile(...)
+
+    " It correctly sets b:atp_MainFile, and TreeOfFiles, ... variables in the new
+    " buffer.
+function! GotoFile(bang,...)
 
     let check_line	= a:0 >= 1 ? a:1 : 1 
+    let g:cl	= check_line 
+    let g:bang 	= a:bang 
     if !has("path_extra")
 	echoerr "Needs +path_extra vim feature."
 	return
@@ -858,10 +876,15 @@ function! GotoFile(...)
 	endif
 
 	" Find the end columnt of the file name
-	let col		= searchpos('}', 'cn', line("."))[1]
+	let col		= searchpos(',\|}', 'cn', line("."))[1]
 	" Current column
 	let cur_col		= col(".")
     endif
+
+"     DEBUG
+"     let g:bcol	= bcol
+"     let g:col	= col
+"     let g:line	= line
 
 "     if !col && line !~ '\\input\s*{\@!'
 " 	return 
@@ -872,8 +895,8 @@ function! GotoFile(...)
 	let method = "usepackage"
 	    let ext 	= '.sty'
 
-	    let fname   = matchstr(strpart(getline("."), bcol), '\zs\f*\ze\%(,\|}\)')
-	    let file 	= atplib#KpsewhichFindFile('tex', atplib#append(fname, ext), g:atp_texinputs, 1)
+	    let fname   = atplib#append_ext(strpart(getline("."), bcol, col-bcol-1), ext)
+	    let file 	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, 1)
 	    let file_l	= [ file ]
 " 	    let file	= get(file_l, 0, "file_missing") 
 
@@ -886,11 +909,11 @@ function! GotoFile(...)
 	    let ext 	= '.tex'
 
 	    " \input{} doesn't allow for {...,...} many file path. 
-	    let fname 	= atplib#append(matchstr(strpart(getline("."), bcol), '\zs\f*\ze}'), '.tex')
+	    let fname 	= atplib#append_ext(strpart(getline("."), bcol, col-bcol-1), '.tex')
 
 	    " The 'file . ext' might be already a full path.
 	    if fnamemodify(fname, ":p") != fname
-		let file_l 	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(kpsewhich\|texlive\)')
+		let file_l 	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\|miktex\)')
 		let file	= get(file_l, 0, 'file_missing')
 	    else
 		let file_l	= [ fname ] 
@@ -903,10 +926,9 @@ function! GotoFile(...)
     " \input 	/without {/
     elseif line =~ '\\input\s*{\@!'
 	let method = "input"
-	    let fname	= atplib#append(matchstr(getline(line(".")), '\\input\s*\zs\f*\ze'), '.tex')
-	    let file_l	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(kpsewhich\|texlive\)')
+	    let fname	= atplib#append_ext(matchstr(getline(line(".")), '\\input\s*\zs\f*\ze'), '.tex')
+	    let file_l	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\)')
 	    let file	= get(file_l, 0, "file_missing")
-" 	    let file_l	= [ file ]
 	    let options = ' +setl\ ft=' . &l:filetype  
 
     " \documentclass{...}
@@ -921,7 +943,7 @@ function! GotoFile(...)
 	call cursor(saved_pos[0], saved_pos[1])
 	let classname 	= strpart(getline("."), bcol, ecol-bcol-1)
 
-	let fname	= atplib#append(classname, '.cls')
+	let fname	= atplib#append_ext(classname, '.cls')
 	let file	= atplib#KpsewhichFindFile('tex', fname,  g:atp_texinputs, ':p')
 	let file_l	= [ file ]
 	let options	= ""
@@ -938,10 +960,15 @@ function! GotoFile(...)
 	" EditInputFile  
 	let method	= "all"
 
-	let [tree_d, file_l, type_d, level_d ] 	= TreeOfFiles(b:atp_MainFile)
+	if a:bang == "!" || !exists("b:ListOfFiles")
+	    let [tree_d, file_l, type_d, level_d ] 	= TreeOfFiles(b:atp_MainFile)
+	else
+	    let [tree_d, file_l, type_d, level_d ] 	= deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ])
+	endif
+	let file_l_orig	= deepcopy(file_l)
 	call extend(file_l, [ b:atp_MainFile ], 0)
 	call extend(level_d, { b:atp_MainFile : 0 })
-	call filter(file_l, "v:val !~ expand('%') . '$'")
+" 	call filter(file_l, "v:val !~ expand('%') . '$'")
     endif
 
     if len(file_l) > 1 
@@ -951,7 +978,10 @@ function! GotoFile(...)
 	    let msg = "Found many files. Which file to use?"
 	endif
 	let mods	= method == 'all' ? ":t" : ":p"
-	let i		= 1
+	" It is better to start numbering from 0,
+	" then 	0 - is the main file 
+	"	1 - is the first chapter, and so on.
+	let i		= 0
 	let input_l	= []
 	for f in file_l
 	    if exists("level_d")
@@ -970,7 +1000,16 @@ function! GotoFile(...)
 	" Ask the user which file to edit:
 	redraw
 	if len([ msg ] + input_l) < &l:lines
-	    let choice	= inputlist([ msg ] + input_l) 
+	    for f in  [ msg ] + input_l
+		if f =~ expand('%') . '$'
+		    echohl WarningMsg
+		endif
+		echo f
+		if f =~ expand('%') . '$'
+		    echohl Normal
+		endif
+	    endfor
+	    let choice	= inputlist([]) + 1
 	else
 	    for line in [ msg ] + input_l
 		if line == msg
@@ -980,34 +1019,52 @@ function! GotoFile(...)
 		echohl None
 	    endfor
 	    echohl MoreMsg
-	    let choice = input("Type number and <Enter> (empty cancels)")
+	    let choice = inputlist([]) + 1
 	    echohl None
 	endif
-	if choice == "" || choice < 1 || choice > len(file_l) + 1
+	" Remember: 0 == "" returns 1! 
+	" char2nr("") = 0
+	" nr2char(0) = ""
+	if choice == "" || choice < 1 || choice > len(file_l)
+	    if choice < 1 || choice > len(file_l)
+		echo "\n"
+		echoerr "Choice out of range."
+	    endif
 	    return
 	endif
 	let file 	= file_l[choice-1]
    endif
-   let g:file		= file
+
+   if !exists("file")
+       return
+   endif
+
+"     DEBUG
+"     let g:fname 	= fname
+"     let g:file		= file 
+"     let g:file_l 	= file_l
 
     if file != "file_missing" && filereadable(file)
 
 	" Inherit tex flavour.
 	" So that bib, cls, sty files will have their file type (bib/plaintex).
 	let filetype	= &l:filetype
-	silent! execute "edit " . file
+	let old_file	= expand("%:p")
+	 execute "edit " . file
 	if &l:filetype =~ 'tex$' && file =~ '\.tex$' && &l:filetype != filetype  
 	    let &l:filetype	= filetype
 	endif
 
-	" Set the main file variable correctly.
+	" Set the main file variable and pass the TreeOfFiles variables to the new
+	" buffer.
 	let b:atp_MainFile	= s:MainFile
 	let b:atp_OutDir	= s:OutDir
+	let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]	= deepcopy([tree_d, file_l_orig, type_d, level_d ])
     else
 	echohl ErrorMsg
 	redraw
 	if file != "file_missing"
-	    echo "File \'" . file . "\' not readable."
+	    echo "File \'".fname."\' not found."
 	else
 	    echo "Missing file."
 	endif
@@ -1019,8 +1076,8 @@ function! GotoFile(...)
 endfunction
 catch /E127: Cannot redefine function GotoFile: It is in use/
 endtry
-command! -buffer GotoFile	:call GotoFile(0)
-command! -buffer EditInputFile	:call GotoFile(0)
+command! -buffer -bang GotoFile		:call GotoFile(<q-bang>,0)
+command! -buffer -bang EditInputFile	:call GotoFile(<q-bang>,0)
 " }}}1
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

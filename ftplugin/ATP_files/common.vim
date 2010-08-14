@@ -1,5 +1,8 @@
 " Author: Marcin Szamotulski
 
+" This script has functions which have to be called before ATP_files/options.vim 
+let s:did_common 	= exists("s:did_common") ? 1 : 0
+
 " {{{1 Variables
 if !exists("g:askfortheoutdir")
     let g:askfortheoutdir=0
@@ -53,7 +56,14 @@ endif
 " This options are set also when editing .cls files.
 " It can overwrite the value of b:atp_OutDir
 " if arg != 0 then set errorfile option accordingly to b:atp_OutDir
-function! s:SetOutDir(arg)
+" if a:0 >0 0 then b:atp_atp_OutDir is set iff it doesn't exsits.
+function! s:SetOutDir(arg, ...)
+
+
+    if exists("b:atp_OutDir") && a:0 >= 1
+	return "atp_OutDir EXISTS"
+    endif
+
     " first we have to check if this is not a project file
     if exists("g:atp_project") || exists("s:inputfiles") && 
 		\ ( index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1' || 
@@ -99,7 +109,7 @@ function! s:SetOutDir(arg)
     endif
     return b:atp_OutDir
 endfunction
-call s:SetOutDir(0)
+call s:SetOutDir(0, 1)
 command! -buffer SetOutDir	:call <SID>SetOutDir(1)
 " }}}
 
@@ -107,7 +117,7 @@ command! -buffer SetOutDir	:call <SID>SetOutDir(1)
 " {{{1 TreeOfFiles
 " this is needed to make backward searching.
 " It returns:
-" 	[ {tree}, {list} , {type_dict} ]
+" 	[ {tree}, {list} , {type_dict}, {level_dict} ]
 " 	where {tree}:
 " 		is a tree of files of the form
 " 			{ file : [ subtree, linenr ] }
@@ -126,24 +136,43 @@ command! -buffer SetOutDir	:call <SID>SetOutDir(1)
 " 		
 
 " Should match till the begining of the file name and not use \zs:\ze patterns.
-let g:atp_inputfile_pattern = '\\\(input\s*{\=\|include\s*{\|bibliography\s*{\)'
+if &filetype == 'plaintex'
+    let g:atp_inputfile_pattern = '^[^%]*\\input\s*'
+else
+    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|bibliography\s*{\)'
+endif
 
 " TreeOfFiles({main_file}, [{pattern}, {flat}, {run_nr}])
+let g:ToF_debug = 0
+" debug file - /tmp/tof_log
 function! TreeOfFiles(main_file,...)
-"     let time	= reltime()
+" let time	= reltime()
 
     if !exists("b:atp_OutDir")
-	call s:SetOutDir(0)
+	call s:SetOutDir(0, 1)
     endif
 
     let tree		= {}
-    let main_file	= readfile(a:main_file)
+
     let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
     " flat = do a flat search, i.e. fo not search in input files at all.
     let flat		= a:0 >= 2	? a:2 : 0	
+
+    " This prevents from long runs on package files
+    " for example babel.sty has lots of input files.
+    if expand("%:e") != 'tex'
+	return [ {}, [], {}, {} ]
+    endif
     let run_nr		= a:0 >= 3	? a:3 : 1 
-"     let saved_view	= a:0 >= 4	? a:4 : winsaveview()
-"     let bufnr		= a:0 >= 5	? a:5 : bufnr("%")	
+
+	if g:ToF_debug
+	    if run_nr == 1
+		redir! > /tmp/tof_log
+	    else
+		redir! >> /tmp/tof_log
+	    endif
+	    silent echo run_nr . ") |".a:main_file."| expand=".expand("%:p") 
+	endif
 
     let line_nr		= 1
     let ifiles		= []
@@ -152,7 +181,7 @@ function! TreeOfFiles(main_file,...)
     let level_dict	= {}
 
     let saved_llist	= getloclist(0)
-    if run_nr == 1 && &l:filetype == "tex"
+    if run_nr == 1 && &l:filetype =~ '^\(ams\)\=tex$'
 	try
 	    silent execute 'lvimgrep /\\begin\s*{\s*document\s*}/j ' . a:main_file
 	catch /E480: No match:/
@@ -170,12 +199,16 @@ function! TreeOfFiles(main_file,...)
     call setloclist(0, saved_llist)
     let lines	= map(loclist, "[ v:val['text'], v:val['lnum'], v:val['col'] ]")
 
+"     	if g:ToF_debug
+" 	    silent echo run_nr . ") Lines: " .string(lines)
+" 	endif
+
     for entry in lines
 
 	    let line = entry[0]
 	    let lnum = entry[1]
 	    let cnum = entry[2]
-	    " input name (iname) as appears in the source file
+	    " input name (iname) as appeared in the source file
 	    let iname	= substitute(matchstr(line, pattern . '\zs\f*\ze'), '\s*$', '', '') 
 	    if line =~ '{\s*' . iname
 		let iname	= substitute(iname, '\\\@<!}\s*$', '', '')
@@ -190,43 +223,63 @@ function! TreeOfFiles(main_file,...)
 		let type	= "input"
 	    endif
 
-" 	    echomsg iname . " " . type
-
+	    let inames	= []
 	    if type != "bib"
-		let iname		= atplib#append(iname, '.tex')
+		let inames		= [ atplib#append_ext(iname, '.tex') ]
 	    else
-		let iname		= atplib#append(iname, '.bib')
+		let inames		= map(split(iname, ','), "atplib#append_ext(v:val, '.bib')")
 	    endif
+
 
 	    " Find the full path only if it is not already given. 
-	    if iname != fnamemodify(iname, ":p")
-		if type != "bib"
-		    let iname	= atplib#KpsewhichFindFile('tex', iname, g:atp_texinputs . "," . b:atp_OutDir, 1, ':p', '^\%(\/home\|\.\)', '\(texlive\|kpsewhich\|generic\)')
-		else
-		    let iname	= atplib#KpsewhichFindFile('bib', iname, g:atp_bibinputs . "," . b:atp_OutDir, 1, ':p')
+	    for iname in inames
+		if iname != fnamemodify(iname, ":p")
+		    if type != "bib"
+			let iname	= atplib#KpsewhichFindFile('tex', iname, b:atp_OutDir . "," . g:atp_texinputs , 1, ':p', '^\%(\/home\|\.\)', '\(^\/usr\|texlive\|kpsewhich\|generic\|miktex\)')
+		    else
+			let iname	= atplib#KpsewhichFindFile('bib', iname, b:atp_OutDir . "," . g:atp_bibinputs , 1, ':p')
+		    endif
 		endif
-	    endif
 
-	    call add(ifiles, [ iname, lnum] )
-	    call add(list, iname)
-	    call extend(type_dict, { iname : type } )
-	    call extend(level_dict, { iname : run_nr } )
+		call add(ifiles, [ iname, lnum] )
+		call add(list, iname)
+		call extend(type_dict, { iname : type } )
+		call extend(level_dict, { iname : run_nr } )
+	    endfor
     endfor
 
+	    if g:ToF_debug
+		silent echo run_nr . ") list=".string(list)
+	    endif
+
     " Be recursive if: flat is off, file is of input type.
-    if !flat || flat == -1
+    if !flat || flat <= -1
     for [ifile, line] in ifiles	
-	if type_dict[ifile] == "input" && flat <= 0 || ( type_dict[ifile] == "preambule" && flat == -1 )
+	if type_dict[ifile] == "input" && flat <= 0 || ( type_dict[ifile] == "preambule" && flat <= -1 )
 	     let [ ntree, nlist, ntype_dict, nlevel_dict ] = TreeOfFiles(ifile, pattern, flat, run_nr+1)
+
+" 		    if g:ToF_debug
+" 			silent echo run_nr . ") nlist=".string(nlist)
+" 		    endif
+
 	     call extend(tree, 		{ ifile : [ ntree, line ] } )
 	     call extend(list, nlist, index(list, ifile)+1)  
 	     call extend(type_dict, 	ntype_dict)
 	     call extend(level_dict, 	nlevel_dict)
 	endif
     endfor
+    else
+	" Make the flat tree
+	for [ ifile, line ]  in ifiles
+	    call extend(tree, { ifile : [ {}, line ] })
+	endfor
     endif
 
-"     echomsg "TIME:" . join(reltime(time), ".") . " main_file:" . a:main_file
+"	Showing time takes ~ 0.013sec.
+"     if run_nr == 1
+" 	echomsg "TIME:" . join(reltime(time), ".") . " main_file:" . a:main_file
+"     endif
+    let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ] = deepcopy([ tree, list, type_dict, level_dict])
 " echo "TREE=". string(tree)
 " echo "LIST" . string(list)
     return [ tree, list, type_dict, level_dict ]
@@ -241,11 +294,31 @@ command! InputFiles		:echo "Found input files:\n" . join(TreeOfFiles(b:atp_MainF
 " Returns a dictionary:
 " { <input_name> : [ 'bib', 'main file', 'full path' ] }
 "			 with the same format as the output of FindInputFiles
-function! FindInputFiles(MainFile)
+" a:MainFile	- main file (b:atp_MainFile)
+" a:1 = 0 [1]	- use cached values of tree of files.
+function! FindInputFiles(MainFile,...)
+
+    let cached_Tree	= a:0 >= 1 ? a:1 : 0
 
     let saved_llist	= getloclist(0)
     call setloclist(0, [])
-    let [ TreeOfFiles, ListOfFiles, DictOfFiles, LevelDict ]	= TreeOfFiles(a:MainFile)
+
+    if cached_Tree && exists("b:TreeOfFiles")
+	let [ TreeOfFiles, ListOfFiles, DictOfFiles, LevelDict ]= deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]) 
+    else
+	
+	if &filetype == "plaintex"
+	    let flat = 1
+	else
+	    let flat = 0
+	endif
+
+	let g:fflat = flat
+	let [ TreeOfFiles, ListOfFiles, DictOfFiles, LevelDict ]= TreeOfFiles(fnamemodify(a:MainFile, ":p"), g:atp_inputfile_pattern, flat)
+	" Update the cached values:
+	let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ] = deepcopy([ TreeOfFiles, ListOfFiles, DictOfFiles, LevelDict ])
+    endif
+
     let AllInputFiles	= keys(filter(copy(DictOfFiles), " v:val == 'input' || v:val == 'preambule' "))
     let AllBibFiles	= keys(filter(copy(DictOfFiles), " v:val == 'bib' "))
 
@@ -261,7 +334,7 @@ function! FindInputFiles(MainFile)
     for File in ListOfFiles
 	if filereadable(File) 
 	call extend(Files, 
-	    \ { fnamemodify(File,":t:r") : [ DictOfFiles[File] , a:MainFile, File ] })
+	    \ { fnamemodify(File,":t:r") : [ DictOfFiles[File] , fnamemodify(a:MainFile, ":p"), File ] })
 	else
 	" echo warning if a bibfile is not readable
 	    echohl WarningMsg | echomsg "File " . File . " not found." | echohl None
@@ -279,7 +352,7 @@ endfunction
 
 " All Status Line related things:
 "{{{ Status Line
-function! ATPStatusOutDir() "{{{
+function! s:StatusOutDir() "{{{
 let status=""
 if exists("b:atp_OutDir")
     if b:atp_OutDir != "" 
@@ -292,24 +365,15 @@ endif
 endfunction "}}}
 
 " There is a copy of this variable in compiler.vim
-let s:CompilerMsg_Dict	= { 
-	    \ 'tex'		: 'TeX', 
-	    \ 'etex'		: 'eTeX', 
-	    \ 'pdftex'		: 'pdfTeX', 
-	    \ 'latex' 		: 'LaTeX',
-	    \ 'elatex' 		: 'eLaTeX',
-	    \ 'pdflatex'	: 'pdfLaTeX', 
-	    \ 'context'		: 'ConTeXt',
-	    \ 'luatex'		: 'LuaTeX',
-	    \ 'xetex'		: 'XeTeX'}
 
 function! ATPRunning() "{{{
     if exists("b:atp_running") && exists("g:atp_callback") && b:atp_running && g:atp_callback
+" 	let b:atp_running	= b:atp_running < 0 ? 0 : b:atp_running
 	redrawstatus
 
-	for cmd in keys(s:CompilerMsg_Dict) 
+	for cmd in keys(g:CompilerMsg_Dict) 
 	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
-		let Compiler = s:CompilerMsg_Dict[cmd]
+		let Compiler = g:CompilerMsg_Dict[cmd]
 		break
 	    else
 		let Compiler = b:atp_TexCompiler
@@ -335,24 +399,71 @@ endfunction "}}}
 " hi 	link 	atp_statusoutdir 	String
 " }}}
 
+function! SetNotificationColor()
+
+    " use the value of the variable g:atp_notification_{g:colors_name}_guibg
+    " if it doesn't exists use the default value (the same as the value of StatusLine
+    " (it handles also the reverse option!)
+    let notification_guibg = exists("g:atp_notification_".g:colors_name."_guibg") ?
+		\ g:atp_notification_{g:colors_name}_guibg :
+		\ ( synIDattr(synIDtrans(hlID("StatusLine")), "reverse") ?
+		    \ synIDattr(synIDtrans(hlID("StatusLine")), "fg#") :
+		    \ synIDattr(synIDtrans(hlID("StatusLine")), "bg#") )
+    let notification_guifg = exists("g:atp_notification_".g:colors_name."_guifg") ?
+		\ g:atp_notification_{g:colors_name}_guifg :
+		\ ( synIDattr(synIDtrans(hlID("StatusLine")), "reverse") ?
+		    \ synIDattr(synIDtrans(hlID("StatusLine")), "bg#") :
+		    \ synIDattr(synIDtrans(hlID("StatusLine")), "fg#") )
+    let notification_gui = exists("g:atp_notification_".g:colors_name."gui") ?
+		\ g:atp_notification_{g:colors_name}_gui :
+		\ ( (synIDattr(synIDtrans(hlID("StatusLine")), "bold") ? "bold" : "" ) . 
+		    \ (synIDattr(synIDtrans(hlID("StatusLine")), "underline") ? ",underline" : "" ) .
+		    \ (synIDattr(synIDtrans(hlID("StatusLine")), "underculr") ? ",undercurl" : "" ) .
+		    \ (synIDattr(synIDtrans(hlID("StatusLine")), "italic") ? ",italic" : "" ) )
+
+    let g:notification_gui	= notification_gui
+    let g:notification_guibg	= notification_guibg
+    let g:notification_guifg	= notification_guifg
+    " Highlight command:
+    try
+    execute "hi User9 "	.
+	    \ " gui="	. notification_gui   . 
+	    \ " guifg="	. notification_guifg .
+	    \ " guibg="	. notification_guibg
+    catch /E418: Illegal value:/
+    endtry
+
+endfunction
+
+augroup ATP_SetStatusLineNotificationColor
+    au ColorScheme * :call SetNotificationColor()
+augroup END
+
 " The main status function, it is called via autocommand defined in 'options.vim'.
-function! ATPStatus() "{{{
+function! ATPStatus(bang) "{{{
 "     echomsg "Status line set by ATP." 
+    let g:status_OutDir	= a:bang == "" ? s:StatusOutDir() : ""
     if &filetype == 'tex'
 	if g:atp_status_notification
-	    let &statusline='%<%f %(%h%m%r %)  %{CTOC("return")}%= %{ATPRunning()} %{ATPStatusOutDir()} %-14.16(%l,%c%V%)%P'
+	    let &statusline='%<%f %(%h%m%r %)  %= %{CTOC("return")} %#User9#%{ATPRunning()}%#StatusLine# %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
 	else
-	    let &statusline='%<%f %(%h%m%r %)  %{CTOC("return")}%= %{ATPStatusOutDir()} %-14.16(%l,%c%V%)%P'
+	    let &statusline='%<%f %(%h%m%r %)  %= %{CTOC("return")} %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
 	endif 
     else 
 	if g:atp_status_notification
-	    let  &statusline='%<%f %(%h%m%r %)  %= %{ATPRunning()} %{ATPStatusOutDir()} %-14.16(%l,%c%V%)%P'
+	    let  &statusline='%<%f %(%h%m%r %)  %= %#User9#%{ATPRunning()}%#StatusLine# %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
 	else
-	    let  &statusline='%<%f %(%h%m%r %)  %= %{ATPStatusOutDir()} %-14.16(%l,%c%V%)%P'
+	    let  &statusline='%<%f %(%h%m%r %)  %= %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
 	endif
     endif
 endfunction
-command! -buffer ATPStatus		:call ATPStatus() 
+if !s:did_common
+    try
+	command -buffer -bang Status		:call ATPStatus(<q-bang>) 
+    catch /E174: Command already exists/
+	command! -buffer -bang ATPStatus	:call ATPStatus(<q-bang>) 
+    endtry
+endif
 " }}}
 "}}}
 

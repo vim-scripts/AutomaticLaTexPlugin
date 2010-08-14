@@ -11,21 +11,10 @@ else
 	let b:loaded_compiler += 1
 endif
 
-let s:CompilerMsg_Dict	= { 
-	    \ 'tex'		: 'TeX', 
-	    \ 'etex'		: 'eTeX', 
-	    \ 'pdftex'		: 'pdfTeX', 
-	    \ 'latex' 		: 'LaTeX',
-	    \ 'elatex' 		: 'eLaTeX',
-	    \ 'pdflatex'	: 'pdfLaTeX', 
-	    \ 'context'		: 'ConTeXt',
-	    \ 'luatex'		: 'LuaTeX',
-	    \ 'xetex'		: 'XeTeX'}
-
 " Internal Variables
 " {{{
 " This limits how many consecutive runs there can be maximally.
-let s:runlimit		= 5 
+let s:runlimit		= 9
 
 let s:texinteraction	= "nonstopmode"
 compiler tex
@@ -42,7 +31,13 @@ function! s:ViewOutput(...)
     call atplib#outdir()
 
     " Set the correct output extension (if nothing matches set the default '.pdf')
-    let ext	= get(g:atp_CompilersDict, b:atp_TexCompiler, ".pdf") 
+    let ext		= get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf") 
+
+    " Read the global options from g:atp_{b:atp_Viewer}Options variables
+    let global_options 	= exists("g:atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") ? g:atp_{matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')}Options : ""
+    let local_options 	= getbufvar(bufnr("%"), "atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options")
+
+    let g:options	= global_options ." ". local_options
 
     " Follow the symbolic link
     let link=system("readlink " . shellescape(b:atp_MainFile))
@@ -55,10 +50,10 @@ function! s:ViewOutput(...)
     if b:atp_Viewer == "xpdf"	
 	let viewer	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . getbufvar("%", b:atp_Viewer.'Options') 
     else
-	let viewer	= b:atp_Viewer  . " " . getbufvar("%", b:atp_Viewer.'Options')
+	let viewer	= b:atp_Viewer  . " " . getbufvar("%", "atp_".b:atp_Viewer.'Options')
     endif
 
-    let view_cmd	= viewer . " " . shellescape(outfile)  . " &"
+    let view_cmd	= viewer . " " . global_options . " " . local_options . " " . shellescape(outfile)  . " &"
 
     if filereadable(outfile)
 	if b:atp_Viewer == "xpdf"	
@@ -91,9 +86,10 @@ endfunction
 function! s:GetPID()
 	let s:var=s:getpid()
 	if s:var != ""
-		echomsg b:atp_TexCompiler . " pid " . s:var 
+	    echomsg b:atp_TexCompiler . " pid " . s:var 
 	else
-		echomsg b:atp_TexCompiler . " is not running"
+	    let b:atp_runnig	= 0
+	    echomsg b:atp_TexCompiler . " is not running"
 	endif
 endfunction
 command! -buffer PID		:call <SID>GetPID()
@@ -218,15 +214,15 @@ endfunction
 function! s:CallBack(mode)
 	let b:mode	= a:mode
 
-	for cmd in keys(s:CompilerMsg_Dict) 
+	for cmd in keys(g:CompilerMsg_Dict) 
 	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
-		let Compiler = s:CompilerMsg_Dict[cmd]
+		let Compiler 	= g:CompilerMsg_Dict[cmd]
 		break
 	    else
-		let Compiler = b:atp_TexCompiler
+		let Compiler 	= b:atp_TexCompiler
 	    endif
 	endfor
-	let b:atp_running-=1
+	let b:atp_running	= b:atp_running - 1
 
 	" Read the log file
 	cg
@@ -287,15 +283,14 @@ endfunction
 " To Do: when I will add proper check if bibtex should be done (by checking bbl file
 " or changes in bibliographies in input files), the bang will be used to update/or
 " not the aux|log|... files.
-let g:MakeLatex_debug	= 0
-
 " Function Arguments:
 " a:texfile		= main tex file to use
 " a:did_bibtex		= the number of times bibtex was already done MINUS 1 (should be 0 on start up)
 " a:did_index		= 0/1 1 - did index 
 " 				/ to make an index it is enough to call: 
 " 					latex ; makeindex ; latex	/
-" a:time		= should be reltime()
+" a:time		= []  - it will give time message (only if has("reltime"))
+" 			  [0] - no time message.
 " a:did_firstrun	= did the first run? (see a:1 below)
 " a:run			= should be 1 on invocation: the number of the run
 " force			= '!'/'' (see :h bang)
@@ -317,9 +312,29 @@ let g:MakeLatex_debug	= 0
 " 	table of contents	= 'No file \f*\.toc' 				
 
 " needs reltime feature (used already in the command)
+let g:MakeLatex_debug	= 1
 function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, force, ...)
 
-    let b:atp_running	= a:run ? 1 : 0
+    if a:time == [] && has("reltime") && len(a:time) != 1 
+	let time = reltime()
+    else
+	let time = a:time
+    endif
+
+    if &filetype == "plaintex"
+	echohl WarningMsg
+	echo "plaintex is not supported"
+	echohl None
+	return "plaintex is not supported."
+    endif
+
+    " Prevent from infinite loops
+    if a:run >= s:runlimit
+	echoerr "ATP Error: MakeLatex in infinite loop."
+	return "infinte loop."
+    endif
+
+    let b:atp_running= a:run == 1 ? b:atp_running+1 : 0
     let runtex_before	= a:0 == 0 || a:1 == 0 ? 0 : 1
     let runtex_before	= runtex_before
 
@@ -331,9 +346,9 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 	    endif
 	endif
 
-    for cmd in keys(s:CompilerMsg_Dict) 
+    for cmd in keys(g:CompilerMsg_Dict) 
 	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
-	    let Compiler = s:CompilerMsg_Dict[cmd]
+	    let Compiler = g:CompilerMsg_Dict[cmd]
 	    break
 	else
 	    let Compiler = b:atp_TexCompiler
@@ -341,13 +356,10 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
     endfor
 
     let compiler_SID 	= s:compiler_SID
-    let g:tm_debug 	= ""
+    let g:ml_debug 	= ""
 
     let mode 		= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
-    let tex_options	= " -interaction nonstopmode -output-directory=" . b:atp_OutDir . " "
-    if b:atp_TexCompiler == "tex" || b:atp_TexCompiler == "latex"
-	let tex_options .= " -src-specials "
-    endif
+    let tex_options	= " -interaction nonstopmode -output-directory=" . b:atp_OutDir . " " . b:atp_TexOptions
 
     " This supports b:atp_OutDir
     let texfile		= b:atp_OutDir . fnamemodify(a:texfile, ":t")
@@ -506,12 +518,12 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 	endif
 	let did_bibtex	= 0
 	let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID . 
-		\ "MakeLatex\(\'".texfile."\', ".did_bibtex.", 0, [".a:time[0].",".a:time[1]."], ".
+		\ "MakeLatex\(\'".texfile."\', ".did_bibtex.", 0, [".time[0].",".time[1]."], ".
 		\ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
 	let cmd	= b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
 
 	    if g:MakeLatex_debug
-	    let g:tm_debug .= "First run. (make log|aux|idx file)" . " [" . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . "]#"
+	    let g:ml_debug .= "First run. (make log|aux|idx file)" . " [" . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . "]#"
 	    silent echo a:run . " Run First CMD=" . cmd 
 	    redir END
 	    endif
@@ -551,7 +563,7 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 	  if ( bib_condition_force && a:force == "!" ) || ( bib_condition_noforce && a:force == "" )
 	      let bib_msg	 = ( bibtex  ? ( did_bibtex == 0 ? " [bibtex,".Compiler."]" : " [".Compiler."]" ) : " [".Compiler."]" )
 	      let message	.= " references".bib_msg."," 
-	      let g:tm_debug 	.= "(make references)"
+	      let g:ml_debug 	.= "(make references)"
 	  endif
 	  if toc && a:run <= 2
 	      let message	.= " toc,"
@@ -567,11 +579,11 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 	  endif
 	  if cross_references
 	      let message	.= " cross-references," 
-	      let g:tm_debug	.= "(make cross-references)"
+	      let g:ml_debug	.= "(make cross-references)"
 	  endif
 	  if !a:did_index && index && idxfile_readable
 	      let message	.= " index [makeindex]." 
-	      let g:tm_debug 	.= "(make index)"
+	      let g:ml_debug 	.= "(make index)"
 	  endif
 	  let message	= substitute(message, ',\s*$', '.', '') 
 	  if !did_bibtex && auxfile_readable && bibtex
@@ -596,7 +608,7 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 	      let did_index	=  1
 	  endif
 	  let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID .
-		      \ "MakeLatex\(\'".texfile."\', ".did_bibtex." , ".did_index.", [".a:time[0].",".a:time[1]."], ".
+		      \ "MakeLatex\(\'".texfile."\', ".did_bibtex." , ".did_index.", [".time[0].",".time[1]."], ".
 		      \ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
 	  let cmd	.= b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
 
@@ -611,20 +623,29 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 	  return "Making references|cross-references|index."
     endif
 
+    " Post compeltion works:
+    echomsg  "END"
 	if g:MakeLatex_debug
 	silent echo a:run . " END"
 	redir END
 	endif
 
     redraw
-    let time	= matchstr(reltimestr(reltime(a:time)), '\d\+\.\d\d')
-    if max([(a:run-1), 0]) == 1
-	echomsg "[MakeLatex] " . max([(a:run-1), 0]) . " time in " . time . "sec."
-    else
-	echomsg "[MakeLatex] " . max([(a:run-1), 0]) . " times in " . time . "sec."
+
+
+    if time != [] && len(time) == 2
+	let show_time	= matchstr(reltimestr(reltime(time)), '\d\+\.\d\d')
     endif
-    let b:atp_running	=  0
-    redrawstatus
+
+    if max([(a:run-1), 0]) == 1
+	echomsg "[MakeLatex] " . max([(a:run-1), 0]) . " time in " . show_time . "sec."
+    else
+	echomsg "[MakeLatex] " . max([(a:run-1), 0]) . " times in " . show_time . "sec."
+    endif
+
+    if b:atp_running >= 1
+	let b:atp_running	=  b:atp_running - 1
+    endif
 
     " THIS is a right place to call the viewer to reload the file 
     " and the callback mechanism /debugging stuff/.
@@ -633,11 +654,12 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 	let Reload_Viewer 	= b:atp_Viewer." -remote ".shellescape(b:atp_XpdfServer)." -reload &"
 	call system(Reload_Viewer)
     endif
+    return "Proper end"
 endfunction
-command! -buffer -bang MakeLatex		:call <SID>MakeLatex(b:atp_MainFile, 0,0, reltime(),1,1,<q-bang>,1)
+command! -buffer -bang MakeLatex		:call <SID>MakeLatex(b:atp_MainFile, 0,0, [],1,1,<q-bang>,1)
 function! Make()
     if &l:filetype =~ 'tex$'
-	call <SID>MakeLatex(b:atp_MainFile, 0,0, reltime(),1,1,0,1)
+	call <SID>MakeLatex(b:atp_MainFile, 0,0, [],1,1,0,1)
     endif
     return ""
 endfunction
@@ -690,7 +712,7 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 	endif
 
 	let s:tmpdir=tempname()
-	let s:tmpfile=atplib#append(s:tmpdir,"/") . fnamemodify(a:filename,":t:r")
+	let s:tmpfile=atplib#append(s:tmpdir, "/") . fnamemodify(a:filename,":t:r")
 	if exists("*mkdir")
 	    call mkdir(s:tmpdir, "p", 0700)
 	else
@@ -700,7 +722,7 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 
 	" SET THE NAME OF OUTPUT FILES
 	" first set the extension pdf/dvi
-	let l:ext	= get(g:atp_CompilersDict, b:atp_TexCompiler, '.pdf')
+	let ext	= get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf") 
 
 	" check if the file is a symbolic link, if it is then use the target
 	" name.
@@ -712,7 +734,7 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 	endif
 
 	" finally, set the output file names. 
-	let outfile 	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . l:ext
+	let outfile 	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . ext
 	let outaux  	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".aux"
 	let tmpaux  	= fnamemodify(s:tmpfile, ":r") . ".aux"
 	let tmptex  	= fnamemodify(s:tmpfile, ":r") . ".tex"
@@ -767,7 +789,8 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 " 	IF OPENING NON EXISTING OUTPUT FILE
 "	only xpdf needs to be run before (we are going to reload it)
 	if a:start && b:atp_Viewer == "xpdf"
-	    let s:start 	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . b:atp_{b:atp_Viewer}Options . " & "
+	    let xpdf_options	= ( exists("g:atp_xpdfOptions")  ? g:atp_xpdfOptions : "" )." ".getbufvar(0, "atp_xpdfOptions")
+	    let s:start 	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . xpdf_options . " & "
 	else
 	    let s:start = ""	
 	endif
@@ -826,7 +849,7 @@ function! s:Compiler(bibtex, start, runs, verbose, command, filename)
 
 	" copy output file (.pdf\|.ps\|.dvi)
 	let s:cpoption="--remove-destination "
-	let s:cpoutfile="cp " . s:cpoption . shellescape(atplib#append(s:tmpdir,"/")) . "*" . l:ext . " " . shellescape(atplib#append(b:atp_OutDir,"/")) . " ; "
+	let s:cpoutfile="cp " . s:cpoption . shellescape(atplib#append(s:tmpdir,"/")) . "*" . ext . " " . shellescape(atplib#append(b:atp_OutDir,"/")) . " ; "
 
 	if a:start
 	    let s:command="(" . s:texcomp . " ; (" . catchstatus_cmd . " " . s:cpoutfile . " " . Reload_Viewer . " ) || ( ". catchstatus_cmd . " " . s:cpoutfile . ") ; " 
@@ -905,12 +928,17 @@ endfunction
 
 " AUTOMATIC TEX PROCESSING 
 " {{{1 s:auTeX
-" To Do: we can now check if the last environment is closed and run latex if it is, to
-" not run latex if the 
 " This function calls the compilers in the background. It Needs to be a global
 " function (it is used in options.vim, there is a trick to put function into
 " a dictionary ... )
 function! s:auTeX()
+
+    " Using vcscommand plugin the diff window ends with .tex thus the autocommand
+    " applies but the filetype is 'diff' thus we can switch tex processing by:
+    if &l:filetype !~ "tex$"
+	return "wrong file type"
+    endif
+
     let mode 	= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
 
     if !b:atp_autex
@@ -931,9 +959,12 @@ function! s:auTeX()
 	    echohl ErrorMsg
 	    echomsg expand("%") . "E212: Cannon open file for writing"
 	    echohl Normal
-	    return "Cannot write file"
+	    return " E212"
+	catch /E382: Cannot write, 'buftype' option is set/
+	    " This option can be set by VCSCommand plugin using VCSVimDiff command
+	    return " E382"
 	endtry
-	call s:Compiler(0,0,b:atp_auruns, mode, "AU",b:atp_MainFile)
+	call s:Compiler(0, 0, b:atp_auruns, mode, "AU", b:atp_MainFile)
 	redraw
 	return "compile for the first time"
     endif
@@ -964,9 +995,9 @@ let s:name=tempname()
 	let mode = g:atp_DefaultDebugMode
     endif
 
-    for cmd in keys(s:CompilerMsg_Dict) 
+    for cmd in keys(g:CompilerMsg_Dict) 
 	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
-	    let Compiler = s:CompilerMsg_Dict[cmd]
+	    let Compiler = g:CompilerMsg_Dict[cmd]
 	    break
 	else
 	    let Compiler = b:atp_TexCompiler
@@ -987,6 +1018,8 @@ let s:name=tempname()
     call s:Compiler(0,0, a:runs, mode, "COM", b:atp_MainFile)
 endfunction
 command! -buffer -nargs=? -count=1 TEX		:call <SID>TeX(<count>, <f-args>)
+" command! -buffer -count=1	VTEX		:call <SID>TeX(<count>, 'verbose') 
+command! -buffer -count=1	DTEX		:call <SID>TeX(<count>, 'debug') 
 noremap <silent> <Plug>ATP_TeXCurrent		:<C-U>call <SID>TeX(v:count1, t:atp_DebugMode)<CR>
 noremap <silent> <Plug>ATP_TeXDefault		:<C-U>call <SID>TeX(v:count1, 'default')<CR>
 noremap <silent> <Plug>ATP_TeXSilent		:<C-U>call <SID>TeX(v:count1, 'silent')<CR>

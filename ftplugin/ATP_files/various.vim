@@ -176,7 +176,7 @@ function! s:InteligentWrapSelection(text_wrapper, math_wrapper, ...)
 
     let MathZones = copy(g:atp_MathZones)
     let pattern		= '^texMathZone[VWX]'
-    if b:atp_TexFlavour == 'plaintex'
+    if b:atp_TexFlavor == 'plaintex'
 	call add(MathZones, 'texMathZoneY')
 	let pattern	= '^texMathZone[VWXY]'
     endif
@@ -224,7 +224,7 @@ vmap <Plug>InteligentWrapSelection				:<C-U>call <SID>InteligentWrapSelection(''
 function! Insert(text, math)
 
     let MathZones = copy(g:atp_MathZones)
-    if b:atp_TexFlavour == 'plaintex'
+    if b:atp_TexFlavor == 'plaintex'
 	call add(MathZones, 'texMathZoneY')
     endif
 

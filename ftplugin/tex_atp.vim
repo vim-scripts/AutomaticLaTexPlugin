@@ -1,10 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Author:	Marcin Szamotulski
-" Last Changed: 2010 July 8
+" Last Changed: 2010 July 14
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 32 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 35 :AutoInstall: tex_atp.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
 " 		modifications, provided that this copyright notice is copied
@@ -16,8 +16,7 @@
 " 		This licence is valid for all files distributed with ATP
 " 		plugin.
 
-let prefix 	= expand('<sfile>:p:h') . '/ATP_files'
-let pprefix = expand('<sfile>:p:h:h')
+let b:did_ftplugin	= 1
 
 if &cpoptions =~ '<'
 	echohl WarningMsg
@@ -26,47 +25,71 @@ if &cpoptions =~ '<'
 	setl cpoptions-=<
 endif
 
+	" Source History Script
+	let history_src	= findfile("ftplugin/ATP_files/history.vim", &rtp) 
+	execute 'source ' 	. fnameescape(history_src)
+
 	" Functions needed before setting options.
-	execute 'source ' 	. fnameescape(prefix . '/common.vim')
+	let common_src	= findfile("ftplugin/ATP_files/common.vim", &rtp) 
+	execute 'source ' 	. fnameescape(common_src)
 
 	" Options, global and local variables, autocommands.
-	execute 'source '  	. fnameescape(prefix . '/options.vim')
+	let options_src	= findfile("ftplugin/ATP_files/options.vim", &rtp) 
+	execute 'source '  	. fnameescape(options_src)
 
-
-	execute 'source ' 	. fnameescape(prefix . '/common.vim')
 
 	" Compilation related stuff.
-	execute 'source ' 	. fnameescape(prefix . '/compiler.vim')
+	let compiler_src	= findfile("ftplugin/ATP_files/compiler.vim", &rtp) 
+	execute 'source ' 	. fnameescape(compiler_src)
 
-	let compiler_file = findfile('tex_atp.vim', &rtp)
-	if compiler_file
-		execute 'source ' 	. fnameescape(compiler_file)
-	endif
+" 	let compiler_file = findfile('compiler/tex_atp.vim', &rtp)
+" 	if compiler_file
+" 		execute 'source ' 	. fnameescape(compiler_file)
+" 	endif
 
 	" LatexBox addons (by D.Munger, with some modifications).
 	if g:atp_LatexBox
-		execute 'source ' . fnameescape(prefix . '/LatexBox_common.vim')
-		execute 'source ' . fnameescape(prefix . '/LatexBox_complete.vim')
-		execute 'source ' . fnameescape(prefix . '/LatexBox_motion.vim')
+
+		let LatexBox_common_src		= findfile("ftplugin/ATP_files/LatexBox_common.vim", &rtp) 
+		execute 'source ' . fnameescape(LatexBox_common_src)
+
+		let LatexBox_complete_src	= findfile("ftplugin/ATP_files/LatexBox_complete.vim", &rtp) 
+		execute 'source ' . fnameescape(LatexBox_complete_src)
+
+		let LatexBox_motion_src		= findfile("ftplugin/ATP_files/LatexBox_motion.vim", &rtp) 
+		execute 'source ' . fnameescape(LatexBox_motion_src)
+
 	endif
 
 
-	execute 'source ' . fnameescape(prefix . '/motion.vim')
-	execute 'source ' . fnameescape(prefix . '/search.vim')
-	execute 'source ' . fnameescape(prefix . '/various.vim')
+	let motion_src	= findfile("ftplugin/ATP_files/motion.vim", &rtp) 
+	execute 'source ' . fnameescape(motion_src)
+
+	let search_src	= findfile("ftplugin/ATP_files/search.vim", &rtp) 
+	execute 'source ' . fnameescape(search_src)
+
+	let various_src	= findfile("ftplugin/ATP_files/various.vim", &rtp) 
+	execute 'source ' . fnameescape(various_src)
 
 
 	" Source maps and menu files.
-	execute 'source ' . fnameescape(prefix . '/mappings.vim')
+	let mappings_src	= findfile("ftplugin/ATP_files/mappings.vim", &rtp) 
+	execute 'source ' . fnameescape(mappings_src)
 
 	if g:atp_LatexBox
 
 		" LatexBox mappings.
-		execute 'source ' . fnameescape(prefix . '/LatexBox_mappings.vim')
+		let LatexBox_mappings_src		= findfile("ftplugin/ATP_files/LatexBox_mappings.vim", &rtp) 
+		execute 'source ' . fnameescape(LatexBox_mappings_src)
 			
 	endif
 
 	" The menu.
-	execute 'source ' . fnameescape(prefix . '/menu.vim')
+	let menu_src	= findfile("ftplugin/ATP_files/menu.vim", &rtp) 
+	execute 'source ' . fnameescape(menu_src)
+
+	" Execute the atprc file.
+	let atp_rc		= ([findfile(".atprc.vim", $HOME)] + [findfile("ftplugin/ATP_files/atprc.vim", &rtp)])[0]
+	execute 'source ' . fnameescape(atp_rc)
 
 " vim:fdm=marker:ff=unix:noet:ts=4:sw=4

@@ -67,7 +67,7 @@ function! atplib#GrepAuxFile(...)
 
     let saved_llist	= getloclist(0)
     try
-	silent execute 'lvimgrep /\\newlabel\s*{/j ' . aux_filename
+	silent execute 'lvimgrep /\\newlabel\s*{/j ' . fnameescape(aux_filename)
     catch /E480: No match:/
     endtry
     let loc_list	= getloclist(0)
@@ -201,7 +201,7 @@ function! atplib#generatelabels(filename, ...)
 
     " Look for labels in all input files.
     for file in ListOfFiles
-	silent! execute "lvimgrepadd /\\label\s*{/j " . file
+	silent! execute "lvimgrepadd /\\label\s*{/j " . fnameescape(file)
     endfor
     let loc_list	= getloclist(0)
 "     call setloclist(0, saved_llist)
@@ -1376,7 +1376,7 @@ function! atplib#SearchPackage(name,...)
 	else
 	    if &l:filetype == 'tex'
 		let saved_loclist	= getloclist(0)
-		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . b:atp_MainFile
+		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
 		let stop_line	= get(get(getloclist(0), 0, {}), 'lnum', 0)
 		call setloclist(0, saved_loclist) 
 	    else
@@ -1495,7 +1495,7 @@ function! atplib#GrepPackageList(...)
 
     let saved_loclist	= getloclist(0)
     try
-	silent execute 'lvimgrep /^[^%]*'.pat.'/j ' . file
+	silent execute 'lvimgrep /^[^%]*'.pat.'/j ' . fnameescape(file)
     catch /E480: No match:/
 	call setloclist(0, [{'text' : 'empty' }])
     endtry
@@ -1520,7 +1520,7 @@ function! atplib#DocumentClass(file)
 
     let saved_loclist	= getloclist(0)
     try
-	silent execute 'lvimgrep /\\documentclass/j ' . a:file
+	silent execute 'lvimgrep /\\documentclass/j ' . fnameescape(a:file)
     catch /E480: No match:/
     endtry
     let line		= get(get(getloclist(0), 0, "no_document_class"), 'text')
@@ -2792,7 +2792,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    " if the file doesn't contain the preambule
 	    if &l:filetype == 'tex'
 		let saved_loclist	= getloclist(0)
-		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . b:atp_MainFile
+		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
 		let stop_line	= get(get(getloclist(0), 0, {}), 'lnum', 0)
 		call setloclist(0, saved_loclist) 
 	    else

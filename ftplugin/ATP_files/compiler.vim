@@ -398,7 +398,7 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
     " 'Citation .* undefined\|Rerun to get cross-references right\|Writing index file'
     let saved_llist	= getloclist(0)
     try
-	silent execute "lvimgrep /C\\n\\=i\\n\\=t\\n\\=a\\n\\=t\\n\\=i\\n\\=o\\n\\=n\\_s\\_.*\\_su\\n\\=n\\n\\=d\\n\\=e\\n\\=f\\n\\=i\\n\\=n\\n\\=e\\n\\=d\\|L\\n\\=a\\n\\=b\\n\\=e\\n\\=l\\n\\=(\\n\\=s\\n\\=)\\_sm\\n\\=a\\n\\=y\\_sh\\n\\=a\\n\\=v\\n\\=e\\_sc\\n\\=h\\n\\=a\\n\\=n\\n\\=g\\n\\=e\\n\\=d\\n\\=.\\|W\\n\\=r\\n\\=i\\n\\=t\\n\\=i\\n\\=n\\n\\=g\\_si\\n\\=n\\n\\=d\\n\\=e\\n\\=x\\_sf\\n\\=i\\n\\=l\\n\\=e/j " . logfile
+	silent execute "lvimgrep /C\\n\\=i\\n\\=t\\n\\=a\\n\\=t\\n\\=i\\n\\=o\\n\\=n\\_s\\_.*\\_su\\n\\=n\\n\\=d\\n\\=e\\n\\=f\\n\\=i\\n\\=n\\n\\=e\\n\\=d\\|L\\n\\=a\\n\\=b\\n\\=e\\n\\=l\\n\\=(\\n\\=s\\n\\=)\\_sm\\n\\=a\\n\\=y\\_sh\\n\\=a\\n\\=v\\n\\=e\\_sc\\n\\=h\\n\\=a\\n\\=n\\n\\=g\\n\\=e\\n\\=d\\n\\=.\\|W\\n\\=r\\n\\=i\\n\\=t\\n\\=i\\n\\=n\\n\\=g\\_si\\n\\=n\\n\\=d\\n\\=e\\n\\=x\\_sf\\n\\=i\\n\\=l\\n\\=e/j " . fnameescape(logfile)
     catch /No match:/
     endtry
     let location_list	= copy(getloclist(0))
@@ -414,7 +414,7 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
     " Check what to use to make the 'Bibliography':
     let saved_llist	= getloclist(0)
     try
-	silent execute 'lvimgrep /\\bibdata\s*{/j ' . auxfile 
+	silent execute 'lvimgrep /\\bibdata\s*{/j ' . fnameescape(auxfile)
     catch /No match:/
     endtry
     " Note: if the auxfile is not there it returns 0 but this is the best method for
@@ -458,7 +458,7 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
     " Check table of contents:
     let saved_llist	= getloclist(0)
     try
-	silent execute "lvimgrep /\\\\openout\\d\\+/j " . logfile
+	silent execute "lvimgrep /\\\\openout\\d\\+/j " . fnameescape(logfile)
     catch /No match:/
     endtry
 

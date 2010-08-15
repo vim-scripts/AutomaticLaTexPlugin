@@ -18,6 +18,7 @@ let g:atp_cached_local_variables = [ 'atp_MainFile', 'atp_LocalCommands', 'atp_L
 
 " This function Loads the atp_history.vim file.
 function! s:LoadHistory(bang) "{{{1
+    let time	= reltime()
     if exists("g:atp_nohistory") && g:atp_nohistory
 	return
     endif
@@ -40,13 +41,28 @@ function! s:LoadHistory(bang) "{{{1
 " 	endtry
 
 "	Load if history variable is defined and has an antry for the files.
-	if exists("g:atp_history_".var) && string(get(g:atp_history_{var}, expand("%:p"), 0)) != 0
+" echomsg "Var: g:atp_history_".var
+" echomsg string(get(g:atp_history_{var}, expand("%:p"), 0)) == 0
+	if exists("g:atp_history_".var) 
+" 	    && string(get(g:atp_history_{var}, expand("%:p"), 0)) != 0
 	    try
+" 		echomsg 'let b:'.var.'=g:atp_history_'.var.'[expand("%:p")]'
 		execute 'let b:'.var.'=g:atp_history_'.var.'[expand("%:p")]'
 	    catch /E716: Key not present in Dictionary/
 	    endtry
 	endif
     endfor
+
+    let hist_time	= reltime(time)
+    let g:atp_histtime	= reltimestr(hist_time)
+    let g:atp_histlen	= len(keys(g:atp_history_atp_MainFile))
+    if hist_time[1] >= 15000 || hist_time[0] >= 1 || g:atp_histlen > 25
+	    echohl WarningMsg
+	    echomsg "Your history file " . s:hist_file . " became big."
+	    echohl None
+	    echomsg "Loading time:" . g:atp_histtime . " Number of entries " . g:atp_histlen
+	    echomsg "You might want to use DeleteHistory or DeleteHistory!"
+    endif
 endfunction
 command! -buffer -bang LoadHistory		:call s:LoadHistory(<q-bang>)
 " au VimEnter *.tex :call s:LoadHistory()
@@ -89,10 +105,10 @@ function! s:WriteHistory() "{{{1
     let saved_swapchoice= v:swapchoice
     exe "edit +setl\\ noswapfile " . hist_file
     for var in g:atp_cached_local_variables
-" 	try
+	try
 	    exe ':%g/^\s*let\s\+g:atp_history_'.var.'/d'
-" 	catch /E486: Pattern not found/
-" 	endtry
+	catch /E486: Pattern not found/
+	endtry
 	call append('$', 'let g:atp_history_'.var.'='.string(g:atp_history_{var}))
     endfor
     w
@@ -106,17 +122,34 @@ augroup ATP_WriteHistory
 augroup END
 
 " Delete from history or delete whole history file.
-function! s:DeleteHistory(bang) " {{{1
-    let hist_file 	= substitute(s:file, 'history.vim$', 'atp_history.vim' , '')
+function! s:DeleteHistory(bang,...) " {{{1
     if a:bang == "!"
-	call delete(hist_file)
+	for var in g:atp_cached_local_variables
+	    try
+		unlet g:atp_history_{var}
+	    catch /E716: Key not present in Dictionary/
+	    endtry
+	endfor
+	call delete(s:hist_file)
+	echomsg s:hist_file . " deleted."
 	return
     endif
+    let file	= a:0 >= 1 ? fnamemodify(a:1, ":p") : expand("%:p")
+    let g:file 	= file 
 
     " if no bang just remove entries from dictionaries.
     for var in g:atp_cached_local_variables
-	call remove(g:atp_history_{var}, expand("%:p"))
+	try
+	    call remove(g:atp_history_{var}, file)
+	catch /E716: Key not present in Dictionary/
+	endtry
     endfor
     call s:WriteHistory()
 endfunction
-command! -buffer -bang DeleteHistory 	:call s:DeleteHistory(<q-bang>)
+command! -buffer -bang -complete=customlist,DelHistCompl -nargs=? DeleteHistory 	:call s:DeleteHistory(<q-bang>, <f-args>)
+function! DelHistCompl(ArgLead, CmdLine, CursorPos)
+    if !exists("g:atp_history_atp_MainFile")	
+	return []
+    endif
+    return filter(keys(g:atp_history_atp_MainFile),  'fnamemodify(v:val, ":t") =~ a:ArgLead')
+endfunction

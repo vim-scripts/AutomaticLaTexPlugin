@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 August 14
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 August 15
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -80,7 +80,8 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 ================================================================================
 NEWS							*atp-news*
 >
-	Changes in version 7.3.4
+	Changes in version 7.3.4 and 7.4 
+<				(in 7.4 I added :DeleteHistory[!] [file], see below.)
 >
 	:DefiSearch[!] [pattern]
 <		With bang it searches whole file, without only preambule (and
@@ -174,10 +175,21 @@ NEWS							*atp-news*
 		:LoadHistory[!]
 		:UpdateHistory[!]
 		:WriteHistory
-		:DeleteHistory[!]
+		:DeleteHistory[!] [file_name]
 <	which do the obvious thing (unless g:atp_nohistory = 1). DeleteHistory
-	command deletes all entries of history variables for the current file,
-	with bang "!" it deletes the whole history file.
+	command deletes all entries of history variables for the file (default
+	is current file), with bang "!" it deletes the whole history file.
+	There is completion for file names present in the history database. It
+	matches the file name (not the full path), use |c_CTRL-D| to list the
+	matching files.
+
+	Note: If you delete the history file for the current buffer it will be
+	written after exiting vim.
+
+	If the loading time of the history is greater than 0.01s or there are
+	more than 25 files, you will get a message that the history become
+	big. (The loading time is in g:atp_histtime and the length is in
+	g:atp_histlen variable). 
 
 	The history is disabled for files which fullpath matches 'texmf',
 	which should not be statically related to any file. The optional bang

@@ -488,7 +488,7 @@ let s:optionsDict= { 	"atp_TexOptions" 	: "",
 	        \ "atp_ReloadOnError" 		: "1", 
 		\ "atp_OpenViewer" 		: "1", 		
 		\ "atp_autex" 			: "1", 
-		\ "atp_Viewer" 			: "xpdf", 	
+		\ "atp_Viewer" 			: has("unix") ? "xpdf" : "AcroRd32.exe" , 	
 		\ "atp_TexFlavor" 		: &l:filetype, 
 		\ "atp_XpdfServer" 		: fnamemodify(expand("%"),":t"), 
 		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
@@ -614,7 +614,7 @@ function! s:ShowOptions(bang,...)
 	echo "\n"
 	echo "Global variables (defined in ".s:file."):"
 	let saved_loclist	= getloclist(0)
-	execute "lvimgrep /^\\s*let\\s\\+g:/j " . s:file
+	    execute "lvimgrep /^\\s*let\\s\\+g:/j " . fnameescape(s:file)
 	let global_vars		= getloclist(0)
 	call setloclist(0, saved_loclist)
 	let var_list		= []

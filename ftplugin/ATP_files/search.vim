@@ -111,10 +111,10 @@ function! LocalCommands(...)
      let saved_loclist	= getloclist(0)
      " I should scan the preambule separately!
      " This will make the function twice as fast!
-     silent! execute "lvimgrep /".pattern."/j " . b:atp_MainFile
+     silent! execute "lvimgrep /".pattern."/j " . fnameescape(b:atp_MainFile)
      for file in List
 	 if get(Type_Dict, file, 'no_file') == 'preambule'
-	     silent! execute "lvimgrepadd /".pattern."/j " . file
+	     silent! execute "lvimgrepadd /".pattern."/j " . fnameescape(file)
 	 endif
      endfor
      let loclist	= getloclist(0)
@@ -134,7 +134,7 @@ function! LocalCommands(...)
 	elseif line['text'] =~ '\\def\|\\newcommand'
 	    " definition name 
 	    let name= '\' . matchstr(line['text'],
-			\ '\\def\\\zs[^{#]*\ze[{#]\|\\newcommand{\?\\\zs[^\[{]*\ze[\[{}]}\?')
+			\ '\\def\\\zs[^{#]*\ze[{#]\|\\newcommand{\?\\\zs[^\[{]*\ze}')
 	    let type="Commands"
 	    " definition
 " 	    let def=matchstr(line['text'],

@@ -90,7 +90,7 @@ function! s:SetOutDir(arg, ...)
 			\ || b:atp_OutDir == "" && g:askfortheoutdir == 1 )
 			\ && !exists("$TEXMFOUTPUT")
 		 let b:atp_OutDir=substitute(fnamemodify(resolve(expand("%:p")),":h") . "/", '\\\s', ' ', 'g')
-		 echoh WarningMsg | echomsg "Output Directory "b:atp_OutDir | echoh None
+		  echomsg "Output Directory ".b:atp_OutDir
 
 	    elseif exists("$TEXMFOUTPUT")
 		 let b:atp_OutDir=substitute($TEXMFOUTPUT, '\\\s', ' ', 'g') 
@@ -136,6 +136,7 @@ command! -buffer SetOutDir	:call <SID>SetOutDir(1)
 " 		
 
 " Should match till the begining of the file name and not use \zs:\ze patterns.
+" It skips input files with extension other than '.tex' or '' (for example '.fd').
 if &filetype == 'plaintex'
     let g:atp_inputfile_pattern = '^[^%]*\\input\s*'
 else
@@ -183,7 +184,7 @@ function! TreeOfFiles(main_file,...)
     let saved_llist	= getloclist(0)
     if run_nr == 1 && &l:filetype =~ '^\(ams\)\=tex$'
 	try
-	    silent execute 'lvimgrep /\\begin\s*{\s*document\s*}/j ' . a:main_file
+	    silent execute 'lvimgrep /\\begin\s*{\s*document\s*}/j ' . fnameescape(a:main_file)
 	catch /E480: No match:/
 	endtry
 	let end_preamb	= get(get(getloclist(0), 0, {}), 'lnum', 0)
@@ -192,7 +193,7 @@ function! TreeOfFiles(main_file,...)
     endif
 
     try
-	silent execute "lvimgrep /".pattern."/jg " . a:main_file
+	silent execute "lvimgrep /".pattern."/jg " . fnameescape(a:main_file)
     catch /E480: No match:/
     endtry
     let loclist	= getloclist(0)
@@ -212,6 +213,11 @@ function! TreeOfFiles(main_file,...)
 	    let iname	= substitute(matchstr(line, pattern . '\zs\f*\ze'), '\s*$', '', '') 
 	    if line =~ '{\s*' . iname
 		let iname	= substitute(iname, '\\\@<!}\s*$', '', '')
+	    endif
+
+	    let iext	= fnamemodify(iname, ":e")
+	    if iext != "" && iext != "tex"
+		continue
 	    endif
 
 	    " type: preambule,bib,input.
@@ -313,7 +319,6 @@ function! FindInputFiles(MainFile,...)
 	    let flat = 0
 	endif
 
-	let g:fflat = flat
 	let [ TreeOfFiles, ListOfFiles, DictOfFiles, LevelDict ]= TreeOfFiles(fnamemodify(a:MainFile, ":p"), g:atp_inputfile_pattern, flat)
 	" Update the cached values:
 	let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ] = deepcopy([ TreeOfFiles, ListOfFiles, DictOfFiles, LevelDict ])

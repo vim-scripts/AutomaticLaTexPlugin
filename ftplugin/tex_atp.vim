@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:	tex
 " Author:	Marcin Szamotulski
-" Last Changed: 2010 July 15
+" Last Changed: 2010 July 17
 " URL:		
 " Email:	mszamot [AT] gmail [DOT] com
 " GetLatestVimScripts: 2945 36 :AutoInstall: tex_atp.vim
@@ -25,6 +25,10 @@ if &cpoptions =~ '<'
 	setl cpoptions-=<
 endif
 	let rtp	= join(map(split(&rtp, ','), 'fnameescape(v:val)'), ',')
+
+	" Execute the atprc file.
+	let atp_rc		= ([findfile(".atprc.vim", $HOME)] + [findfile("ftplugin/ATP_files/atprc.vim", rtp)])[0]
+	execute 'source ' . fnameescape(atp_rc)
 
 	" Source History Script
 	let history_src	= findfile("ftplugin/ATP_files/history.vim", rtp) 
@@ -88,9 +92,5 @@ endif
 	" The menu.
 	let menu_src	= findfile("ftplugin/ATP_files/menu.vim", rtp) 
 	execute 'source ' . fnameescape(menu_src)
-
-	" Execute the atprc file.
-	let atp_rc		= ([findfile(".atprc.vim", $HOME)] + [findfile("ftplugin/ATP_files/atprc.vim", rtp)])[0]
-	execute 'source ' . fnameescape(atp_rc)
 
 " vim:fdm=marker:ff=unix:noet:ts=4:sw=4

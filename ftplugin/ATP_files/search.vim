@@ -802,10 +802,7 @@ catch /E127: Cannot redefine function/
 endtry
 " {{{2 Commands, Maps and Completion functions for Search() function. 
 command! -buffer -bang -complete=customlist,SearchHistCompletion -nargs=* S 			:call Search(<q-bang>,<q-args>)
-if !exists("g:atp_grab_nN")
-    let g:atp_grab_nN = 0
-endif
-if g:atp_grab_nN
+if g:atp_grab_Nn
 " These two maps behaves now like n (N): after forward search n (N) acts as forward (backward), after
 " backward search n acts as backward (forward, respectively).
 nmap <buffer> <silent> <Plug>RecursiveSearch_n 	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/, v:searchforward ? "" : "b")

@@ -1,25 +1,69 @@
 " Author: M. Szamotulski
 " Description: 	A vim script which stores values of variables in a history file.
-" 		It is read, and updated, written (two last via autocommands).
+" 		It is read, updated and written (two last via autocommands,
+" 		first on sturup).
 
 " History File ftplugin/ATP_fiels/atp_history.vim
-" 
-
+ 
 " Variables {{{1
 let s:file	= expand('<sfile>:p')
 let s:hist_file	= substitute(s:file, 'history.vim$', 'atp_history.vim', '')
+let g:atp_DebugHistory = 0
+
+" When the history is longer than this value, echo message, 0 disable. 
+let g:atp_histlenMax  = 25
+
+" time in miliseconds, when it takes longer a message is put, 0 for no
+" message (should be less than 1000 (i.e. 1s) if greater the message will be
+" echoed any way).
+let g:atp_histtimeMax = 15	
+let s:atp_histtimeMax = g:atp_histtimeMax*1000
 
 " This variable is set to 1 iff the history was loaded by s:LoadHistory()
 " function.
 let b:atp_histloaded = 0
 
+if !exists("s:history_Load")
+    let s:history_Load	= {}
+    let g:history_Load	= s:history_Load
+endif
+if !exists("s:history_Update")
+    let s:history_Update	= {}
+endif
+if !exists("s:history_Write")
+    let s:history_Write	= {}
+endif
+
 " These local variables will be saved:
-let g:atp_cached_local_variables = [ 'atp_MainFile', 'atp_LocalCommands', 'atp_LocalColors', 'atp_LocalEnvironments', 'TreeOfFiles', 'ListOfFiles', 'TypeDict', 'LevelDict' ]
+let g:atp_cached_local_variables = [ 'atp_MainFile', 'atp_History', 'atp_LocalCommands', 'atp_LocalColors', 'atp_LocalEnvironments', 'TreeOfFiles', 'ListOfFiles', 'TypeDict', 'LevelDict' ]
 
 " This function Loads the atp_history.vim file.
-function! s:LoadHistory(bang) "{{{1
+
+function! s:LoadHistory(bang,...) "{{{1
+    if g:atp_DebugHistory
+	echomsg "\n"
+	echomsg "LoadHistory"
+	sleep 300m
+    endif
     let time	= reltime()
-    if exists("g:atp_nohistory") && g:atp_nohistory
+    let silent	= a:0 >= 1 ? a:1 : 0
+    let silent 	= silent || silent == "silent" ? "silent" : ""
+    let ch_load = a:0 >= 2 ? a:2 : 0 
+
+    if ch_load && get(s:history_Load, expand("%:p"), 0) >= 1
+" 	echomsg "History already loaded for this buffer."
+	return
+    endif
+    let loads	= get(s:history_Load, expand("%:p"), 0)
+    if loads
+	let s:history_Load[expand("%:p")] += 1 
+    else
+	let s:history_Load[expand("%:p")] = 1 
+    endif
+
+    " The local variable overrides the global one!
+    if exists("b:atp_History") && !b:atp_History || exists("g:atp_History") && ( !g:atp_History && (!exists("b:atp_History") || exists("b:atp_History") && !b:atp_History )) || !exists("g:atp_History") && !exists("b:atp_History")
+	exe silent . ' echomsg "ATP LoadHistory: not loading history file."'
 	return
     endif
     if a:bang == "" && expand("%:p") =~ 'texmf' 
@@ -31,7 +75,26 @@ function! s:LoadHistory(bang) "{{{1
     catch /E484: Cannot open file/
     endtry
 
-    for var in g:atp_cached_local_variables
+    " Load b:atp_History first
+    if count(g:atp_cached_local_variables, 'atp_History')
+	if exists("g:atp_history_atp_History") 
+	    try
+		exe silent . ' echomsg "ATP LoadHistory: loading b:atp_History variable."'
+		let b:atp_History	= get(g:atp_history_atp_History, expand("%:p"), exists("g:atp_History") ? g:atp_History : 1)
+	    catch /E121: Undefined variable: g:atp_history_atp_History /
+		if !exists("b:atp_History")
+		    echomsg "ATP LoadHistory: setting b:atp_History variable."
+		    let b:atp_History	= exists("g:atp_History") ? g:atp_History : 1
+		endif
+	    endtry
+	endif
+    endif
+
+    if !b:atp_History
+	return
+    endif
+
+    for var in filter(copy(g:atp_cached_local_variables), "v:val != 'atp_History'") 
 	" Show what is loading from the history file:
 " 	echomsg "Loading b:".string(var)
 " 	try
@@ -55,8 +118,9 @@ function! s:LoadHistory(bang) "{{{1
 
     let hist_time	= reltime(time)
     let g:atp_histtime	= reltimestr(hist_time)
-    let g:atp_histlen	= len(keys(g:atp_history_atp_MainFile))
-    if hist_time[1] >= 15000 || hist_time[0] >= 1 || g:atp_histlen > 25
+    let g:atp_histlen	= exists("g:atp_history_atp_MainFile") ? len(keys(g:atp_history_atp_MainFile)) : 0
+    if  ( 	g:atp_histtimeMax 	&& ( hist_time[1] >= s:atp_histtimeMax || hist_time[0] >= 1 ) ) || 
+	\ ( 	g:atp_histlenMax 	&& g:atp_histlen > g:atp_histlenMax )
 	    echohl WarningMsg
 	    echomsg "Your history file " . s:hist_file . " became big."
 	    echohl None
@@ -66,15 +130,35 @@ function! s:LoadHistory(bang) "{{{1
 endfunction
 command! -buffer -bang LoadHistory		:call s:LoadHistory(<q-bang>)
 " au VimEnter *.tex :call s:LoadHistory()
-au BufEnter *.tex :call s:LoadHistory("")
+au BufEnter *.tex :call s:LoadHistory("", 'silent', 1) "{{{1
+function! s:UpdateHistory(bang, ...) "{{{1
+"     let loads	= get(s:history_Update, expand("%:p"), 0)
+"     if loads
+" 	let s:history_Update[expand("%:p")] += 1 
+"     else
+" 	let s:history_Update[expand("%:p")] = 1 
+"     endif
+    if g:atp_DebugHistory
+	echomsg "\n"
+	echomsg "UpdateHistory"
+	sleep 300m
+    endif
+    let force = ( a:0 >= 1 ? a:1 : 0 )
+    let force = ( force == "force" || force ? 1 : 0 )
+    let ch_load = a:0 >= 2 ? a:2 : 0 
+
+"     if ch_load && s:history_Update[expand("%:p")] > 1
+" " 	echomsg "History already loaded for this buffer."
+" 	return
+"     endif
 " 
-function! s:UpdateHistory(...) "{{{1
-    if exists("g:atp_nohistory") && g:atp_nohistory
+    " The local variable overrides the global one (unless force is used).
+    let cond = exists("b:atp_History") && !b:atp_History || exists("g:atp_History") && ( !g:atp_History && (!exists("b:atp_History") || exists("b:atp_History") && !b:atp_History )) || !exists("g:atp_History") && !exists("b:atp_History")
+    if !force && cond
+	echo "ATP UpdateHistory: History is turned off."
 	return
     endif
-    let bang = a:0 >= 1 ? a:1 : ""
-    echo bang
-    if bang == "" && expand("%:p") =~ 'texmf' 
+    if a:bang == "" && expand("%:p") =~ 'texmf' 
 	return
     endif
     let file	= expand("%:p") 
@@ -90,36 +174,71 @@ function! s:UpdateHistory(...) "{{{1
 	    call extend(g:atp_history_{var}, { file : b:{var} }, 'force')
 	endif
     endfor
+    "     This cause an error (and history is appended to the current buffer!
+"     call s:WriteHistory(a:bang)
 endfunction
 command! -buffer -bang UpdateHistory	:call s:UpdateHistory(<q-bang>)
-augroup ATP_UpdateHistory
+
+augroup ATP_UpdateHistory "{{{1
     au!
-    au BufLeave *.tex	:call s:UpdateHistory("")
+    au BufLeave 	*.tex	:call s:UpdateHistory("")
+    au BufHidden 	*.tex	:call s:UpdateHistory("")
 augroup END
 
-function! s:WriteHistory() "{{{1
-    if exists("g:atp_nohistory") && g:atp_nohistory
+function! s:WriteHistory(bang) "{{{1
+    if g:atp_DebugHistory
+	echomsg "\n"
+	echomsg "WriteHistory"
+	sleep 300m
+    endif
+    " a:bang == '!' then force to write history even if it is turned off
+    " localy or globlay.
+    " The local variable overrides the global one!
+    let cond = exists("b:atp_History") && !b:atp_History || exists("g:atp_History") && ( !g:atp_History && (!exists("b:atp_History") || exists("b:atp_History") && !b:atp_History )) || !exists("g:atp_History") && !exists("b:atp_History")
+    if  a:bang == "" && cond
+	echomsg "ATP WriteHistory: History is turned off."
 	return
     endif
     let hist_file 	= substitute(s:file, 'history.vim$', 'atp_history.vim' , '')
     let saved_swapchoice= v:swapchoice
     exe "edit +setl\\ noswapfile " . hist_file
     for var in g:atp_cached_local_variables
-	try
-	    exe ':%g/^\s*let\s\+g:atp_history_'.var.'/d'
-	catch /E486: Pattern not found/
-	endtry
+	silent! exe ':%g/^\s*let\s\+g:atp_history_'.var.'/d'
 	call append('$', 'let g:atp_history_'.var.'='.string(g:atp_history_{var}))
     endfor
     w
     bw!
 "     let v:swapchoice	= saved_swapchoice
 endfunction
-command! -buffer WriteHistory		:call s:WriteHistory()
+command! -buffer -bang WriteHistory		:call s:WriteHistory(<q-bang>)
 augroup ATP_WriteHistory 
     au!
-    au VimLeave *.tex call s:UpdateHistory() | call s:WriteHistory()
+    au VimLeave *.tex call s:UpdateHistory("") | call s:WriteHistory("")
 augroup END
+
+    function! s:History(arg) "{{{1
+	if a:arg == ""
+	    let b:atp_History=!b:atp_History
+	elseif a:arg == "on"
+	    let b:atp_History=1
+	    :call s:UpdateHistory("", "force")
+	    :WriteHistory!
+	elseif a:arg == "off"
+	    let b:atp_History=0
+	    :call s:UpdateHistory("", "force")
+	    :WriteHistory!
+	endif
+	if b:atp_History
+	    echomsg "History is set on."
+	else
+	    echomsg "History is set off."
+	endif
+	return b:atp_History
+    endfunction
+command! -buffer -nargs=1 -complete=customlist,HistComp History 	:call s:History(<f-args>)
+    function! HistComp(ArgLead, CmdLine, CursorPos)
+	return filter(['on', 'off'], 'v:val =~ a:ArgLead')
+    endfunction
 
 " Delete from history or delete whole history file.
 function! s:DeleteHistory(bang,...) " {{{1
@@ -153,3 +272,4 @@ function! DelHistCompl(ArgLead, CmdLine, CursorPos)
     endif
     return filter(keys(g:atp_history_atp_MainFile),  'fnamemodify(v:val, ":t") =~ a:ArgLead')
 endfunction
+

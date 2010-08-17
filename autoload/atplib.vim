@@ -3,7 +3,7 @@
 " Maintainer:	Marcin Szamotulski
 " Email:	mszamot [AT] gmail [DOT] com
 
-" This function appends '/' to b:atp_OutDir if it is not present. 
+" Outdir: append to '/' to b:atp_OutDir if it is not present. 
 "{{{ atplib#outdir
 function! atplib#outdir()
     if b:atp_OutDir !~ "\/$"
@@ -12,7 +12,7 @@ function! atplib#outdir()
 endfunction
 "}}}
 
-" Find vim server 'hosting' a file and move to the line.
+" Find Vim Server: find server 'hosting' a file and move to the line.
 " {{{1 atplib#FindAndOpen
 " Can be used to sync gvim with okular.
 " just set in okular:
@@ -38,7 +38,7 @@ function! atplib#FindAndOpen(file, line)
 endfunction
 "}}}1
 
-" Labels tools: GrepAuxFile, SrotLabels, generatelabels and showlabes.
+" Labels Tools: GrepAuxFile, SrotLabels, generatelabels and showlabes.
 " {{{1 LABELS
 " the argument should be: resolved full path to the file:
 " resove(fnamemodify(bufname("%"),":p"))
@@ -361,13 +361,14 @@ endfunction
 " }}}2
 " }}}1
 
+" Various Comparing Functions:
 "{{{1 atplib#CompareNumbers
 function! atplib#CompareNumbers(i1, i2)
    return str2nr(a:i1) == str2nr(a:i2) ? 0 : str2nr(a:i1) > str2nr(a:i2) ? 1 : -1
 endfunction
 "}}}1
 " {{{1 atplib#CompareCoordinates
-" Each list is an argument with two values!
+" Each list is an argument with two values:
 " listA=[ line_nrA, col_nrA] usually given by searchpos() function
 " listB=[ line_nrB, col_nrB]
 " returns 1 iff A is smaller than B
@@ -400,7 +401,7 @@ fun! atplib#CompareCoordinates_leq(listA,listB)
     endif
 endfun
 "}}}1
-" ReadInputFile function reads finds a file inn tex style and returns the list
+" ReadInputFile function reads finds a file in tex style and returns the list
 " of its lines. 
 " {{{1 atplib#ReadInputFile
 " this function looks for an input file: in the list of buffers, under a path if
@@ -429,6 +430,7 @@ function! atplib#ReadInputFile(ifile,check_texmf)
 endfunction
 "}}}1
 
+" Bib Search:
 " These are all bibsearch realted variables and functions.
 "{{{ BIBSEARCH
 "{{{ atplib#variables
@@ -1063,6 +1065,7 @@ fun! atplib#append_ext(fname, ext)
 endfun
 " }}}1
 
+" Check If Closed:
 " This functions cheks if an environment is closed/opened.
 " atplib#CheckClosed {{{1
 " check if last bpat is closed.
@@ -1077,7 +1080,7 @@ endfun
 " environments in the same name.
 " Method 1 doesn't make mistakes and thus is preferable.
 " after testing I shall remove method 0
-function! atplib#CheckClosed(bpat,epat,line,limit,...)
+function! atplib#CheckClosed(bpat, epat, line, limit,...)
 
 "     NOTE: THIS IS MUCH FASTER !!! or SLOWER !!! ???            
 "
@@ -1334,7 +1337,7 @@ function! atplib#CopyIndentation(line)
 endfunction
 "}}}1
 
-" Tab Completion Related Functions
+" Tab Completion Related Functions:
 " atplib#SearchPackage {{{1
 "
 " This function searches if the package in question is declared or not.
@@ -1535,7 +1538,7 @@ function! atplib#DocumentClass(file)
 endfunction
 " }}}1
 
-" Searching tools (kpsewhich)
+" Searching Tools: (kpsewhich)
 " {{{1 atplib#KpsewhichGlobPath 
 " 	a:format	is the format as reported by kpsewhich --help
 " 	a:path		path if set to "", then kpse which will find the path.
@@ -1671,49 +1674,33 @@ function! atplib#KpsewhichFindFile(format, name, ...)
     return result
 endfunction
 " }}}1
-" This is used in several places to find all input files.
-" {{{1 atplib#FindInputFilesInDir
-" this function is for completion of \bibliography and \input commands it returns a list
-" of all files under a:dir and in g:outdir with a given extension.
-function! atplib#FindInputFilesInDir(dir, in_current_dir, ext)
-	let l:raw_files=split(globpath(atplib#append(a:dir,'/'),'**'))
-	if a:in_current_dir
-	    call extend(l:raw_files,split(globpath(b:atp_OutDir,'*')))
-	endif
-	let l:file_list=[]
-	for l:key in l:raw_files
-	    if l:key =~ a:ext . '$'
-		call add(l:file_list,l:key)
-	    endif
-	endfor
-	return l:file_list
-endfunction
-" }}}1
 
+" List Functoins:
 " atplib#Extend {{{1
 " arguments are the same as for extend(), but it adds only the entries which
 " are not present.
 function! atplib#Extend(list_a,list_b,...)
-    let l:list_a=deepcopy(a:list_a)
-    let l:list_b=deepcopy(a:list_b)
-    let l:diff=filter(l:list_b,'count(l:list_a,v:val) == 0')
+    let list_a=deepcopy(a:list_a)
+    let list_b=deepcopy(a:list_b)
+    let diff=filter(list_b,'count(l:list_a,v:val) == 0')
     if a:0 == 0
-	return extend(l:list_a,l:diff)
+	return extend(list_a,diff)
     else
-	return extend(l:list_a,l:diff,a:1)
+	return extend(list_a,diff, a:1)
     endif
 endfunction
 " }}}1
 " {{{1 atplib#Add
 function! atplib#Add(list,what)
-    let l:new=[] 
-    for l:el in a:list
-	call add(l:new,l:el . a:what)
+    let new=[] 
+    for element in a:list
+	call add(new,element . a:what)
     endfor
-    return l:new
+    return new
 endfunction
 "}}}1
 
+" Close Environments And Brackets:
 " atplib#CloseLastEnvironment {{{1
 " a:1 = i	(append before, so the cursor will  be after - the dafult)  
 " 	a	(append after)
@@ -1724,7 +1711,7 @@ endfunction
 " a:3 = environment name (if present and non zero sets a:2 = environment)	
 " 	if one wants to find an environment name it must be 0 or "" or not
 " 	given at all.
-" a:4 = line number where environment is opened
+" a:4 = line and column number (in a vim list) where environment is opened
 " ToDo: Ad a highlight to messages!!! AND MAKE IT NOT DISAPPEAR SOME HOW?
 " (redrawing doesn't help) CHECK lazyredraw. 
 " Note: this function tries to not double the checks what to close if it is
@@ -1754,6 +1741,7 @@ function! atplib#CloseLastEnvironment(...)
 	" This is the slow part :( 0.4s)
 	" Find the begining line if it was not given.
 	if l:bpos_env == [0, 0]
+	    " Find line where the environment is opened and not closed:
 	    let l:bpos_env		= searchpairpos('\\begin\s*{', '', '\\end\s*{', 'bnW', 'searchpair("\\\\begin\s*{\s*".matchstr(getline("."),"\\\\begin\s*{\\zs[^}]*\\ze\}"), "", "\\\\end\s*{\s*".matchstr(getline("."), "\\\\begin\s*{\\zs[^}]*\\ze}"), "nW", "", "line(".")+g:atp_completion_limits[2]")',max([ 1, (line(".")-g:atp_completion_limits[2])]))
 	endif
 
@@ -1824,7 +1812,7 @@ let l:env=l:env_name
 if l:close == "0" 
     return "there was nothing to close"
 endif
-if ( &filetype != "plaintex" && b:atp_TexFlavor != "plaintex" && math_4 )
+if ( &filetype != "plaintex" && b:atp_TexFlavor != "plaintex" && exists("math_4") && math_4 )
     echohl ErrorMsg
     echomsg "$$:$$ in LaTeX are deprecated (this breaks some LaTeX packages)" 
     echomsg "You can set b:atp_TexFlavor = 'plaintex', and ATP will ignore this. "
@@ -1847,14 +1835,26 @@ let l:eindent=atplib#CopyIndentation(l:line)
     if l:close == 'environment'
 	" Info message
 	redraw
-	echomsg strftime("%H:%M") . " Closing " . l:env_name . " from line " . l:bpos_env[0]
+" 	silent echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0]
 
 	" Rules:
 	" env & \[ \]: close in the same line 
 	" unless it starts in a serrate line,
 	" \( \): close in the same line. 
 	"{{{3 close environment in the same line
-	if l:line !~ '^\s*\%(\$\|\$\$\|[^\\]\\(\|[^\\]\\\[\)\?\s*\\begin\s*{[^}]*}\s*\%(([^)]*)\s*\|{[^}]*}\s*\|\[[^\]]*\]\s*\)\{,3}\%(\\label{[^}]*}\s*\)\?$' 
+	if l:line !~ '^\s*\%(\$\|\$\$\|[^\\]\\(\|\\\@<!\\\[\)\?\s*\\begin\s*{[^}]*}\s*\%(([^)]*)\s*\|{[^}]*}\s*\|\[[^\]]*\]\s*\)\{,3}\%(\\label\s*{[^}]*}\s*\)\?$'
+" 	    	This pattern matches:
+" 	    		^ $
+" 	    		^ $$
+" 	    		^ \(
+" 	    		^ \[
+" 	    		^ (one of above or space) \begin { env_name } ( args1 ) [ args2 ] { args3 } \label {label}
+" 	    		There are at most 3 args of any type with any order \label is matched optionaly.
+" 	    		Any of these have to be followd by white space up to end of line.
+	    "
+	    " The line above cannot contain "\|^\s*$" pattern! Then the
+	    " algorithm for placing the \end in right place is not called.
+	    "
 	    " 		    THIS WILL BE NEEDED LATER!
 " 		    \ (l:close == 'display_math' 	&& l:line !~ '^\s*[^\\]\\\[\s*$') ||
 " 		    \ (l:close == 'inline_math' 	&& (l:line !~ '^\s*[^\\]\\(\s*$' || l:begin_line == line("."))) ||
@@ -1877,6 +1877,11 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]) . '\end{'.l:env.'}' . strpart(l:cline,getpos(".")[2]))
 		    let l:pos=getpos(".")
 		    let l:pos[2]=len(strpart(l:cline,0,getpos(".")[2]) . '\end{'.l:env.'}')+1
+		    keepjumps call setpos(".",l:pos)
+		elseif l:cline =~ '^\s*$'
+		    call setline(line("."), l:eindent . '\end{'.l:env.'}' . strpart(l:cline,getpos(".")[2]-1))
+		    let l:pos=getpos(".")
+		    let l:pos[2]=len(strpart(l:cline,0,getpos(".")[2]-1) . '\end{'.l:env.'}')+1
 		    keepjumps call setpos(".",l:pos)
 		else
 		    call setline(line("."), strpart(l:cline,0,getpos(".")[2]-1) . '\end{'.l:env.'}' . strpart(l:cline,getpos(".")[2]-1))
@@ -1943,10 +1948,10 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		    let l:line=strpart(l:line,l:cenv_begins+l:cenv_len)
 		    call add(l:env_names,l:cenv_name)
 			" DEBUG:
-" 			let b:env_names=l:env_names
-" 			let b:line=l:line
-" 			let b:cenv_begins=l:cenv_begins
-" 			let b:cenv_name=l:cenv_name
+" 			let g:env_names=l:env_names
+" 			let g:line=l:line
+" 			let g:cenv_begins=l:cenv_begins
+" 			let g:cenv_name=l:cenv_name
 		endwhile
 		" thus we have a list of env names.
 		
@@ -1993,37 +1998,38 @@ let l:eindent=atplib#CopyIndentation(l:line)
 			" pair (below l:pos[1]). (I assume every env is in
 			" a seprate line!
 			let l:end=atplib#CheckClosed('\%(%.*\)\@<!\\begin\s*{','\%(%.*\)\@<!\\end\s*{',l:line_nr,g:atp_completion_limits[2],1)
-" 			let b:info= " l:max=".l:max." l:end=".l:end." line('.')=".line(".")." l:line_nr=".l:line_nr
+" 			let g:info= " l:max=".l:max." l:end=".l:end." line('.')=".line(".")." l:line_nr=".l:line_nr
 			" if the line was found append just befor it.
 			if l:end != 0 
 				if line(".") <= l:max
 				    if line(".") <= l:end
 					call append(l:max, l:eindent . l:str)
-					echomsg l:str . " appended after line " . l:end
+					echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:end+1  
 					call setpos(".",[0,l:max+1,len(l:eindent.l:str)+1,0])
 				    else
 					call append(l:end-1, l:eindent . l:str)
-					echomsg l:str . " appended after line " . l:end
+					echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:end+1 
 					call setpos(".",[0,l:end,len(l:eindent.l:str)+1,0])
 				    endif
 				elseif line(".") < l:end
-				    call append(line("."), l:eindent . l:str)
-				    echomsg l:str . " appended after line " . line(".")
-				    call setpos(".",[0,line(".")+1,len(l:eindent.l:str)+1,0])
+				    let [ lineNr, pos_lineNr ]	= getline(".") =~ '^\s*$' ? [ line(".")-1, line(".")] : [ line("."), line(".")+1 ]
+				    call append(lineNr, l:eindent . l:str)
+				    echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . line(".")+1  
+				    call setpos(".",[0, pos_lineNr,len(l:eindent.l:str)+1,0])
 				elseif line(".") >= l:end
 				    call append(l:end-1, l:eindent . l:str)
-				    echomsg l:str . " appended after line " . (l:end-1)
+				    echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:end
 				    call setpos(".",[0,l:end,len(l:eindent.l:str)+1,0])
 				endif
 			else
 			    if line(".") >= l:max
 				call append(l:pos_saved[1], l:eindent . l:str)
 				keepjumps call setpos(".",l:pos_saved)
-				echomsg l:str . " appended after line " . line(".")
+				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . line(".")+1
 				call setpos(".",[0,l:pos_saved[1]+1,len(l:eindent.l:str)+1,0])
 			    elseif line(".") < l:max
 				call append(l:max, l:eindent . l:str)
-				echomsg l:str . " appended after line " . l:max
+				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:max+1
 				call setpos(".",[0,l:max+1,len(l:eindent.l:str)+1,0])
 			    endif
 			endif
@@ -2033,22 +2039,29 @@ let l:eindent=atplib#CopyIndentation(l:line)
 			" put cursor at the end of the line where not closed \begin was
 			" found
 			keepjumps call setpos(".",[0,l:line_nr,len(getline(l:line_nr)),0])
-			let l:cline=getline(l:pos_saved[1])
+			let l:cline	= getline(l:pos_saved[1])
+			let g:cline	= l:cline
+			let g:line	= l:pos_saved[1]
 			let l:iline=searchpair('\\begin{','','\\end{','nW')
 			if l:iline > l:line_nr && l:iline <= l:pos_saved[1]
 			    call append(l:iline-1, l:eindent . l:str)
-			    echomsg l:str . " appended before line " . l:iline
+			    echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:iline
 			    let l:pos_saved[2]+=len(l:str)
 			    call setpos(".",[0,l:iline,len(l:eindent.l:str)+1,0])
 			else
 			    if l:cline =~ '\\begin{\%('.l:uenv.'\)\@!'
 				call append(l:pos_saved[1]-1, l:eindent . l:str)
-				echomsg l:str . " appended before line " . l:pos_saved[1]
+				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:pos_saved[1]
 				let l:pos_saved[2]+=len(l:str)
 				call setpos(".",[0,l:pos_saved[1],len(l:eindent.l:str)+1,0])
+			    elseif l:cline =~ '^\s*$'
+				call append(l:pos_saved[1]-1, l:eindent . l:str)
+				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:pos_saved[1]
+				let l:pos_saved[2]+=len(l:str)
+				call setpos(".",[0,l:pos_saved[1]+1,len(l:eindent.l:str)+1,0])
 			    else
 				call append(l:pos_saved[1], l:eindent . l:str)
-				echomsg l:str . " appended after line " . l:pos_saved[1]
+				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:pos_saved[1]+1
 				let l:pos_saved[2]+=len(l:str)
 				call setpos(".",[0,l:pos_saved[1]+1,len(l:eindent.l:str)+1,0])
 			    endif
@@ -2070,7 +2083,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
     "{{{2 close math: texMathZoneV, texMathZoneW, texMathZoneX, texMathZoneY 
     else
 	"{{{3 Close math in the current line
-	echomsg strftime("%H:%M") . " Closing math from line " . l:begin_line
+	echomsg "Closing math from line " . l:begin_line
 	if    math_mode == 'texMathZoneV' && l:line !~ '^\s*\\(\s*$' 	||
 	    \ math_mode == 'texMathZoneW' && l:line !~ '^\s*\\\[\s*$' 	||
 	    \ math_mode == 'texMathZoneX' && l:line !~ '^\s*\$\s*$' 	||
@@ -2121,7 +2134,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		    let l:iline-=1
 		endif
 		call append(l:iline, l:eindent . '\]')
-		echomsg strftime("%H:%M") . " \[ closed in line " . l:iline
+		echomsg "\[ closed in line " . l:iline
 " 		let b:cle_return=2 . " dispalyed math " . l:iline  . " indent " . len(l:eindent) " DEBUG
 	    elseif math_mode == 'texMathZoneV'
 		let l:iline=line(".")
@@ -2130,7 +2143,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		    let l:iline-=1
 		endif
 		call append(l:iline, l:eindent . '\)')
-		echomsg strftime("%H:%M") . " \( closed in line " . l:iline
+		echomsg "\( closed in line " . l:iline
 " 		let b:cle_return=2 . " inline math " . l:iline . " indent " .len(l:eindent) " DEBUG
 	    elseif math_mode == 'texMathZoneX'
 		let l:iline=line(".")
@@ -2140,7 +2153,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		endif
 		let sindent=atplib#CopyIndentation(getline(search('\$', 'bnW')))
 		call append(l:iline, sindent . '$')
-		echomsg strftime("%H:%M") . " $ closed in line " . l:iline
+		echomsg "$ closed in line " . l:iline
 	    elseif math_mode == 'texMathZoneY'
 		let l:iline=line(".")
 		" if the current line is empty append before it.
@@ -2149,7 +2162,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		endif
 		let sindent=atplib#CopyIndentation(getline(search('\$\$', 'bnW')))
 		call append(l:iline, sindent . '$$')
-		echomsg strftime("%H:%M") . " $ closed in line " . l:iline
+		echomsg "$ closed in line " . l:iline
 	    endif
 	endif "}}3
     endif
@@ -2188,6 +2201,9 @@ function! atplib#CloseLastBracket(...)
     let l:pattern_b	= '\C\%('.join(l:size_patterns,'\|').'\)'
     let l:pattern_o	= '\%('.join(map(keys(g:atp_bracket_dict),'escape(v:val,"\\[]")'),'\|').'\)'
 
+"     let g:pattern_b	= l:pattern_b
+"     let g:pattern_o	= l:pattern_o
+
     let l:limit_line	= max([1,(line(".")-g:atp_completion_limits[1])])
         
     let l:pos_saved 	= getpos(".")
@@ -2205,13 +2221,18 @@ function! atplib#CloseLastBracket(...)
    "    change the position! and then: 
    "    check the flag 'r' in searchpair!!!
    let i=1
-    for l:ket in keys(g:atp_bracket_dict)
+    for ket in keys(g:atp_bracket_dict)
 	let l:pos=deepcopy(l:pos_saved)
-	let l:pair_{i}=searchpairpos(escape(l:ket,'\[]'),'',escape(g:atp_bracket_dict[l:ket],'\[]'),'bnW',"",l:limit_line)
+	let l:pair_{i}=searchpairpos(escape(ket,'\[]'),'', escape(g:atp_bracket_dict[ket], '\[]'). '\|\.' ,'bnW',"",l:limit_line)
+" 	echomsg ket . " l:pair_".i."=".string(l:pair_{i})
 	let l:pos[1]=l:pair_{i}[0]
 	let l:pos[2]=l:pair_{i}[1]
-	keepjumps call setpos(".",l:pos)
-	let l:check_{i}= atplib#CheckClosed(escape(l:ket,'\'),escape(g:atp_bracket_dict[l:ket],'\'),line("."),g:atp_completion_limits[0],1) == '0'
+	" l:check_{i} is 1 if the bracket is closed
+	let l:check_{i}= atplib#CheckClosed(escape(ket, '\'), escape(g:atp_bracket_dict[ket], '\'), line("."), g:atp_completion_limits[0],1) == '0'
+	" l:check_dot_{i} is 1 if the bracket is closed with a dot (\right.) . 
+	let l:check_dot_{i} = atplib#CheckClosed(escape(ket, '\'), '\\\%(right\|\cb\Cig\{1,2}\%(g\|l\)\@!r\=\)\s*\.',line("."),g:atp_completion_limits[0],1) == '0'
+" 	echomsg ket . " l:check_".i."=".string(l:check_{i}) . " l:check_dot_".i."=".string(l:check_dot_{i})
+	let l:check_{i}=min([l:check_{i}, l:check_dot_{i}])
 	call add(l:open_col_check_list,(l:check_{i}*l:pair_{i}[1]))
 	keepjumps call setpos(".",l:pos_saved)
 	let i+=1
@@ -2227,10 +2248,23 @@ function! atplib#CloseLastBracket(...)
 	let j+=1
     endwhile
 
+    " Check and Close Environment:
+    " 	This takes too long:
+"  	let open_env		= searchpairpos('\\begin\s*{', '', '\\end\s*{', 'bnW', 'searchpair("\\\\begin\s*{\s*".matchstr(getline("."),"\\\\begin\s*{\\zs[^}]*\\ze\}"), "", "\\\\end\s*{\s*".matchstr(getline("."), "\\\\begin\s*{\\zs[^}]*\\ze}"), "nW", "", "line(".")+g:atp_completion_limits[2]")', l:open_line)
+
+	for env_name in g:atp_closebracket_checkenv
+" 	    " To Do: this should check for the most recent opened environment
+	    let open_env		= searchpairpos('\\begin\s*{\s*'.env_name.'\s*}', '', '\\end\s*{\s*'.env_name.'\s*}', 'bnW', '', l:open_line)
+	    let env_name		= matchstr(strpart(getline(open_env[0]),open_env[1]-1), '\\begin\s*{\s*\zs[^}]*\ze*\s*}')
+	    if open_env[0] && atplib#CompareCoordinates([ l:open_line, l:open_col], open_env)
+		call atplib#CloseLastEnvironment('i', 'environment', env_name, open_env)
+		return
+	    endif
+	endfor
 
    " Debug:
-"        let b:open_line=l:open_line
-"        let b:open_col=l:open_col 
+"        let g:open_line=l:open_line
+"        let g:open_col=l:open_col 
 
     "}}}3
     " {{{3 main if
@@ -2251,12 +2285,12 @@ function! atplib#CloseLastBracket(...)
 	    let l:closing_size=l:closing_size2.l:closing_size
 
 	    " DEBUG
-" 	    let b:bbline=l:bbline
-" 	    let b:o_size2=l:opening_size2
-" 	    let b:c_size2=l:closing_size2
+" 	    let g:bbline=l:bbline
+" 	    let g:opening_size2=l:opening_size2
+" 	    let g:closing_size2=l:closing_size2
 	endif
 
-	echomsg strftime("%H:%M") . " Closing " . l:opening_size . l:opening_bracket . " from line " . l:open_line
+	echomsg "Closing " . l:opening_size . l:opening_bracket . " from line " . l:open_line
 
 	" DEBUG:
 " 	let b:o_bra=l:opening_bracket
@@ -2294,7 +2328,7 @@ endfunction
 " }}}2
 " }}}1
 
-" Tab Completion
+" Tab Completion:
 " atplib#TabCompletion {{{1
 " This is the main TAB COMPLITION function.
 "
@@ -2324,6 +2358,9 @@ endfunction
 " 	commands
 " 	environments (\begin,\(:\),\[:\])
 " 	brackets ((:),[:],{:}) preserves the size operators!
+" 		Always: check first brackets then environments. Bracket
+" 		funnction can call function which closes environemnts but not
+" 		vice versa.
 " 	bibitems (\cite\|\citep\|citet)
 " 	bibfiles (\bibliography)
 " 	bibstyle (\bibliographystyle)
@@ -2428,18 +2465,18 @@ function! atplib#TabCompletion(expert_mode,...)
 	    return ''
 	endif
     "{{{3 --------- close environments
-    elseif !l:normal_mode && 
-		\ ((l:pline =~ '\\begin\s*$' && l:begin =~ '}\s*$') || ( l:pline =~ '\\begin\s*{[^}]*}\s*\\label' ) ) || 
-		\ l:normal_mode && l:pline =~ '\\begin\s*\({[^}]*}\?\)\?\s*$'
-	if (!l:normal_mode && index(g:atp_completion_active_modes, 'close environments') != -1 ) ||
-		    \ (l:normal_mode && index(g:atp_completion_active_modes_normal_mode, 'close environments') != -1 )
-	    let l:completion_method='close environments'
-	    " DEBUG:
-	    let b:comp_method='colse environments'
-	else
-	    let b:comp_method='colse environments fast return'
-	    return ''
-	endif
+"     elseif !l:normal_mode && 
+" 		\ ((l:pline =~ '\\begin\s*$' && l:begin =~ '}\s*$') || ( l:pline =~ '\\begin\s*{[^}]*}\s*\\label' ) ) || 
+" 		\ l:normal_mode && l:pline =~ '\\begin\s*\({[^}]*}\?\)\?\s*$'
+" 	if (!l:normal_mode && index(g:atp_completion_active_modes, 'close environments') != -1 ) ||
+" 		    \ (l:normal_mode && index(g:atp_completion_active_modes_normal_mode, 'close environments') != -1 )
+" 	    let l:completion_method='close environments'
+" 	    " DEBUG:
+" 	    let b:comp_method='colse environments'
+" 	else
+" 	    let b:comp_method='colse environments fast return'
+" 	    return ''
+" 	endif
     "{{{3 --------- colors
     elseif l:l =~ '\\textcolor{[^}]*$'
 	let l:completion_method='colors'
@@ -2671,7 +2708,7 @@ function! atplib#TabCompletion(expert_mode,...)
 		" should be save:
 
 		if env_name !~# '^\s*document\s*$'
-		    call atplib#CloseLastEnvironment(l:append, 'environment', '', [l:env_opened, 0])
+		    call atplib#CloseLastEnvironment(l:append, 'environment', '', [line_nr, 0])
 		    return ""
 		else
 		    return ""
@@ -3338,7 +3375,7 @@ catch /E127: Cannot redefine function atplib#TabCompletion: It is in use/
 endtry
 " }}}1
 
-" Font Preview Functions
+" Font Preview Functions:
 "{{{1 Font Preview Functions
 " These functions search for fd files and show them in a buffer with filetype
 " 'fd_atp'. There are additional function for this filetype written in

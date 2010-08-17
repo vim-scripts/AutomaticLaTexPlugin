@@ -374,10 +374,10 @@ endfunction "}}}
 function! ATPRunning() "{{{
     if exists("b:atp_running") && exists("g:atp_callback") && b:atp_running && g:atp_callback
 " 	let b:atp_running	= b:atp_running < 0 ? 0 : b:atp_running
-	redrawstatus
+" 	redrawstatus
 
 	for cmd in keys(g:CompilerMsg_Dict) 
-	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
+	    if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
 		let Compiler = g:CompilerMsg_Dict[cmd]
 		break
 	    else
@@ -387,8 +387,10 @@ function! ATPRunning() "{{{
 
 	if b:atp_running >= 2
 	    return b:atp_running." ".Compiler." "
-	else
+	elseif b:atp_running >= 1
 	    return Compiler." "
+	else
+	    return ""
 	endif
     endif
     return ''
@@ -404,71 +406,115 @@ endfunction "}}}
 " hi 	link 	atp_statusoutdir 	String
 " }}}
 
-function! SetNotificationColor()
-
+function! s:SetNotificationColor() "{{{
     " use the value of the variable g:atp_notification_{g:colors_name}_guibg
     " if it doesn't exists use the default value (the same as the value of StatusLine
     " (it handles also the reverse option!)
-    let notification_guibg = exists("g:atp_notification_".g:colors_name."_guibg") ?
-		\ g:atp_notification_{g:colors_name}_guibg :
-		\ ( synIDattr(synIDtrans(hlID("StatusLine")), "reverse") ?
-		    \ synIDattr(synIDtrans(hlID("StatusLine")), "fg#") :
-		    \ synIDattr(synIDtrans(hlID("StatusLine")), "bg#") )
-    let notification_guifg = exists("g:atp_notification_".g:colors_name."_guifg") ?
-		\ g:atp_notification_{g:colors_name}_guifg :
-		\ ( synIDattr(synIDtrans(hlID("StatusLine")), "reverse") ?
-		    \ synIDattr(synIDtrans(hlID("StatusLine")), "bg#") :
-		    \ synIDattr(synIDtrans(hlID("StatusLine")), "fg#") )
-    let notification_gui = exists("g:atp_notification_".g:colors_name."gui") ?
-		\ g:atp_notification_{g:colors_name}_gui :
-		\ ( (synIDattr(synIDtrans(hlID("StatusLine")), "bold") ? "bold" : "" ) . 
-		    \ (synIDattr(synIDtrans(hlID("StatusLine")), "underline") ? ",underline" : "" ) .
-		    \ (synIDattr(synIDtrans(hlID("StatusLine")), "underculr") ? ",undercurl" : "" ) .
-		    \ (synIDattr(synIDtrans(hlID("StatusLine")), "italic") ? ",italic" : "" ) )
+    let colors_name = exists("g:colors_name") ? g:colors_name : "default"
+"     let g:cname	= colors_name
+" 	Note: the names of variable uses gui but equally well it could be cterm. As
+" 	they work in gui and vim. 
+    if has("gui_running")
+	let notification_guibg = exists("g:atp_notification_".colors_name."_guibg") ?
+		    \ g:atp_notification_{colors_name}_guibg :
+		    \ ( synIDattr(synIDtrans(hlID("StatusLine")), "reverse") ?
+			\ synIDattr(synIDtrans(hlID("StatusLine")), "fg#") :
+			\ synIDattr(synIDtrans(hlID("StatusLine")), "bg#") )
+	let notification_guifg = exists("g:atp_notification_".colors_name."_guifg") ?
+		    \ g:atp_notification_{colors_name}_guifg :
+		    \ ( synIDattr(synIDtrans(hlID("StatusLine")), "reverse") ?
+			\ synIDattr(synIDtrans(hlID("StatusLine")), "bg#") :
+			\ synIDattr(synIDtrans(hlID("StatusLine")), "fg#") )
+	let notification_gui = exists("g:atp_notification_".colors_name."_gui") ?
+		    \ g:atp_notification_{colors_name}_gui :
+		    \ ( (synIDattr(synIDtrans(hlID("StatusLine")), "bold") ? "bold" : "" ) . 
+			\ (synIDattr(synIDtrans(hlID("StatusLine")), "underline") ? ",underline" : "" ) .
+			\ (synIDattr(synIDtrans(hlID("StatusLine")), "underculr") ? ",undercurl" : "" ) .
+			\ (synIDattr(synIDtrans(hlID("StatusLine")), "italic") ? ",italic" : "" ) )
+    else
+	let notification_guibg = exists("g:atp_notification_".colors_name."_ctermbg") ?
+		    \ g:atp_notification_{colors_name}_ctermbg :
+		    \ ( synIDattr(synIDtrans(hlID("StatusLine")), "reverse") ?
+			\ synIDattr(synIDtrans(hlID("StatusLine")), "fg#") :
+			\ synIDattr(synIDtrans(hlID("StatusLine")), "bg#") )
+	let notification_guifg = exists("g:atp_notification_".colors_name."_ctermfg") ?
+		    \ g:atp_notification_{colors_name}_ctermfg :
+		    \ ( synIDattr(synIDtrans(hlID("StatusLine")), "reverse") ?
+			\ synIDattr(synIDtrans(hlID("StatusLine")), "bg#") :
+			\ synIDattr(synIDtrans(hlID("StatusLine")), "fg#") )
+	let notification_gui = exists("g:atp_notification_".colors_name."_cterm") ?
+		    \ g:atp_notification_{colors_name}_cterm :
+		    \ ( (synIDattr(synIDtrans(hlID("StatusLine")), "bold") ? "bold" : "" ) . 
+			\ (synIDattr(synIDtrans(hlID("StatusLine")), "underline") ? ",underline" : "" ) .
+			\ (synIDattr(synIDtrans(hlID("StatusLine")), "underculr") ? ",undercurl" : "" ) .
+			\ (synIDattr(synIDtrans(hlID("StatusLine")), "italic") ? ",italic" : "" ) )
+    endif
 
-    let g:notification_gui	= notification_gui
-    let g:notification_guibg	= notification_guibg
-    let g:notification_guifg	= notification_guifg
+    if has("gui_running")
+	let g:notification_gui		= notification_gui
+	let g:notification_guibg	= notification_guibg
+	let g:notification_guifg	= notification_guifg
+    else
+	let g:notification_cterm	= notification_gui
+	let g:notification_ctermbg	= notification_guibg
+	let g:notification_ctermfg	= notification_guifg
+    endif
+    if has("gui_running")
+	let prefix = "gui"
+    else
+	let prefix = "cterm"
+    endif
+    let hi_gui	 = ( notification_gui   !=  "" && notification_gui   	!= -1 ? " ".prefix."="   . notification_gui   : "" )
+    let hi_guifg = ( notification_guifg !=  "" && notification_guifg 	!= -1 ? " ".prefix."fg=" . notification_guifg : "" )
+    let hi_guibg = ( notification_guibg !=  "" && notification_guibg 	!= -1 ? " ".prefix."bg=" . notification_guibg : "" )
+
+    if (notification_gui == -1 || notification_guifg == -1 || notification_guibg == -1)
+	return
+    endif
     " Highlight command:
     try
-    execute "hi User9 "	.
-	    \ " gui="	. notification_gui   . 
-	    \ " guifg="	. notification_guifg .
-	    \ " guibg="	. notification_guibg
+    execute "hi User".g:atp_statusNotifHi ." ". hi_gui . hi_guifg . hi_guibg
     catch /E418: Illegal value:/
     endtry
 
 endfunction
 
+" This should set the variables and run s:SetNotificationColor function
+command! -buffer SetNotificationColor :call s:SetNotificationColor()
+
+"}}}
+
 augroup ATP_SetStatusLineNotificationColor
-    au ColorScheme * :call SetNotificationColor()
+    au BufEnter 	*tex 	:call s:SetNotificationColor()
+    au ColorScheme 	* 	:call s:SetNotificationColor()
 augroup END
 
 " The main status function, it is called via autocommand defined in 'options.vim'.
+let s:errormsg = 0
 function! ATPStatus(bang) "{{{
-"     echomsg "Status line set by ATP." 
     let g:status_OutDir	= a:bang == "" ? s:StatusOutDir() : ""
-    if &filetype == 'tex'
-	if g:atp_status_notification
-	    let &statusline='%<%f %(%h%m%r %)  %= %{CTOC("return")} %#User9#%{ATPRunning()}%#StatusLine# %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
-	else
-	    let &statusline='%<%f %(%h%m%r %)  %= %{CTOC("return")} %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
-	endif 
-    else 
-	if g:atp_status_notification
-	    let  &statusline='%<%f %(%h%m%r %)  %= %#User9#%{ATPRunning()}%#StatusLine# %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
-	else
-	    let  &statusline='%<%f %(%h%m%r %)  %= %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
+    let status_CTOC	= &filetype =~ '^\(ams\)\=tex' ? CTOC("return") : ''
+    if g:atp_statusNotifHi > 9 || g:atp_statusNotifHi < 0
+	let g:atp_statusNotifHi = 9
+	if !s:errormsg
+	    echoerr "Wrong value of g:atp_statusNotifHi, should be 0,1,...,9. Setting it to 9."
+	    let s:errormsg = 1
 	endif
     endif
+    let status_NotifHi	= g:atp_statusNotif && g:atp_statusNotifHi ? '%#User'.g:atp_statusNotifHi . '#' : ''
+    let status_NotifHiPost	
+		\ = g:atp_statusNotif && g:atp_statusNotifHi ? '%#StatusLine#' : ''
+    let status_Notif	= g:atp_statusNotif ? '%{ATPRunning()}' : ''
+
+    let g:atp_StatusLine= '%<%f %(%h%m%r%) %='.status_CTOC." ".status_NotifHi.status_Notif.status_NotifHiPost. 
+		\ '%{g:status_OutDir} %-14.16(%l,%c%V%)%P'
+    set statusline=%!g:atp_StatusLine
 endfunction
-if !s:did_common
     try
 	command -buffer -bang Status		:call ATPStatus(<q-bang>) 
     catch /E174: Command already exists/
 	command! -buffer -bang ATPStatus	:call ATPStatus(<q-bang>) 
     endtry
-endif
 " }}}
 "}}}
 

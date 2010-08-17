@@ -88,7 +88,7 @@ function! s:GetPID()
 	if s:var != ""
 	    echomsg b:atp_TexCompiler . " pid " . s:var 
 	else
-	    let b:atp_runnig	= 0
+	    let b:atp_running	= 0
 	    echomsg b:atp_TexCompiler . " is not running"
 	endif
 endfunction
@@ -312,7 +312,12 @@ endfunction
 " 	table of contents	= 'No file \f*\.toc' 				
 
 " needs reltime feature (used already in the command)
-let g:MakeLatex_debug	= 1
+
+	" DEBUG:
+    let g:MakeLatex_debug	= 1
+    	" errorfile /tmp/mk_log
+	
+
 function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, force, ...)
 
     if a:time == [] && has("reltime") && len(a:time) != 1 

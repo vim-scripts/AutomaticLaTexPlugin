@@ -7,7 +7,6 @@
 " These are the colors of the "Ocean237" theme by Chris Vertonghen modified
 " to work on 256-color xterms.
 "
-let g:colors_name="coots-beauty-256"
 set background=dark
 
 highlight clear
@@ -15,7 +14,7 @@ if exists("syntax_on")
     syntax reset
 endif
 
-"let g:colors_name = "coot-256"
+let g:colors_name="coots_beauty_256"
 
 highlight Normal         cterm=none           ctermfg=250 ctermbg=233	guifg=white	guibg=#1c1c1c
 highlight NonText        cterm=none           ctermfg=105 ctermbg=233	guifg=#1c1c1c	guibg=#1c1c1c 

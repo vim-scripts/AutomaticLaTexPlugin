@@ -246,9 +246,25 @@ if !s:did_options
 endif
 "}}}
 
-" Almost all GLOBAL VARIABLES 
+" Global Variables: (almost all)
 " {{{ global variables 
 
+" if !exists("g:atp_closebracket_checkenv")
+    " This is a list of environment names. They will be checked by
+    " atplib#CloseLastBracket() function (if they are opened/closed:
+    " ( \begin{array} ... <Tab>       will then close first \begin{array} and then ')'
+    try
+	let g:atp_closebracket_checkenv	= [ 'array' ]
+	" Changing this variable is not yet supported *see ToDo: in
+	" atplib#CloseLastBracket() (autoload/atplib.vim)
+	lockvar g:atp_closebracket_checkenv
+    catch /E741: Value is locked: g:atp_closebracket_checkenv/
+" 	echomsg "Changing this variable is not supported"
+    endtry
+" endif
+if !exists("g:atp_grab_Nn")
+    let g:atp_grab_Nn = 0
+endif
 if !exists("g:atp_developer")
     let g:atp_developer	= 0
 endif
@@ -387,20 +403,20 @@ if !exists("g:atp_tex_extensions")
     let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
 endif
 if !exists("g:atp_delete_output")
-    let g:atp_delete_output=0
+    let g:atp_delete_output	= 0
 endif
 if !exists("g:keep")
     let g:keep=[ "log", "aux", "toc", "bbl", "ind", "pdfsync" ]
 endif
 if !exists("g:printingoptions")
-    let g:printingoptions=''
+    let g:printingoptions	= ''
 endif
 if !exists("g:atp_ssh")
     let g:atp_ssh=substitute(system("whoami"),'\n','','') . "@localhost"
 endif
 " opens bibsearch results in vertically split window.
 if !exists("g:vertical")
-    let g:vertical=1
+    let g:vertical	= 1
 endif
 if !exists("g:matchpair")
     let g:matchpair="(:),[:],{:}"
@@ -409,7 +425,7 @@ if !exists("g:texmf")
     let g:texmf=$HOME . "/texmf"
 endif
 if !exists("g:atp_compare_embedded_comments") || g:atp_compare_embedded_comments != 1
-    let g:atp_compare_embedded_comments = 0
+    let g:atp_compare_embedded_comments  = 0
 endif
 if !exists("g:atp_compare_double_empty_lines") || g:atp_compare_double_empty_lines != 0
     let g:atp_compare_double_empty_lines = 1
@@ -417,20 +433,20 @@ endif
 "TODO: put toc_window_with and labels_window_width into DOC file
 if !exists("t:toc_window_width")
     if exists("g:toc_window_width")
-	let t:toc_window_width=g:toc_window_width
+	let t:toc_window_width	= g:toc_window_width
     else
-	let t:toc_window_width=30
+	let t:toc_window_width	= 30
     endif
 endif
 if !exists("t:atp_labels_window_width")
     if exists("g:labels_window_width")
 	let t:atp_labels_window_width=g:labels_window_width
     else
-	let t:atp_labels_window_width=30
+	let t:atp_labels_window_width = 30
     endif
 endif
 if !exists("g:atp_completion_limits")
-    let g:atp_completion_limits=[40,60,80,120]
+    let g:atp_completion_limits	= [40,60,80,120]
 endif
 if !exists("g:atp_long_environments")
     let g:atp_long_environments=[]
@@ -442,34 +458,37 @@ endif
 "     let g:atp_close_after_last_closed=1
 " endif
 if !exists("g:atp_no_env_maps")
-    let g:atp_no_env_maps=0
+    let g:atp_no_env_maps	= 0
 endif
 if !exists("g:atp_extra_env_maps")
-    let g:atp_extra_env_maps=0
+    let g:atp_extra_env_maps	= 0
 endif
 " todo: to doc. Now they go first.
 " if !exists("g:atp_math_commands_first")
 "     let g:atp_math_commands_first=1
 " endif
 if !exists("g:atp_completion_truncate")
-    let g:atp_completion_truncate=4
+    let g:atp_completion_truncate	= 4
 endif
 " ToDo: to doc.
 " add server call back (then automatically reads errorfiles)
-if !exists("g:atp_status_notification")
+if !exists("g:atp_statusNotif")
     if has('clientserver') && !empty(v:servername) 
-	let g:atp_status_notification=1
+	let g:atp_statusNotif	= 1
     else
-	let g:atp_status_notification=0
+	let g:atp_statusNotif	= 0
     endif
+endif
+if !exists("g:atp_statusNotifHi")
+    let g:atp_statusNotifHi	= 0
 endif
 if !exists("g:atp_callback")
     if exists("g:atp_status_notification") && g:atp_status_notification == 1
-	let g:atp_callback=1
+	let g:atp_callback	= 1
     elseif has('clientserver') && !empty(v:servername) 
-	let g:atp_callback=1
+	let g:atp_callback	= 1
     else
-	let g:atp_callback=0
+	let g:atp_callback	= 0
     endif
 endif
 " ToDo: to doc.
@@ -479,7 +498,7 @@ endif
 " endif
 " }}}
 
-" Buffer-local variables
+" Buffer Local Variables:
 " {{{ buffer variables
 let b:atp_running	= 0
 
@@ -488,6 +507,7 @@ let s:optionsDict= { 	"atp_TexOptions" 	: "",
 	        \ "atp_ReloadOnError" 		: "1", 
 		\ "atp_OpenViewer" 		: "1", 		
 		\ "atp_autex" 			: "1", 
+		\ "atp_History"			: "1",
 		\ "atp_Viewer" 			: has("unix") ? "xpdf" : "AcroRd32.exe" , 	
 		\ "atp_TexFlavor" 		: &l:filetype, 
 		\ "atp_XpdfServer" 		: fnamemodify(expand("%"),":t"), 
@@ -571,10 +591,8 @@ function! s:SetOptions()
     " 		 which sets this itself.
     if string(get(s:optionsinuseDict,"atp_autex", 'optionnotset')) == string('optionnotset')
 	let atp_texinputs=split(substitute(substitute(system("kpsewhich -show-path tex"),'\/\/\+','\/','g'),'!\|\n','','g'),':')
-	let g:debug1 = copy(atp_texinputs)
 	call remove(atp_texinputs, '.')
 	call filter(atp_texinputs, 'v:val =~ b:atp_OutDir')
-	let g:debug2 = copy(atp_texinputs)
 	if len(l:atp_texinputs) == 0
 	    let b:atp_autex	= 1
 	else
@@ -620,14 +638,14 @@ function! s:ShowOptions(bang,...)
 	let var_list		= []
 
 	for var in global_vars
-	    let var_name	= matchstr(var['text'], '^\s*let\s\+\zsg:\S*\ze=')
+	    let var_name	= matchstr(var['text'], '^\s*let\s\+\zsg:\S*\ze\s*=')
 	    if len(var_name) 
 		call add(var_list, var_name)
 	    endif
 	endfor
-	let g:vars	= copy(var_list)
-	call filter(var_list, 'count(var_list, v:val) == 1')
-	let g:fvars	= copy(var_list)
+
+	" Filter only matching variables that exists!
+	call filter(var_list, 'count(var_list, v:val) == 1 && exists(v:val)')
 	let mlen	= max(map(copy(var_list), "len(v:val)"))
 	for var_name in var_list
 	    let space = ""
@@ -646,7 +664,7 @@ endfunction
 command! -buffer -bang -nargs=* ShowOptions		:call <SID>ShowOptions(<q-bang>, <q-args>)
 "}}}
 
-" Variables for the Debug Mode
+" Debug Mode Variables:
 " {{{ Debug Mode
 let t:atp_DebugMode	= g:atp_DefaultDebugMode 
 " there are three possible values of t:atp_DebugMode
@@ -938,10 +956,13 @@ inoremap <silent> <Plug>ToggleTab		<Esc>:call ATP_ToggleTab()<CR>
 endif
 "}}}
 
-" Tab Completion variables
+" Tab Completion Variables:
 " {{{ TAB COMPLETION variables
 " ( functions are in autoload/atplib.vim )
 "
+if !exists("g:atp_History")
+    let g:atp_History = 1
+endif
 if !exists("g:atp_completion_modes")
     let g:atp_completion_modes=[ 
 		\ 'commands', 			'labels', 		
@@ -1053,13 +1074,13 @@ endif
 
 	" the command \label is added at the end.
 	let g:atp_Commands=["\\begin{", "\\end{", 
-	\ "\\cite{", "\\nocite{", "\\ref{", "\\pageref{", "\\eqref{", "\\bibitem", "\\item",
+	\ "\\cite{", "\\nocite{", "\\ref{", "\\pageref{", "\\eqref{", "\\item",
 	\ "\\emph{", "\\documentclass{", "\\usepackage{",
 	\ "\\section{", "\\subsection{", "\\subsubsection{", "\\part{", 
 	\ "\\chapter{", "\\appendix", "\\subparagraph", "\\paragraph",
 	\ "\\textbf{", "\\textsf{", "\\textrm{", "\\textit{", "\\texttt{", 
 	\ "\\textsc{", "\\textsl{", "\\textup{", "\\textnormal", "\\textcolor{",
-	\ "\\bfseries", "\\mdseries",
+	\ "\\bfseries", "\\mdseries", "\\backslash", "\\bigskip", "\\bibitem",
 	\ "\\tiny",  "\\scriptsize", "\\footnotesize", "\\small",
 	\ "\\noindent", "\\normalfont", "\normalsize", "\\normalsize", "\\normal", 
 	\ "\\large", "\\Large", "\\LARGE", "\\huge", "\\HUGE",
@@ -1070,7 +1091,7 @@ endif
 	\ "\\input", "\\include", "\\includeonly", "\\inlucegraphics",  
 	\ "\\savebox", "\\sbox", "\\usebox", "\\rule", "\\raisebox{", 
 	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
-	\ "\\bigskip", "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", 
+	\ "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", 
 	\ "\\hspace", "\\hrulefill", "\hfil", "\\hfill", "\\dots", "\\dotfill",
 	\ "\\thispagestyle", "\\mathnormal", "\\markright", "\\pagestyle", "\\pagenumbering",
 	\ "\\author{", "\\date{", "\\thanks{", "\\title{",
@@ -1532,7 +1553,7 @@ endfunction
 command! -buffer -nargs=1 -complete=customlist,CompilerComp Compiler	:let b:atp_TexCompiler=<q-args>
 function! CompilerComp(A,L,P)
     let compilers = [ 'tex', 'pdftex', 'latex', 'pdflatex', 'etex', 'xetex', 'luatex' ]
-    let g:compilers = copy(compilers)
+"     let g:compilers = copy(compilers)
     call filter(compilers, "v:val =~ '^' . a:A")
     call filter(compilers, 'executable(v:val)')
     return compilers

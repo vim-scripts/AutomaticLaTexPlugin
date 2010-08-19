@@ -852,8 +852,6 @@ try
 function! GotoFile(bang,...)
 
     let check_line	= a:0 >= 1 ? a:1 : 1 
-    let g:cl	= check_line 
-    let g:bang 	= a:bang 
     if !has("path_extra")
 	echoerr "Needs +path_extra vim feature."
 	return
@@ -864,6 +862,13 @@ function! GotoFile(bang,...)
     let s:OutDir	= b:atp_OutDir
 
     let filetype 	= &l:filetype
+
+    if a:bang == "!" || !exists("b:ListOfFiles")
+	let [tree_d, file_l, type_d, level_d ] 	= TreeOfFiles(b:atp_MainFile)
+    else
+	let [tree_d, file_l, type_d, level_d ] 	= deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ])
+    endif
+    let file_l_orig = deepcopy(file_l)
 
     " Note: line is set to "" if check_line == 0 => method = "all" is used. 
     let line		= check_line ? getline(".") : ""
@@ -920,6 +925,9 @@ function! GotoFile(bang,...)
 		let file	= fname
 	    endif
 
+	    let g:file = file
+	    let g:file_l  = file_l
+
 	    let message = "File: "
 	    let options = ""
 
@@ -960,16 +968,14 @@ function! GotoFile(bang,...)
 	" EditInputFile  
 	let method	= "all"
 
-	if a:bang == "!" || !exists("b:ListOfFiles")
-	    let [tree_d, file_l, type_d, level_d ] 	= TreeOfFiles(b:atp_MainFile)
-	else
-	    let [tree_d, file_l, type_d, level_d ] 	= deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ])
-	endif
-	let file_l_orig	= deepcopy(file_l)
 	call extend(file_l, [ b:atp_MainFile ], 0)
 	call extend(level_d, { b:atp_MainFile : 0 })
 " 	call filter(file_l, "v:val !~ expand('%') . '$'")
     endif
+
+"     DEBUG
+"     let g:method = method
+"     let g:file_l 	= file_l
 
     if len(file_l) > 1 
 	if method == "all"
@@ -996,7 +1002,6 @@ function! GotoFile(bang,...)
 	    call add(input_l, "(" . i . ") " . space . fnamemodify(f, mods))
 	    let i+=1
 	endfor
-	redraw
 	" Ask the user which file to edit:
 	redraw
 	if len([ msg ] + input_l) < &l:lines
@@ -1032,11 +1037,7 @@ function! GotoFile(bang,...)
 	    endif
 	    return
 	endif
-	let file 	= file_l[choice-1]
-   endif
-
-   if !exists("file")
-       return
+	let file = file_l[choice-1]
    endif
 
 "     DEBUG
@@ -1044,7 +1045,11 @@ function! GotoFile(bang,...)
 "     let g:file		= file 
 "     let g:file_l 	= file_l
 
-    if file != "file_missing" && filereadable(file)
+   if !exists("file")
+       return
+   endif
+
+    if file != "file_missing" && filereadable(file) && ( !exists("choice") || exists("choice") && choice != 0 )
 
 	" Inherit tex flavour.
 	" So that bib, cls, sty files will have their file type (bib/plaintex).

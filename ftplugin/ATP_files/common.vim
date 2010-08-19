@@ -149,6 +149,7 @@ let g:ToF_debug = 0
 function! TreeOfFiles(main_file,...)
 " let time	= reltime()
 
+
     if !exists("b:atp_OutDir")
 	call s:SetOutDir(0, 1)
     endif
@@ -162,6 +163,7 @@ function! TreeOfFiles(main_file,...)
     " This prevents from long runs on package files
     " for example babel.sty has lots of input files.
     if expand("%:e") != 'tex'
+	redir END
 	return [ {}, [], {}, {} ]
     endif
     let run_nr		= a:0 >= 3	? a:3 : 1 
@@ -172,6 +174,9 @@ function! TreeOfFiles(main_file,...)
 	    else
 		redir! >> /tmp/tof_log
 	    endif
+	endif
+
+	if g:ToF_debug
 	    silent echo run_nr . ") |".a:main_file."| expand=".expand("%:p") 
 	endif
 
@@ -200,23 +205,37 @@ function! TreeOfFiles(main_file,...)
     call setloclist(0, saved_llist)
     let lines	= map(loclist, "[ v:val['text'], v:val['lnum'], v:val['col'] ]")
 
-"     	if g:ToF_debug
-" 	    silent echo run_nr . ") Lines: " .string(lines)
-" 	endif
+    	if g:ToF_debug
+	    silent echo run_nr . ") Lines: " .string(lines)
+	endif
 
     for entry in lines
 
-	    let line = entry[0]
-	    let lnum = entry[1]
-	    let cnum = entry[2]
+	    let [ line, lnum, cnum ] = entry
 	    " input name (iname) as appeared in the source file
 	    let iname	= substitute(matchstr(line, pattern . '\zs\f*\ze'), '\s*$', '', '') 
+	    if g:ToF_debug
+		silent echo run_nr . ") iname=".iname
+	    endif
 	    if line =~ '{\s*' . iname
 		let iname	= substitute(iname, '\\\@<!}\s*$', '', '')
 	    endif
 
 	    let iext	= fnamemodify(iname, ":e")
-	    if iext != "" && iext != "tex"
+	    if g:ToF_debug
+		silent echo run_nr . ") iext=" . iext
+	    endif
+
+	    if iext == "ldf"  || 
+			\( &filetype == "plaintex" && getbufvar(b:atp_MainFile, "&filetype") != "tex") 
+			\ && expand("%:p") =~ 'texmf'
+		" if the extension is ldf (babel.sty) or the file type is plaintex
+		" and the filetype of main file is not tex (it can be empty when the
+		" buffer is not loaded) then match the full path of the file: if
+		" matches then doesn't go below this file. 
+		if g:ToF_debug
+		    silent echo run_nr . ") CONTINUE"
+		endif
 		continue
 	    endif
 
@@ -229,6 +248,10 @@ function! TreeOfFiles(main_file,...)
 		let type	= "input"
 	    endif
 
+	    if g:ToF_debug
+		silent echo run_nr . ") type=" . type
+	    endif
+
 	    let inames	= []
 	    if type != "bib"
 		let inames		= [ atplib#append_ext(iname, '.tex') ]
@@ -236,6 +259,9 @@ function! TreeOfFiles(main_file,...)
 		let inames		= map(split(iname, ','), "atplib#append_ext(v:val, '.bib')")
 	    endif
 
+	    if g:ToF_debug
+		silent echo run_nr . ") inames " . string(inames)
+	    endif
 
 	    " Find the full path only if it is not already given. 
 	    for iname in inames
@@ -286,8 +312,7 @@ function! TreeOfFiles(main_file,...)
 " 	echomsg "TIME:" . join(reltime(time), ".") . " main_file:" . a:main_file
 "     endif
     let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ] = deepcopy([ tree, list, type_dict, level_dict])
-" echo "TREE=". string(tree)
-" echo "LIST" . string(list)
+    redir END
     return [ tree, list, type_dict, level_dict ]
 
 endfunction

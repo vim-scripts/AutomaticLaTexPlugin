@@ -1165,7 +1165,7 @@ endif
 	\ "\\topmargin", "\\oddsidemargin", "\\evensidemargin", "\\headheight", "\\headsep", 
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
 	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
-	\ "\\tableofcontents", "\\newfont{", 
+	\ "\\tableofcontents", "\\newfont{", "\\phantom",
 	\ "\\DeclareRobustCommand", "\\show", "\\CheckCommand", "\\mathnormal" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 

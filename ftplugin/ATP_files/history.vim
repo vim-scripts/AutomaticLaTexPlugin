@@ -11,12 +11,12 @@ let s:hist_file	= substitute(s:file, 'history.vim$', 'atp_history.vim', '')
 let g:atp_DebugHistory = 0
 
 " When the history is longer than this value, echo message, 0 disable. 
-let g:atp_histlenMax  = 25
+let g:atp_histlenMax  = 200
 
-" time in miliseconds, when it takes longer a message is put, 0 for no
-" message (should be less than 1000 (i.e. 1s) if greater the message will be
-" echoed any way).
-let g:atp_histtimeMax = 15	
+" time in miliseconds, when it takes longer a watning message is shown, 0 for
+" no message (should be less than 1000 (i.e. 1s) if greater the message will
+" be echoed any way if the time reaches 1s).
+let g:atp_histtimeMax = 50
 let s:atp_histtimeMax = g:atp_histtimeMax*1000
 
 " This variable is set to 1 iff the history was loaded by s:LoadHistory()
@@ -35,7 +35,8 @@ if !exists("s:history_Write")
 endif
 
 " These local variables will be saved:
-let g:atp_cached_local_variables = [ 'atp_MainFile', 'atp_History', 'atp_LocalCommands', 'atp_LocalColors', 'atp_LocalEnvironments', 'TreeOfFiles', 'ListOfFiles', 'TypeDict', 'LevelDict' ]
+" let g:atp_cached_local_variables = [ 'atp_MainFile', 'atp_History', 'atp_LocalCommands', 'atp_LocalColors', 'atp_LocalEnvironments', 'TreeOfFiles', 'ListOfFiles', 'TypeDict', 'LevelDict' ]
+let g:atp_cached_local_variables = [ 'atp_MainFile', 'atp_History' ]
 
 " This function Loads the atp_history.vim file.
 

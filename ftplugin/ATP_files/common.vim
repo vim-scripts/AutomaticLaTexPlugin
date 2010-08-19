@@ -492,7 +492,7 @@ augroup END
 " The main status function, it is called via autocommand defined in 'options.vim'.
 let s:errormsg = 0
 function! ATPStatus(bang) "{{{
-    let g:status_OutDir	= a:bang == "" ? s:StatusOutDir() : ""
+    let g:status_OutDir	= a:bang == "" && g:atp_statusOutDir || a:bang == "!" && !g:atp_statusOutDir ? s:StatusOutDir() : ""
     let status_CTOC	= &filetype =~ '^\(ams\)\=tex' ? CTOC("return") : ''
     if g:atp_statusNotifHi > 9 || g:atp_statusNotifHi < 0
 	let g:atp_statusNotifHi = 9

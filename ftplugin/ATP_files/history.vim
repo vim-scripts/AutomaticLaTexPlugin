@@ -263,7 +263,7 @@ function! s:DeleteHistory(bang,...) " {{{1
 	catch /E716: Key not present in Dictionary/
 	endtry
     endfor
-    call s:WriteHistory()
+    call s:WriteHistory("!")
 endfunction
 command! -buffer -bang -complete=customlist,DelHistCompl -nargs=? DeleteHistory 	:call s:DeleteHistory(<q-bang>, <f-args>)
 function! DelHistCompl(ArgLead, CmdLine, CursorPos)
@@ -273,3 +273,13 @@ function! DelHistCompl(ArgLead, CmdLine, CursorPos)
     return filter(keys(g:atp_history_atp_MainFile),  'fnamemodify(v:val, ":t") =~ a:ArgLead')
 endfunction
 
+function! s:HistoryStats(bang) 
+    echo "Files in history: ". g:atp_histlen 		. " max:"  . g:atp_histlenMax
+    echo "Last source time: ". string(str2float(g:atp_histtime)*1000)." max:"  . g:atp_histtimeMax . " (msec)"
+    if a:bang == "!" && exists("g:atp_history_atp_MainFile") 
+	for file in keys(g:atp_history_atp_MainFile)
+	    echo "file " . fnamemodify(file, ":t") . " : atp_MainFile : " . fnamemodify(g:atp_history_atp_MainFile[file], ":t")
+	endfor
+    endif
+endfunction
+command! -buffer -bang HistoryStats :call <SID>HistoryStats(<q-bang>)

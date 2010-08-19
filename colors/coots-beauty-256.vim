@@ -144,6 +144,7 @@ highlight texInputFile			ctermfg=90	ctermbg=233	guifg=DeepPink4
 highlight texDocTypeArgs		ctermfg=204	ctermbg=233	guifg=DeepPink2
 highlight texInputFileopt		ctermfg=204	ctermbg=233	guifg=DeepPink2
 highlight texType			ctermfg=40	ctermbg=233	guifg=green3
+highlight texTypeStyle			ctermfg=40	ctermbg=233	guifg=green3
 highlight texMath			ctermfg=245	ctermbg=233	guifg=DarkKhaki
 highlight texStatement 			ctermfg=245	ctermbg=233	guifg=DeepPink3
 highlight texString			ctermfg=39	ctermbg=233	guifg=DodgerBlue

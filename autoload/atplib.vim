@@ -2429,6 +2429,7 @@ function! atplib#TabCompletion(expert_mode,...)
 
 
     let l:limit_line=max([1,(l:pos[1]-g:atp_completion_limits[1])])
+    let g:limit_line=limit_line
 " {{{2 SET COMPLETION METHOD
     " {{{3 --------- command
     if l:o > l:n && l:o > l:s && 
@@ -2639,9 +2640,10 @@ function! atplib#TabCompletion(expert_mode,...)
     "{{{3 --------- brackets
 " TODO: make this dependent on g:atp_bracket_dict
     elseif index(g:atp_completion_active_modes, 'brackets') != -1 && 
-	\ (searchpairpos('\%(\\\@<!\\\)\@<!(', '', '\%(\\\@<!\\\)\@<!)',    'bnW', "", l:limit_line) 	!= [0, 0] ||
-	\ searchpairpos('\%(\\\@<!\\\)\@<!\[', '', '\%(\\\@<!\\\)\@<!\]',   'bnW', "", l:limit_line) 	!= [0, 0] ||
-	\ searchpairpos('{',  '', '}',    'bnW', "", l:limit_line) 	!= [0, 0] )
+	\ (searchpairpos('\%(\\\@<!\\\)\@<!(', '', '\%(\\\@<!\\\)\@<!)\|\%(\\\cb\Cig\{1,2\}r\=\|\\right\)\.',    'bnW', "", l:limit_line) 	!= [0, 0] ||
+	\ searchpairpos('\%(\\\@<!\\\)\@<!\[', '', '\%(\\\@<!\\\)\@<!\]\|\%(\\\cb\Cig\{1,2\}r\=\|\\right\)\.',   'bnW', "", l:limit_line) 	!= [0, 0] ||
+	\ searchpairpos('{',  '', '}\|\%(\\\cb\Cig\{1,2\}r\=\|\\right\)\.',   'bnW', "", l:limit_line) 	!= [0, 0] )
+		" \{ can be closed with \right\. 
 
 	if (!normal_mode &&  index(g:atp_completion_active_modes, 'brackets') != -1 ) ||
 		\ (l:normal_mode && index(g:atp_completion_active_modes_normal_mode, 'brackets') 		!= -1 )

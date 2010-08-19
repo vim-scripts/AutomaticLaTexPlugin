@@ -816,14 +816,16 @@ function! ATP_ToggleNn() " {{{2
 	if maparg('n', 'n') != ""
 	    silent! nunmap <buffer> n
 	    silent! nunmap <buffer> N
-	    silent! unmenu LaTeX.Toggle\ Nn\ [on]
+	    silent! aunmenu LaTeX.Toggle\ Nn\ [on]
 	    nmenu 550.79 &LaTeX.Toggle\ &Nn\ [off]<Tab>:ToggleNn		:ToggleNn<CR>
+	    imenu 550.79 &LaTeX.Toggle\ &Nn\ [off]<Tab>:ToggleNn		<Esc>:ToggleNn<CR>a
 	    tmenu LaTeX.Toggle\ Nn\ [off] Do not grab n,N vim normal commands.
 	else
 	    silent! nnoremap <buffer> <silent> n    <Plug>RecursiveSearch_n<CR>
 	    silent! nnoremap <buffer> <silent> N    <Plug>RecursiveSearch_N<CR>
-	    silent! nunmenu LaTeX.Toggle\ Nn\ [off]
+	    silent! anunmenu LaTeX.Toggle\ Nn\ [off]
 	    nmenu 550.79 &LaTeX.Toggle\ &Nn\ [on]<Tab>:ToggleNn			:ToggleNn<CR>
+	    imenu 550.79 &LaTeX.Toggle\ &Nn\ [on]<Tab>:ToggleNn			<Esc>:ToggleNn<CR>a
 	    tmenu LaTeX.Toggle\ Nn\ [on] Grab n,N vim normal commands.
 	endif
 endfunction

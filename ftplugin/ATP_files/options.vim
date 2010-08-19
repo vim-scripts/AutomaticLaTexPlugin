@@ -262,11 +262,14 @@ endif
 " 	echomsg "Changing this variable is not supported"
     endtry
 " endif
+if !exists("g:atp_statusOutDir")
+    let g:atp_statusOutDir 	= 1
+endif
 if !exists("g:atp_grab_Nn")
-    let g:atp_grab_Nn = 0
+    let g:atp_grab_Nn 		= 0
 endif
 if !exists("g:atp_developer")
-    let g:atp_developer	= 0
+    let g:atp_developer		= 0
 endif
 if !exists("g:atp_TeXdocDefault")
     let g:atp_TeXdocDefault	= '-a lshort'
@@ -274,7 +277,7 @@ endif
 "ToDo: to doc.
 "ToDo: luatex! (can produce both!)
 if !exists("g:atp_CompilersDict")
-    let g:atp_CompilersDict = { 
+    let g:atp_CompilersDict 	= { 
 		\ "pdflatex" 	: ".pdf", 	"pdftex" 	: ".pdf", 
 		\ "xetex" 	: ".pdf", 	"latex" 	: ".dvi", 
 		\ "tex" 	: ".dvi",	"elatex"	: ".dvi",
@@ -311,31 +314,31 @@ if !exists("g:atp_insert_updatetime")
 endif
 if !exists("g:atp_DefaultDebugMode")
     " recognised values: silent, normal, debug.
-    let g:atp_DefaultDebugMode="normal"
+    let g:atp_DefaultDebugMode	= "normal"
 endif
 if !exists("g:atp_show_all_lines")
     " boolean
-    let g:atp_show_all_lines = 0
+    let g:atp_show_all_lines 	= 0
 endif
 if !exists("g:atp_ignore_unmatched")
     " boolean
-    let g:atp_ignore_unmatched = 1
+    let g:atp_ignore_unmatched 	= 1
 endif
 if !exists("g:atp_imap_first_leader")
-    let g:atp_imap_first_leader="#"
+    let g:atp_imap_first_leader	= "#"
 endif
 if !exists("g:atp_imap_second_leader")
-    let g:atp_imap_second_leader="##"
+    let g:atp_imap_second_leader= "##"
 endif
 if !exists("g:atp_imap_third_leader")
-    let g:atp_imap_third_leader="]"
+    let g:atp_imap_third_leader	= "]"
 endif
 if !exists("g:atp_imap_fourth_leader")
-    let g:atp_imap_fourth_leader="["
+    let g:atp_imap_fourth_leader= "["
 endif
 " todo: to doc.
 if !exists("g:atp_completion_font_encodings")
-    let g:atp_completion_font_encodings=['T1', 'T2', 'T3', 'T5', 'OT1', 'OT2', 'OT4', 'UT1'] 
+    let g:atp_completion_font_encodings	= ['T1', 'T2', 'T3', 'T5', 'OT1', 'OT2', 'OT4', 'UT1']
 endif
 " todo: to doc.
 if !exists("g:atp_font_encoding")
@@ -802,8 +805,18 @@ function! ATP_ToggleAuTeX()
   if b:atp_autex != 1
     let b:atp_autex=1	
     echo "automatic tex processing is ON"
+    silent! aunmenu LaTeX.Toggle\ AuTeX\ [off]
+    silent! aunmenu LaTeX.Toggle\ AuTeX\ [on]
+    menu 550.75 &LaTeX.&Toggle\ AuTeX\ [on]<Tab>b:atp_autex	:<C-U>ToggleAuTeX<CR>
+    cmenu 550.75 &LaTeX.&Toggle\ AuTeX\ [on]<Tab>b:atp_autex	<C-U>ToggleAuTeX<CR>
+    imenu 550.75 &LaTeX.&Toggle\ AuTeX\ [on]<Tab>b:atp_autex	<ESC>:ToggleAuTeX<CR>a
   else
     let b:atp_autex=0
+    silent! aunmenu LaTeX.Toggle\ AuTeX\ [off]
+    silent! aunmenu LaTeX.Toggle\ AuTeX\ [on]
+    menu 550.75 &LaTeX.&Toggle\ AuTeX\ [off]<Tab>b:atp_autex	:<C-U>ToggleAuTeX<CR>
+    cmenu 550.75 &LaTeX.&Toggle\ AuTeX\ [off]<Tab>b:atp_autex	<C-U>ToggleAuTeX<CR>
+    imenu 550.75 &LaTeX.&Toggle\ AuTeX\ [off]<Tab>b:atp_autex	<ESC>:ToggleAuTeX<CR>a
     echo "automatic tex processing is OFF"
   endif
 endfunction
@@ -820,7 +833,9 @@ function! ATP_ToggleSpace()
 	let s:special_space="[on]"
 	silent! aunmenu LaTeX.Toggle\ Space\ [off]
 	silent! aunmenu LaTeX.Toggle\ Space\ [on]
-	nmenu 550.78 &LaTeX.&Toggle\ Space\ [on]<Tab>cmap\ <space>\ \\_s\\+	:ToggleSpace<CR>
+	menu 550.78 &LaTeX.&Toggle\ Space\ [on]<Tab>cmap\ <space>\ \\_s\\+	:<C-U>ToggleSpace<CR>
+	cmenu 550.78 &LaTeX.&Toggle\ Space\ [on]<Tab>cmap\ <space>\ \\_s\\+	<C-U>ToggleSpace<CR>
+	imenu 550.78 &LaTeX.&Toggle\ Space\ [on]<Tab>cmap\ <space>\ \\_s\\+	<Esc>:ToggleSpace<CR>a
 	tmenu &LaTeX.&Toggle\ Space\ [on] cmap <space> \_s\+ is curently on
     else
 	echomsg "special space is off"
@@ -828,7 +843,9 @@ function! ATP_ToggleSpace()
 	let s:special_space="[off]"
 	silent! aunmenu LaTeX.Toggle\ Space\ [on]
 	silent! aunmenu LaTeX.Toggle\ Space\ [off]
-	nmenu 550.78 &LaTeX.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+	:ToggleSpace<CR>
+	menu 550.78 &LaTeX.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+	:<C-U>ToggleSpace<CR>
+	cmenu 550.78 &LaTeX.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+	<C-U>ToggleSpace<CR>
+	imenu 550.78 &LaTeX.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+	<Esc>:ToggleSpace<CR>a
 	tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
     endif
 endfunction
@@ -844,14 +861,22 @@ function! ATP_ToggleCheckMathOpened()
 	echomsg "check if in math environment is off"
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [on]
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
-	nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_MathOpened			
-		    \ :ToggleCheckMathOpened<CR>
+	menu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_MathOpened			
+		    \ :<C-U>ToggleCheckMathOpened<CR>
+	cmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_MathOpened			
+		    \ <C-U>ToggleCheckMathOpened<CR>
+	imenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_MathOpened			
+		    \ <Esc>:ToggleCheckMathOpened<CR>a
     else
 	echomsg "check if in math environment is on"
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
-	nmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_MathOpened
-		    \ :ToggleCheckMathOpened<CR>
+	menu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_MathOpened
+		    \ :<C-U>ToggleCheckMathOpened<CR>
+	cmenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_MathOpened
+		    \ <C-U>ToggleCheckMathOpened<CR>
+	imenu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_MathOpened
+		    \ <Esc>:ToggleCheckMathOpened<CR>a
     endif
     let g:atp_MathOpened=!g:atp_MathOpened
 endfunction
@@ -864,14 +889,22 @@ function! ATP_ToggleCallBack()
 	echomsg "call back is off"
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
-	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
-		    \ :call ToggleCallBack()<CR>
+	menu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
+		    \ :<C-U>call ToggleCallBack()<CR>
+	cmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
+		    \ <C-U>call ToggleCallBack()<CR>
+	imenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
+		    \ <Esc>:call ToggleCallBack()<CR>a
     else
 	echomsg "call back is on"
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
-	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback
+	menu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback
 		    \ :call ToggleCallBack()<CR>
+	cmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback
+		    \ <C-U>call ToggleCallBack()<CR>
+	imenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback
+		    \ <Esc>:call ToggleCallBack()<CR>a
     endif
     let g:atp_callback=!g:atp_callback
 endfunction
@@ -889,13 +922,21 @@ function! ATP_ToggleDebugMode()
 
 	silent! aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]
 	silent! aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]
-	nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>t:atp_DebugMode			
-		    \ :ToggleDebugMode<CR>
+	menu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>t:atp_DebugMode			
+		    \ :<C-U>ToggleDebugMode<CR>
+	cmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>t:atp_DebugMode			
+		    \ <C-U>ToggleDebugMode<CR>
+	imenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>t:atp_DebugMode			
+		    \ <Esc>:ToggleDebugMode<CR>a
 
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
-	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
-		    \ :ToggleDebugMode<CR>
+	menu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
+		    \ :<C-U>ToggleDebugMode<CR>
+	cmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
+		    \ <C-U>ToggleDebugMode<CR>
+	imenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
+		    \ <Esc>:ToggleDebugMode<CR>a
 
 	let t:atp_DebugMode	= g:atp_DefaultDebugMode
 	silent cclose
@@ -904,13 +945,21 @@ function! ATP_ToggleDebugMode()
 
 	silent! aunmenu 550.20.5 LaTeX.Log.Toggle\ Debug\ Mode\ [off]
 	silent! aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]
-	nmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>t:atp_DebugMode
-		    \ :ToggleDebugMode<CR>
+	menu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>t:atp_DebugMode
+		    \ :<C-U>ToggleDebugMode<CR>
+	cmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>t:atp_DebugMode
+		    \ <C-U>ToggleDebugMode<CR>
+	imenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>t:atp_DebugMode
+		    \ <Esc>:ToggleDebugMode<CR>a
 
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
-	nmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback	
-		    \ :ToggleDebugMode<CR>
+	menu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback	
+		    \ :<C-U>ToggleDebugMode<CR>
+	cmenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback	
+		    \ <C-U>ToggleDebugMode<CR>
+	imenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback	
+		    \ <Esc>:ToggleDebugMode<CR>a
 
 	let g:atp_callback=1
 	let t:atp_DebugMode	= "debug"
@@ -1080,7 +1129,7 @@ endif
 	\ "\\chapter{", "\\appendix", "\\subparagraph", "\\paragraph",
 	\ "\\textbf{", "\\textsf{", "\\textrm{", "\\textit{", "\\texttt{", 
 	\ "\\textsc{", "\\textsl{", "\\textup{", "\\textnormal", "\\textcolor{",
-	\ "\\bfseries", "\\mdseries", "\\backslash", "\\bigskip", "\\bibitem",
+	\ "\\bfseries", "\\mdseries", "\\bigskip", "\\bibitem",
 	\ "\\tiny",  "\\scriptsize", "\\footnotesize", "\\small",
 	\ "\\noindent", "\\normalfont", "\normalsize", "\\normalsize", "\\normal", 
 	\ "\\large", "\\Large", "\\LARGE", "\\huge", "\\HUGE",
@@ -1137,7 +1186,7 @@ endif
 	\ "\\Longrightarrow", "\\longrightarrow", "\\Longleftarrow", "\\longleftarrow",
 	\ "\\overrightarrow{", "\\overleftarrow{", "\\underrightarrow{", "\\underleftarrow{",
 	\ "\\uparrow", "\\nearrow", "\\searrow", "\\swarrow", "\\nwarrow", 
-	\ "\\hookrightarrow", "\\hookleftarrow", "\\gets", 
+	\ "\\hookrightarrow", "\\hookleftarrow", "\\gets", "\\backslash", 
 	\ "\\sum", "\\bigsum", "\\cup", "\\bigcup", "\\cap", "\\bigcap", 
 	\ "\\prod", "\\coprod", "\\bigvee", "\\bigwedge", "\\wedge",  
 	\ "\\oplus", "\\otimes", "\\odot", "\\oint",
@@ -1542,7 +1591,24 @@ augroup END
 "}}}1
 
 " {{{1 :Viewer, :Compiler, :DebugMode
-command! -buffer -nargs=1 -complete=customlist,ViewerComp Viewer	:let b:atp_Viewer=<q-args>
+function! s:Viewer(viewer) 
+    let old_viewer	= b:atp_Viewer
+    let oldViewer	= get(g:ViewerMsg_Dict, matchstr(old_viewer, '^\s*\zs\S*'), "")
+    let b:atp_Viewer	= a:viewer
+    let Viewer		= get(g:ViewerMsg_Dict, matchstr(b:atp_Viewer, '^\s*\zs\S*'), "")
+    silent! execute "aunmenu LaTeX.View\\ with\\ ".oldViewer
+    silent! execute "aunmenu LaTeX.View\\ Output"
+    if Viewer != ""
+	execute "menu 550.10 LaTe&X.&View\\ with\\ ".Viewer."<Tab>:ViewOutput 		:<C-U>ViewOutput<CR>"
+	execute "cmenu 550.10 LaTe&X.&View\\ with\\ ".Viewer."<Tab>:ViewOutput 		<C-U>ViewOutput<CR>"
+	execute "imenu 550.10 LaTe&X.&View\\ with\\ ".Viewer."<Tab>:ViewOutput 		<Esc>:ViewOutput<CR>a"
+    else
+	execute "menu 550.10 LaTe&X.&View\\ Output\\ <Tab>:ViewOutput 		:<C-U>ViewOutput<CR>"
+	execute "cmenu 550.10 LaTe&X.&View\\ Output\\ <Tab>:ViewOutput 		<C-U>ViewOutput<CR>"
+	execute "imenu 550.10 LaTe&X.&View\\ Output\\ <Tab>:ViewOutput 		<Esc>:ViewOutput<CR>a"
+    endif
+endfunction
+command! -buffer -nargs=1 -complete=customlist,ViewerComp Viewer	:call <SID>Viewer(<q-args>)
 function! ViewerComp(A,L,P)
     let view = [ 'okular', 'xpdf', 'xdvi', 'evince', 'epdfview', 'kpdf', 'acroread' ]
     call filter(view, "v:val =~ '^' . a:A")
@@ -1550,7 +1616,25 @@ function! ViewerComp(A,L,P)
     return view
 endfunction
 
-command! -buffer -nargs=1 -complete=customlist,CompilerComp Compiler	:let b:atp_TexCompiler=<q-args>
+function! s:Compiler(compiler) 
+    let old_compiler	= b:atp_TexCompiler
+    let oldCompiler	= get(g:CompilerMsg_Dict, matchstr(old_compiler, '^\s*\zs\S*'), "")
+    let b:atp_TexCompiler	= a:compiler
+    let Compiler		= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\zs\S*'), "")
+    silent! execute "aunmenu LaTeX.".oldCompiler
+    silent! execute "aunmenu LaTeX.".oldCompiler."\\ debug"
+    silent! execute "aunmenu LaTeX.".oldCompiler."\\ twice"
+    execute "menu 550.5 LaTe&X.&".Compiler."<Tab>:TEX				:<C-U>TEX<CR>"
+    execute "cmenu 550.5 LaTe&X.&".Compiler."<Tab>:TEX				<C-U>TEX<CR>"
+    execute "imenu 550.5 LaTe&X.&".Compiler."<Tab>:TEX				<Esc>:TEX<CR>a"
+    execute "menu 550.6 LaTe&X.".Compiler."\\ debug<Tab>:TEX\\ debug		:<C-U>DTEX<CR>"
+    execute "cmenu 550.6 LaTe&X.".Compiler."\\ debug<Tab>:TEX\\ debug		<C-U>DTEX<CR>"
+    execute "imenu 550.6 LaTe&X.".Compiler."\\ debug<Tab>:TEX\\ debug		<Esc>:DTEX<CR>a"
+    execute "menu 550.7 LaTe&X.".Compiler."\\ &twice<Tab>:2TEX			:<C-U>2TEX<CR>"
+    execute "cmenu 550.7 LaTe&X.".Compiler."\\ &twice<Tab>:2TEX			<C-U>2TEX<CR>"
+    execute "imenu 550.7 LaTe&X.".Compiler."\\ &twice<Tab>:2TEX			<Esc>:2TEX<CR>a"
+endfunction
+command! -buffer -nargs=1 -complete=customlist,CompilerComp Compiler	:call <SID>Compiler(<q-args>)
 function! CompilerComp(A,L,P)
     let compilers = [ 'tex', 'pdftex', 'latex', 'pdflatex', 'etex', 'xetex', 'luatex' ]
 "     let g:compilers = copy(compilers)

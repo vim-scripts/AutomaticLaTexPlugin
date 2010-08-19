@@ -162,13 +162,15 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     "ToDo: imaps!
     nmap  <buffer> <F5> 			<Plug>ATP_TeXVerbose
     nmap  <buffer> <s-F5> 			<Plug>ToggleAuTeX
+    imap  <buffer> <s-F5> 			<Esc><Plug>ToggleAuTeXa
     nmap  <buffer> `<Tab>			<Plug>ToggleTab
     imap  <buffer> `<Tab>			<Plug>ToggleTab
     nmap  <buffer> <LocalLeader>B		<Plug>SimpleBibtex
     nmap  <buffer> <LocalLeader>b		<Plug>BibtexDefault
     nmap  <buffer> <F6>d 			<Plug>Delete
-    imap  <buffer> <silent> <F6>l 		<Plug>OpenLog
+    imap  <buffer> <F6>d			<Esc><Plug>Deletea
     nmap  <buffer> <silent> <F6>l 		<Plug>OpenLog
+    imap  <buffer> <silent> <F6>l 		<Esc><Plug>OpenLog
     nmap  <buffer> <LocalLeader>e 		:cf<CR> 
     nnoremap  <buffer> <F6> 			:ShowErrors e<CR>
     inoremap  <buffer> <F6>e 			:ShowErrors e<CR>

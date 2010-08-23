@@ -926,7 +926,7 @@ hi link CurrentSection		WarningMsg
 " Front End Function
 " {{{ BibSearch
 "  There are three arguments: {pattern}, [flags, [choose]]
-function! <SID>BibSearch(bang,...)
+function! BibSearch(bang,...)
     let pattern = a:0 >= 1 ? a:1 : ""
     let flag	= a:0 >= 2 ? a:2 : ""
     let b:atp_LastBibPattern 	= pattern
@@ -934,8 +934,8 @@ function! <SID>BibSearch(bang,...)
     let @/			= pattern
     call atplib#showresults( atplib#searchbib(pattern, a:bang), flag, pattern)
 endfunction
-command! -buffer -bang -nargs=* BibSearch	:call <SID>BibSearch(<q-bang>, <f-args>)
-nnoremap <silent> <Plug>BibSearchLast		:call <SID>BibSearch("", b:atp_LastBibPattern, b:atp_LastBibFlags)<CR>
+command! -buffer -bang -nargs=* BibSearch	:call BibSearch(<q-bang>, <f-args>)
+nnoremap <silent> <Plug>BibSearchLast		:call BibSearch("", b:atp_LastBibPattern, b:atp_LastBibFlags)<CR>
 " }}}
 "}}}
 

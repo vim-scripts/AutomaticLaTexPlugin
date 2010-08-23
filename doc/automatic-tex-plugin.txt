@@ -1280,10 +1280,13 @@ SEARCHING IN BIB FILES 		                        *atp-bibsearch*
 One more function is provided which searches the bib files for bib fields, 
 and for the bib field labels for the latex command \cite{}.
 
-BibSearch( [pattern], [flags])				*atp-BibSearch* 
+BibSearch({bang}, [pattern], [flags])				*atp-BibSearch* 
 	The function BibSearch allows you to search for the [pattern] in bib
 	files and opens a new window with results. For the command, please read
-	|atp-bibsearch-command|.
+	|atp-:BibSearch|.
+
+	{bang} has two possible values "!" or "", with "!" it looks first for
+	input files, while if {bang}="" only if ATP has not done it yet. 
 
 	The function BibSearch takes two arguments (the last one is optional).
 	The first one is the [pattern] to match against each line of the
@@ -1307,13 +1310,13 @@ BibSearch( [pattern], [flags])				*atp-BibSearch*
 	cases it means that you will see only works of Grothendieck). Another
 	example:
 >
- 	'^\(\s*author.*Joayl\)\|Galois Theory'
+		'^\(\s*author.*Joayl\)\|Galois Theory'
 <
 	will result in all bib fields which author is Joyal or 
 	which includes the words 'Galois Theory' (which by the way apear in
 	many article/book titles), yet another example:	
 >
- 	'author.*Joayl\|title\p*Galois Theory'
+		'author.*Joayl\|title\p*Galois Theory'
 <
 	This will match against all bib entries written by Joyal or which title
 	includes the word 'Galois Theory'.
@@ -1334,8 +1337,8 @@ BibSearch( [pattern], [flags])				*atp-BibSearch*
 	Note that in Vim patterns should be quoted using '...' not "...".   
 
 	Further examples are supplied after the next section
-	|atp-bibflags:examples|, which describes other functionalities
-	of the BibSearch/BibChoos functions.
+	|atp-bibflags:examples|, which describes other functionalities of the
+	BibSearch/BibChoose commands.
 
 								*atp-bibpattern:last*
 								*atp-bib-b:atp_LastBibPattern*
@@ -1383,7 +1386,6 @@ BibSearch( [pattern], [flags])				*atp-BibSearch*
 		All - all flags						(see |atp-bibflags:all|)		
 		L   - last flags					(see |atp-bibflags:last|)		
 <
-
 	Examples:
 >
 		tayu@a		--> show the entries: tile, author, year, url of matching articles.
@@ -1458,8 +1460,8 @@ BibSearch( [pattern], [flags])				*atp-BibSearch*
 	Just add an entry to the dictionary g:bibflagsdict. (:ShowOptions v to
 	see its current value), For example
 >
-	let g:bibflagsdict=extend(g:bibflagsdict, { '<flags_name>' : [
-	'<bib_entry_name>': '<how_to_show>'] })
+	let g:bibflagsdict=extend(g:bibflagsdict, 
+	\ { '<flags_name>' : [ '<bib_entry_name>': '<how_to_show>'] })
 < 
 	where, <flags_name> is the flag to use (it should be one letter), it
 	must be different from the defined flags, <bib_entry_name> is a
@@ -1467,7 +1469,7 @@ BibSearch( [pattern], [flags])				*atp-BibSearch*
 	you want to have a nice output put the bib entry name and that much of
 	white spaces to get 13 strings.
 		
-BibChoose							*atp-:BibChoose*
+:BibChoose {BibEntry[RegisterName]}					*atp-:BibChoose*
 map c, map y, map p
 	This function/command is only available in the window with BibSearch results
 	and allows to copy a bib entry key to a register or directly to the
@@ -1478,7 +1480,17 @@ map c, map y, map p
 	    <bib entry number><Enter>			- to paste it to 'tex' file
 	    <Enter>					- to skip the choice
 <	
-	When you paste the bib entry key the bib search window will close.
+	When you paste the bib entry key the bib search window will close. For
+	example: >
+		:BibChoose 5e
+		:BibChoose 7+
+		:BibChoose 2
+<	Copy the bibkey to register e,+ or paste directly to the buffer 
+	in which :BibSearch was invoked, at last curosr position.	
+
+	The same you will obtain using tha nmaps y or c. 
+	
+	This commands and maps are only in the BibSearch buffer.
 
 								*atp-bibsearch-highlight*
 	The colours of the output are set by the syntax file
@@ -1505,24 +1517,24 @@ map c, map y, map p
 
 	Some examples:						*atp-bibflags:examples*
 >
- 	:BibSearch 
+	    :BibSearch 
 <				Above command shows all bib fields with
 				the default flags
 >
- 	:BibSearch @ yt	
+	    :BibSearch @ yt	
 <				and this is a tip how to show all bib fields with
 				different flags than the default ones(the '@'
 				will match at every bib field!). It is
 				equivalent to:
 >
-	:call BibSearch('','yt')
+	    :call BibSearch('','yt')
 
- 	:BibSearch title[\s.]*Galois Theory  aetb
+	    :BibSearch title[\s.]*Galois Theory  aetb
 <
 	The next one shows all bib fields which were written by Joyal and
 	Tirney (and may by somebody else).
 >
-	:BibSearch 'author.*Joyal\&.*Tirney'
+	    :BibSearch 'author.*Joyal\&.*Tirney'
 <
 
 :DefiSearch[!] [pattern] 					*atp-:DefiSearch*
@@ -1539,23 +1551,25 @@ SOME VARIABLES:
 	All the values of important variables can be shown by ShowOption
 	command.
 
-								
-b:bibfiles							*atp-b:bibfiles*
-	This variable is a list and you can put here additional bib files.
+								*atp-b:bibfiles*
+>
+ b:bibfiles							
+<	This variable is a list and you can put here additional bib files.
 	They will be parsed by the BibSearch/BibChoose functions.
 
 	The following variables you can see using the ShowOptions command (see
-	|atp-ShowOptions|).
-s:bibfiles
-	This variable is a list which stores bib files found in your tex
+	|atp-ShowOptions|). >
+ s:bibfiles
+<	This variable is a list which stores bib files found in your tex
 	files and which are readable. It is set up when you first run of the commands:
 	BibSearch/BibChoose/ShowOptions. Its value is shown by the
-	functions FindBibFiles({bufname}).
-s:allbibfiles 
-	this is a sum of found bib files the locally defined b:bibfiles, which
-	not necessarily are readable.
-s:notreadablebibfiles
-	guess what :)
+	functions FindBibFiles({bufname}). >
+ s:allbibfiles 
+<	this is a sum of found bib files the locally defined b:bibfiles, which
+	not necessarily are readable. >
+ s:notreadablebibfiles
+<	guess what :)
+
 
 -----------------------------------------------------------------------------------
 								*atp-bibsearch-comments*
@@ -1608,7 +1622,10 @@ will be done during first completion - this is the default, if it is set to
 
 							*atp-:ToggleTab*
 There is a command to toggle the tab map off/on: :ToggleTab, it is also mapped
-to `<Tab>.
+to `<Tab>. 
+
+	Note: You can use <CTRL-T> in insert mode to insert shiwftwidth
+	(see |i_CTRL-T|) and <CTRL-D> to delete one shiftwidht (read |i_CTRL-D|).
 
 Completion modes are:
 
@@ -2390,7 +2407,7 @@ some other key that it is not used in Vim (there are not many of them though).
 The most commonly used latex-suite plugin uses similar set of mappings (but
 there might be some differences). The easy way to change imap leaders is by
 using the variables:
-
+>
 	    g:atp_imap_first_leader == "#"
 	    	for Greak letters,
 	    g:atp_imap_second_leader == "##"
@@ -2399,6 +2416,7 @@ using the variables:
 	    	for environments,  
 	    g:atp_imap_fourth_leader == "["
 	    	for extra environments in the old layout.
+<
 All other mappings (map, vmap, nmap, ...) are using <LocalLeader> which can be
 altered with the option |maplocalleader|. A good alternate solution is to use "_"
 instead of "##".
@@ -2408,7 +2426,6 @@ also have to use this option, for example to unmap \l issue the command:
 >
 	:unmap <buffer> <LocalLeader>l
 <
-
 The maps are loaded unless you set one of variables: 'g:no_plugin_maps' or
 'g:no_atp_maps' (disables maps defined in tex_atp.Vim), 'g:no_atp_toc_maps'
 (disables maps defined in 'toc_atp.Vim'),  'g:atp_no_env_maps' (disables the

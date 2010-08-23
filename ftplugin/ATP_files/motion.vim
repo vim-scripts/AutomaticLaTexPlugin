@@ -281,7 +281,7 @@ function! s:showtoc(toc)
 	    return
 	endif
 	let openbuffer=t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
-	silent exe openbuffer
+	keepalt silent exe openbuffer
 	" We are setting the address from which we have come.
 	silent call atplib#setwindow()
     endif
@@ -638,8 +638,6 @@ function! CTOC(...)
     " title. It returns only the first b:atp_TruncateStatusSection
     " characters of the the whole titles.
     let names=s:ctoc()
-    let b:names=names
-" 	echo " DEBUG CTOC " . join(names)
     let chapter_name	= get(names, 0, '')
     let section_name	= get(names, 1, '')
     let subsection_name	= get(names, 2, '')
@@ -654,42 +652,25 @@ function! CTOC(...)
 	
     elseif chapter_name != ""
 	if section_name != ""
-" 		if a:0 == '0'
-" 		    echo "XXX" . chapter_name . "/" . section_name 
-" 		else
 	    if a:0 != 0
 		return substitute(strpart(chapter_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','') . "/" . substitute(strpart(section_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','')
 	    endif
 	else
-" 		if a:0 == '0'
-" 		    echo "XXX" . chapter_name
-" 		else
 	    if a:0 != 0
 		return substitute(strpart(chapter_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
 	    endif
 	endif
-
     elseif chapter_name == "" && section_name != ""
 	if subsection_name != ""
-" 		if a:0 == '0'
-" 		    echo "XXX" . section_name . "/" . subsection_name 
-" 		else
 	    if a:0 != 0
 		return substitute(strpart(section_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','') . "/" . substitute(strpart(subsection_name,0,b:atp_TruncateStatusSection/2), '\_s*$', '','')
 	    endif
 	else
-" 		if a:0 == '0'
-" 		    echo "XXX" . section_name
-" 		else
 	    if a:0 != 0
 		return substitute(strpart(section_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
 	    endif
 	endif
-
     elseif chapter_name == "" && section_name == "" && subsection_name != ""
-" 	    if a:0 == '0'
-" 		echo "XXX" . subsection_name
-" 	    else
 	if a:0 != 0
 	    return substitute(strpart(subsection_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
 	endif
@@ -887,6 +868,7 @@ function! GotoFile(bang,...)
     " This is passed to the newly opened buffer.
     let s:MainFile	= b:atp_MainFile 
     let s:OutDir	= b:atp_OutDir
+    let s:ReloadOnError = b:atp_ReloadOnError
 
     let filetype 	= &l:filetype
 
@@ -1033,11 +1015,14 @@ function! GotoFile(bang,...)
 	redraw
 	if len([ msg ] + input_l) < &l:lines
 	    for f in  [ msg ] + input_l
+		" echo highlighted message
 		if f =~ expand('%') . '$'
 		    echohl WarningMsg
+		elseif f == msg
+		    echohl Title
 		endif
 		echo f
-		if f =~ expand('%') . '$'
+		if f =~ expand('%') . '$' || f == msg
 		    echohl Normal
 		endif
 	    endfor
@@ -1048,7 +1033,7 @@ function! GotoFile(bang,...)
 	else
 	    for line in [ msg ] + input_l
 		if line == msg
-		    echohl WarningMsg	
+		    echohl Title	
 		endif
 		echo line
 		echohl None
@@ -1101,6 +1086,7 @@ function! GotoFile(bang,...)
 	" buffer.
 	let b:atp_MainFile	= s:MainFile
 	let b:atp_OutDir	= s:OutDir
+	let b:atp_ReloadOnError = s:ReloadOnError
 	let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]	= deepcopy([tree_d, file_l_orig, type_d, level_d ])
     else
 	echohl ErrorMsg

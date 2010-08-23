@@ -30,83 +30,105 @@ endif
 
 " Functions:
 function! BibChoose(...)" {{{
-    let l:which=input("Which entry? ( <Number><reg name><Enter>, <Number><Enter> or <Enter> for none) ")
-    if l:which == ""
+    if a:0 == 0
+	let which	= input("Which entry? ( <Number><reg name><Enter>, <Number><Enter> or <Enter> for none) ")
+    else
+	let which	= a:1
+    endif
+    let g:which = which
+    if which == ""
 	return
     endif
-    if l:which =~ '^\d*$' 
-	let l:start=stridx(b:listofkeys[l:which],'{')+1
-	let l:choice=substitute(strpart(b:listofkeys[l:which],l:start),',','','')
-	q
-	let l:line=getline(".")
-	let l:col=col(".")
-	let l:line=strpart(l:line,0,l:col) . l:choice . strpart(l:line,l:col)
-	call setline(line("."), l:line)
-    elseif l:which =~ '^\d*\(\a\|+\| . "*" .\)$'
-	    let l:letter=substitute(l:which,'\d','','g')
-	    let l:which=substitute(l:which,'\a\|+\|' . "*",'','g')
-	    let l:start=stridx(b:listofkeys[l:which],'{')+1
-	    let l:choice=substitute(strpart(b:listofkeys[l:which],l:start),',','','')
-	    silent if l:letter == 'a'
-		let @a=l:choice
-	    elseif l:letter == 'b'
-		let @b=l:choice
-	    elseif l:letter == 'c'
-		let @c=l:choice
-	    elseif l:letter == 'd'
-		let @d=l:choice
-	    elseif l:letter == 'e'
-		let @e=l:choice
-	    elseif l:letter == 'f'
-		let @f=l:choice
-	    elseif l:letter == 'g'
-		let @g=l:choice
-	    elseif l:letter == 'h'
-		let @h=l:choice
-	    elseif l:letter == 'i'
-		let @i=l:choice
-	    elseif l:letter == 'j'
-		let @j=l:choice
-	    elseif l:letter == 'k'
-		let @k=l:choice
-	    elseif l:letter == 'l'
-		let @l=l:choice
-	    elseif l:letter == 'm'
-		let @m=l:choice
-	    elseif l:letter == 'n'
-		let @n=l:choice
-	    elseif l:letter == 'o'
-		let @o=l:choice
-	    elseif l:letter == 'p'
-		let @p=l:choice
-	    elseif l:letter == 'q'
-		let @q=l:choice
-	    elseif l:letter == 'r'
-		let @r=l:choice
-	    elseif l:letter == 's'
-		let @s=l:choice
-	    elseif l:letter == 't'
-		let @t=l:choice
-	    elseif l:letter == 'u'
-		let @u=l:choice
-	    elseif l:letter == 'v'
-		let @v=l:choice
-	    elseif l:letter == 'w'
-		let @w=l:choice
-	    elseif l:letter == 'x'
-		let @x=l:choice
-	    elseif l:letter == 'y'
-		let @y=l:choice
-	    elseif l:letter == 'z'
-		let @z=l:choice
-	    elseif l:letter == '*'
-		let @-=l:choice
-	    elseif l:letter == '+'
-		let @+=l:choice
-	    elseif l:letter == '-'
-		let @@=l:choice
+    if which =~ '^\d*$' 
+	let start	= stridx(b:ListOfBibKeys[which],'{')+1
+	let choice	= substitute(strpart(b:ListOfBibKeys[which], start), ',\s*$', '', '')
+	let g:choice	= choice
+
+	" Goto right buffer
+	let winbufnr = bufwinnr(b:BufNr)
+	if winbufnr != -1
+	    exe "normal ".winbufnr."w"
+	else
+	    if bufexist(b:BufNr)
+		exe "normal buffer ".winbufnr
+	    else
+		echohl WarningMsg 
+		echo "Buffer was deleted"
+		echohl None
+		return
 	    endif
-	    echohl WarningMsg | echomsg "Choice yanekd to the register '" . l:letter . "'" | echohl None
+	endif
+
+	let LineNr 	= line(".")
+	let ColNr 	= col(".") 
+	call setline(LineNr, strpart(getline(LineNr), 0, ColNr) . choice . strpart(getline(LineNr), ColNr))
+	call cursor(LineNr, len(strpart(getline(LineNr), 0, ColNr) . choice)+1)
+	return
+    elseif which =~ '^\d*\(\a\|+\| . "*" .\)$'
+	    let letter=substitute(which,'\d','','g')
+	    let g:letter = letter
+	    let which=substitute(which,'\a\|+\|' . "*",'','g')
+	    let start=stridx(b:ListOfBibKeys[which],'{')+1
+	    let choice=substitute(strpart(b:ListOfBibKeys[which], start), ',', '', '')
+	    if letter == 'a'
+		let @a=choice
+	    elseif letter == 'b'
+		let @b=choice
+	    elseif letter == 'c'
+		let @c=choice
+	    elseif letter == 'd'
+		let @d=choice
+	    elseif letter == 'e'
+		let @e=choice
+	    elseif letter == 'f'
+		let @f=choice
+	    elseif letter == 'g'
+		let @g=choice
+	    elseif letter == 'h'
+		let @h=choice
+	    elseif letter == 'i'
+		let @i=choice
+	    elseif letter == 'j'
+		let @j=choice
+	    elseif letter == 'k'
+		let @k=choice
+	    elseif letter == 'l'
+		let @l=choice
+	    elseif letter == 'm'
+		let @m=choice
+	    elseif letter == 'n'
+		let @n=choice
+	    elseif letter == 'o'
+		let @o=choice
+	    elseif letter == 'p'
+		let @p=choice
+	    elseif letter == 'q'
+		let @q=choice
+	    elseif letter == 'r'
+		let @r=choice
+	    elseif letter == 's'
+		let @s=choice
+	    elseif letter == 't'
+		let @t=choice
+	    elseif letter == 'u'
+		let @u=choice
+	    elseif letter == 'v'
+		let @v=choice
+	    elseif letter == 'w'
+		let @w=choice
+	    elseif letter == 'x'
+		let @x=choice
+	    elseif letter == 'y'
+		let @y=choice
+	    elseif letter == 'z'
+		let @z=choice
+	    elseif letter == '*'
+		let @-=choice
+	    elseif letter == '+'
+		let @+=choice
+	    elseif letter == '-'
+		let @@=choice
+	    endif
+	    echohl WarningMsg | echomsg "Choice yanekd to the register '" . letter . "'" | echohl None
     endif
 endfunction "}}}
-

@@ -1067,12 +1067,13 @@ inoremap <silent> <Plug>iATP_TeXVerbose		<Esc>:<C-U>call <SID>TeX(v:count1, 'ver
 "{{{ Bibtex
 function! <SID>SimpleBibtex()
     let bibcommand 	= "bibtex "
-    let auxfile		= b:atp_OutDir . (fnamemodify(expand("%"),":t:r")) . ".aux"
+    let auxfile		= b:atp_OutDir . (fnamemodify(b:atp_MainFile,":t:r")) . ".aux"
+    let g:auxfile	= auxfile
     if filereadable(auxfile)
 	let command	= bibcommand . shellescape(l:auxfile)
 	echo system(command)
     else
-	echomsg "No aux file in " . b:atp_OutDir
+	echomsg "aux file " . auxfile . " not readable."
     endif
 endfunction
 " command! -buffer SBibtex		:call <SID>SimpleBibtex()

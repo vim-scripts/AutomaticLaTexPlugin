@@ -4,7 +4,7 @@
 " Last Changed: 2010 July 23
 " URL:		https://launchpad.net/automatictexplugin	
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 39 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 40 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
@@ -37,7 +37,9 @@ endif
 
 	" Execute the atprc file.
 	let atp_rc		= ([findfile(".atprc.vim", $HOME)] + [findfile("ftplugin/ATP_files/atprc.vim", rtp)])[0]
-	execute 'source ' . fnameescape(atp_rc)
+	if filereadable(atp_rc)
+		execute 'source ' . fnameescape(atp_rc)
+	endif
 
 		if atp_debug
 			let g:atprc_loadtime=reltimestr(reltime(time))

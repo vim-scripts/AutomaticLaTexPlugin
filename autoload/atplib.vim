@@ -307,7 +307,7 @@ function! atplib#showlabels(labels)
 
 	" tabstop option is set to be the longest counter number + 1
 	let l:openbuffer= t:atp_labels_window_width . "vsplit +setl\\ tabstop=" . tabstop . "\\ nowrap\\ buftype=nofile\\ filetype=toc_atp\\ syntax=labels_atp __Labels__"
-	silent exe l:openbuffer
+	keepalt silent exe l:openbuffer
 	silent call atplib#setwindow()
 	let t:atp_labelsbufnr=bufnr("")
     endif
@@ -899,6 +899,10 @@ function! atplib#showresults(bibresults, flags, pattern)
 	let l:openbuffer="split " . l:openbuffer 
 	let l:skip="       "
     endif
+
+    let BufNr	= bufnr("%")
+    let LineNr	= line(".")
+    let ColNr	= col(".")
     silent exe l:openbuffer
 
 "     set the window options
@@ -1000,7 +1004,10 @@ function! atplib#showresults(bibresults, flags, pattern)
     endfor
     call matchadd("Search",a:pattern)
     " return l:listofkeys which will be available in the bib search buffer
-    " as b:listofkeys (see the BibSearch function below)
+    " as b:ListOfKeys (see the BibSearch function below)
+    let b:ListOfBibKeys = l:listofkeys
+    let b:BufNr		= BufNr
+
     return l:listofkeys
 endfunction
 "}}}
@@ -1027,6 +1034,8 @@ function! atplib#setwindow()
 	    setlocal nospell
 	    setlocal cursorline 
 	endif
+" 	nnoremap <expr> <buffer> <C-W>l	"keepalt normal l"
+" 	nnoremap <buffer> <C-W>h	"keepalt normal h"
 endfunction
 " }}}1
 " {{{1 atplib#count

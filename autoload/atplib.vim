@@ -1506,16 +1506,19 @@ function! atplib#GrepPackageList(...)
     call setloclist(0, saved_loclist)
 
     let pre		= map(loclist, 'v:val["text"]')
-    let g:pre		= deepcopy(pre)
     let pre_l		= []
     for line in pre
 	let package_l	= matchstr(line, pat.'\zs[^}]*\ze}')
 	call add(pre_l, package_l)
     endfor
+
+    " We make a string of packages separeted by commas and the split it
+    " (compatibility with \usepackage{package_1,package_2,...})
     let pre_string	= join(pre_l, ',')
     let pre_list	= split(pre_string, ',')
+    call filter(pre_list, "v:val !~ '^\s*$'")
 
-"     echo reltimestr(reltime(time))
+"      echo reltimestr(reltime(time))
     return pre_list
 endfunction
 " atplib#DocumentClass {{{1
@@ -2211,12 +2214,9 @@ function! atplib#CloseLastBracket(...)
 
    " But maybe we shouldn't check if the bracket is closed sometimes one can
    " want to close closed bracket and delete the old one.
-   "
-   " just add check if the given b:pair_123 are closed or not and take the max
-   " over not closed pairs. 
    
    let l:open_col_check_list=[]
-"    let b:open_col_check_list=l:open_col_check_list
+   let g:open_col_check_list=l:open_col_check_list
 
    "    change the position! and then: 
    "    check the flag 'r' in searchpair!!!
@@ -2238,6 +2238,16 @@ function! atplib#CloseLastBracket(...)
 	let i+=1
     endfor
     keepjumps call setpos(".",l:pos_saved)
+
+    " \lceil : \rceil, \lfloor:\rfloor paris
+    let pair_ceil	= searchpairpos('\\lceil\>', '', '\\rceil\>', 'bnW', '', l:limit_line)
+    let g:pair_ceil	= pair_ceil
+    " check if closed:
+    let check_ceil	= searchpair('\\lceil\>', '', '\\rceil\>', 'nW', '', line(".")+g:atp_completion_limits[0]) 
+    let g:check_ceil	= check_ceil
+"     if !check_ceil && pair_ceil != [ 0, 0]
+	"close ceil (if all brackets before are closed!)
+"     endif
    
     let l:open_col=max(l:open_col_check_list)
     let j=1
@@ -2748,7 +2758,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	keepjumps call setpos(".",[0,1,1,0])
 	let l:stop_line=search('\\begin\s*{document}','cnW')
 	keepjumps call setpos(".",l:pos_saved)
-	if (atplib#SearchPackage('tikz', l:stop_line) || count(b:atp_package_list, 'tikz.tex')  ) && 
+	if (atplib#SearchPackage('tikz', l:stop_line) || count(b:atp_PackageList, 'tikz.tex')  ) && 
 	    \ ( atplib#CheckOpened('\\begin\s*{\s*tikzpicture\s*}', '\\end\s*{\s*tikzpicture\s*}', line('.'),g:atp_completion_limits[2]) || 
 	    \ atplib#CheckOpened('\\tikz{','}',line("."),g:atp_completion_limits[2]) )
 	    if l:end !~ '\s*}'

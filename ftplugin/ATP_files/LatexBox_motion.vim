@@ -527,8 +527,8 @@ endfunction
 " select current paragraph {{{
 function! s:SelectCurrentParagraph(seltype) 
     if a:seltype == "inner"
-	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\)', 'ebcnW')
-	let [ eline, ecol ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|\<subsubsection\*\=\|\<paragraph\*\=\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=\|^\s*\\\@<!\\\[\|^\s*\\\@<!\$\$\)', 'nW')
+	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', 'ebcnW')
+	let [ eline, ecol ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|\<subsubsection\*\=\|\<paragraph\*\=\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=\|^\s*\\\@<!\\\[\|^\s*\\\@<!\$\$\|\\\\\*\=\)', 'nW')
 	" inner type ends and start with \[:\] if \[ is at the begining of
 	" line (possibly with white spaces) and \] is at the end of line
 	" (possibly with white spaces, aswell).
@@ -541,6 +541,8 @@ function! s:SelectCurrentParagraph(seltype)
 	let [ bline, bcol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'bcnW')
 	let [ eline, ecol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'nW')
     endif
+"     let [ g:bline, g:bcol]	= deepcopy([ bline, bcol])
+"     let [ g:eline, g:ecol]	= deepcopy([ eline, ecol])
     if getline(bline) =~ '\\par'
 	" move to the beginning of \par
 	let bmove	= ''

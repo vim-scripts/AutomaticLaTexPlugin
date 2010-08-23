@@ -101,6 +101,12 @@ function! LocalCommands(...)
     let pattern = a:0 >= 1 && a:1 != '' ? a:1 : '\\def\>\|\\newcommand\>\|\\newenvironment\|\\newtheorem\|\\definecolor'
     let bang	= a:0 >= 2 ? a:2 : '' 
 
+    " Regenerate the package list
+    if bang == "!"
+	let b:atp_PacakgeList	= atplib#GrepPackageList()
+    endif
+
+
     " Makeing lists of commands and environments found in input files
     if bang == "!" || !exists("b:TreeOfFiles")
 	 " Update the cached values:
@@ -275,7 +281,7 @@ let s:ATP_rs_debug=0	" if 1 sets debugging messages which are appended to '/tmp/
 " log file : /tmp/ATP_rs_debug
 " {{{2 s:RecursiveSearch function
 try
-function! s:RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wrap_nr, winsaveview, bufnr, strftime, vim_options, pattern, ... )
+function! <SID>RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wrap_nr, winsaveview, bufnr, strftime, vim_options, pattern, ... )
 
     let time0	= reltime()
 
@@ -792,6 +798,8 @@ function! Search(Bang, Arg)
 	return
     endif
 
+    let g:pattern = pattern
+
     if a:Bang == "!"
 	call s:RecursiveSearch(b:atp_MainFile, expand("%:p"), 'make_tree', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, pattern, flag)
     else
@@ -802,14 +810,32 @@ catch /E127: Cannot redefine function/
 endtry
 " {{{2 Commands, Maps and Completion functions for Search() function. 
 command! -buffer -bang -complete=customlist,SearchHistCompletion -nargs=* S 			:call Search(<q-bang>,<q-args>)
-if g:atp_grab_Nn
+" Debug:
+" function! RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wrap_nr, winsaveview, bufnr, strftime, vim_options, pattern, ... )
+"     let a1 =  a:0 >= 1 ? a:1 : "" 
+"     let g:main_file	=a:main_file
+"     let g:start_file	=a:start_file
+"     let g:tree		=a:tree 
+"     let g:cur_branch	=a:cur_branch
+"     let g:call_nr	=a:call_nr
+"     let g:wrap_nr	=a:wrap_nr
+"     let g:winsaveview	=a:winsaveview
+"     let g:bufnr		=a:bufnr
+"     let g:strftime	=a:strftime
+"     let g:vim_options	=a:vim_options
+"     let g:pattern	=a:pattern
+"     let g:a1		=a1
+"     call s:RecursiveSearch(a:main_file, a:start_file, a:tree, a:cur_branch, a:call_nr, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, a:vim_options, a:pattern, a1 )
+" endfunction
+nmap <buffer> <silent> <Plug>RecursiveSearchn 	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/, v:searchforward ? "" : "b")<CR>
+nmap <buffer> <silent> <Plug>RecursiveSearchN 	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/, !v:searchforward ? "" : "b")<CR>
+
+if g:atp_grabNn
 " These two maps behaves now like n (N): after forward search n (N) acts as forward (backward), after
 " backward search n acts as backward (forward, respectively).
-nmap <buffer> <silent> <Plug>RecursiveSearch_n 	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/, v:searchforward ? "" : "b")
-nmap <buffer> <silent> <Plug>RecursiveSearch_N 	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/, !v:searchforward ? "" : "b")
 
-nmap <buffer> n		<Plug>RecursiveSearch_n<CR>
-nmap <buffer> N		<Plug>RecursiveSearch_N<CR>
+nmap  n		<Plug>RecursiveSearchn
+nmap  N		<Plug>RecursiveSearchN
 endif
 " }}}2
 function! ATP_ToggleNn() " {{{2
@@ -817,16 +843,20 @@ function! ATP_ToggleNn() " {{{2
 	    silent! nunmap <buffer> n
 	    silent! nunmap <buffer> N
 	    silent! aunmenu LaTeX.Toggle\ Nn\ [on]
+	    let g:atp_grabNn	= 0
 	    nmenu 550.79 &LaTeX.Toggle\ &Nn\ [off]<Tab>:ToggleNn		:ToggleNn<CR>
 	    imenu 550.79 &LaTeX.Toggle\ &Nn\ [off]<Tab>:ToggleNn		<Esc>:ToggleNn<CR>a
 	    tmenu LaTeX.Toggle\ Nn\ [off] Do not grab n,N vim normal commands.
+	    echomsg "vim nN maps"  
 	else
-	    silent! nnoremap <buffer> <silent> n    <Plug>RecursiveSearch_n<CR>
-	    silent! nnoremap <buffer> <silent> N    <Plug>RecursiveSearch_N<CR>
-	    silent! anunmenu LaTeX.Toggle\ Nn\ [off]
+	    silent! nmap <buffer> <silent> n    <Plug>RecursiveSearchn
+	    silent! nmap <buffer> <silent> N    <Plug>RecursiveSearchN
+	    silent! aunmenu LaTeX.Toggle\ Nn\ [off]
+	    let g:atp_grabNn	= 1
 	    nmenu 550.79 &LaTeX.Toggle\ &Nn\ [on]<Tab>:ToggleNn			:ToggleNn<CR>
 	    imenu 550.79 &LaTeX.Toggle\ &Nn\ [on]<Tab>:ToggleNn			<Esc>:ToggleNn<CR>a
 	    tmenu LaTeX.Toggle\ Nn\ [on] Grab n,N vim normal commands.
+	    echomsg "atp nN maps"
 	endif
 endfunction
 command! -buffer ToggleNn	:call ATP_ToggleNn()
@@ -896,7 +926,7 @@ hi link CurrentSection		WarningMsg
 " Front End Function
 " {{{ BibSearch
 "  There are three arguments: {pattern}, [flags, [choose]]
-function! s:BibSearch(bang,...)
+function! <SID>BibSearch(bang,...)
     let pattern = a:0 >= 1 ? a:1 : ""
     let flag	= a:0 >= 2 ? a:2 : ""
     let b:atp_LastBibPattern 	= pattern

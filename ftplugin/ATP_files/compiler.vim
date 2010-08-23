@@ -25,7 +25,7 @@ compiler tex
 " {{{ ViewOutput
 " a:1 == "RevSearch" 	if run from RevSearch() function and the output file doesn't
 " exsists call compiler and RevSearch().
-function! s:ViewOutput(...)
+function! <SID>ViewOutput(...)
     let rev_search	= a:0 == 1 && a:1 == "RevSearch" ? 1 : 0
 
     call atplib#outdir()
@@ -78,12 +78,12 @@ noremap <silent> <Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
 " This function gets the pid of the running compiler
 " ToDo: review LatexBox has a better approach!
 "{{{ Get PID Functions
-function! s:getpid()
+function! <SID>getpid()
 	let s:command="ps -ef | grep -v " . $SHELL  . " | grep " . b:atp_TexCompiler . " | grep -v grep | grep " . fnameescape(expand("%")) . " | awk 'BEGIN {ORS=\" \"} {print $2}'" 
 	let s:var	= system(s:command)
 	return s:var
 endfunction
-function! s:GetPID()
+function! <SID>GetPID()
 	let s:var=s:getpid()
 	if s:var != ""
 	    echomsg b:atp_TexCompiler . " pid " . s:var 
@@ -98,7 +98,7 @@ command! -buffer PID		:call <SID>GetPID()
 " To check if xpdf is running we use 'ps' unix program.
 "{{{ s:xpdfpid
 if !exists("*s:xpdfpid")
-function! s:xpdfpid() 
+function! <SID>xpdfpid() 
     let s:checkxpdf="ps -ef | grep -v grep | grep xpdf | grep '-remote '" . shellescape(b:atp_XpdfServer) . " | awk '{print $2}'"
     return substitute(system(s:checkxpdf),'\D','','')
 endfunction
@@ -111,10 +111,16 @@ endif
 " relevant variables:
 " g:atp_compare_embedded_comments
 " g:atp_compare_double_empty_lines
-function! s:compare(file)
+" Problems:
+" This function is too slow it takes 0.35 sec on file with 2500 lines.
+	" Ideas:
+	" Maybe just compare current line!
+	" 		(search for the current line in the written
+	" 		file with vimgrep)
+function! <SID>compare(file)
     let l:buffer=getbufline(bufname("%"),"1","$")
 
-    " rewrite l:buffer to remove all commands 
+    " rewrite l:buffer to remove all comments 
     let l:buffer=filter(l:buffer, 'v:val !~ "^\s*%"')
 
     let l:i = 0
@@ -170,13 +176,38 @@ function! s:compare(file)
     endwhile
     endif
 
+"     This is the way to make it not sensitive on new line signs.
+"     let file_j		= join(l:file)
+"     let buffer_j	= join(l:buffer)
+"     return file_j !=# buffer_j
+
     return l:file !=# l:buffer
 endfunction
+" function! s:sompare(file) 
+"     return Compare(a:file)
+" endfunction
+" This is very fast (0.002 sec on file with 2500 lines) 
+" but the proble is that vimgrep greps the buffer rather than the file! 
+" so it will not indicate any differences.
+function! NewCompare()
+    let line 		= getline(".")
+    let lineNr		= line(".")
+    let saved_loclist 	= getloclist(0)
+    try
+	exe "lvimgrep /^". escape(line, '\^$') . "$/j " . expand("%:p")
+    catch /E480: No match:/ 
+    endtry
+"     call setloclist(0, saved_loclist)
+    let loclist		= getloclist(0)
+    call map(loclist, "v:val['lnum']")
+    return !(index(loclist, lineNr)+1)
+endfunction
+
 "}}}
 
 " This function copies the file a:input to a:output
 "{{{ s:copy
-function! s:copy(input,output)
+function! <SID>copy(input,output)
 	call writefile(readfile(a:input),a:output)
 endfunction
 "}}}
@@ -184,7 +215,7 @@ endfunction
 " This is the CALL BACK mechanism 
 " (with the help of David Munger - LatexBox) 
 "{{{ call back
-function! s:GetSid() "{{{
+function! <SID>GetSid() "{{{
     return matchstr(expand('<sfile>'), '\zs<SNR>\d\+_\ze.*$')
 endfunction 
 let s:compiler_SID = s:GetSid() "}}}
@@ -193,12 +224,12 @@ let s:compiler_SID = s:GetSid() "}}}
 " /used in LatexBox_complete.vim file/
 let g:atp_compiler_SID	= { fnamemodify(expand('<sfile>'),':t') : s:compiler_SID }
 
-function! s:SidWrap(func) "{{{
+function! <SID>SidWrap(func) "{{{
     return s:compiler_SID . a:func
 endfunction "}}}
 
 " CatchStatus {{{
-function! s:CatchStatus(status)
+function! <SID>CatchStatus(status)
 	let b:atp_TexStatus=a:status
 endfunction
 " }}}
@@ -211,7 +242,7 @@ endfunction
 "
 " Uses b:atp_TexStatus which is equal to the value returned by tex
 " compiler.
-function! s:CallBack(mode)
+function! <SID>CallBack(mode)
 	let b:mode	= a:mode
 
 	for cmd in keys(g:CompilerMsg_Dict) 
@@ -314,11 +345,11 @@ endfunction
 " needs reltime feature (used already in the command)
 
 	" DEBUG:
-    let g:MakeLatex_debug	= 1
+    let g:MakeLatex_debug	= 0
     	" errorfile /tmp/mk_log
 	
 
-function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, force, ...)
+function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, force, ...)
 
     if a:time == [] && has("reltime") && len(a:time) != 1 
 	let time = reltime()
@@ -513,7 +544,7 @@ function! s:MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run, f
 		\ runtex_before
 
 	if g:MakeLatex_debug
-	silent echo a:run . " logfile=" . logfile_readable . " auxfile=" . auxfile_readable . " idxfile=" . ( makeidx && idxfile_readable ) . " runtex_before=" . runtex_before 
+	silent echo a:run . " log_rea=" . logfile_readable . " aux_rea=" . auxfile_readable . " idx_rea&&mke=" . ( makeidx && idxfile_readable ) . " runtex_before=" . runtex_before 
 	silent echo a:run . " Run First " . condition
 	endif
 
@@ -683,7 +714,7 @@ endfunction
 " 		1 start viewer
 " 		2 start viewer and make reverse search
 "
-function! s:Compiler(bibtex, start, runs, verbose, command, filename)
+function! <SID>Compiler(bibtex, start, runs, verbose, command, filename)
 
     if !has('gui') && a:verbose == 'verbose' && b:atp_running > 0
 	redraw!
@@ -936,7 +967,7 @@ endfunction
 " This function calls the compilers in the background. It Needs to be a global
 " function (it is used in options.vim, there is a trick to put function into
 " a dictionary ... )
-function! s:auTeX()
+function! <SID>auTeX()
 
     " Using vcscommand plugin the diff window ends with .tex thus the autocommand
     " applies but the filetype is 'diff' thus we can switch tex processing by:
@@ -952,6 +983,7 @@ function! s:auTeX()
     " if the file (or input file is modified) compile the document 
     if filereadable(expand("%"))
 	if s:compare(readfile(expand("%")))
+" 	if NewCompare()
 	    call s:Compiler(0, 0, b:atp_auruns, mode, "AU", b:atp_MainFile)
 	    redraw
 	    return "compile" 
@@ -991,7 +1023,7 @@ augroup END
 " a:1		= one of 'default','silent', 'debug', 'verbose'
 " 		  if not specified uses 'default' mode
 " 		  (g:atp_DefaultDebugMode).
-function! s:TeX(runs, ...)
+function! <SID>TeX(runs, ...)
 let s:name=tempname()
 
     if a:0 >= 1
@@ -1033,7 +1065,7 @@ noremap <silent> <Plug>ATP_TeXVerbose		:<C-U>call <SID>TeX(v:count1, 'verbose')<
 inoremap <silent> <Plug>iATP_TeXVerbose		<Esc>:<C-U>call <SID>TeX(v:count1, 'verbose')<CR>
 "}}}
 "{{{ Bibtex
-function! s:SimpleBibtex()
+function! <SID>SimpleBibtex()
     let bibcommand 	= "bibtex "
     let auxfile		= b:atp_OutDir . (fnamemodify(expand("%"),":t:r")) . ".aux"
     if filereadable(auxfile)
@@ -1046,7 +1078,7 @@ endfunction
 " command! -buffer SBibtex		:call <SID>SimpleBibtex()
 nnoremap <silent> <Plug>SimpleBibtex	:call <SID>SimpleBibtex()<CR>
 
-function! s:Bibtex(bang,...)
+function! <SID>Bibtex(bang,...)
     if a:bang == ""
 	call <SID>SimpleBibtex()
 	return
@@ -1083,7 +1115,7 @@ nnoremap <silent> <Plug>BibtexVerbose	:call <SID>Bibtex("", "verbose")<CR>
 " {{{ s:SetErrorFormat
 " first argument is a word in flags 
 " the default is a:1=e /show only error messages/
-function! s:SetErrorFormat(...)
+function! <SID>SetErrorFormat(...)
     if a:0 > 0
 	let b:arg1=a:1
 	if a:0 > 1
@@ -1230,7 +1262,7 @@ command! -buffer -nargs=? 	SetErrorFormat 	:call <SID>SetErrorFormat(<f-args>)
 " word 'whole') + two other flags: all (include all errors) and ALL (include
 " all errors and don't ignore any line - this overrides the variables
 " g:atp_ignore_unmatched and g:atp_show_all_lines.
-function! s:ShowErrors(...)
+function! <SID>ShowErrors(...)
 
     let errorfile	= &l:errorfile
     " read the log file and merge warning lines 

@@ -90,7 +90,7 @@ function! s:SetOutDir(arg, ...)
 			\ || b:atp_OutDir == "" && g:askfortheoutdir == 1 )
 			\ && !exists("$TEXMFOUTPUT")
 		 let b:atp_OutDir=substitute(fnamemodify(resolve(expand("%:p")),":h") . "/", '\\\s', ' ', 'g')
-		  echomsg "Output Directory ".b:atp_OutDir
+" 		  echomsg "Output Directory ".b:atp_OutDir
 
 	    elseif exists("$TEXMFOUTPUT")
 		 let b:atp_OutDir=substitute($TEXMFOUTPUT, '\\\s', ' ', 'g') 

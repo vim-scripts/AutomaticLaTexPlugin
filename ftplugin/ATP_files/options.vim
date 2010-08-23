@@ -145,59 +145,22 @@ fun! SetProjectName()
 	let b:did_project_name	= 1
     endif
 
-    if !exists("s:inputfiles")
-	let s:inputfiles 	= FindInputFiles(expand("%"), 1)
-    else
-	call extend(s:inputfiles,FindInputFiles(bufname("%")))
-    endif
-
     if !exists("g:atp_project")
-	" the main file is not an input file (at this stage!)
-	if index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) == '-1' &&
-	 \ index(keys(s:inputfiles),fnamemodify(bufname("%"),":t"))   == '-1' &&
-	 \ index(keys(s:inputfiles),fnamemodify(bufname("%"),":p:r")) == '-1' &&
-	 \ index(keys(s:inputfiles),fnamemodify(bufname("%"),":p"))   == '-1' 
-	    let b:atp_MainFile=fnamemodify(expand("%"),":p")
-	    let s:pn_return="input file 0"
-	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
-	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":t")][1],":p")
-	    let s:pn_return="input file 1"
-" 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
-" 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
-" 	    endif
-	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
-	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":t:r")][1],":p")
-	    let s:pn_return="input file 2"
-" 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
-" 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
-" 	    endif
-	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":p:r")) != '-1' 
-	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":p:r")][1],":p")
-	    let s:pn_return="input file 3"
-" 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
-" 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
-" 	    endif
-	elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":p"))   != '-1' 
-	    let b:atp_MainFile=fnamemodify(s:inputfiles[fnamemodify(bufname("%"),":p")][1],":p")
-	    let s:pn_return="input file 4"
-" 	    if !exists('#CursorHold#' 	. fnamemodify(bufname("%"),":p"))
-" 		exe "au CursorHold " 	. fnamemodify(bufname("%"),":p") . " call AuTeX()"
-" 	    endif
-	endif
-	let s:pn_return 	.= " set"
+	let b:atp_MainFile	= exists("b:atp_MainFile") ? b:atp_MainFile : expand("%:p")
+	let pn_return		= " set from history or just set "
     elseif exists("g:atp_project")
 	let b:atp_MainFile	= g:atp_project
-	let s:pn_return		= " set from g:atp_project"
+	let pn_return		= " set from g:atp_project"
     endif
 
     " we need to escape white spaces in b:atp_MainFile but not in all places so
     " this is not done here
-    let b:pn_return=s:pn_return
 
-    " This needs the project name:
-    let b:atp_package_list	= atplib#GrepPackageList()
+    " Now we can run things that needs the project name: 
+    let b:atp_PackageList	= atplib#GrepPackageList()
 
-    return s:pn_return
+"     let g:pn_return = pn_return
+    return pn_return
 endfun
 command! SetProjectName	:call SetProjectName()
 " }}}
@@ -228,7 +191,17 @@ function! s:SetErrorFile()
 
     " vim doesn't like escaped spaces in file names ( cg, filereadable(),
     " writefile(), readfile() - all acepts a non-escaped white spaces)
-    let errorfile	= substitute(atplib#append(b:atp_OutDir, '/') . fnamemodify(b:atp_MainFile,":t:r") . ".log", '\\\s', ' ', 'g') 
+    if has("win16") || has("win32") || has("win64") || has("win95")
+	let errorfile	= substitute(atplib#append(b:atp_OutDir, '\') . fnamemodify(b:atp_MainFile,":t:r") . ".log", '\\\s', ' ', 'g') 
+    else
+	let errorfile	= substitute(atplib#append(b:atp_OutDir, '/') . fnamemodify(b:atp_MainFile,":t:r") . ".log", '\\\s', ' ', 'g') 
+" 	let errorfile	= findfile(fnamemodify(b:atp_MainFile, ":t:r") . ".log", b:atp_OutDir) 
+" 	if !errorfile 
+" 	    " This will not work when the out dir is not where main file is put (and
+" 	    " the log file doesn't exist)
+" 	    let errorfile	= fnamemodify(b:atp_MainFile, ":p:r") . ".log"
+" 	endif
+    endif
     let &l:errorfile	= errorfile
     return &l:errorfile
 endfunction
@@ -265,8 +238,8 @@ endif
 if !exists("g:atp_statusOutDir")
     let g:atp_statusOutDir 	= 1
 endif
-if !exists("g:atp_grab_Nn")
-    let g:atp_grab_Nn 		= 0
+if !exists("g:atp_grabNn")
+    let g:atp_grabNn 		= 0
 endif
 if !exists("g:atp_developer")
     let g:atp_developer		= 0
@@ -286,12 +259,12 @@ endif
 
 if !exists("g:CompilerMsg_Dict")
     let g:CompilerMsg_Dict	= { 
-		\ 'tex'		: 'TeX', 
+		\ 'tex'			: 'TeX', 
 		\ 'etex'		: 'eTeX', 
 		\ 'pdftex'		: 'pdfTeX', 
 		\ 'latex' 		: 'LaTeX',
 		\ 'elatex' 		: 'eLaTeX',
-		\ 'pdflatex'	: 'pdfLaTeX', 
+		\ 'pdflatex'		: 'pdfLaTeX', 
 		\ 'context'		: 'ConTeXt',
 		\ 'luatex'		: 'LuaTeX',
 		\ 'xetex'		: 'XeTeX'}
@@ -376,34 +349,34 @@ if !exists("g:atp_sizes_of_brackets")
    " \{:\}
 endif
 if !exists("g:atp_bracket_dict")
-    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']'  }
+    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']' }
 endif
 " }}}2 			variables
 if !exists("g:atp_LatexBox")
-    let g:atp_LatexBox=1
+    let g:atp_LatexBox		= 1
 endif
 if !exists("g:atp_check_if_LatexBox")
-    let g:atp_check_if_LatexBox=1
+    let g:atp_check_if_LatexBox	= 1
 endif
 if !exists("g:atp_autex_check_if_closed")
-    let g:atp_autex_check_if_closed=1
+    let g:atp_autex_check_if_closed = 1
 endif
 if !exists("g:rmcommand") && executable("perltrash")
     let g:rmcommand="perltrash"
 elseif !exists("g:rmcommand")
-    let g:rmcommand="rm"
+    let g:rmcommand		= "rm"
 endif
 if !exists("g:atp_env_maps_old")
-    let g:atp_env_maps_old=0
+    let g:atp_env_maps_old	= 0
 endif
 if !exists("g:atp_amsmath")
     let g:atp_amsmath=atplib#SearchPackage('ams')
 endif
 if !exists("g:atp_no_math_command_completion")
-    let g:atp_no_math_command_completion=0
+    let g:atp_no_math_command_completion = 0
 endif
 if !exists("g:atp_tex_extensions")
-    let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
+    let g:atp_tex_extensions	= ["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
 endif
 if !exists("g:atp_delete_output")
     let g:atp_delete_output	= 0
@@ -419,13 +392,13 @@ if !exists("g:atp_ssh")
 endif
 " opens bibsearch results in vertically split window.
 if !exists("g:vertical")
-    let g:vertical	= 1
+    let g:vertical		= 1
 endif
 if !exists("g:matchpair")
     let g:matchpair="(:),[:],{:}"
 endif
 if !exists("g:texmf")
-    let g:texmf=$HOME . "/texmf"
+    let g:texmf			= $HOME . "/texmf"
 endif
 if !exists("g:atp_compare_embedded_comments") || g:atp_compare_embedded_comments != 1
     let g:atp_compare_embedded_comments  = 0
@@ -452,10 +425,10 @@ if !exists("g:atp_completion_limits")
     let g:atp_completion_limits	= [40,60,80,120]
 endif
 if !exists("g:atp_long_environments")
-    let g:atp_long_environments=[]
+    let g:atp_long_environments	= []
 endif
 if !exists("g:atp_no_complete")
-     let g:atp_no_complete=['document']
+     let g:atp_no_complete	= ['document']
 endif
 " if !exists("g:atp_close_after_last_closed")
 "     let g:atp_close_after_last_closed=1
@@ -523,49 +496,6 @@ let s:optionsDict= { 	"atp_TexOptions" 	: "",
 " the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
 " remember what is the default used by s:SetOutDir().
 
-" We changed some variable names and we want to be nice :)
-" {{{ Be Nice :)
-let s:optionsDict_old= { "texoptions" 	: "atp_TexOptions",
-	    	\ 	"reloadonerror"	: "atp_ReloadOnError", 
-		\	"openviewer" 	: "atp_OpenViewer",
-		\ 	"autex" 	: "atp_autex", 
-		\	"Viewer" 	: "atp_Viewer",
-		\ 	"ViewerOptions"	: "atp_ViewerOptions", 
-		\	"XpdfServer" 	: "atp_XpdfServer",
-		\	"outdir" 	: "atp_OutDir",
-		\	"texcompiler" 	: "atp_TexCompiler",	
-		\ 	"auruns"	: "atp_auruns",
-		\ 	"truncate_status_section" : "atp_TruncateStatusSection",
-		\ 	"atp_local_commands"	: "atp_LocalCommands",
-		\ 	"atp_local_environments": "atp_LocalEnvironments",
-		\ 	"atp_local_colors"	: "atp_LocalColors"}
-
-function! BeNice(key) 
-    let var = get(s:optionsDict_old,a:key,"")
-    if var == ""
-	return 0
-    endif
-    if exists("b:".a:key)
-	echohl WarningMsg
-	echomsg "The variable b:".a:key." is depracated, use b:".var." instead"
-	echomsg "It will be REMOVED in future releases."
-	echomsg "Setting the value of b:".var." to b:".a:key
-	echohl Normal
-	execute "let b:".var."=b:".a:key
-	return 1
-    endif
-    return 2
-endfunction
-
-    " BeNice / the change of names of local variables/
-if !s:did_options
-    let s:be_nice_dict=getbufvar(bufname("%"),"")
-    for key in keys(s:be_nice_dict)
-	call BeNice(key)
-    endfor
-endif
-"}}}
-
 " This function sets options (values of buffer related variables) which were
 " not already set by the user.
 " {{{ s:SetOptions
@@ -580,8 +510,7 @@ function! s:SetOptions()
 	if string(get(s:optionsinuseDict,l:key, "optionnotset")) == string("optionnotset") && l:key != "atp_OutDir" && l:key != "atp_autex"
 	    call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
 	elseif l:key == "atp_OutDir"
-	    call BeNice(l:key)
-	    
+
 	    " set b:atp_OutDir and the value of errorfile option
 	    if !exists("b:atp_OutDir")
 		call s:SetOutDir(1)
@@ -1252,7 +1181,7 @@ endif
 
 	" ToDo: add more amsmath commands.
 	let g:atp_amsmath_commands=[ "\\boxed", "\\intertext", "\\multiligngap", "\\shoveleft", "\\shoveright", "\\notag", "\\tag", 
-		    \ "\\raistag{", "\\displaybreak", "\\allowdisplaybreaks", "\\numberwithin{",
+		    \ "\\notag", "\\raistag{", "\\displaybreak", "\\allowdisplaybreaks", "\\numberwithin{",
 		    \ "\\hdotsfor{" , "\\mspace{",
 		    \ "\\negthinspace", "\\negmedspace", "\\negthickspace", "\\thinspace", "\\medspace", "\\thickspace",
 		    \ "\\leftroot{", "\\uproot{", "\\overset{", "\\underset{", "\\sideset{", 
@@ -1262,7 +1191,7 @@ endif
 		    \ "\\dim", "\\exp", "\\gcd", "\\hom", "\\inf", "\\injlim", "\\ker", "\\lg", "\\lim", "\\liminf", "\\limsup",
 		    \ "\\log", "\\min", "\\max", "\\Pr", "\\projlim", "\\sec", "\\sin", "\\sinh", "\\sup", "\\tan", "\\tanh",
 		    \ "\\varlimsup", "\\varliminf", "\\varinjlim", "\\varprojlim", "\\mod", "\\bmod", "\\pmod", "\\pod", "\\sideset",
-		    \ "\\iint", "\\iiint", "\\iiiint", "\\idotsint",
+		    \ "\\iint", "\\iiint", "\\iiiint", "\\idotsint", "\\tag",
 		    \ "\\varGamma", "\\varDelta", "\\varTheta", "\\varLambda", "\\varXi", "\\varPi", "\\varSigma", 
 		    \ "\\varUpsilon", "\\varPhi", "\\varPsi", "\\varOmega" ]
 	
@@ -1650,5 +1579,4 @@ function! DebugComp(A,L,P)
     return modes
 endfunction
 "}}}1
-
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

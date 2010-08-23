@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 August 19
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 August 23
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -79,6 +79,119 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 
 ================================================================================
 NEWS							*atp-news*
+>
+	Changes in version 7.4
+
+	:TexAlign
+	map \a 
+<	This is a wraper around Align command (AutoAlign vim plugin:
+	http://www.vim.org/scripts/script.php?script_id=884). This command
+	sets correct align options for LaTeX environments: equation, align,
+	alignat, flalign, displaymath and tabular. Equation, align, alignat,
+	flalign and displaymath are checked using syntax, tabular environment
+	is checked using searchpair() function, the g:atp_completion_limits[2]
+	applies.
+
+>
+	:TeXdoc -> :TexDoc
+<	still under <F1>.
+
+>
+	:NSSec, :NSec, :NChap, :NPart
+	:PSSec, :PSec, :PChap, :PPart
+<	Are using now the atp search function |atp-:S|. This only takes
+	a difference in project files.
+
+ 	vmaps has changed: >
+	is -> iS
+	as -> aS
+<	This is because there are vim commands is and as (inner/outer
+	sentence). iS/aS = inner/outer syntax area.
+	
+< 	History feature reviewed:
+>
+	HISTORY FILE
+<	The directory ftplugin/ATP_files/history under your 'runtimepath'
+	stores fiels with values of local variables saved before vim leaved
+	a buffer (it is versy simlar to |View|. Local and global variables are
+	supported. The local variables
+	which are cached in this way are listed in >
+		let g:atp_cached_local_variables = [
+		\ 'atp_MainFile', 		'atp_History',
+		\ 'atp_LocalCommands', 		'atp_LocalColors',
+		\ 'atp_LocalEnvironments', 	'TreeOfFiles', 
+		\ 'ListOfFiles', 		'TypeDict', 
+		\ 'LevelDict']
+<	The each file will have seprate history file which stores the values
+	of these variables.
+
+	There is also common history file, which stores values of global
+	variables (by default it is ftplugin/ATP_files/history/common_var.vim
+	The global variables that are written in this file are given in vim
+	list: >
+	    let g:atp_cached_common_variables = [
+	    \ 'atp_texpackages', 	'atp_texclasses' ]
+<
+
+	If you want to disable this feature for some reason you can set >
+		let g:atp_History = 0
+<	or >
+		let b:atp_History = 0
+<	If you want to disable this feature only for a given buffer. 
+	(The value of local variable overrides the value of global one!). 
+
+	In your .vimrc file (it will not work when put in atprc file).
+	There are these commands: >
+		:LoadHistory[!]
+		:WriteHistory[!]
+		:DeleteHistory[!] [local/common]
+		:History[!] [on/off]
+<	which do the obvious thing (unless g:atp_History=0 or b:atp_History=0). 
+	:DeleteHistory [local] command (with optinal argument [local]) deletes
+	the history file for the current buffer (only the local one), with
+	bang "!" it deletes also common history file. The bang of WriteHistory
+	forces to write to history file even when history is turend off
+	(g:atp_History=0 or b:atp_History=0).
+
+	The command ':History on/off' turns on/off History feature for this
+	buffer (sets b:atp_History). With bang it also sets the global
+	variable. b:atp_History is by default in the >
+	    g:atp_cached_local_variables 
+<	so it will be restored afterwards. b:atp_History if defined overrides
+	the value of global variable g:atp_History. So you can set in your atp
+	file g:atp_History = 0 and for some files using the if-construction: >
+		let g:atp_History = 0
+		if expand("%:t") == "myfile.tex"
+		    let b:atp_History = 1
+		endif
+<	will turn on the History feature only for myfile.tex. Something more
+	elaborate would be to set b:atp_History only for files with
+	modification time less than two days for example.
+
+	Note: If you delete the history file for the current buffer it will be
+	written after exiting vim, unless you turn off the hisory feature.
+
+	The history is disabled for files which fullpath matches 'texmf',
+	which should not be statically related to any file. The optional bang
+	loads history also for them. :WriteHistory command will write
+	the history disregarding if the file is under texmf directory or not.
+
+	Note: If you use this feature, you might need to use some times the
+	commads: |atp-:LocalCommands| and |atp-:InputFiles| which will update
+	b:atp_LocalCommands, b:atp_LocalColors, b:atp_LocalEnvironments and 
+	b:TreeOfFiles, b:ListOfFiles, b:TypeDict and b:LevelDict. Then use
+	these commands with a bang "!" (:LocalCommands!, :InputFiles!). The
+	second set of variables is also updated by |atp-:S| (also with "!"a
+	and GotoFile.
+
+	Note: Also when you add a package to tex you should remove the common
+	history file, so that the new packages will be added to complation
+	list. 
+
+	The history directory is configurable via the variable: >
+		let g:atp_history_dir
+<	The default value is 'ftplugin/ATP_files/history'.
+
 >
 	Changes in version 7.3.7
 <	Numerous Fixes +
@@ -187,78 +300,6 @@ NEWS							*atp-news*
     :DebugMode						*atp-:DebugMode*
     	Command which help to set b:atp_DebugMode variable (with completion)
 >
-	HISTORY FILE
-<	The file ftplugin/ATP_files/atp_history.vim under your 'runtimepath'
-	stores values of local variables saved before vim leaved a buffer. 
-	Only local buffer variables are supported. The variables which are
-	cached in this way are listed in >
-	    let g:atp_cached_local_variables = 
-	    \ [ 'atp_MainFile', 'atp_History'
-	    \ 'atp_LocalCommands', 'atp_LocalColors', 'atp_LocalEnvironments', 
-	    \ 'TreeOfFiles', 'ListOfFiles', 'TypeDict', 'LevelDict' ]
-<	If you want to disable this feature for some reason you can set >
-		let g:atp_nohistory = 1
-<	in your .vimrc file (it will not work when put in atprc file).
-	There are three commands: >
-		:LoadHistory[!]
-		:UpdateHistory[!]
-		:WriteHistory[!]
-		:DeleteHistory[!] [file_name]
-		:History[!] [on/off]
-<	which do the obvious thing (unless g:atp_History=0 or b:atp_History=0). 
-	DeleteHistory command deletes all entries of history variables for the
-	file (default is current file), with bang "!" it deletes the whole
-	history file. The bang of WriteHistory forces to write to history file
-	even when history is turend off (g:atp_History=0 or b:atp_History=0)
-	There is completion for file names present in the history database.
-	It matches the file name (not the full path), use |c_CTRL-D| to list
-	the matching files.
-
-	The command UpdateHistory only updates the history variables and
-	WriteHistory only writes them to file. They ara both run via
-	autocommands: first when |BufLeave| and the second |VimLeave|.
-
-	The command ':History on/off' turns on/off History feature for this
-	buffer (sets b:atp_History). With bang it also sets the global
-	variable. b:atp_History is by default in the >
-	    g:atp_cached_local_variables 
-<	so it will be restored afterwards. b:atp_History if defined overrides
-	the value of global variable g:atp_History. So you can set in your atp
-	file g:atp_History = 0 and for some files using if set the
-	b:atp_History, for example: >
-		let g:atp_History = 0
-		if expand("%") == "myfile.tex"
-		    let b:atp_History = 1
-		endif
-<	will turn on the History feature only for myfile.tex. Something more
-	elaborete would be to set b:atp_History only for files with
-	modification time less than two days for example.
-
-	Note: If you delete the history file for the current buffer it will be
-	written after exiting vim.
-
-	If the loading time of the history is greater than 0.01s or there are
-	more than 25 files, you will get a message that the history become
-	big. (The loading time is in g:atp_histtime and the length is in
-	g:atp_histlen variable). 
-
-	The history is disabled for files which fullpath matches 'texmf',
-	which should not be statically related to any file. The optional bang
-	loads/updates history also for them. :WriteHistory command will write
-	the history disregarding if the file is under texmf directory or not.
-
-	Note: If you use this feature, you might need to use some times the
-	commads: |atp-:LocalCommands| and |atp-:InputFiles| which will update
-	b:atp_LocalCommands, b:atp_LocalColors, b:atp_LocalEnvironments and 
-	b:TreeOfFiles, b:ListOfFiles, b:TypeDict and b:LevelDict. Then use
-	these commands with a bang "!" (:LocalCommands!, :InputFiles!). The
-	second set of variables is also updated by |atp-:S| (also with "!"a
-	and GotoFile.
-
-	The history file is 'filetype/ATP_files/atp_history.vim' under your
-	|'runtimepath'|.
-
->
 	New Features in version 7.3.1 (some changes after version 7.3)
 <	
 	Some things works faster in this version: generating the lables and
@@ -288,7 +329,7 @@ NEWS							*atp-news*
 			command with the entry).
 >								*atp-:S*
 	:S[!] /{pattern}/ [flags]
-			Changes after versionn 7.3: The E and S flags are
+			Changes after version 7.3: The E and S flags are
 			removed. The pattern is a vim pattern (with
 			'magic'). With bang ! it regenerates the tree
 			of input files.
@@ -345,7 +386,8 @@ NEWS							*atp-news*
 			                ----X	 			      
 <			':S /\\input/ b' in the X position fill find
 			\input{file.1.1} assuming file.1.1.tex doesn't inputs
-			any other file. >
+			any other file. 
+								*atp-:ToggleNn*  >
 	:ToggleNn		
 <			Switches on/off them nmaps n,N to the recursive
 			search. If these maps are defined n and N use
@@ -1011,32 +1053,52 @@ map \L
 	Different from \t map \L regenerates the database (this is quite
 	fast).
 
-						*atp-move-:NEnv*
+							*atp-:NEnv*
 :NEnv {environment}
 	Move to next environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
 
-						*atp-move-:PEnv*
+							*atp-:PEnv*
 :PEnv {environment}
 	Move to previous environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
 
 
-						*atp-move-:NextSection*
-:NPart, :NChap, NSec, 
+							*atp-:NextSection*
+							*atp-:NSSec*
+							*atp-:NSec*
+							*atp-:NChap*
+							*atp-:NPart*
+:NPart, :NChap, :NSec, :NSSec [title_pattern] [search_tool] [mode]
 map <LocalLeaader>np, map <LocalLeader>ns, map <LocalLeader>ns
 	Goes to next <section>, the commands need not to be explained.
 	Note: the maps work in visual mode and operator pending mode ('d\ns'
 	will delete till the end of the section). You can use 'n' and 'N' vim
 	in normal or visual mode to go further. 
 
-						*atp-move-:PrevSection*
-:PPart, :PChap, PSec, 
+	[title_pattern] is the pattern which will match for the pattern, it
+	should start with '.*' when you want to match somewhere in a midle of
+	the title. 
+	
+	[search_tool] is one of atp/vim, with 'atp' (the defualt) uses the
+	|atp-:S| command, when 'vim' is uses the vim |search()| function.
+
+	[mode] one of n/v/V : n - normal mode (default), v - the visual mode,
+	V- visual line wise mode. Visual modes are used in vmaps. In visual
+	mode it selects from the cursor position (or line) till next section.
+
+
+							*atp-:PrevSection*
+							*atp-:PSSec*
+							*atp-:PSec*
+							*atp-:PChap*
+							*atp-:PPart*
+:PPart, :PChap, PSec, PSSec [title_pattern] [search_tool] [mode]
 map <LocalLeader>pp, map <LocalLeader>pc, map <LocalLeader>ps
 	Goes to previous <section>.
-	Note: as above. Use 'N' to go backward.
+	For descirption of arguments read |atp-:NextSection| just above.
 
 ToDo({keyword}, {stop}, [bufname])		*atp-function-ToDo*
 :ToDo [bufname]					*atp-:ToDo*
@@ -1602,8 +1664,12 @@ Completion modes are:
 		to completions for them define "let g:atp_local_completion=0",
 		if g:atp_local_completion=2" then the search for local
 		definitions and commands will be done on startup. If you
-		added a command or an environment the function
-		"LocalCommands()" will update the list of local definitions.
+		added a command or an environment the command
+		:LocalCommands! will update the list of local definitions, but
+		also the list of packages used by your latex source file
+		( completion lists are only used by Tab Completion function if
+		the package was given, thus it is necessary to run this
+		command if the preambule has changed)
 		The output is stored in two variables: >
 				b:atp_local_commands
 				b:atp_local_environments
@@ -1614,7 +1680,7 @@ Completion modes are:
 				g:atp_local_environments
 <
 		which if defined are used instead of b:atp_local_commands and
-		b:atp_local_environments (use the function LocalCommands()
+		b:atp_local_environments (use the command :LocalCommands
 		to generate the list and then use the command: 
 		    :let @a= b:atp_local_commands 
 		i.e. copy the variable to register a and paste it in your Vimrc file.)
@@ -1833,6 +1899,7 @@ Completion modes are:
 These are all variables which can help to customise the completion:
 (if the value is given it is the default, if it is not means it is too long to
 put it here).
+							*atp-g:atp_completion_limits*
 >
  	g:atp_completion_limits		= [ '40', '60', '80', '100' ]
 <
@@ -1848,6 +1915,7 @@ put it here).
 				g:atp_completion_limits, then the search
 				forward/backward will last till first/last
 				line. However, this makes it run slower.
+							*atp-g:atp_long_environments*
 >
  	g:atp_long_environments 	= []
 <	
@@ -1873,9 +1941,10 @@ put it here).
 				\ 'documentclass' ] 	
 <				
 				This is the list of completion modes.
-
-g:atp_completion_active_modes	= g:atp_completion_modes
-				This is the list of completion modes which are
+							*atp-g:atp_completion_active_modes*
+>
+ g:atp_completion_active_modes	= g:atp_completion_modes
+<				This is the list of completion modes which are
 				active, by default all modes are active. Remove
 				a value from this list to make it inactive (You can
 				use remove() command, see ':h remove()').  
@@ -1906,17 +1975,9 @@ g:atp_completion_active_modes	= g:atp_completion_modes
 				4 characters (not counting the leading '\' if
 				present). If 0 then complete all the defined
 				commands. This only works in the expert mode.
-								*atp-g:atp_check_if_opened*
+								*atp-g:atp_MathOpened*
 >
-     	g:atp_check_if_opened	= 1     
-<
-				     (this checks if your are in some environments,
-				     for example inside \begin{tikzpicture} or
-					 \tikz{}, if 1 then the tikz commands will be
-					 available only inside this environments)
-								*atp-g:atp_math_opened*
->
-     	g:atp_math_opened		
+     	g:atp_MathOpened		
 <
 				(the default is 1 if in your tex file there was no
 				$ or $$ excluding \$, thus it will be one in any newly
@@ -2154,7 +2215,7 @@ let b:atp_MainFile	= expand("%:p")
 	of ATP behaves in a different way in plaintex files. For example
 	TreeOfFiels function (it makes a tree of files. It is recursive in
 	LaTeX files but not in plain TeX files) on which is based the
-	command LocalCommands which makes list of commands, environments and
+	command :LocalCommands which makes list of commands, environments and
 	colors for Tab Completion.
 
 let b:atp_auruns	= 1				*atp-b:atp_auruns*

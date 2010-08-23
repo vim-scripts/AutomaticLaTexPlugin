@@ -215,6 +215,83 @@ command! -buffer -nargs=? -range InteligentWrapSelection	:call <SID>InteligentWr
 vmap <Plug>InteligentWrapSelection				:<C-U>call <SID>InteligentWrapSelection('')<CR>i
 "}}}
 
+" Inteligent Aling
+" TexAlign {{{1
+" This needs Aling vim plugin.
+function! TexAlign()
+    let synstack = map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
+    if count(synstack, 'texMathZoneA') || count(synstack, 'texMathZoneAS')
+	let bpat = '\\begin\s*{\s*align\*\=\s*}' 
+	let epat = '\\end\s*{\s*align\*\=\s*}' 
+	let AlignCtr = 'Il+ &'
+	let g:debug = "align"
+    elseif count(synstack, 'texMathZoneB') || count(synstack, 'texMathZoneBS')
+	let bpat = '\\begin\s*{\s*alignat\*\=\s*}' 
+	let epat = '\\end\s*{\s*alignat\*\=\s*}' 
+	let AlignCtr = 'Il+ &'
+	let g:debug = "alignat"
+    elseif count(synstack, 'texMathZoneD') || count(synstack, 'texMathZoneDS')
+	let bpat = '\\begin\s*{\s*eqnarray\*\=\s*}' 
+	let epat = '\\end\s*{\s*eqnarray\*\=\s*}' 
+	let AlignCtr = 'Il+ &'
+	let g:debug = "eqnarray"
+    elseif count(synstack, 'texMathZoneE') || count(synstack, 'texMathZoneES')
+	let bpat = '\\begin\s*{\s*equation\*\=\s*}' 
+	let epat = '\\end\s*{\s*equation\*\=\s*}' 
+	let AlignCtr = 'Il+ =+-'
+	let g:debug = "equation"
+    elseif count(synstack, 'texMathZoneF') || count(synstack, 'texMathZoneFS')
+	let bpat = '\\begin\s*{\s*flalign\*\=\s*}' 
+	let epat = '\\end\s*{\s*flalign\*\=\s*}' 
+	let AlignCtr = 'jl+ &'
+	let g:debug = "falign"
+"     elseif count(synstack, 'texMathZoneG') || count(synstack, 'texMathZoneGS')
+"     gather doesn't need alignment (by design it give unaligned equation.
+" 	let bpat = '\\begin\s*{\s*gather\*\=\s*}' 
+" 	let epat = '\\end\s*{\s*gather\*\=\s*}' 
+" 	let AlignCtr = 'Il+ &'
+" 	let g:debug = "gather"
+    elseif count(synstack, 'displaymath')
+	let bpat = '\\begin\s*{\s*displaymath\*\=\s*}' 
+	let epat = '\\end\s*{\s*displaymath\*\=\s*}' 
+	let AlignCtr = 'Il+ =+-'
+	let g:debug = "displaymath"
+    elseif searchpair('\\begin\s*{\s*tabular\s*\}', '', '\\end\s*{\s*tabular\s*}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
+	let bpat = '\\begin\s*{\s*tabular\*\=\s*}' 
+	let epat = '\\end\s*{\s*tabular\*\=\s*}' 
+	let AlignCtr = 'jl+ &'
+	let g:debug = "tabular"
+    else
+	return
+    endif
+
+    " Check if we are inside array environment
+    let align = searchpair('\\begin\s*{\s*array\s*}', '', '\\end\s*{\s*array\s*}', 'bnW')
+    if align
+" 	let bpat = '\\begin\s*{\s*array\s*}'
+	let bline = align + 1
+	let epat = '\\end\s*{\s*array\s*}'
+	let AlignCtr = 'Il+ &'
+    endif
+
+    let g:AlignCtr = AlignCtr
+
+    if !exists("bline")
+	let bline = search(bpat, 'cnb') + 1
+    endif
+    let eline = search(epat, 'cn')  - 1
+
+	let g:bline = bline
+	let g:eline = eline
+
+    if bline <= eline
+	execute bline . ',' . eline . 'Align ' . AlignCtr
+    endif
+endfunction
+
+command! TexAlign	:call TexAlign()
+"}}}1
+
 " Insert() function, which is used to insert text depending on mode: text/math. 
 " {{{ Insert()
 " Should be called via an imap:
@@ -509,9 +586,9 @@ nnoremap <silent> <Plug>ToggleEnvBackward		:call <SID>ToggleEnvironment(-1)<CR>
 "}}}
 
 
-"{{{ Help 
+"{{{ TexDoc 
 " This is non interactive !
-function! s:TeXdoc(...)
+function! s:TexDoc(...)
     let texdoc_arg	= ""
     for i in range(1,a:0)
 	let texdoc_arg.=" " . a:{i}
@@ -543,8 +620,8 @@ function! s:TeXdoc_complete(ArgLead, CmdLine, CursorPos)
 
     return filter(copy(aliases), "v:val =~ '^' . a:ArgLead")
 endfunction
-command! -buffer -nargs=* -complete=customlist,<SID>TeXdoc_complete TeXdoc 	:call <SID>TeXdoc(<f-args>)
-nnoremap <silent> <buffer> <Plug>TeXdoc						:TeXdoc 
+command! -buffer -nargs=* -complete=customlist,<SID>TeXdoc_complete TexDoc 	:call <SID>TexDoc(<f-args>)
+nnoremap <silent> <buffer> <Plug>TexDoc						:TexDoc 
 "}}}
 
 " This function deletes tex specific output files (exept the pdf/dvi file, unless

@@ -113,6 +113,8 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     " for compatibility:
     execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."\\}	:WrapSelection '\\left\\{', '\\right\\}', 'end'<CR>"
 
+    " Tex Align:
+    nmap <Localleader>a	:TexAlign<CR>
     " Paragraph Selecting:
     vmap <silent> <buffer> ip 	<Plug>ATP_SelectCurrentParagraphInner
     vmap <silent> <buffer> ap 	<Plug>ATP_SelectCurrentParagraphOuter
@@ -135,8 +137,8 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     nmap <buffer> 6g>		m`vip6>``
     nmap <buffer> 6g<		m`vip6<``
 
-    vmap <buffer> <silent> as		<Plug>SelectOuterSyntax
-    vmap <buffer> <silent> is		<Plug>SelectInnerSyntax
+    vmap <buffer> <silent> aS		<Plug>SelectOuterSyntax
+    vmap <buffer> <silent> iS		<Plug>SelectInnerSyntax
 
     nmap <buffer> <LocalLeader>E		<Plug>Echo
     " Normal mode maps (mostly)
@@ -181,8 +183,8 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     nnoremap  <buffer> <F6>f 			:ShowErrors f<CR>
     inoremap  <buffer> <F6>f 			:ShowErrors f<CR>
     nnoremap  <buffer> <F6>g 			<Plug>PdfFonts
-    nnoremap  <buffer> <F1>			:TeXdoc<space>
-    inoremap  <buffer> <F1> <esc> 		:TeXdoc<space>
+    nnoremap  <buffer> <F1>			:TexDoc<space>
+    inoremap  <buffer> <F1> <esc> 		:TexDoc<space>
 "     nmap  <buffer> <LocalLeader>pr 		<Plug>SshPrint
 
     " FONT MAPPINGS

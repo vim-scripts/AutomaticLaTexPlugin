@@ -217,16 +217,17 @@ menu 550.78 LaTe&X.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+ 		:<C-U>Togg
 cmenu 550.78 LaTe&X.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+ 		<C-U>ToggleSpace<CR>
 imenu 550.78 LaTe&X.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+ 		<Esc>:ToggleSpace<CR>a
 tmenu LaTe&X.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
-if maparg('n', 'n') != ""
+" ToggleNn menu is made by s:LoadHistory
+if g:atp_mapNn
     menu 550.79 LaTe&X.Toggle\ &Nn\ [on]<Tab>:ToggleNn				:<C-U>ToggleNn<CR>
     cmenu 550.79 LaTe&X.Toggle\ &Nn\ [on]<Tab>:ToggleNn				<C-U>ToggleNn<CR>
     imenu 550.79 LaTe&X.Toggle\ &Nn\ [on]<Tab>:ToggleNn				<Esc>:ToggleNn<CR>a
-"     tmenu LaTeX.Toggle\ Nn\ [on] Grab n,N vim normal commands.
+    tmenu LaTeX.Toggle\ Nn\ [on] n,N vim normal commands.
 else
     menu 550.79 LaTe&X.Toggle\ &Nn\ [off]<Tab>:ToggleNn				:<C-U>ToggleNn<CR>
     cmenu 550.79 LaTe&X.Toggle\ &Nn\ [off]<Tab>:ToggleNn				<C-U>ToggleNn<CR>
     imenu 550.79 LaTe&X.Toggle\ &Nn\ [off]<Tab>:ToggleNn			<Esc>:ToggleNn<CR>a
-"     tmenu LaTeX.Toggle\ Nn\ [off] Do not grab n,N vim normal commands.
+    tmenu LaTeX.Toggle\ Nn\ [off] atp maps to n,N.
 endif
 if g:atp_MathOpened
     menu 550.80 LaTe&X.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_MathOpened   :<C-U>ToggleCheckMathOpened<CR>

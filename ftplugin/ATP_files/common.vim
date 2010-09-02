@@ -144,7 +144,6 @@ else
 endif
 
 " TreeOfFiles({main_file}, [{pattern}, {flat}, {run_nr}])
-let g:ToF_debug = 0
 " debug file - /tmp/tof_log
 function! TreeOfFiles(main_file,...)
 " let time	= reltime()
@@ -168,7 +167,7 @@ function! TreeOfFiles(main_file,...)
     endif
     let run_nr		= a:0 >= 3	? a:3 : 1 
 
-	if g:ToF_debug
+	if g:atp_debugToF
 	    if run_nr == 1
 		redir! > /tmp/tof_log
 	    else
@@ -176,7 +175,7 @@ function! TreeOfFiles(main_file,...)
 	    endif
 	endif
 
-	if g:ToF_debug
+	if g:atp_debugToF
 	    silent echo run_nr . ") |".a:main_file."| expand=".expand("%:p") 
 	endif
 
@@ -205,7 +204,7 @@ function! TreeOfFiles(main_file,...)
     call setloclist(0, saved_llist)
     let lines	= map(loclist, "[ v:val['text'], v:val['lnum'], v:val['col'] ]")
 
-    	if g:ToF_debug
+    	if g:atp_debugToF
 	    silent echo run_nr . ") Lines: " .string(lines)
 	endif
 
@@ -214,7 +213,7 @@ function! TreeOfFiles(main_file,...)
 	    let [ line, lnum, cnum ] = entry
 	    " input name (iname) as appeared in the source file
 	    let iname	= substitute(matchstr(line, pattern . '\zs\f*\ze'), '\s*$', '', '') 
-	    if g:ToF_debug
+	    if g:atp_debugToF
 		silent echo run_nr . ") iname=".iname
 	    endif
 	    if line =~ '{\s*' . iname
@@ -222,7 +221,7 @@ function! TreeOfFiles(main_file,...)
 	    endif
 
 	    let iext	= fnamemodify(iname, ":e")
-	    if g:ToF_debug
+	    if g:atp_debugToF
 		silent echo run_nr . ") iext=" . iext
 	    endif
 
@@ -233,7 +232,7 @@ function! TreeOfFiles(main_file,...)
 		" and the filetype of main file is not tex (it can be empty when the
 		" buffer is not loaded) then match the full path of the file: if
 		" matches then doesn't go below this file. 
-		if g:ToF_debug
+		if g:atp_debugToF
 		    silent echo run_nr . ") CONTINUE"
 		endif
 		continue
@@ -248,7 +247,7 @@ function! TreeOfFiles(main_file,...)
 		let type	= "input"
 	    endif
 
-	    if g:ToF_debug
+	    if g:atp_debugToF
 		silent echo run_nr . ") type=" . type
 	    endif
 
@@ -259,7 +258,7 @@ function! TreeOfFiles(main_file,...)
 		let inames		= map(split(iname, ','), "atplib#append_ext(v:val, '.bib')")
 	    endif
 
-	    if g:ToF_debug
+	    if g:atp_debugToF
 		silent echo run_nr . ") inames " . string(inames)
 	    endif
 
@@ -280,7 +279,7 @@ function! TreeOfFiles(main_file,...)
 	    endfor
     endfor
 
-	    if g:ToF_debug
+	    if g:atp_debugToF
 		silent echo run_nr . ") list=".string(list)
 	    endif
 
@@ -290,7 +289,7 @@ function! TreeOfFiles(main_file,...)
 	if type_dict[ifile] == "input" && flat <= 0 || ( type_dict[ifile] == "preambule" && flat <= -1 )
 	     let [ ntree, nlist, ntype_dict, nlevel_dict ] = TreeOfFiles(ifile, pattern, flat, run_nr+1)
 
-" 		    if g:ToF_debug
+" 		    if g:atp_debugToF
 " 			silent echo run_nr . ") nlist=".string(nlist)
 " 		    endif
 
@@ -313,6 +312,13 @@ function! TreeOfFiles(main_file,...)
 "     endif
     let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ] = deepcopy([ tree, list, type_dict, level_dict])
     redir END
+    if g:atp_debugTOF && run_nr == 1
+	redir! >> /tmp/ATP_log 
+	silent! echo "========TreeOfFiles========================"
+	silent! echo "TreeOfFiles b:ListOfFiles=" . string(b:ListOfFiles)
+	redir END
+    endif
+
     return [ tree, list, type_dict, level_dict ]
 
 endfunction

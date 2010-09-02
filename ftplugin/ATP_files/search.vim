@@ -830,36 +830,38 @@ command! -buffer -bang -complete=customlist,SearchHistCompletion -nargs=* S 			:
 nmap <buffer> <silent> <Plug>RecursiveSearchn 	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/, v:searchforward ? "" : "b")<CR>
 nmap <buffer> <silent> <Plug>RecursiveSearchN 	:call <SID>RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, @/, !v:searchforward ? "" : "b")<CR>
 
-if g:atp_grabNn
+if g:atp_mapNn
 " These two maps behaves now like n (N): after forward search n (N) acts as forward (backward), after
 " backward search n acts as backward (forward, respectively).
 
-nmap  n		<Plug>RecursiveSearchn
-nmap  N		<Plug>RecursiveSearchN
+    nmap  n		<Plug>RecursiveSearchn
+    nmap  N		<Plug>RecursiveSearchN
+
+    " Note: the final step if the mapps n and N are made is in s:LoadHistory 
 endif
 " }}}2
 function! ATP_ToggleNn() " {{{2
-	if maparg('n', 'n') != ""
+	if g:atp_mapNn
 	    silent! nunmap <buffer> n
 	    silent! nunmap <buffer> N
 	    silent! aunmenu LaTeX.Toggle\ Nn\ [on]
-	    let g:atp_grabNn	= 0
+	    let g:atp_mapNn	= 0
 	    nmenu 550.79 &LaTeX.Toggle\ &Nn\ [off]<Tab>:ToggleNn		:ToggleNn<CR>
 	    imenu 550.79 &LaTeX.Toggle\ &Nn\ [off]<Tab>:ToggleNn		<Esc>:ToggleNn<CR>a
-	    tmenu LaTeX.Toggle\ Nn\ [off] Do not grab n,N vim normal commands.
+	    tmenu LaTeX.Toggle\ Nn\ [off] atp maps to n,N.
 	    echomsg "vim nN maps"  
 	else
 	    silent! nmap <buffer> <silent> n    <Plug>RecursiveSearchn
 	    silent! nmap <buffer> <silent> N    <Plug>RecursiveSearchN
 	    silent! aunmenu LaTeX.Toggle\ Nn\ [off]
-	    let g:atp_grabNn	= 1
+	    let g:atp_mapNn	= 1
 	    nmenu 550.79 &LaTeX.Toggle\ &Nn\ [on]<Tab>:ToggleNn			:ToggleNn<CR>
 	    imenu 550.79 &LaTeX.Toggle\ &Nn\ [on]<Tab>:ToggleNn			<Esc>:ToggleNn<CR>a
-	    tmenu LaTeX.Toggle\ Nn\ [on] Grab n,N vim normal commands.
+	    tmenu LaTeX.Toggle\ Nn\ [on] n,N vim normal commands.
 	    echomsg "atp nN maps"
 	endif
 endfunction
-command! -buffer ToggleNn	:call ATP_ToggleNn()
+command! -buffer ToggleNn		:call ATP_ToggleNn()
 
 function! SearchHistCompletion(ArgLead, CmdLine, CursorPos)
     let search_history=[]
@@ -930,8 +932,22 @@ function! BibSearch(bang,...)
     let pattern = a:0 >= 1 ? a:1 : ""
     let flag	= a:0 >= 2 ? a:2 : ""
     let b:atp_LastBibPattern 	= pattern
-    let b:atp_LastBibFlags	= flag
+    "     This cannot be set here.  It is set later by atplib#showresults function.
+    "     let b:atp_LastBibFlags	= flag
     let @/			= pattern
+
+    if g:atp_debugBS
+	redir! >> /tmp/ATP_log 
+	silent! echo "==========BibSearch=========================="
+	silent! echo "b:BibSearch_pattern=" . pattern
+	silent! echo "b:BibSearch bang="    . a:bang
+	silent! echo "b:BibSearch flag="    . flag	
+	let b:BiBSearch_pattern = pattern
+	let b:BibSearch_bang	= a:bang
+	let b:BibSearch_flag	= flag
+	redir END
+    endif
+
     call atplib#showresults( atplib#searchbib(pattern, a:bang), flag, pattern)
 endfunction
 command! -buffer -bang -nargs=* BibSearch	:call BibSearch(<q-bang>, <f-args>)

@@ -13,17 +13,24 @@ nmap <buffer> [gf				:PInput<CR>
 
 
 " Add maps, unless the user didn't want them.
-if !exists("no_plugin_maps") && !exists("no_atp_maps")
+if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_maps == 0 ) && 
+	    \ ( !exists("g:no_atp_maps") || exists("g:no_plugin_maps") && g:no_atp_maps == 0 ) 
 
     " ToDo to doc. + vmaps!
-    map <buffer> <LocalLeader>ns 	<Plug>GoToNextSection
-    map <buffer> <LocalLeader>ps 	<Plug>GoToPreviousSection
-    map <buffer> <LocalLeader>nc 	<Plug>GoToNextChapter
-    map <buffer> <LocalLeader>pc 	<Plug>GoToPreviousChapter
-    map <buffer> <LocalLeader>np 	<Plug>GoToNextPart
-    map <buffer> <LocalLeader>pp 	<Plug>GoToPreviousPart
-    map <buffer> <LocalLeader>ne	<Plug>GoToNextEnvironment
-    map <buffer> <LocalLeader>pe	<Plug>GoToPreviousEnvironment
+    map <buffer> <LocalLeader>ns 	<Plug>GotoNextSection
+    map <buffer> <LocalLeader>ps 	<Plug>GotoPreviousSection
+    map <buffer> <LocalLeader>nc 	<Plug>GotoNextChapter
+    map <buffer> <LocalLeader>pc 	<Plug>GotoPreviousChapter
+    map <buffer> <LocalLeader>np 	<Plug>GotoNextPart
+    map <buffer> <LocalLeader>pp 	<Plug>GotoPreviousPart
+    map <buffer> <LocalLeader>ne	<Plug>GotoNextEnvironment
+    map <buffer> <LocalLeader>pe	<Plug>GotoPreviousEnvironment
+"     map <buffer> ]m			<Plug>GotoNextInlineMath
+"     map <buffer> [m			<Plug>GotoPreviousInlineMath
+    map <buffer> ]m			<Plug>GotoNextMath
+    map <buffer> [m			<Plug>GotoPreviousMath
+    map <buffer> ]M			<Plug>GotoNextDisplayedMath
+    map <buffer> [M			<Plug>GotoPreviousDisplayedMath
 
     " Goto File Map:
     if has("path_extra")
@@ -77,6 +84,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     if !exists("atp_vmap_environment_leader")
 	let g:atp_vmap_environment_leader=""
     endif
+
     execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."C   :WrapSelection '"."\\"."begin{center}','"."\\"."end{center}','0','1'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."R   :WrapSelection '"."\\"."begin{flushright}','"."\\"."end{flushright}','0','1'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."L   :WrapSelection '"."\\"."begin{flushleft}','"."\\"."end{flushleft}','0','1'<CR>"
@@ -140,15 +148,15 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     vmap <buffer> <silent> aS		<Plug>SelectOuterSyntax
     vmap <buffer> <silent> iS		<Plug>SelectInnerSyntax
 
-    nmap <buffer> <LocalLeader>E		<Plug>Echo
     " Normal mode maps (mostly)
     nmap  <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput
     nmap  <buffer> <F2> 			<Plug>ToggleSpace
     nmap  <buffer> <LocalLeader>s		<Plug>ToggleStar
     " Todo: to doc:
     nmap  <buffer> <LocalLeader>D		<Plug>ToggleDebugMode
-    nmap  <buffer> <F4>				<Plug>ToggleEnvForward
-    nmap  <buffer> <S-F4>			<Plug>ToggleEnvBackward
+    nmap  <buffer> <F4>				<Plug>ChangeEnv
+    nmap  <buffer> <S-F4>			<Plug>ToggleEnvForward
+"     nmap  <buffer> <S-F4>			<Plug>ToggleEnvBackward
     nmap  <buffer> <C-S-F4>			<Plug>LatexEnvPrompt
 "     ToDo:
 "     if g:atp_LatexBox
@@ -173,7 +181,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     imap  <buffer> <F6>d			<Esc><Plug>Deletea
     nmap  <buffer> <silent> <F6>l 		<Plug>OpenLog
     imap  <buffer> <silent> <F6>l 		<Esc><Plug>OpenLog
-    nmap  <buffer> <LocalLeader>e 		:cf<CR> 
+"     nmap  <buffer<LocalLeader>e 		:cf<CR> 
     nnoremap  <buffer> <F6> 			:ShowErrors e<CR>
     inoremap  <buffer> <F6>e 			:ShowErrors e<CR>
     nnoremap  <buffer> <F6>w 			:ShowErrors w<CR>
@@ -219,6 +227,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     execute 'imap <buffer> '.g:atp_imap_first_leader.'c \chi'
     execute 'imap <buffer> '.g:atp_imap_first_leader.'d \delta'
     execute 'imap <buffer> '.g:atp_imap_first_leader.'e \epsilon'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'ve \varepsilon'
     execute 'imap <buffer> '.g:atp_imap_first_leader.'f \phi'
     execute 'imap <buffer> '.g:atp_imap_first_leader.'y \psi'
     execute 'imap <buffer> '.g:atp_imap_first_leader.'g \gamma'
@@ -252,8 +261,14 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
     execute 'imap <buffer> '.g:atp_imap_first_leader.'S \Sigma'
     execute 'imap <buffer> '.g:atp_imap_first_leader.'T \Tau'
     execute 'imap <buffer> '.g:atp_imap_first_leader.'U \Upsilon'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'V \Varsigma'
     execute 'imap <buffer> '.g:atp_imap_first_leader.'W \Omega'
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'Z \mathrm{Z}'  
+
+    let infty_leader = (g:atp_imap_first_leader == "#" ? "\\" : g:atp_imap_first_leader ) 
+    execute 'imap <buffer> '.infty_leader.'8 \infty'  
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'& \wedge'  
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'+ \bigcup' 
+    execute 'imap <buffer> '.g:atp_imap_first_leader.'- \setminus' 
 
     if g:atp_no_env_maps != 1
 	if g:atp_env_maps_old == 1
@@ -287,10 +302,9 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 	    " New mapping for the insert mode. 
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'b \begin{}<Left>'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'e \end{}<Left>'
-	    execute 'imap <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
 
-	    execute 'imap <buffer> '.g:atp_imap_third_leader.'d \begin{definition}<CR>\end{definition}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'t \begin{theorem}<CR>\end{theorem}<Esc>O'
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'d \begin{definition}<CR>\end{definition}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'P \begin{proposition}<CR>\end{proposition}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'l \begin{lemma}<CR>\end{lemma}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'r \begin{remark}<CR>\end{remark}<Esc>O'
@@ -307,8 +321,10 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'a \begin{align}<CR>\end{align}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'q \begin{equation}<CR>\end{equation}<Esc>O'
 
+	    execute 'imap <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'L \begin{flushleft}<CR>\end{flushleft}<Esc>O'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'R \begin{flushright}<CR>\end{flushright}<Esc>O'
+
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'T \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>'
 	    execute 'imap <buffer> '.g:atp_imap_third_leader.'f \begin{frame}<CR>\end{frame}<Esc>O'
 	endif
@@ -325,10 +341,50 @@ if !exists("no_plugin_maps") && !exists("no_atp_maps")
 
     endif
 
-    imap <buffer> __ _{}<Left>
-    imap <buffer> ^^ ^{}<Left>
-    imap <buffer> ]m \(\)<Left><Left>
-    imap <buffer> ]M \[\]<Left><Left>
+    " Taken from AucTex:
+    " Typing __ results in _{}
+    function! <SID>SubBracket()
+	let s:insert = "_"
+	let s:left = getline(line("."))[col(".")-2]
+	if s:left == '_'
+	    let s:insert = "{}\<Left>"
+	endif
+	return s:insert
+    endfunction
+    inoremap <silent> <buffer> _ <C-R>=<SID>SubBracket()<CR>
+"     imap <buffer> __ _{}<Left>
+
+    " Taken from AucTex:
+    " Typing ^^ results in ^{}
+    function! <SID>SuperBracket()
+	let s:insert = "^"
+	let s:left = getline(line("."))[col(".")-2]
+	if s:left == '^'
+	    let s:insert = "{}\<Left>"
+	endif
+	return s:insert
+    endfunction
+    inoremap <silent> <buffer> ^ <C-R>=<SID>SuperBracket()<CR>
+"     imap <buffer> ^^ ^{}<Left>
+
+"     function! <SID>Infty()
+" 	let g:insert 	= g:atp_imap_first_leader
+" 	let g:left 	= getline(line("."))[col(".")-2]
+" 	if g:left == g:atp_imap_first_leader
+" 	    let g:insert = "\\infty"
+" 	    let g:new_line = strpart(getline("."),0 ,col(".")) . g:insert . strpart(getline("."), col("."))
+" 	    call setline(line("."), g:new_line)
+" 	    echomsg "new_line:" . g:new_line
+" 	else
+" 	    normal a
+" 	endif
+" 	echomsg "col:" . col(".") . " insert:" . g:insert . " left:" . g:left
+" 	return g:insert
+"     endfunction
+"     execute "inoremap <buffer> 8 <ESC>:call <SID>Infty()<CR>"
+
+    execute "imap <buffer> ".g:atp_imap_third_leader."m \\(\\)<Left><Left>"
+    execute "imap <buffer> ".g:atp_imap_third_leader."M \\[\\]<Left><Left>"
 endif
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

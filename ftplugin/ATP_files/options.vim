@@ -1,23 +1,10 @@
+" Author: 	Marcin Szamotulski	
 " This file contains all the options defined on startup of ATP
 " you can add your local settings to ~/.atprc.vim or ftplugin/ATP_files/atprc.vim file
 
 
 " Some options (functions) should be set once:
 let s:did_options 	= exists("s:did_options") ? 1 : 0
-
-
-if filereadable(fnameescape($HOME . '/.atprc.vim'))
-
-	" Note: in $HOME/.atprc file the user can set all the local buffer
-	" variables without using autocommands
-	execute 'source ' . fnameescape($HOME . '/.atprc.vim')
-
-else
-    let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), '\n'), 0, "")
-    if path != ""
-	execute 'source ' . path
-    endif
-endif
 
 "{{{ tab-local variables
 " We need to know bufnumber and bufname in a tabpage.
@@ -47,7 +34,7 @@ endif
 "}}}
 
 
-" vim options + indetation
+" vim options + indentation
 " {{{ Vim options
 
 " {{{ Intendation
@@ -129,7 +116,11 @@ setl keywordprg=texdoc\ -m
 "
 " {{{ SetProjectName ( function )
 " store a list of all input files associated to some file
-fun! SetProjectName()
+fun! SetProjectName(...)
+    let bang 	= ( a:0 >= 1 ? a:1 : "" )	" do we override g:atp_project	
+    let did 	= ( a:0 >= 2 ? a:2 : 1	) 	" do we check if the project name was set
+    						" but also overrides the current b:atp_MainFile when 0 	
+
     " if the project name was already set do not set it for the second time
     " (which sets then b:atp_MainFile to wrong value!)  
     if &filetype == "fd_atp"
@@ -139,14 +130,14 @@ fun! SetProjectName()
 	let b:did_project_name	= 1
     endif
 
-    if exists("b:did_project_name") 
+    if exists("b:did_project_name") && b:did_project_name && did
 	return " project name was already set"
     else
 	let b:did_project_name	= 1
     endif
 
-    if !exists("g:atp_project")
-	let b:atp_MainFile	= exists("b:atp_MainFile") ? b:atp_MainFile : expand("%:p")
+    if !exists("g:atp_project") || bang == "!"
+	let b:atp_MainFile	= exists("b:atp_MainFile") && did ? b:atp_MainFile : expand("%:p")
 	let pn_return		= " set from history or just set "
     elseif exists("g:atp_project")
 	let b:atp_MainFile	= g:atp_project
@@ -162,7 +153,7 @@ fun! SetProjectName()
 "     let g:pn_return = pn_return
     return pn_return
 endfun
-command! SetProjectName	:call SetProjectName()
+command! -buffer -bang SetProjectName	:call SetProjectName(<q-bang>, 0)
 " }}}
 
 if !s:did_options
@@ -221,7 +212,36 @@ endif
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_SyncXpdfLog")
+    let g:atp_SyncXpdfLog = 0
+endif
+if !exists("g:atp_SyncLog")
+    let g:atp_SyncLog = 0
+endif
 
+	function! s:Sync(...)
+	    let arg = ( a:0 >=1 ? a:1 : "" )
+	    if arg == "on"
+		let g:atp_SyncLog = 1
+	    elseif arg == "off"
+		let g:atp_SyncLog = 0
+	    else
+		let g:atp_SyncLog = !g:atp_SyncLog
+	    endif
+	    echomsg "g:atp_SyncLog = " . g:atp_SyncLog
+	endfunction
+	command! -nargs=? -complete=customlist,s:SyncComp Sync :call s:Sync(<f-args>)
+	    function! s:SyncComp(ArgLead, CmdLine, CursorPos)
+		return filter(['on', 'off'], "v:val =~ a:ArgLead") 
+	    endfunction
+
+if !exists("g:atp_Compare")
+    " Use b:changedtick variable to run s:Compiler automatically.
+    let g:atp_Compare = "changedtick"
+endif
+if !exists("g:atp_babel") 
+    let g:atp_babel = 0
+endif
 " if !exists("g:atp_closebracket_checkenv")
     " This is a list of environment names. They will be checked by
     " atplib#CloseLastBracket() function (if they are opened/closed:
@@ -235,15 +255,33 @@ endif
 " 	echomsg "Changing this variable is not supported"
     endtry
 " endif
+" if !exists("g:atp_History")
+"     let g:atp_History = 1
+" endif
+if !exists("g:atp_OpenTypeDict")
+    let g:atp_OpenTypeDict = { 
+		\ "pdf" 	: "xpdf",		"ps" 	: "evince",
+		\ "djvu" 	: "djview",		"txt" 	: "split" ,
+		\ "tex"		: "edit",		"dvi"	: "xdvi -s 5" }
+    " for txt type files supported viewers: cat, gvim = vim = tabe, split, edit
+endif
+if !exists("g:atp_LibraryPath")
+    let g:atp_LibraryPath	= 0
+endif
 if !exists("g:atp_statusOutDir")
     let g:atp_statusOutDir 	= 1
-endif
-if !exists("g:atp_grabNn")
-    let g:atp_grabNn 		= 0
 endif
 if !exists("g:atp_developer")
     let g:atp_developer		= 0
 endif
+if !exists("g:atp_mapNn")
+	let g:atp_mapNn		= 0 " This value is used only on startup, then :LoadHistory sets the default value.
+endif  				    " user cannot change the value set by :LoadHistory on startup in atprc file.
+" 				    " Unless using: 
+" 				    	au VimEnter *.tex let b:atp_mapNn = 0
+" 				    " Recently I changed this: in project files it is
+" 				    better to start with atp_mapNn = 0 and let the
+" 				    user change it. 
 if !exists("g:atp_TeXdocDefault")
     let g:atp_TeXdocDefault	= '-a lshort'
 endif
@@ -286,8 +324,8 @@ if !exists("g:atp_insert_updatetime")
     let g:atp_insert_updatetime = max([ 2000, &l:updatetime])
 endif
 if !exists("g:atp_DefaultDebugMode")
-    " recognised values: silent, normal, debug.
-    let g:atp_DefaultDebugMode	= "normal"
+    " recognised values: silent, debug.
+    let g:atp_DefaultDebugMode	= "silent"
 endif
 if !exists("g:atp_show_all_lines")
     " boolean
@@ -349,7 +387,7 @@ if !exists("g:atp_sizes_of_brackets")
    " \{:\}
 endif
 if !exists("g:atp_bracket_dict")
-    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']' }
+    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']', '\lceil' : '\rceil', '\lfloor' : '\rfloor', '\langle' : '\rangle', '\lgroup' : '\rgroup' }
 endif
 " }}}2 			variables
 if !exists("g:atp_LatexBox")
@@ -537,8 +575,55 @@ call s:SetOptions()
 
 "}}}
 
+" ATP Debug Variables: (to debug atp behaviour)
+" {{{ debug variables
+if !exists("g:atp_debugCLE")
+    " Debug atplib#CloseLastEnvironment
+    let g:atp_debugCLE 		= 0
+endif
+if !exists("g:atp_debugMainScript")
+    " loading times of scripts sources by main script file: ftpluing/tex_atp.vim
+    " NOTE: it is listed here for completeness, it can only be set in
+    " ftplugin/tex_atp.vim script file.
+    let g:atp_debugMainScript 	= 0
+endif
+
+if !exists("g:atp_debugHistory")
+    " <SID>LoadHistory, <SID>WriteHistory
+    let g:atp_debugHistory 	= 0
+endif
+if !exists("g:atp_debugCB")
+    " atplib#CloseLastBracket()
+    let g:atp_debugCB 		= 0
+endif
+if !exists("g:atp_debugTC")
+    " atplib#TabCompletion()
+    let g:atp_debugTC 		= 0
+endif
+if !exists("g:atp_debugBS")
+    " atplib#searchbib()
+    " atplib#showresults()
+    " BibSearch() in ATP_files/search.vim
+    " log file: /tmp/ATP_log 
+    let g:atp_debugBS 		= 0
+endif
+if !exists("g:atp_debugToF")
+    " TreeOfFiles() ATP_files/common.vim
+    let g:atp_debugToF 		= 0
+endif
+if !exists("g:atp_debgTOF")
+    " TreeOfFiles() redirect only the output to
+    " /tmp/ATP_log
+    let g:atp_debugTOF 		= 0
+endif
+if !exists("g:atp_debugBabel")
+    " echo msg if  babel language is not supported.
+    let g:atp_debugBabel 	= 0
+endif
+"}}}
+
 " This is to be extended into a nice function which shows the important options
-" and alows to reconfigure atp
+" and allows to reconfigure atp
 "{{{ ShowOptions
 let s:file	= expand('<sfile>:p')
 function! s:ShowOptions(bang,...)
@@ -614,6 +699,81 @@ if !s:did_options
     augroup END
 endif
 "}}}
+
+" Babel
+" {{{1 variables
+if !exists("g:atp_keymaps")
+let g:atp_keymaps = { 
+		\ 'british'	: 'ignore',		'english' 	: 'ignore',
+		\ 'USenglish'	: 'ignore', 		'UKenglish'	: 'ignore',
+		\ 'american'	: 'ignore',
+	    	\ 'bulgarian' 	: 'bulgarian-bds', 	'croatian' 	: 'croatian',
+		\ 'czech'	: 'czech',		'greek'		: 'greek',
+		\ 'plutonikogreek': 'greek',		'hebrew'	: 'hebrew',
+		\ 'russian' 	: 'russian-jcuken',	'serbian' 	: 'serbian',
+		\ 'slovak' 	: 'slovak', 		'ukrainian' 	: 'ukrainian-jcuken',
+		\ 'polish' 	: 'polish-slash' }
+else "extend the existing dictionary with default values not ovverriding what is defind:
+    for lang in [ 'croatian', 'czech', 'greek', 'hebrew', 'serbian', 'slovak' ] 
+	call extend(g:atp_keymaps, { lang : lang }, 'keep')
+    endfor
+    call extend(g:atp_keymaps, { 'british' 	: 'ignore' }, 		'keep')
+    call extend(g:atp_keymaps, { 'american' 	: 'ignore' }, 		'keep')
+    call extend(g:atp_keymaps, { 'english' 	: 'ignore' }, 		'keep')
+    call extend(g:atp_keymaps, { 'UKenglish' 	: 'ignore' }, 		'keep')
+    call extend(g:atp_keymaps, { 'USenglish' 	: 'ignore' }, 		'keep')
+    call extend(g:atp_keymaps, { 'bulgarian' 	: 'bulgarian-bds' }, 	'keep')
+    call extend(g:atp_keymaps, { 'plutonikogreek' : 'greek' }, 		'keep')
+    call extend(g:atp_keymaps, { 'russian' 	: 'russian-jcuken' }, 	'keep')
+    call extend(g:atp_keymaps, { 'ukrainian' 	: 'ukrainian-jcuken' },	'keep')
+endif
+
+" {{{1 function
+function! <SID>Babel()
+    " Todo: make notification.
+    if &filetype != "tex" || !exists("b:atp_MainFile")
+	" This only works for LaTeX documents.
+	" but it might work for plain tex documents as well!
+	return
+    endif
+
+    let saved_loclist = getloclist(0)
+    try
+	execute '1lvimgrep /\\usepackage.*{babel}/j ' . b:atp_MainFile
+	" Find \usepackage[babel_options]{babel} - this is the only way that one can
+	" pass options to babel.
+    catch /E480: No match:/
+	return
+    endtry
+    let babel_line 	= get(get(getloclist(0), 0, {}), 'text', '')
+    call setloclist(0, saved_loclist) 
+    let languages	= split(matchstr(babel_line, '\[\zs[^]]*\ze\]'), ',')
+    if len(languages) == 0
+	return
+    endif
+    let default_language 	= get(languages, '-1', '') 
+	if g:atp_debugBabel
+	    echomsg "Babel : defualt language:" . default_language
+	endif
+    let keymap 			= get(g:atp_keymaps, default_language, '')
+
+    if keymap == ''
+	if g:atp_debugBabel
+	    echoerr "No keymap in g:atp_keymaps.\n" . babel_line
+	endif
+	return
+    endif
+
+    if keymap != 'ignore'
+	execute "set keymap=" . keymap
+    endif
+endfunction
+command! -buffer Babel	:call <SID>Babel()
+" {{{1 start up
+if g:atp_babel
+    call <SID>Babel()
+endif
+"  }}}1
 
 " These are two functions which sets options for Xpdf and Xdvi. 
 " {{{ Xpdf, Xdvi
@@ -728,7 +888,7 @@ nnoremap <silent> <buffer> <Plug>SetXpdf	:call SetXpdf()<CR>
 " These are functions which toggles some of the options:
 "{{{ Toggle Functions
 if !s:did_options
-" {{{ ToggleAuTeX
+" {{{ ATP_ToggleAuTeX
 " command! -buffer -count=1 TEX	:call TEX(<count>)		 
 function! ATP_ToggleAuTeX()
   if b:atp_autex != 1
@@ -752,7 +912,7 @@ endfunction
 command! -buffer 	ToggleAuTeX 		:call ATP_ToggleAuTeX()
 nnoremap <silent> <Plug>ToggleAuTeX 		:call ATP_ToggleAuTeX()<CR>
 "}}}
-" {{{ ToggleSpace
+" {{{ ATP_ToggleSpace
 " Special Space for Searching 
 let s:special_space="[off]"
 function! ATP_ToggleSpace()
@@ -781,7 +941,7 @@ endfunction
 command! -buffer 	ToggleSpace 	:call ATP_ToggleSpace()
 nnoremap <silent> <Plug>ToggleSpace 	:call ATP_ToggleSpace()<CR>
 "}}}
-" {{{ ToggleCheckMathOpened
+" {{{ ATP_ToggleCheckMathOpened
 " This function toggles if ATP is checking if editing a math mode.
 " This is used by insert completion.
 " ToDo: to doc.
@@ -812,7 +972,7 @@ endfunction
 command! -buffer 	ToggleCheckMathOpened 	:call ATP_ToggleCheckMathOpened()
 nnoremap <silent> <Plug>ToggleCheckMathOpened	:call ATP_ToggleCheckMathOpened()<CR>
 "}}}
-" {{{ ToggleCallBack
+" {{{ ATP_ToggleCallBack
 function! ATP_ToggleCallBack()
     if g:atp_callback
 	echomsg "call back is off"
@@ -840,7 +1000,7 @@ endfunction
 command! -buffer 	ToggleCallBack 		:call ATP_ToggleCallBack()
 nnoremap <silent> <Plug>ToggleCallBack		:call ATP_ToggleCallBack()<CR>
 "}}}
-" {{{ ToggleDebugMode
+" {{{ ATP_ToggleDebugMode
 " ToDo: to doc.
 " TODO: it would be nice to have this command (and the map) in quickflist (FileType qf)
 " describe DEBUG MODE in doc properly.
@@ -904,7 +1064,7 @@ if !s:did_options
     augroup END
 endif
 " }}}
-" {{{ ToggleTab
+" {{{ ATP_ToggleTab
 " switches on/off the <Tab> map for TabCompletion
 function! ATP_ToggleTab() 
     if mapcheck('<F7>','i') !~ 'atplib#TabCompletion'
@@ -938,9 +1098,6 @@ endif
 " {{{ TAB COMPLETION variables
 " ( functions are in autoload/atplib.vim )
 "
-if !exists("g:atp_History")
-    let g:atp_History = 1
-endif
 if !exists("g:atp_completion_modes")
     let g:atp_completion_modes=[ 
 		\ 'commands', 			'labels', 		
@@ -1007,7 +1164,8 @@ endif
 		    \ 'table' 		: 'table', 	'proof' 	: 'pr',
 		    \ 'corollary' 	: 'cor',	'enumerate' 	: 'enum',
 		    \ 'example' 	: 'ex',		'itemize' 	: 'it',
-		    \ 'item'		: 'itm',
+		    \ 'item'		: 'itm',	'algorithmic'	: 'alg',
+		    \ 'algorithm'	: 'alg',
 		    \ 'remark' 		: 'rem',	'notation' 	: 'not',
 		    \ 'center' 		: '', 		'flushright' 	: '',
 		    \ 'flushleft' 	: '', 		'quotation' 	: 'quot',
@@ -1095,7 +1253,8 @@ endif
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
 	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
 	\ "\\tableofcontents", "\\newfont{", "\\phantom",
-	\ "\\DeclareRobustCommand", "\\show", "\\CheckCommand", "\\mathnormal" ]
+	\ "\\DeclareRobustCommand", "\\show", "\\CheckCommand", "\\mathnormal",
+	\ "\\pounds" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -1106,46 +1265,53 @@ endif
 	" ToDo: MAKE COMMANDS FOR PREAMBULE.
 
 	let g:atp_math_commands=["\\forall", "\\exists", "\\emptyset", "\\aleph", "\\partial",
-	\ "\\nabla", "\\Box", "\\bot", "\\top", "\\flat", "\\sharp",
-	\ "\\mathbf{", "\\mathsf{", "\\mathrm{", "\\mathit{", "\\mathbb{", "\\mathtt{", "\\mathcal{", 
+	\ "\\nabla", "\\Box", "\\bot", "\\top", "\\flat", "\\sharp", "\\natural",
+	\ "\\mathbf{", "\\mathsf{", "\\mathrm{", "\\mathit{", "\\mathtt{", "\\mathcal{", 
 	\ "\\mathop{", "\\mathversion", "\\limits", "\\text{", "\\leqslant", "\\leq", "\\geqslant", "\\geq",
 	\ "\\gtrsim", "\\lesssim", "\\gtrless", "\\left", "\\right", 
 	\ "\\rightarrow", "\\Rightarrow", "\\leftarrow", "\\Leftarrow", "\\iff", 
 	\ "\\leftrightarrow", "\\Leftrightarrow", "\\downarrow", "\\Downarrow", "\\Uparrow",
 	\ "\\Longrightarrow", "\\longrightarrow", "\\Longleftarrow", "\\longleftarrow",
 	\ "\\overrightarrow{", "\\overleftarrow{", "\\underrightarrow{", "\\underleftarrow{",
-	\ "\\uparrow", "\\nearrow", "\\searrow", "\\swarrow", "\\nwarrow", 
-	\ "\\hookrightarrow", "\\hookleftarrow", "\\gets", "\\backslash", 
+	\ "\\uparrow", "\\nearrow", "\\searrow", "\\swarrow", "\\nwarrow", "\\mapsto", "\\longmapsto",
+	\ "\\hookrightarrow", "\\hookleftarrow", "\\gets", "\\to", "\\backslash", 
 	\ "\\sum", "\\bigsum", "\\cup", "\\bigcup", "\\cap", "\\bigcap", 
 	\ "\\prod", "\\coprod", "\\bigvee", "\\bigwedge", "\\wedge",  
 	\ "\\oplus", "\\otimes", "\\odot", "\\oint",
 	\ "\\int", "\\bigoplus", "\\bigotimes", "\\bigodot", "\\times",  
 	\ "\\smile", "\\frown", "\\subset", "\\subseteq", "\\supset", "\\supseteq",
 	\ "\\dashv", "\\vdash", "\\vDash", "\\Vdash", "\\models", "\\sim", "\\simeq", 
-	\ "\\prec", "\\preceq", "\\preccurlyeq", "\\precapprox",
+	\ "\\prec", "\\preceq", "\\preccurlyeq", "\\precapprox", "\\mid",
 	\ "\\succ", "\\succeq", "\\succcurlyeq", "\\succapprox", "\\approx", 
-	\ "\\thickapprox", "\\conq", "\\bullet", 
+	\ "\\thickapprox", "\\cong", "\\bullet", 
 	\ "\\lhd", "\\unlhd", "\\rhd", "\\unrhd", "\\dagger", "\\ddager", "\\dag", "\\ddag", 
 	\ "\\ldots", "\\cdots", "\\vdots", "\\ddots", 
 	\ "\\vartriangleright", "\\vartriangleleft", "\\trianglerighteq", "\\trianglelefteq",
 	\ "\\copyright", "\\textregistered", "\\puonds",
 	\ "\\big", "\\Big", "\\Bigg", "\\huge", 
 	\ "\\bigr", "\\Bigr", "\\biggr", "\\Biggr",
-	\ "\\bigl", "\\Bigl", "\\biggl", "\\Biggl",
-	\ "\\hat", "\\grave", "\\bar", "\\acute", "\\mathring", "\\check", "\\dots", "\\dot", "\\vec", "\\breve",
+	\ "\\bigl", "\\Bigl", "\\biggl", "\\Biggl", 
+	\ "\\hat", "\\grave", "\\bar", "\\acute", "\\mathring", "\\check", 
+	\ "\\dots", "\\dot", "\\vec", "\\breve",
 	\ "\\tilde", "\\widetilde" , "\\widehat", "\\ddot", 
 	\ "\\sqrt", "\\frac{", "\\binom{", "\\cline", "\\vline", "\\hline", "\\multicolumn{", 
-	\ "\\nouppercase", "\\sqsubset", "\\sqsupset", "\\square", "\\blacksquare", "\\triangledown", "\\triangle", 
+	\ "\\nouppercase", "\\sqsubseteq", "\\sqsubset", "\\sqsupseteq", "\\sqsupset", 
+	\ "\\square", "\\blacksquare", "\\triangledown", "\\triangle", 
 	\ "\\diagdown", "\\diagup", "\\nexists", "\\varnothing", "\\Bbbk", "\\circledS", 
 	\ "\\complement", "\\hslash", "\\hbar", 
 	\ "\\eth", "\\rightrightarrows", "\\leftleftarrows", "\\rightleftarrows", "\\leftrighrarrows", 
 	\ "\\downdownarrows", "\\upuparrows", "\\rightarrowtail", "\\leftarrowtail", 
+	\ "\\rightharpoondown", "\\rightharpoonup", "\\rightleftharpoons", "\\leftharpoondown", "\\leftharpoonup",
 	\ "\\twoheadrightarrow", "\\twoheadleftarrow", "\\rceil", "\\lceil", "\\rfloor", "\\lfloor", 
-	\ "\\bullet", "\\bigtriangledown", "\\bigtriangleup", "\\ominus", "\\bigcirc", "\\amalg", 
-	\ "\\setminus", "\\sqcup", "\\sqcap", 
+	\ "\\bigtriangledown", "\\bigtriangleup", "\\ominus", "\\bigcirc", "\\amalg", "\\asymp",
+	\ "\\vert", "\\Arrowvert", "\\arrowvert", "\\bracevert", "\\lmoustache", "\\rmoustache",
+	\ "\\setminus", "\\sqcup", "\\sqcap", "\\bowtie", "\\owns", "\\oslash",
 	\ "\\lnot", "\\notin", "\\neq", "\\smile", "\\frown", "\\equiv", "\\perp",
 	\ "\\quad", "\\qquad", "\\stackrel", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle",
-	\ "\\langle", "\\rangle", "\\Diamond"  ]
+	\ "\\langle", "\\rangle", "\\Diamond", "\\lgroup", "\\rgroup", "\\propto", "\\Join", "\\div", 
+	\ "\\land", "\\star", "\\uplus", "\\leadsto", "\\rbrack", "\\lbrack", "\\mho", 
+	\ "\\diamondsuit", "\\heartsuit", "\\clubsuit", "\\spadesuit", "\\top", "\\ell", 
+	\ "\\imath", "\\jmath", "\\wp", "\\Im", "\\Re", "\\prime", "\\ll", "\\gg"     ]
 
 	" commands defined by the user in input files.
 	" ToDo: to doc.
@@ -1196,7 +1362,7 @@ endif
 		    \ "\\varUpsilon", "\\varPhi", "\\varPsi", "\\varOmega" ]
 	
 	" ToDo: integrate in TabCompletion (amsfonts, euscript packages).
-	let g:atp_amsfonts=[ "\\mathfrak{", "\\mathscr{" ]
+	let g:atp_amsfonts=[ "\\mathbb{", "\\mathfrak{", "\\mathscr{" ]
 
 	" not yet supported: in TabCompletion:
 	let g:atp_amsextra_commands=[ "\\sphat", "\\sptilde" ]
@@ -1395,7 +1561,7 @@ endif
 " }}}
 
 " This function and the following autocommand toggles the textwidth option if
-" editting a math mode. Currently, supported are $:$, \(:\), \[:\] and $$:$$.
+" editing a math mode. Currently, supported are $:$, \(:\), \[:\] and $$:$$.
 " {{{  SetMathVimOptions
 
 if !exists("g:atp_SetMathVimOptions")
@@ -1408,7 +1574,8 @@ if !exists("g:atp_MathVimOptions")
 						\ }
 endif
 
-let g:atp_MathZones	= [ 
+if !exists("g:atp_MathZones")
+let g:atp_MathZones	= &l:filetype == "tex" ? [ 
 	    		\ 'texMathZoneV', 	'texMathZoneW', 
 	    		\ 'texMathZoneX', 	'texMathZoneY',
 	    		\ 'texMathZoneA', 	'texMathZoneAS',
@@ -1424,6 +1591,8 @@ let g:atp_MathZones	= [
 	    		\ 'texMathZoneK', 	'texMathZoneKS',
 	    		\ 'texMathZoneL', 	'texMathZoneLS' 
 			\ ]
+			\ : [ 'plaintexMath' ] 
+endif
 
 " a:0 	= 0 check if in math mode
 " a:1   = 0 assume cursor is not in math

@@ -65,9 +65,9 @@ function! <SID>ViewOutput(...)
     else
 	echomsg "Output file do not exists. Calling " . b:atp_TexCompiler
 	if rev_search
-	    call s:Compiler( 0, 2, 1, 'silent' , "AU" , b:atp_MainFile)
+	    call s:Compiler( 0, 2, 1, 'silent' , "AU" , b:atp_MainFile, "")
 	else
-	    call s:Compiler( 0, 1, 1, 'silent' , "AU" , b:atp_MainFile)
+	    call s:Compiler( 0, 1, 1, 'silent' , "AU" , b:atp_MainFile, "")
 	endif
     endif	
 endfunction
@@ -714,7 +714,7 @@ endfunction
 " 		1 start viewer
 " 		2 start viewer and make reverse search
 "
-function! <SID>Compiler(bibtex, start, runs, verbose, command, filename)
+function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 
     if !has('gui') && a:verbose == 'verbose' && b:atp_running > 0
 	redraw!
@@ -893,8 +893,12 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename)
 	    " 	Reload on Error:
 	    " 	for xpdf it copies the out file but does not reload the xpdf
 	    " 	server for other viewers it simply doesn't copy the out file.
-	    if b:atp_ReloadOnError
-		let s:command="( (" . s:texcomp . " && cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . "  ) ; " . catchstatus_cmd . " " . s:cpoutfile . " " . Reload_Viewer 
+	    if b:atp_ReloadOnError || a:ang == "!"
+		if a:bang == "!"
+		    let s:command="( " . s:texcomp . " ; " . catchstatus_cmd . " cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . "   ; " . s:cpoutfile . " " . Reload_Viewer 
+		else
+		    let s:command="( (" . s:texcomp . " && cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . "  ) ; " . catchstatus_cmd . " " . s:cpoutfile . " " . Reload_Viewer 
+		endif
 	    else
 		if b:atp_Viewer =~ '\<xpdf\>'
 		    let s:command="( " . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . Reload_Viewer . " cp --remove-destination ". shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . " ) || (" . catchstatus_cmd . " " . s:cpoutfile . ") ; " 
@@ -903,6 +907,10 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename)
 		endif
 	    endif
 	endif
+
+	" DEBUG
+	let g:Reload_Viewer 	= Reload_Viewer
+	let g:command		= s:command
 
 	" Preserve files with extension belonging to the g:keep list variable.
 	let s:copy=""
@@ -967,6 +975,11 @@ endfunction
 " This function calls the compilers in the background. It Needs to be a global
 " function (it is used in options.vim, there is a trick to put function into
 " a dictionary ... )
+augroup ATP_changetick
+    au BufEnter *.tex :silent! let b:atp_changedtick = b:changedtick
+    au BufEnter *.tex :lockvar b:atp_changedtick
+augroup END 
+
 function! <SID>auTeX()
 
     " Using vcscommand plugin the diff window ends with .tex thus the autocommand
@@ -982,9 +995,21 @@ function! <SID>auTeX()
     endif
     " if the file (or input file is modified) compile the document 
     if filereadable(expand("%"))
-	if s:compare(readfile(expand("%")))
+	if g:atp_Compare == "changedtick"
+	    let cond = ( b:changedtick != b:atp_changedtick )
+	else
+	    let cond = ( s:compare(readfile(expand("%"))) )
+	endif
+	if cond
+	    " This is for changedtick only
+	    unlockvar b:atp_changedtick
+	    let b:atp_changedtick = b:changedtick +1
+	    lockvar b:atp_changedtick
+	    " +1 because s:Compiler saves the file what increases b:changedtick by 1.
+	    
+"
 " 	if NewCompare()
-	    call s:Compiler(0, 0, b:atp_auruns, mode, "AU", b:atp_MainFile)
+	    call s:Compiler(0, 0, b:atp_auruns, mode, "AU", b:atp_MainFile, "")
 	    redraw
 	    return "compile" 
 	endif
@@ -1001,7 +1026,7 @@ function! <SID>auTeX()
 	    " This option can be set by VCSCommand plugin using VCSVimDiff command
 	    return " E382"
 	endtry
-	call s:Compiler(0, 0, b:atp_auruns, mode, "AU", b:atp_MainFile)
+	call s:Compiler(0, 0, b:atp_auruns, mode, "AU", b:atp_MainFile, "")
 	redraw
 	return "compile for the first time"
     endif
@@ -1023,7 +1048,7 @@ augroup END
 " a:1		= one of 'default','silent', 'debug', 'verbose'
 " 		  if not specified uses 'default' mode
 " 		  (g:atp_DefaultDebugMode).
-function! <SID>TeX(runs, ...)
+function! <SID>TeX(runs, bang, ...)
 let s:name=tempname()
 
     if a:0 >= 1
@@ -1052,23 +1077,25 @@ let s:name=tempname()
 	    echomsg Compiler . " will run " . s:runlimit . " times."
 	endif
     endif
-    call s:Compiler(0,0, a:runs, mode, "COM", b:atp_MainFile)
+    call s:Compiler(0,0, a:runs, mode, "COM", b:atp_MainFile, a:bang)
 endfunction
-command! -buffer -nargs=? -count=1 TEX		:call <SID>TeX(<count>, <f-args>)
+command! -buffer -nargs=? -bang -count=1 -complete=customlist,TEX_Comp TEX	:call <SID>TeX(<count>, <q-bang>, <f-args>)
+function! TEX_Comp(ArgLead, CmdLine, CursorPos)
+    return filter(['silent', 'debug', 'verbose'], "v:val =~ '^' . a:ArgLead")
+endfunction
 " command! -buffer -count=1	VTEX		:call <SID>TeX(<count>, 'verbose') 
-command! -buffer -count=1	DTEX		:call <SID>TeX(<count>, 'debug') 
-noremap <silent> <Plug>ATP_TeXCurrent		:<C-U>call <SID>TeX(v:count1, t:atp_DebugMode)<CR>
-noremap <silent> <Plug>ATP_TeXDefault		:<C-U>call <SID>TeX(v:count1, 'default')<CR>
-noremap <silent> <Plug>ATP_TeXSilent		:<C-U>call <SID>TeX(v:count1, 'silent')<CR>
-noremap <silent> <Plug>ATP_TeXDebug		:<C-U>call <SID>TeX(v:count1, 'debug')<CR>
-noremap <silent> <Plug>ATP_TeXVerbose		:<C-U>call <SID>TeX(v:count1, 'verbose')<CR>
-inoremap <silent> <Plug>iATP_TeXVerbose		<Esc>:<C-U>call <SID>TeX(v:count1, 'verbose')<CR>
+command! -buffer -count=1	DTEX		:call <SID>TeX(<count>, <q-bang>, 'debug') 
+noremap <silent> <Plug>ATP_TeXCurrent		:<C-U>call <SID>TeX(v:count1, "", t:atp_DebugMode)<CR>
+noremap <silent> <Plug>ATP_TeXDefault		:<C-U>call <SID>TeX(v:count1, "", 'default')<CR>
+noremap <silent> <Plug>ATP_TeXSilent		:<C-U>call <SID>TeX(v:count1, "", 'silent')<CR>
+noremap <silent> <Plug>ATP_TeXDebug		:<C-U>call <SID>TeX(v:count1, "", 'debug')<CR>
+noremap <silent> <Plug>ATP_TeXVerbose		:<C-U>call <SID>TeX(v:count1, "", 'verbose')<CR>
+inoremap <silent> <Plug>iATP_TeXVerbose		<Esc>:<C-U>call <SID>TeX(v:count1, "", 'verbose')<CR>
 "}}}
 "{{{ Bibtex
 function! <SID>SimpleBibtex()
     let bibcommand 	= "bibtex "
     let auxfile		= b:atp_OutDir . (fnamemodify(b:atp_MainFile,":t:r")) . ".aux"
-    let g:auxfile	= auxfile
     if filereadable(auxfile)
 	let command	= bibcommand . shellescape(l:auxfile)
 	echo system(command)
@@ -1090,7 +1117,7 @@ function! <SID>Bibtex(bang,...)
 	let mode = g:atp_DefaultDebugMode
     endif
 
-    call s:Compiler(1,0,0, mode,"COM",b:atp_MainFile)
+    call s:Compiler(1, 0, 0, mode, "COM", b:atp_MainFile, "")
 endfunction
 command! -buffer -bang -nargs=? Bibtex	:call <SID>Bibtex(<q-bang>, <f-args>)
 nnoremap <silent> <Plug>BibtexDefault	:call <SID>Bibtex("", "")<CR>

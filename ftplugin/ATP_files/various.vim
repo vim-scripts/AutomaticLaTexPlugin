@@ -354,7 +354,6 @@ function! InsertItem()
 	    indent	= -1
 	    ind 	=  matchstr(getline("."), '^\s*')
 	endif
-	let g:debug=len(matchstr(getline("."), '^\s*')) . "#" . len(ind) . "#" . indent
 	call setline(line("."), ind . substitute(getline("."), '^\s*', '', ''))
 
 	" Set the cursor position
@@ -372,9 +371,15 @@ function! InsertItem()
     let bpat		= '(\|{\|\['
     let epat		= ')\|}\|\]\|\.'
     let number		= matchstr(item, '\d\+')
+    let subNr		= matchstr(item, '\d\+\zs\a\ze')
     let space		= matchstr(getline("."), '\\item\zs\s*\ze\[')
-    if nr2char(number) != "" 
+    if nr2char(number) != "" && subNr == "" 
 	let new_item	= substitute(item, number, number + 1, '')
+    elseif nr2char(number) != "" && subNr != ""
+	let alphabet 	= [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y', 'z' ] 
+	let char	= matchstr(item, '^\%('.bpat.'\)\=\s*\d\+\zs\a\ze\s*\%('.epat.'\)\=$')
+	let new_char	= get(alphabet, index(alphabet, char) + 1, 'z')
+	let new_item	= substitute(item, '^\%('.bpat.'\)\=\s*\d\+\zs\a\ze\s*\%('.epat.'\)\=$', new_char, 'g')
     elseif item =~ '\%('.bpat.'\)\=\s*\w\s*\%('.epat.'\)\='
 	let alphabet 	= [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y', 'z' ] 
 	let char	= matchstr(item, '^\%('.bpat.'\)\=\s*\zs\w\ze\s*\%('.epat.'\)\=$')
@@ -489,9 +494,10 @@ nnoremap <silent> <Plug>ToggleStar		:call <SID>ToggleStar()<CR>
 "{{{ ToggleEnvironment
 " this function toggles envrionment name.
 " Todo: to doc.
+" a:ask = 0 toggle, 1 ask for the new env name if not given as the first argument. 
 " the argument specifies the speed (if -1 then toggle back)
-" default is '1'
-function! s:ToggleEnvironment(...)
+" default is '1' or the new environment name
+function! s:ToggleEnvironment(ask, ...)
 
     let l:add = ( a:0 >= 1 ? a:1 : 1 ) 
 
@@ -506,46 +512,60 @@ function! s:ToggleEnvironment(...)
 
     let l:label=matchstr(strpart(getline(l:open_pos[0]),l:open_pos[1]),'\\label\s*{\zs[^}]*\ze}')
     " DEBUG
-    let b:line=strpart(getline(l:open_pos[0]),l:open_pos[1])
-    let b:label=l:label
-    let b:env_name=l:env_name
+"     let b:line=strpart(getline(l:open_pos[0]),l:open_pos[1])
+"     let b:label=l:label
+"     let b:env_name=l:env_name
     if l:open_pos == [0, 0] || index(g:atp_no_toggle_environments,l:env_name) != -1
 	return
     endif
 
     let l:env_name_ws=substitute(l:env_name,'\*$','','')
-    let l:variable="g:atp_toggle_environment_1"
-    let l:i=1
-    while 1
-	let l:env_idx=index({l:variable},l:env_name_ws)
-	if l:env_idx != -1
-	    break
-	else
-	    let l:i+=1
-	    let l:variable="g:atp_toggle_environment_".l:i
-	endif
-	if !exists(l:variable)
-	    return
-	endif
-    endwhile
 
-    if l:add > 0 && l:env_idx > len({l:variable})-l:add-1
-	let l:env_idx=0
-    elseif ( l:add < 0 && l:env_idx < -1*l:add )
-	let l:env_idx=len({l:variable})-1
+    if !a:ask
+	let l:variable="g:atp_toggle_environment_1"
+	let l:i=1
+	while 1
+	    let l:env_idx=index({l:variable},l:env_name_ws)
+	    if l:env_idx != -1
+		break
+	    else
+		let l:i+=1
+		let l:variable="g:atp_toggle_environment_".l:i
+	    endif
+	    if !exists(l:variable)
+		return
+	    endif
+	endwhile
+
+	if l:add > 0 && l:env_idx > len({l:variable})-l:add-1
+	    let l:env_idx=0
+	elseif ( l:add < 0 && l:env_idx < -1*l:add )
+	    let l:env_idx=len({l:variable})-1
+	else
+	    let l:env_idx+=l:add
+	endif
+	let l:new_env_name={l:variable}[l:env_idx]
+	if l:env_name =~ '\*$'
+	    let l:new_env_name.="*"
+	endif
     else
-	let l:env_idx+=l:add
-    endif
-    let l:new_env_name={l:variable}[l:env_idx]
-    if l:env_name =~ '\*$'
-	let l:new_env_name.="*"
+	if l:add == 1
+	    let l:new_env_name=input("What is the new name for " . l:env_name . "? type and hit <Enter> ")
+	    if l:new_env_name == ""
+		echomsg "Environment name not changed"
+		return
+	    endif
+	else
+	    let l:new_env_name = l:add
+	endif
     endif
 
     " DEBUG
-"     let b:i=l:i
-"     let b:env_idx=l:env_idx
-"     let b:env_name=l:env_name
-"     let b:new_env_name=l:new_env_name
+"     let g:i=l:i
+"     let g:env_idx=l:env_idx
+    let g:env_name=l:env_name
+    let g:add = l:add
+    let g:new_env_name=l:new_env_name
 
     let l:env_name=escape(l:env_name,'*')
     let l:close_pos=searchpairpos('\\begin\s*{'.l:env_name.'}','','\\end\s*{'.l:env_name.'}\zs','nW',"",l:to_line)
@@ -557,18 +577,32 @@ function! s:ToggleEnvironment(...)
     endif
 
     if l:label != "" && g:atp_toggle_labels
-	let l:new_env_name_ws=substitute(l:new_env_name,'\*$','','')
-	let l:new_short_name=get(g:atp_shortname_dict,l:new_env_name_ws,"")
-	let l:short_pattern=join(values(filter(g:atp_shortname_dict,'v:val != ""')),'\|')
-	let l:short_name=matchstr(l:label,'^'.l:short_pattern)
-	let l:new_label=substitute(l:label,'^'.l:short_name,l:new_short_name,'')
+	if g:env_name == ""
+	    let l:new_env_name_ws=substitute(l:new_env_name,'\*$','','')
+	    let l:new_short_name=get(g:atp_shortname_dict,l:new_env_name_ws,"")
+	    let l:new_label =  l:new_short_name . strpart(l:label, stridx(l:label, g:atp_separator))
+" 	    let g:new_label = l:new_label . "XXX"
+	else
+" 	    let g:label = l:label
+	    let l:new_env_name_ws=substitute(l:new_env_name,'\*$','','')
+" 	    let g:new_env_name_ws=l:new_env_name_ws
+	    let l:new_short_name=get(g:atp_shortname_dict,l:new_env_name_ws,"")
+" 	    let g:new_short_name=l:new_short_name
+	    let l:short_pattern= '^\(\|' . join(values(filter(g:atp_shortname_dict,'v:val != ""')),'\|') . '\)'
+" 	    let g:short_pattern=l:short_pattern
+	    let l:short_name=matchstr(l:label, l:short_pattern)
+" 	    let g:short_name=l:short_name
+	    let l:new_label=substitute(l:label,'^'.l:short_name,l:new_short_name,'')
+" 	    let g:new_label=l:new_label
+	endif
+
 
 	" check if new label is in use!
 	let l:pos_save=getpos(".")
 	let l:n=search('\m\C\\\(label\|\%(eq\|page\)\?ref\)\s*{'.l:new_label.'}','nwc')
-" 	let b:n=l:n
+	let g:n=l:n
 
-	if l:short_name != "" && l:n == 0 && l:new_label != l:label
+	if l:n == 0 && l:new_label != l:label
 	    silent! keepjumps execute '%substitute /\\\(eq\|page\)\?\(ref\s*\){'.l:label.'}/\\\1\2{'.l:new_label.'}/gIe'
 	    silent! keepjumps execute l:open_pos[0].'substitute /\\label{'.l:label.'}/\\label{'.l:new_label.'}'
 	    keepjumps call setpos(".",l:pos_save)
@@ -580,14 +614,16 @@ function! s:ToggleEnvironment(...)
     endif
     return  l:open_pos[0]."-".l:close_pos[0]
 endfunction
-command! -buffer -nargs=? ToggleEnvironment   		:call <SID>ToggleEnvironment(<f-args>)
-nnoremap <silent> <Plug>ToggleEnvForward		:call <SID>ToggleEnvironment(1)<CR>
-nnoremap <silent> <Plug>ToggleEnvBackward		:call <SID>ToggleEnvironment(-1)<CR>
-"}}}
-
-
-"{{{ TexDoc 
-" This is non interactive !
+command! -buffer -nargs=? ToggleEnv	   		:call <SID>ToggleEnvironment(0, <f-args>)
+command! -buffer -nargs=* ChengeEnv			:call <SID>ToggleEnvironment(1, <f-args>)
+nnoremap <silent> <Plug>ToggleEnvForward		:call <SID>ToggleEnvironment(0, 1)<CR>
+nnoremap <silent> <Plug>ToggleEnvBackward		:call <SID>ToggleEnvironment(0, -1)<CR>
+nnoremap <silent> <Plug>ChangeEnv			:call <SID>ToggleEnvironment(1)<CR>
+" TexDoc commanand and its completion
+" {{{1 TexDoc 
+" This is non interactive !, use :!texdoc for interactive command.
+" But it simulates it with a nice command completion (Ctrl-D, <Tab>)
+" based on alias files for texdoc.
 function! s:TexDoc(...)
     let texdoc_arg	= ""
     for i in range(1,a:0)
@@ -622,11 +658,11 @@ function! s:TeXdoc_complete(ArgLead, CmdLine, CursorPos)
 endfunction
 command! -buffer -nargs=* -complete=customlist,<SID>TeXdoc_complete TexDoc 	:call <SID>TexDoc(<f-args>)
 nnoremap <silent> <buffer> <Plug>TexDoc						:TexDoc 
-"}}}
+" }}}1
 
 " This function deletes tex specific output files (exept the pdf/dvi file, unless
-" g:atp_delete_output is set to 1 - then also delets the current output file)
-"{{{1 Delete
+" bang is used - then also delets the current output file)
+" {{{1 Delete
 function! s:Delete(delete_output)
 
     call atplib#outdir()
@@ -677,46 +713,228 @@ nmap <silent> <buffer>	 <Plug>Delete	:call <SID>Delete("")<CR>
 
 "{{{1 OpenLog, TexLog, TexLog Buffer Options, PdfFonts, YesNoCompletion
 "{{{2 s:Search function for Log Buffer
-function! s:Search(pattern, flag)
-    let @/	=a:pattern
+function! <SID>Search(pattern, flag, ...)
+    let center 	= ( a:0 >= 1 ? a:1 : 1 )
+    let @/	= a:pattern
     call search(a:pattern, a:flag)
+" This fails (?):
+"     if center
+" 	normal zz
+"     endif
 endfunction
-function! s:Searchpair(start, middle, end, flag)
+function! <SID>Searchpair(start, middle, end, flag, ...)
+    let center 	= ( a:0 >= 1 ? a:1 : 1 )
     if getline(".")[col(".")-1] == ')' 
-	let flag	= a:flag.'b'
+	let flag= a:flag.'b'
     else
-	let flag	= substitute(a:flag, 'b', '', 'g')
+	let flag= substitute(a:flag, 'b', '', 'g')
     endif
     call searchpair(a:start, a:middle, a:end, flag)
+"     if center
+" 	normal zz
+"     endif
 endfunction
 "}}}
 function! s:OpenLog()
     if filereadable(&l:errorfile)
+	let s:atp_MainFile 	= b:atp_MainFile  
+	let s:atp_Viewer	= b:atp_Viewer
+	let s:atp_XpdfServer	= b:atp_XpdfServer
+
+	let s:winnr		= bufwinnr("")
 	exe "rightbelow split +setl\\ nospell\\ ruler\\ syn=log_atp\\ autoread " . fnameescape(&l:errorfile)
+	let b:atp_MainFile 	= s:atp_MainFile
+	let b:atp_Viewer	= s:atp_Viewer
+	let b:atp_XpdfServer	= s:atp_XpdfServer
 	map <buffer> q :bd!<CR>
-	map <silent> <buffer> <LocalLeader>w :call <SID>Search('Warning', 'w')<CR>
-	map <silent> <buffer> <LocalLeader>W :call <SID>Search('Warning', 'bw')<CR>
-	map <silent> <buffer> <LocalLeader>c :call <SID>Search('LaTeX Warning: Citation', 'w')<CR>
-	map <silent> <buffer> <LocalLeader>C :call <SID>Search('LaTeX Warning: Citation', 'bw')<CR>
-	map <silent> <buffer> <LocalLeader>r :call <SID>Search('LaTeX Warning: Reference', 'w')<CR>
-	map <silent> <buffer> <LocalLeader>R :call <SID>Search('LaTeX Warning: Reference', 'bw')<CR>
-	map <silent> <buffer> <LocalLeader>e :call <SID>Search('^!', 'w')<CR>
-	map <silent> <buffer> <LocalLeader>E :call <SID>Search('^!', 'bw')<CR>
-	map <silent> <buffer> <LocalLeader>f :call <SID>Search('Font \%(Info\\|Warning\)', 'w')<CR>
-	map <silent> <buffer> <LocalLeader>F :call <SID>Search('Font \%(Info\\|Warning\)', 'bw')<CR>
-	map <silent> <buffer> <LocalLeader>p :call <SID>Search('Package', 'w')<CR>
-	map <silent> <buffer> <LocalLeader>P :call <SID>Search('Package', 'bw')<CR>
-	map <silent> <buffer> <LocalLeader>i :call <SID>Search('Info', 'w')<CR>
-	map <silent> <buffer> <LocalLeader>I :call <SID>Search('Info', 'bw')<CR>
-	map <silent> <buffer> % :call <SID>Searchpair('(', '', ')', 'w')<CR>
+	nnoremap <silent> <buffer> ]w :call <SID>Search('\CWarning', 'W')<CR>
+	nnoremap <silent> <buffer> [w :call <SID>Search('\CWarning', 'bW')<CR>
+	nnoremap <silent> <buffer> ]c :call <SID>Search('\CLaTeX Warning: Citation', 'W')<CR>
+	nnoremap <silent> <buffer> [c :call <SID>Search('\CLaTeX Warning: Citation', 'bW')<CR>
+	nnoremap <silent> <buffer> ]r :call <SID>Search('\CLaTeX Warning: Reference', 'W')<CR>
+	nnoremap <silent> <buffer> [r :call <SID>Search('\CLaTeX Warning: Reference', 'bW')<CR>
+	nnoremap <silent> <buffer> ]e :call <SID>Search('^!', 'W')<CR>
+	nnoremap <silent> <buffer> [e :call <SID>Search('^!', 'bW')<CR>
+	nnoremap <silent> <buffer> ]f :call <SID>Search('\CFont \%(Info\\|Warning\)', 'W')<CR>
+	nnoremap <silent> <buffer> [f :call <SID>Search('\CFont \%(Info\\|Warning\)', 'bW')<CR>
+	nnoremap <silent> <buffer> ]p :call <SID>Search('\CPackage', 'W')<CR>
+	nnoremap <silent> <buffer> [p :call <SID>Search('\CPackage', 'bW')<CR>
+	nnoremap <silent> <buffer> ]P :call <SID>Search('\[\_d\+\zs', 'W')<CR>
+	nnoremap <silent> <buffer> [P :call <SID>Search('\[\_d\+\zs', 'bW')<CR>
+	nnoremap <silent> <buffer> ]i :call <SID>Search('\CInfo', 'W')<CR>
+	nnoremap <silent> <buffer> [i :call <SID>Search('\CInfo', 'bW')<CR>
+	nnoremap <silent> <buffer> % :call <SID>Searchpair('(', '', ')', 'W')<CR>
 "	This prevents vim from reloading with 'autoread' option: the buffer is
 "	modified outside and inside vim.
 " 	execute "normal m'"
-	silent execute '%g/^\s*$/d'
-	execute "normal ''"
+	silent! execute '%g/^\s*$/d'
+	silent! execute "normal ''"
 " 	To deal with the above we save the log file.
 " 	silent w!
 		   
+	function! <SID>SyncTex(bang,...)
+
+	    " if sync = 1 sync log file and the window - can be used by autocommand
+	    let sync = ( a:0 >= 1 ? a:1 : 0 )
+	    if sync && !g:atp_SyncLog
+		return
+	    endif
+
+	    " Find the end pos of error msg
+	    keepjumps let [ stopline, stopcol ] = searchpairpos('(', '', ')', 'nW') 
+" 		let g:stopline = stopline
+
+	    let saved_pos = getpos(".")
+
+	    " Be linewise
+	    call setpos(".", [0, line("."), 1, 0])
+
+	    " Find the line nr
+" 	    keepjumps let [ LineNr, ColNr ] = searchpos('^l.\zs\d\+\>\|oninput line \zs\|at lines \zs', 'W', stopline)
+	    keepjumps let [ LineNr, ColNr ] = searchpos('^l.\zs\d\+\>\|o\n\=n\_s\+i\n\=n\n\=p\n\=u\n\=t\_s\+l\n\=i\n\=n\n\=e\_s\+\zs\|a\n\=t\_s\+l\n\=i\n\=n\n\=e\n\=s\_s\+\zs', 'W', stopline)
+	    let line	= strpart(getline(LineNr), ColNr-1)
+	    let lineNr 	= matchstr(line, '^\d\+\ze')
+		let g:lineNr=lineNr
+	    if lineNr !~ '\d\+'
+		keepjumps call setpos(".", saved_pos)
+		return
+	    endif
+	    if getline(LineNr) =~ '^l\.\d\+'
+		let error = escape(matchstr(getline(LineNr), '^l\.\d\+\s*\zs.*$'), '\.')
+" 		let error = escape(matchstr(getline(LineNr), '^l\.\d\+\s*\zs.*$'), '\.') . '\s*' .  escape(substitute(strpart(getline(LineNr+1), 0, stridx(getline(LineNr+1), '...')), '^\s*', '', ''), '\.')
+" 		let g:error = error
+	    endif
+
+	    " Find the file name/bufnr/winnr where the error occurs. 
+	    let test = 0
+	    while !test
+		" Some times in the lof file there is a '(' from the source tex file
+		" which might be not closed, then this while loop is used to find
+		" readable file name.
+		let [ startline, startcol ] = searchpairpos('(', '', ')', 'bW') 
+		    let g:startline = startline
+		let fname 	= matchstr(strpart(getline(startline), startcol), '^\f\+')
+		let test 	= filereadable(fname)
+	    endwhile
+	    keepjumps call setpos(".", saved_pos)
+" 		let g:fname = fname
+
+	    " if the file is under texmf directory return unless g:atp_developer = 1
+	    " i.e. do not visit packages and classes.
+	    if fnamemodify(fname, ':p') =~ '\%(\/\|\\\)texmf' && !g:atp_developer
+		return
+	    elseif fnamemodify(fname, ':p') =~ '\%(\/\|\\\)texmf'
+		" comma separated list of options
+	    	let options = 'nospell'
+	    else
+		let options = ''
+	    endif
+
+	    let bufnr = bufnr(fname)
+" 		let g:bufnr = bufnr
+	    let bufwinnr	= bufwinnr(bufnr)
+	    let log_winnr	= bufwinnr("")
+
+	    " Goto found file and correct line.
+	    " with bang open file in a new window,
+	    " without open file in previous window.
+	    if a:bang == "!"
+		if bufwinnr != -1
+		    exe bufwinnr . " wincmd w"
+		    exe ':'.lineNr
+		    exe 'normal zz'
+		elseif buflisted(bufnr)
+		    exe 'split #' . bufnr
+		    exe ':'.lineNr
+		    exe 'normal zz'
+		else
+		    " allows to go to errrors in packages.
+		    exe 'split ' . fname
+		    exe ':'.lineNr
+		    exe 'normal zz'
+		endif
+	    else
+		if bufwinnr != -1
+		    exe bufwinnr . " wincmd w"
+		    exe ':'.lineNr
+		    exe 'normal zz'
+		else
+		    exe s:winnr . " wincmd w"
+		    if buflisted(bufnr)
+			exe "b " . bufnr
+			exe ':'.lineNr
+			exe 'normal zz'
+		    else
+			exe "edit " . fname
+			exe ':'.lineNr
+			exe 'normal zz'
+		    endif
+		    exe 'normal zz'
+		endif
+	    endif
+
+	    " set options
+		if &filetype == ""
+		    filetype detect
+		endif
+		for option in split(options, ',')
+		    exe "setl " . option
+		endfor
+
+	    " highlight the error
+	    if exists("error") && error != ""
+" 		let error_pat = escape(error, '\.')
+" 		call matchadd("ErrorMsg", '\%'.lineNr.'l' . error_pat) 
+		let matchID =  matchadd("Error", error, 15) 
+	    endif
+
+	    if sync
+		setl cursorline
+		" Unset 'cursorline' option when entering the window. 
+		exe 'au! WinEnter ' . expand("%:p")  . " setl nocursorline"
+" 		if exists("matchID")
+" 		    exe 'au! WinEnter ' . expand("%:p")  . " call matchdelete(".matchID.")"
+" 		endif
+		exe log_winnr . ' wincmd w'
+	    else
+		setl nocursorline
+	    endif
+	endfunction
+	command! -buffer -bang SyncTex		:call <SID>SyncTex(<q-bang>)
+	nnoremap <buffer> <LocalLeader>g	:SyncTex<CR>	
+	augroup ATP_SyncLog
+	    au CursorMoved *.log :call <SID>SyncTex("", 1)
+	augroup END
+
+	function! s:SyncXpdfLog(...)
+
+	    " check the value of g:atp_SyncXpdfLog
+	    let check = ( a:0 >= 1 ? a:1 : 1 )
+
+	    if b:atp_Viewer != 'xpdf' || b:atp_XpdfServer == "" || check && !g:atp_SyncXpdfLog
+		return
+	    endif
+
+" 	    let saved_pos	= getpos(".")	
+
+	    let [ lineNr, colNr ] 	= searchpos('\[\_d\+\%({[^}]*}\)\=\n\=\]', 'n')
+	    let line 	= strpart(getline(lineNr), colNr-1) . getline(lineNr+1)
+
+	    let pageNr	= substitute(matchstr(line, '\[\zs\_d\+\ze\%({[^}]*}\)\=\]'), "\n", "", "g")
+	    let g:pageNr	= pageNr
+
+	    if pageNr	!= ""
+		let cmd = "xpdf -remote " . b:atp_XpdfServer . " " . fnamemodify(b:atp_MainFile, ":r") . ".pdf " . pageNr . " &"
+		let g:cmd = cmd
+		call system(cmd)
+	    endif
+	endfunction
+	command! -buffer SyncXpdf 	:call s:SyncXpdfLog(0)
+	command! -buffer Xpdf 		:call s:SyncXpdfLog(0)
+	augroup ATP_SyncXpdfLog
+	    au CursorMoved *.log :call s:SyncXpdfLog(1)
+	augroup END
+
     else
 	echo "No log file"
     endif
@@ -879,9 +1097,19 @@ function! s:ListPrinters(A,L,P)
     return system(l:com)
 endfunction
 command! -buffer ListPrinters	:echo <SID>ListPrinters("", "", "")
-"}}}1
+" }}}1
 
-" ToDo noto
+" Open Library Command
+" {{{1 :Open
+command! -nargs=? -bang -complete=file  Open call atplib#Open(<q-bang>, g:atp_LibraryPath, g:atp_OpenTypeDict, <q-args>)
+let g:atp_open_completion = []
+" -complete=customlist,ATP_CompleteOpen
+" function! ATP_CompleteOpen(ArgLead, CmdLead, CurPos)
+"     return filter(deepcopy(g:atp_open_completion), "v:val =~ '^' . a:ArgLead")
+" endfunction
+" }}}1
+
+" ToDo notes
 " {{{1 ToDo
 "
 " TODO if the file was not found ask to make one.

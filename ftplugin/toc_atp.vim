@@ -8,7 +8,7 @@ if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1
 
 function! ATP_TOC_StatusLine() " {{{
-    let l:return = ( expand("%") == "__ToC__" 	? "Table of Contents" 	: 0 )
+    let l:return = ( expand("%") == "__ToC__" 		? "Table of Contents" 	: 0 )
     let l:return = ( expand("%") == "__Labels__" 	? "List of Labels" 	: l:return )
     return l:return
 endfunction
@@ -155,7 +155,7 @@ function! GotoLine(closebuffer) "{{{
 endfunction
 " }}}
 
-function! s:yank(arg) " {{{
+function! <SID>yank(arg) " {{{
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
 
     let l:toc=getbufline("%",1,"$")
@@ -256,19 +256,24 @@ function! s:yank(arg) " {{{
 	    elseif l:letter == '-'
 		let @@=choice
 	    endif
-	elseif a:arg =='p'
+	elseif a:arg == 'p'
 
 	    let l:gotowinnr=s:gotowinnr()
 	    exe l:gotowinnr . " wincmd w"
 
 	    " delete the buffer
-	    exe "bdelete " . l:cbufnr
+" 	    exe "bdelete " . l:cbufnr
 
 	    " set the line
 	    let l:line=getline('.')
 	    let l:colpos=getpos('.')[2]
-	    let l:bline=strpart(l:line,0,l:colpos)
-	    let l:eline=strpart(l:line,l:colpos)
+	    if a:arg ==# 'p'
+		let l:bline=strpart(l:line, 0, l:colpos)
+		let l:eline=strpart(l:line, l:colpos)
+	    else
+		let l:bline=strpart(l:line, 0, l:colpos-1)
+		let l:eline=strpart(l:line, l:colpos-1)
+	    endif
 	    call setline('.',l:bline . choice . l:eline)
 	    call setpos('.',[getpos('.')[0],getpos('.')[1],getpos('.')[2]+len(choice),getpos('.')[3]])
 	endif
@@ -279,17 +284,19 @@ command! -buffer P :call Yank("p")
 
 if !exists("*YankToReg")
 function! YankToReg()
-    call s:yank("@")
+    call <SID>yank("@")
 endfunction
 endif
 
 if !exists("*Paste")
 function! Paste()
-    call s:yank("p")
+    call <SID>yank("p")
 endfunction
 endif
 command! -buffer -nargs=1 Y :call YankToReg(<f-arg>)
 
+" Show Label Context 
+" {{{1 ShowLabelContext
 if !exists("*ShowLabelContext")
 function! ShowLabelContext()
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
@@ -316,7 +323,9 @@ function! ShowLabelContext()
     call setpos('.', [0, line, 1, 0])
 endfunction
 endif
-
+" }}}1
+" Echo line
+" {{{1 EchoLine
 if !exists("*EchoLine")
 function! EchoLine()
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
@@ -379,12 +388,15 @@ function! EchoLine()
     return 0
 endfunction
 endif
+"}}}1
 
+" Compare Numbers Function {{{1
 function! s:CompareNumbers(i1, i2)
     return str2nr(a:i1) == str2nr(a:i2) ? 0 : str2nr(a:i1) > str2nr(a:i2) ? 1 : -1
-endfunction
+endfunction "}}}1
 
-
+" DeleteSection, PasteSection, SectionStack, Undo 
+" {{{1
 " Stack of sections that were removed but not yet paste
 " each entry is a list [ section title , list of deleted lines, section_nr ]
 " where the section title is the one from t:atp_toc[filename][2]
@@ -394,6 +406,7 @@ if expand("%") == "__ToC__"
     if !exists("t:atp_SectionStack")
 	let t:atp_SectionStack 	= []
     endif
+
     function! s:DeleteSection()
 
 	" if under help lines do nothing:
@@ -586,43 +599,24 @@ if expand("%") == "__ToC__"
 	call input(join(msg + [ "Press <Enter>" ] , "\n"))
     endfunction
     command! -buffer SectionStack	:call <SID>SectionStack()
+
+    " Undo in the winnr under the cursor.
+    " a:1 is one off u or U, default is u.
+    function! s:Undo(...)
+	let cmd	= ( a:0 >= 1 && a:1 =~ '\cu\|g\%(-\|+\)' ? a:1 : 'u' )
+	let winnr	= s:gotowinnr()
+	exe winnr . " wincmd w"
+	exe "normal! " . cmd
+	TOC
+    endfunction
+    command! -buffer -nargs=? Undo 	:call <SID>Undo(<f-args>) 
+    nnoremap <buffer> u		:call <SID>Undo('u')<CR>
+    nnoremap <buffer> U		:call <SID>Undo('U')<CR>
+    nnoremap <buffer> g-		:call <SID>Undo('g-')<CR>
+    nnoremap <buffer> g+		:call <SID>Undo('g+')<CR>
 endif
+" }}}1
 
-" function! s:bdelete()
-"     call s:deletevariables()
-"     bdelete
-" endfunction
-" command -buffer Bdelete 	:call s:bdelete()
-
-" TODO:
-" function! Update()
-"     l:cbufname=bufname("")
-"     let l:bufname=substitute(l:cbufname,'\C\%(-TOC\|-LABELS\)$','','')
-"     let l:bufnr=bufnr("^" . l:bufname . "$")
-"     let t:atp_labels[l:bufname]=UpdateLabels(l:bufname)[l:bufname]
-"     if l:cbufname =~ "-TOC$"
-" 	" TODO
-"     elseif l:cbufname =~ "-LABELS$"
-" 	" TODO
-"     endif
-" endfunction
-
-" Undo in the winnr under the cursor.
-" a:1 is one off u or U, default is u.
-function! s:Undo(...)
-    let cmd	= ( a:0 >= 1 && a:1 =~ '\cu\|g\%(-\|+\)' ? a:1 : 'u' )
-    let winnr	= s:gotowinnr()
-    exe winnr . " wincmd w"
-    exe "normal! " . cmd
-    TOC
-endfunction
-command! -buffer -nargs=? Undo 	:call <SID>Undo(<f-args>) 
-nnoremap <buffer> u		:call <SID>Undo('u')<CR>
-nnoremap <buffer> U		:call <SID>Undo('U')<CR>
-nnoremap <buffer> g-		:call <SID>Undo('g-')<CR>
-nnoremap <buffer> g+		:call <SID>Undo('g+')<CR>
-
-" To DoC
 function! Help()
     " Note: here they are not well indented, but in the output they are :)
     echo "Available Mappings:"
@@ -630,7 +624,7 @@ function! Help()
     echo "<CR>  			go to and close"
     echo "<space>			go to"
     echo "c or y			yank the label to a register"
-    echo "p			yank and paste the label (in the source file)"
+    echo "p or P		yank and paste the label (in the source file)"
     echo "e			echo the title to command line"
     echo ":DeleteSection		Delete section under the cursor"
     echo ":PasteSection [<arg>] 	Paste section from section stack"
@@ -652,6 +646,7 @@ if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
     map <silent> <buffer> c		:call YankToReg()<CR>
     map <silent> <buffer> y 		:call YankToReg()<CR>
     map <silent> <buffer> p 		:call Paste()<CR>
+    map <silent> <buffer> P 		:call <SID>yank("P")<CR>
     map <silent> <buffer> s 		:call ShowLabelContext()<CR> 
     map <silent> <buffer> e 		:call EchoLine()<CR>
     map <silent> <buffer> <F1>		:call Help()<CR>

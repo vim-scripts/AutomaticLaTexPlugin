@@ -6,11 +6,106 @@
 " Outdir: append to '/' to b:atp_OutDir if it is not present. 
 "{{{ atplib#outdir
 function! atplib#outdir()
-    if b:atp_OutDir !~ "\/$"
-	let b:atp_OutDir=b:atp_OutDir . "/"
+    if has("win16") || has("win32") || has("win64") || has("win95")
+	if b:atp_OutDir !~ "\/$"
+	    let b:atp_OutDir=b:atp_OutDir . "\\"
+	endif
+    else
+	if b:atp_OutDir !~ "\/$"
+	    let b:atp_OutDir=b:atp_OutDir . "/"
+	endif
     endif
+    return b:atp_OutDir
 endfunction
 "}}}
+
+" Open Function:
+ "{{{1 atplib#Open
+ " a:1	- pattern or a file name
+ " 		a:1 is regarded as a filename if filereadable(pattern) is non
+ " 		zero.
+function! atplib#Open(bang, dir, TypeDict, ...)
+    if a:dir == "0"
+	echohl WarningMsg 
+	echomsg "You have to set g:atp_LibraryPath in your vimrc or atprc file." 
+	echohl Normal
+	return
+    endif
+
+    let pattern = ( a:0 >= 1 ? a:1 : "") 
+    let file	= filereadable(pattern) ? pattern : ""
+
+    if file == ""
+	if a:bang == "!" || !exists("g:atp_Library")
+	    let g:atp_Library 	= filter(split(globpath(a:dir, "*"), "\n"), 'count(keys(a:TypeDict), fnamemodify(v:val, ":e"))')
+	    let found 		= deepcopy(g:atp_Library) 
+	else
+	    let found		= deepcopy(g:atp_Library)
+	endif
+	call filter(found, "fnamemodify(v:val, ':t') =~ pattern")
+	" Resolve symlinks:
+	call map(found, "resolve(v:val)")
+	" Remove double entries:
+	call filter(found, "count(found, v:val) == 1")
+	if len(found) > 1
+	    echohl Title 
+	    echo "Found files:"
+	    echohl Normal
+	    let i = 1
+	    for file in found
+		if len(map(copy(found), "v:val =~ fnamemodify(file, ':t') . '$'")) == 1
+		    echo i . ") " . fnamemodify(file, ":t")
+		else
+		    echo i . ") " . pathshorten(fnamemodify(file, ":p"))
+		endif
+		let i+=1
+	    endfor
+	    let choice = input("Which file to open? ")-1
+	    if choice == -1
+		return
+	    endif
+	    let file = found[choice]
+	elseif len(found) == 1
+	    let file = found[0]
+	else
+	    echohl WarningMsg
+	    echomsg "Nothing found."
+	    echohl None
+	    return
+	endif
+    endif
+
+    let ext 	= fnamemodify(file, ":e")
+    let viewer 	= get(a:TypeDict, ext, 0) 
+
+    if viewer == '0'
+	echomsg "\n"
+	echomsg "Filetype: " . ext . " is not supported, add an entry to g:atp_OpenTypeDict" 
+	return
+    endif
+    if viewer !~ '^\s*cat\s*$' && viewer !~ '^\s*g\=vim\s*$' && viewer !~ '^\s*edit\s*$' && viewer !~ '^\s*tabe\s*$' && viewer !~ '^\s*split\s*$'
+	call system(viewer . " '" . file . "' &")  
+    elseif viewer =~ '^\s*g\=vim\s*$' || viewer =~ '^\s*tabe\s*$'
+	exe "tabe " . fnameescape(file)
+	setl nospell
+    elseif viewer =~ '^\s*edit\s*$' || viewer =~ '^\s*split\s*$'
+	exe viewer . " " . fnameescape(file)
+	setl nospell
+    elseif viewer == '^\s*cat\s*'
+	redraw!
+	echohl Title
+	echo "cat '" . file . "'"
+	echohl Normal
+	echo system(viewer . " '" . file . "' &")  
+    endif
+"     if fnamemodify(file, ":t") != "" && count(g:atp_open_completion, fnamemodify(file, ":t")) == 0
+" 	call extend(g:atp_open_completion, [fnamemodify(file, ":t")], 0)
+"     endif
+    " This removes the hit Enter vim prompt. 
+    call feedkeys("<CR>")
+    return
+endfunction
+"}}}1
 
 " Find Vim Server: find server 'hosting' a file and move to the line.
 " {{{1 atplib#FindAndOpen
@@ -115,18 +210,14 @@ function! atplib#GrepAuxFile(...)
 	    elseif line =~ '\\newlabel{[^}]*}{{\d\%(\d\|\.\)*{\d\%(\d\|\.\)*}}{\d*}{\%({[^}]*}\|[^}]\)*}{[^}]*}'
 		let list = matchlist(line, 
 		    \ '\\newlabel{\([^}]*\)}{{\(\d\%(\d\|\.\)*{\d\%(\d\|\.\)*\)}}{\d*}{\%({[^}]*}\|[^}]\)*}{\([^}]*\)}')
-	    	let label	= list[1]
-		let number	= list[2]
-		let counter	= list[3]
+	    	let [ label, number, counter ] = [ list[1], list[2], list[3] ]
 		let number	= substitute(number, '{\|}', '', 'g')
 		let counter	= matchstr(counter, '^\w\+')
 
 	    " Document class: article
 	    elseif line =~ '\\newlabel{[^}]*}{{\d\%(\d\|\.\)*}{\d\+}}'
 		let list = matchlist(line, '\\newlabel{\([^}]*\)}{{\(\d\%(\d\|\.\)*\)}{\d\+}}')
-		let label	= list[1]
-		let number	= list[2]
-		let counter	= ""
+	    	let [ label, number, counter ] = [ list[1], list[2], "" ]
 
 	    " Memoir document class uses '\M@TitleReference' command
 	    " which doesn't specify the counter number.
@@ -389,7 +480,7 @@ endfun
 " listA=[ line_nrA, col_nrA] usually given by searchpos() function
 " listB=[ line_nrB, col_nrB]
 " returns 1 iff A is smaller or equal to B
-fun! atplib#CompareCoordinates_leq(listA,listB)
+function! atplib#CompareCoordinates_leq(listA,listB)
     if a:listA[0] < a:listB[0] || 
 	\ a:listA[0] == a:listB[0] && a:listA[1] <= a:listB[1] ||
 	\ a:listA == [0,0]
@@ -399,7 +490,7 @@ fun! atplib#CompareCoordinates_leq(listA,listB)
     else
 	return 0
     endif
-endfun
+endfunction
 "}}}1
 " ReadInputFile function reads finds a file in tex style and returns the list
 " of its lines. 
@@ -465,20 +556,19 @@ function! atplib#searchbib(pattern, ...)
     let bang	= a:0 >=1 ? a:1 : ""
 
     " Caching bibfiles saves 0.27sec.
-    if !exists("b:bibfiles") || bang == "!"
-	let s:bibfiles	= []
+    if !exists("b:ListOfFiles") || !exists("b:TypeDict") || bang == "!"
 	let [ TreeOfFiles, ListOfFiles, TypeDict, LevelDict ] = TreeOfFiles(b:atp_MainFile, '^[^%]*\\bibliography\s*{', flat)
-	for f in ListOfFiles
-	    if TypeDict[f] == 'bib' 
-		call add(s:bibfiles, f)
-	    endif
-	endfor
-	let b:bibfiles	= deepcopy(s:bibfiles)
     else
-	let s:bibfiles	= deepcopy(b:bibfiles)
+	let [ ListOfFiles, TypeDict ] = deepcopy([ b:ListOfFiles, b:TypeDict ])
     endif
+    let s:bibfiles = []
+    for f in ListOfFiles
+	if TypeDict[f] == 'bib' 
+	    call add(s:bibfiles, f)
+	endif
+    endfor
+    let b:atp_BibFiles	= deepcopy(s:bibfiles)
 
-    let g:bibfiles	= copy(s:bibfiles)
     
     " Make a pattern which will match for the elements of the list g:bibentries
     let pattern = '^\s*@\%(\<'.g:bibentries[0].'\>'
@@ -492,6 +582,18 @@ function! atplib#searchbib(pattern, ...)
 	let pattern_b	= pattern_b . '\|\<' . g:bibflagsdict[bibentry][0] . '\>'
     endfor
     let pattern_b.='\)\s*='
+
+    if g:atp_debugBS
+	redir! >> /tmp/ATP_log 
+	silent! echo "==========atplib#searchbib==================="
+	silent! echo "atplib#searchbib_bibfiles=" . string(s:bibfiles)
+	silent! echo "a:pattern=" . a:pattern
+	silent! echo "pattern=" . pattern
+	silent! echo "pattern_b=" . pattern_b
+	silent! echo "bang=" . bang
+	silent! echo "flat=" . flat
+	redir END
+    endif
 
     unlet bibentry
     let b:bibentryline={} 
@@ -517,6 +619,12 @@ function! atplib#searchbib(pattern, ...)
 	call filter(l:bibdict[l:f], ' v:val !~ "^\\s*\\%(%\\|@\\cstring\\)"')
     endfor
 
+    if g:atp_debugBS
+	redir! >> /tmp/ATP_log
+	silent! echo "values(l:bibdict) len(l:bibdict[v:val]) = " . string(map(deepcopy(l:bibdict), "len(v:val)"))
+	redir END
+    endif
+
     if a:pattern != ""
 	for l:f in s:bibfiles
 	    let l:list=[]
@@ -539,13 +647,28 @@ function! atplib#searchbib(pattern, ...)
 		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\L', 'L', 'g')
 
 		if line_without_ligatures =~ a:pattern
+
+		    if g:atp_debugBS
+			redir! >> /tmp/ATP_log 
+			silent! echo "line_without_ligatures that matches " . line_without_ligatures
+			silent! echo "____________________________________"
+			redir END
+		    endif
+
 		    let l:true=1
 		    let l:t=0
 		    while l:true == 1
 			let l:tnr=l:nr-l:t
+
+			    if g:atp_debugBS
+				redir! >> /tmp/ATP_log 
+				silent! echo " l:tnr=" . string(l:tnr) . " l:bibdict[". string(l:f) . "][" . string(l:tnr-1) . "]=" . string(l:bibdict[l:f][l:tnr-1])
+				redir END
+			    endif
+
 			" go back until the line will match pattern (which
 			" should be the beginning of the bib field.
-		       if l:bibdict[l:f][l:tnr-1] =~ pattern && l:tnr >= 0
+		       if l:bibdict[l:f][l:tnr-1] =~? pattern && l:tnr >= 0
 			   let l:true=0
 			   let l:list=add(l:list,l:tnr)
 		       elseif l:tnr <= 0
@@ -556,6 +679,13 @@ function! atplib#searchbib(pattern, ...)
 		endif
 		let l:nr+=1
 	    endfor
+
+	    if g:atp_debugBS
+		redir! >> /tmp/ATP_log 
+		silent! echo "A l:list=" . string(l:list)
+		redir END
+	    endif
+
     " CLEAR THE l:list FROM ENTRIES WHICH APPEAR TWICE OR MORE --> l:clist
 	    let l:pentry="A"		" We want to ensure that l:entry (a number) and l:pentry are different
 	    for l:entry in l:list
@@ -569,7 +699,24 @@ function! atplib#searchbib(pattern, ...)
 		    let l:pentry=l:entry
 		endif
 	    endfor
+
+	    " This is slower than the algorithm above! 
+" 	    call sort(filter(l:list, "count(l:list, v:val) == 1"), "atplib#CompareNumbers")
+
+	    if g:atp_debugBS
+		redir! >> /tmp/ATP_log 
+		silent! echo "B l:list=" . string(l:list)
+		redir END
+	    endif
+
 	    let b:bibentryline=extend(b:bibentryline,{ l:f : l:list })
+
+	    if g:atp_debugBS
+		redir! >> /tmp/ATP_log 
+		silent! echo "atplib#bibsearch b:bibentryline= (pattern != '') " . string(b:bibentryline)
+		redir END
+	    endif
+
 	endfor
     endif
 "   CHECK EACH BIBFILE
@@ -634,7 +781,14 @@ function! atplib#searchbib(pattern, ...)
 	    let l:bibresults[l:bibfile]=s:bibd
 	    let g:bibresults=l:bibresults
 	endfor
-	let g:bbibresults=l:bibresults
+	let g:bibresults=l:bibresults
+
+	if g:atp_debugBS
+	    redir! >> /tmp/ATP_log 
+	    silent! echo "atplib#searchbib_bibresults A =" . l:bibresults
+	    redir END
+	endif
+
 	return l:bibresults
     endif
     " END OF NEW CODE: (up)
@@ -735,6 +889,13 @@ function! atplib#searchbib(pattern, ...)
 	let l:bibresults[l:bibfile]=s:bibd
     endfor
     let g:bibresults=l:bibresults
+
+    if g:atp_debugBS
+	redir! >> /tmp/ATP_log 
+	silent! echo "atplib#searchbib_bibresults A =" . string(l:bibresults)
+	redir END
+    endif
+
     return l:bibresults
 endfunction
 "}}}
@@ -751,7 +912,7 @@ function! atplib#SearchBibItems(name)
     let l:inputfile_dict=FindInputFiles(a:name,0)
     let l:includefile_list=[]
     for l:key in keys(l:inputfile_dict)
-	if l:inputfile_dict[l:key][0] =~ '^\%(include\|input\|includeonly\)$'
+	if l:inputfile_dict[l:key][0] =~# '^\%(include\|input\|includeonly\)$'
 	    call add(l:includefile_list,atplib#append(l:key,'.tex'))
 	endif
     endfor
@@ -765,7 +926,7 @@ function! atplib#SearchBibItems(name)
 
 	    " search for bibitems and make a dictionary of labels and citekeys
 	    for l:line in l:input_file
-		if l:line =~ '\\bibitem'
+		if l:line =~# '\\bibitem'
 		    let l:label=matchstr(l:line,'\\bibitem\s*\[\zs[^]]*\ze\]')
 		    let l:key=matchstr(l:line,'\\bibitem\s*\%(\[[^]]*\]\)\?\s*{\zs[^}]*\ze}') 
 " 		    if l:label =~ 'bibitem'
@@ -807,9 +968,20 @@ endfunction
 function! atplib#showresults(bibresults, flags, pattern)
  
     "if nothing was found inform the user and return:
-    if len(a:bibresults) == count(a:bibresults,{})
+    if len(a:bibresults) == count(a:bibresults, {})
 	echo "BibSearch: no bib fields matched."
+	if g:atp_debugBS
+	    redir! >> /tmp/ATP_log 
+	    silent! echo "==========atplib#showresults================="
+	    silent! echo "atplib#showresults return A - no bib fields matched. "
+	    redir END
+	endif
 	return 0
+    elseif g:atp_debugBS
+	    redir! >> /tmp/ATP_log 
+	    silent! echo "==========atplib#showresults================="
+	    silent! echo "atplib#showresults return B - found something. "
+	    redir END
     endif
 
 
@@ -824,19 +996,24 @@ function! atplib#showresults(bibresults, flags, pattern)
 	    let l:allflagon=0
 	    let l:flagslist=[]
 	    let l:kwflagslist=[]
+
+	let  g:aflags = a:flags
+
     " flags o and i are synonims: (but refer to different entry keys): 
-	if a:flags =~ '\Ci' && a:flags !~ '\Co'
+	if a:flags =~# 'i' && a:flags !~# 'o'
 	    let l:flags=substitute(a:flags,'i','io','') 
-	elseif a:flags !~ '\Ci' && a:flags =~ '\Co'
+	elseif a:flags !~# 'i' && a:flags =~# 'o'
 	    let l:flags=substitute(a:flags,'o','oi','')
 	endif
-	if a:flags !~ 'All'
-	    if a:flags =~ 'L'
- 		if strpart(a:flags,0,1) != '+'
- 		    let l:flags=b:atp_LastBibFlags . substitute(strpart(a:flags,0),'\CL','','g')
- 		else
- 		    let l:flags=b:atp_LastBibFlags . substitute(a:flags,'\CL','','g')
- 		endif
+	if a:flags !~# 'All'
+	    if a:flags =~# 'L'
+"  		if strpart(a:flags,0,1) != '+'
+"  		    let l:flags=b:atp_LastBibFlags . substitute(a:flags, 'L', '', 'g')
+"  		else
+ 		    let l:flags=b:atp_LastBibFlags . substitute(a:flags, 'L', '', 'g')
+"  		endif
+		let g:flags_a= deepcopy(l:flags)
+		let g:atp_LastBibFlags = deepcopy(b:atp_LastBibFlags)
 	    else
 		if a:flags == "" 
 		    let l:flags=g:defaultbibflags
@@ -846,6 +1023,7 @@ function! atplib#showresults(bibresults, flags, pattern)
 		    let l:flags=g:defaultbibflags . strpart(a:flags,1)
 		endif
 	    endif
+	    let g:flags = flags
 	    let b:atp_LastBibFlags=substitute(l:flags,'+\|L','','g')
 		if l:flags != ""
 		    let l:expr='\C[' . g:bibflagsstring . ']' 
@@ -853,7 +1031,7 @@ function! atplib#showresults(bibresults, flags, pattern)
 			let l:oneflag=strpart(l:flags,0,1)
     " if we get a flag from the variable g:bibflagsstring we copy it to the list l:flagslist 
 			if l:oneflag =~ l:expr
-			    let l:flagslist=add(l:flagslist,l:oneflag)
+			    let l:flagslist=add(l:flagslist, l:oneflag)
 			    let l:flags=strpart(l:flags,1)
     " if we get '@' we eat ;) two letters to the list l:kwflagslist			
 			elseif l:oneflag == '@'
@@ -878,6 +1056,8 @@ function! atplib#showresults(bibresults, flags, pattern)
 		endif
 	    endfor
 	endif
+
+	let g:flagslist = deepcopy(l:flagslist)
 
 	"NEW: if there are only keyword flags append default flags
 	if len(l:kwflagslist) > 0 && len(l:flagslist) == 0 
@@ -1266,11 +1446,11 @@ endfunction
 " }}}1
 " This functions makes a test if inline math is closed. This works well with
 " \(:\) and \[:\] but not yet with $:$ and $$:$$.  
-" {{{1 atplib#CheckOneLineMath
+" {{{1 atplib#CheckInlineMath
 " a:mathZone	= texMathZoneV or texMathZoneW or texMathZoneX or texMathZoneY
 " The function return 1 if the mathZone is not closed 
-function! atplib#CheckOneLineMath(mathZone)
-    let synstack	= map(synstack(line("."), col(".")-1), "synIDattr( v:val, 'name')")
+function! atplib#CheckInlineMath(mathZone)
+    let synstack	= map(synstack(line("."), max([1, col(".")-1])), "synIDattr( v:val, 'name')")
     let check		= 0
     let patterns 	= { 
 		\ 'texMathZoneV' : [ '\\\@<!\\(', 	'\\\@<!\\)' 	], 
@@ -1713,6 +1893,7 @@ endfunction
 "}}}1
 
 " Close Environments And Brackets:
+" Close Last Environment
 " atplib#CloseLastEnvironment {{{1
 " a:1 = i	(append before, so the cursor will  be after - the dafult)  
 " 	a	(append after)
@@ -1735,7 +1916,7 @@ function! atplib#CloseLastEnvironment(...)
     let l:close = a:0 >= 2 && a:2 != "" ? a:2 : 0
     if a:0 >= 3
 	let l:env_name	= a:3 == "" ? 0 : a:3
-	let l:close 	= "environment"
+	let l:close 	= ( a:3 != '' ? "environment" : l:close )
     else
 	let l:env_name 	= 0
     endif
@@ -1768,42 +1949,76 @@ function! atplib#CloseLastEnvironment(...)
 "   }}}2
 "   {{{2 if a:2 was not given (l:close = 0) we have to check math modes as
 "   well.
-    if l:close == "0" || l:close == "math" 
+    if ( l:close == "0" || l:close == "math" )
 
 	let stopline 		= search('^\s*$\|\\par\>', 'bnW')
 
 	" Check if one of \(:\), \[:\], $:$, $$:$$ is opened using syntax
 	" file. If it is fined the starting position.
 
-	let synstack		= map(synstack(line("."),col(".")-1), 'synIDattr(v:val, "name")')
-	let math_1		= (index(synstack, 'texMathZoneV') != -1 ? 1  : 0 )   
+	let synstack		= map(synstack(line("."),max([1, col(".")-1])), 'synIDattr(v:val, "name")')
+	if g:atp_debugCLE
+	    let g:synstackCLE	= deepcopy(synstack)
+	    let g:openCLE	= getline(".")[col(".")-1] . getline(".")[col(".")]
+	endif
+	let bound_1		= getline(".")[col(".")-1] . getline(".")[col(".")] =~ '^\\\%((\|)\)$'
+	let math_1		= (index(synstack, 'texMathZoneV') != -1 && !bound_1 ? 1  : 0 )   
 	    if math_1
-		let bpos_math_1	= searchpos('\%(\%(\\\)\@<!\\\)\@<!\\(', 'bnW', stopline)
+		if l:bpos_env == [0, 0]
+		    let bpos_math_1	= searchpos('\%(\%(\\\)\@<!\\\)\@<!\\(', 'bnW', stopline)
+		else
+		    let bpos_math_1	= l:bpos_env
+		endif
 		let l:begin_line= bpos_math_1[0]
 		let math_mode	= "texMathZoneV"
 	    endif
 	" the \[:\] pair:
-	let math_2		= (index(synstack, 'texMathZoneW') != -1 ? 1  : 0 )   
+	let bound_2		= getline(".")[col(".")-1] . getline(".")[col(".")] =~ '^\\\%(\[\|\]\)$'
+	let math_2		= (index(synstack, 'texMathZoneW') != -1 && !bound_2 ? 1  : 0 )   
 	    if math_2
-		let bpos_math_2	= searchpos('\%(\%(\\\)\@<!\\\)\@<!\\[', 'bnW', stopline)
+		if l:bpos_env == [0, 0]
+		    let bpos_math_2	= searchpos('\%(\%(\\\)\@<!\\\)\@<!\\[', 'bnW', stopline)
+		else
+		    let bpos_math_2	= l:bpos_env
+		endif
 		let l:begin_line= bpos_math_2[0]
 		let math_mode	= "texMathZoneW"
 	    endif
 	" the $:$ pair:
-	let math_3		= (index(synstack, 'texMathZoneX') != -1 ? 1  : 0 )   
+	let bound_3		= getline(".")[col(".")-1] =~ '^\$$'
+	let math_3		= (index(synstack, 'texMathZoneX') != -1 && !bound_3 ? 1  : 0 )   
 	    if math_3
-		let bpos_math_3	= searchpos('\%(\%(\\\)\@<!\\\)\@<!\$\{1,1}', 'bnW', stopline)
+		if l:bpos_env == [0, 0]
+		    let bpos_math_3	= searchpos('\%(\%(\\\)\@<!\\\)\@<!\$\{1,1}', 'bnW', stopline)
+		else
+		    let bpos_math_3	= l:bpos_env
+		endif
 		let l:begin_line= bpos_math_3[0]
 		let math_mode	= "texMathZoneX"
 	    endif
 	" the $$:$$ pair:
-	let math_4		= (index(synstack, 'texMathZoneY') != -1 ? 1  : 0 )   
+	let bound_4		= getline(".")[col(".")-1] . getline(".")[col(".")] =~ '^\$\$$'
+	let math_4		= (index(synstack, 'texMathZoneY') != -1 && !bound_4 ? 1  : 0 )   
 	    if math_4
-		let bpos_math_4	= searchpos('\%(\%(\\\)\@<!\\\)\@<!\$\{2,2}', 'bnW', stopline)
+		if l:bpos_env == [0, 0]
+		    let bpos_math_4	= searchpos('\%(\%(\\\)\@<!\\\)\@<!\$\{2,2}', 'bnW', stopline)
+		else
+		    let bpos_math_4	= l:bpos_env
+		endif
 		let l:begin_line= bpos_math_4[0]
 		let math_mode	= "texMathZoneY"
 	    endif
-	let b:begin_line	= l:begin_line
+	if g:atp_debugCLE
+	    let g:math 	= []
+	    let g:bound = []
+	    for i in [1,2,3,4]
+		let g:begin_line = ( exists("begin_line") ? begin_line : 0 )
+		let g:bound_{i} = bound_{i}
+		call add(g:bound, bound_{i})
+		let g:math_{i} = math_{i}
+		call add(g:math, math_{i})
+	    endfor
+	endif
     endif
 "}}}2
 "{{{2 set l:close if a:1 was not given.
@@ -1818,10 +2033,13 @@ if a:0 <= 1
 	let l:close = 'environment'
     endif
 endif
+if g:atp_debugCLE
+    let g:close = l:close
+endif
 let l:env=l:env_name
 "}}}2
 
-if l:close == "0" 
+if l:close == "0" || l:close == 'math' && !exists("begin_line")
     return "there was nothing to close"
 endif
 if ( &filetype != "plaintex" && b:atp_TexFlavor != "plaintex" && exists("math_4") && math_4 )
@@ -1834,13 +2052,18 @@ endif
 if l:env_name =~ '^\s*document\s*$'
     return ""
 endif
-let l:cline=getline(".")
-let l:pos=getpos(".")
+let l:cline	= getline(".")
+let l:pos	= getpos(".")
 if l:close == "math"
     let l:line	= getline(l:begin_line)
 elseif l:close == "environment"
     let l:line	= getline(l:bpos_env[0])
 endif
+
+    if g:atp_debugCLE
+	let g:line = exists("l:line") ? l:line : 0
+    endif
+
 " Copy the indentation of what we are closing.
 let l:eindent=atplib#CopyIndentation(l:line)
 "{{{2 close environment
@@ -2182,163 +2405,205 @@ let l:eindent=atplib#CopyIndentation(l:line)
 endfunction
 " imap <F7> <Esc>:call atplib#CloseLastEnvironment()<CR>
 " }}}1
+" Close Last Bracket
 " {{{1 atplib#CloseLastBracket
 "
-" Note adding a bracket pair doesn't mean that it will be supported!
-" This is to be done! and is quite easy.
-
-" Notes: it first closes the most outer opened bracket:
-" 	\left\{\Bigl( 
-" 	will first close with \right\} and then \Bigl)
-" it still doesn't work 100% well with nested brackets (the part that remains is to
-" close in right place) But is doesn't close closed pairs !!! 
-
-" {{{2 			atplib#CloseLastBracket	
-" a:1 == 1 just return the bracket 
-function! atplib#CloseLastBracket(...)
+" The first function only tests if there is a bracket to be closed.
+" {{{2 				atplib#CheckBracket
+" Returns a list [ l:open_line, l:open_col, l:open_bracket ] 
+" l:open_col != 0 if any of brackets (in values(g:atp_bracket_dict) ) is
+" opened and not closed. l:open_bracket is the most recent such bracket
+" ([ l:open_line, l:open_col ] are its coordinates). 
+"
+" a:bracket_dict is a dictionary of brackets to use: 
+" 	 	{ open_bracket : close_bracket } 
+function! atplib#CheckBracket(bracket_dict)
     
-    if a:0 >= 1
-	let l:only_return = a:1
-    else
-	let l:only_return = 0
-    endif
+    let limit_line	= max([1,(line(".")-g:atp_completion_limits[1])])
+    let pos_saved 	= getpos(".")
 
-    " {{{3
-    let l:pattern=""
-    let l:size_patterns=[]
-    for l:size in keys(g:atp_sizes_of_brackets)
-	call add(l:size_patterns,escape(l:size,'\'))
-    endfor
-
-    let l:pattern_b	= '\C\%('.join(l:size_patterns,'\|').'\)'
-    let l:pattern_o	= '\%('.join(map(keys(g:atp_bracket_dict),'escape(v:val,"\\[]")'),'\|').'\)'
-
-"     let g:pattern_b	= l:pattern_b
-"     let g:pattern_o	= l:pattern_o
-
-    let l:limit_line	= max([1,(line(".")-g:atp_completion_limits[1])])
-        
-    let l:pos_saved 	= getpos(".")
+    let ket_pattern	= '\%(' . join(values(filter(copy(g:atp_sizes_of_brackets), "v:val != '\\'")), '\|') . '\)'
 
 
    " But maybe we shouldn't check if the bracket is closed sometimes one can
    " want to close closed bracket and delete the old one.
    
-   let l:open_col_check_list=[]
-   let g:open_col_check_list=l:open_col_check_list
+   let check_list = []
+   if g:atp_debugCB
+       let g:check_list	= check_list
+   endif
 
-   "    change the position! and then: 
-   "    check the flag 'r' in searchpair!!!
-   let i=1
-    for ket in keys(g:atp_bracket_dict)
-	let l:pos=deepcopy(l:pos_saved)
-	let l:pair_{i}=searchpairpos(escape(ket,'\[]'),'', escape(g:atp_bracket_dict[ket], '\[]'). '\|\.' ,'bnW',"",l:limit_line)
-" 	echomsg ket . " l:pair_".i."=".string(l:pair_{i})
-	let l:pos[1]=l:pair_{i}[0]
-	let l:pos[2]=l:pair_{i}[1]
-	" l:check_{i} is 1 if the bracket is closed
-	let l:check_{i}= atplib#CheckClosed(escape(ket, '\'), escape(g:atp_bracket_dict[ket], '\'), line("."), g:atp_completion_limits[0],1) == '0'
-	" l:check_dot_{i} is 1 if the bracket is closed with a dot (\right.) . 
-	let l:check_dot_{i} = atplib#CheckClosed(escape(ket, '\'), '\\\%(right\|\cb\Cig\{1,2}\%(g\|l\)\@!r\=\)\s*\.',line("."),g:atp_completion_limits[0],1) == '0'
-" 	echomsg ket . " l:check_".i."=".string(l:check_{i}) . " l:check_dot_".i."=".string(l:check_dot_{i})
-	let l:check_{i}=min([l:check_{i}, l:check_dot_{i}])
-	call add(l:open_col_check_list,(l:check_{i}*l:pair_{i}[1]))
-	keepjumps call setpos(".",l:pos_saved)
+    "    change the position! and then: 
+    "    check the flag 'r' in searchpair!!!
+    let i=0
+    let bracket_list= keys(a:bracket_dict)
+    for ket in bracket_list
+	let pos		= deepcopy(pos_saved)
+	let pair_{i}	= searchpairpos(escape(ket,'\[]'),'', escape(a:bracket_dict[ket], '\[]'). '\|'.ket_pattern.'\.' ,'bnW',"",limit_line)
+	if g:atp_debugCB >= 2
+	    echomsg escape(ket,'\[]') . " pair_".i."=".string(pair_{i}) . " limit_line=" . limit_line
+	endif
+	let pos[1]	= pair_{i}[0]
+	let pos[2]	= pair_{i}[1]
+	" check_{i} is 1 if the bracket is closed
+	let check_{i}	= atplib#CheckClosed(escape(ket, '\[]'), escape(a:bracket_dict[ket], '\[]'), line("."), g:atp_completion_limits[0],1) == '0'
+	" check_dot_{i} is 1 if the bracket is closed with a dot (\right.) . 
+	let check_dot_{i} = atplib#CheckClosed(escape(ket, '\'), '\\\%(right\|\cb\Cig\{1,2}\%(g\|l\)\@!r\=\)\s*\.',line("."),g:atp_completion_limits[0],1) == '0'
+	if g:atp_debugCB >= 2
+	    echomsg escape(ket,'\[]') . " check_".i."=".string(check_{i}) . " check_dot_".i."=".string(check_dot_{i})
+	endif
+	let check_{i}	= min([check_{i}, check_dot_{i}])
+	call add(check_list, [ pair_{i}[0], (check_{i}*pair_{i}[1]), i ] ) 
+	keepjumps call setpos(".",pos_saved)
 	let i+=1
     endfor
-    keepjumps call setpos(".",l:pos_saved)
-
-    " \lceil : \rceil, \lfloor:\rfloor paris
-    let pair_ceil	= searchpairpos('\\lceil\>', '', '\\rceil\>', 'bnW', '', l:limit_line)
-    let g:pair_ceil	= pair_ceil
-    " check if closed:
-    let check_ceil	= searchpair('\\lceil\>', '', '\\rceil\>', 'nW', '', line(".")+g:atp_completion_limits[0]) 
-    let g:check_ceil	= check_ceil
-"     if !check_ceil && pair_ceil != [ 0, 0]
-	"close ceil (if all brackets before are closed!)
-"     endif
+    keepjumps call setpos(".", pos_saved)
    
-    let l:open_col=max(l:open_col_check_list)
-    let j=1
-    while j<i
-	if l:open_col == l:pair_{j}[1] && l:check_{j} != 0
-	    let l:open_line=l:pair_{j}[0]
-	endif
-	let j+=1
-    endwhile
+    " Find opening line and column numbers
+    call sort(check_list, "atplib#CompareCoordinates")
+    let [ open_line, open_col, open_bracket_nr ] 	= check_list[0]
+    let [ s:open_line, s:open_col, s:opening_bracket ] 	= [ open_line, open_col, bracket_list[open_bracket_nr] ]
+    if g:atp_debugCB
+	let [ g:open_lineCB, g:open_colCB, g:opening_bracketCB ] = [ open_line, open_col, bracket_list[open_bracket_nr] ]
+    endif
+    return [ open_line, open_col, bracket_list[open_bracket_nr] ]
+endfunction
+" }}}2
+" The second function closes the bracket if it was not closed. 
+" (as returned by atplib#CheckBracket or [ s:open_line, s:open_col, s:opening_bracket ])
+
+" It is not used to close \(:\) and \[:\] as CloseLastEnvironment has a better
+" way of doing that (preserving indentation)
+" {{{2 			atplib#CloseLastBracket	
+" a:bracket_dict is a dictionary of brackets to use: 
+" 	 	{ open_bracket : close_bracket } 
+" a:1 = 1 just return the bracket 
+" a:2 = 0 (default), 1 when used in TabCompletion 
+" 			then s:open_line, s:open_col and s:opening_bracket are
+" 			used to avoid running twice atplib#CheckBracket():
+" 			once in TabCompletion and secondly in CloseLastBracket
+" 			function.
+
+function! atplib#CloseLastBracket(bracket_dict, ...)
+    
+    let only_return	= ( a:0 >= 1 ? a:1 : 0 )
+    let tab_completion	= ( a:0 >= 2 ? a:2 : 0 )
+
+    " {{{3 preambule
+    let pattern		= ""
+    let size_patterns	= []
+    for size in keys(g:atp_sizes_of_brackets)
+	call add(size_patterns,escape(size,'\'))
+    endfor
+
+    let pattern_b	= '\C\%('.join(size_patterns,'\|').'\)'
+    let pattern_o	= '\%('.join(map(keys(a:bracket_dict),'escape(v:val,"\\[]")'),'\|').'\)'
+
+    if g:atp_debugCB
+	let g:pattern_b	= pattern_b
+	let g:pattern_o	= pattern_o
+    endif
+
+    let limit_line	= max([1,(line(".")-g:atp_completion_limits[1])])
+        
+    let pos_saved 	= getpos(".")
+
+
+   " But maybe we shouldn't check if the bracket is closed sometimes one can
+   " want to close closed bracket and delete the old one.
+   
+    let [ open_line, open_col, opening_bracket ] = ( tab_completion ? 
+		\ deepcopy([ s:open_line, s:open_col, s:opening_bracket ]) : atplib#CheckBracket(a:bracket_dict) )
 
     " Check and Close Environment:
-    " 	This takes too long:
-"  	let open_env		= searchpairpos('\\begin\s*{', '', '\\end\s*{', 'bnW', 'searchpair("\\\\begin\s*{\s*".matchstr(getline("."),"\\\\begin\s*{\\zs[^}]*\\ze\}"), "", "\\\\end\s*{\s*".matchstr(getline("."), "\\\\begin\s*{\\zs[^}]*\\ze}"), "nW", "", "line(".")+g:atp_completion_limits[2]")', l:open_line)
-
 	for env_name in g:atp_closebracket_checkenv
 " 	    " To Do: this should check for the most recent opened environment
-	    let open_env		= searchpairpos('\\begin\s*{\s*'.env_name.'\s*}', '', '\\end\s*{\s*'.env_name.'\s*}', 'bnW', '', l:open_line)
-	    let env_name		= matchstr(strpart(getline(open_env[0]),open_env[1]-1), '\\begin\s*{\s*\zs[^}]*\ze*\s*}')
-	    if open_env[0] && atplib#CompareCoordinates([ l:open_line, l:open_col], open_env)
+	    let limit_line 	= exists("open_line") ? open_line : search('\\\@<!\\\[\|\\\@<!\\(\|\$', 'bn')
+	    let open_env 	= searchpairpos('\\begin\s*{\s*'.env_name.'\s*}', '', '\\end\s*{\s*'.env_name.'\s*}', 'bnW', '', limit_line)
+	    let env_name 	= matchstr(strpart(getline(open_env[0]),open_env[1]-1), '\\begin\s*{\s*\zs[^}]*\ze*\s*}')
+	    if open_env[0] && atplib#CompareCoordinates([(exists("open_line") ? open_line : 0),(exists("open_line") ? open_col : 0)], open_env)
 		call atplib#CloseLastEnvironment('i', 'environment', env_name, open_env)
-		return
+		return 'closeing ' . env_name . ' at ' . string(open_env) 
 	    endif
 	endfor
 
    " Debug:
-"        let g:open_line=l:open_line
-"        let g:open_col=l:open_col 
+   if g:atp_debugCB
+       let g:open_line	= open_line
+       let g:open_col	= open_col 
+   endif
 
     "}}}3
-    " {{{3 main if
-   if l:open_col 
-	let l:line=getline(l:open_line)
+    " {{{3 main if statements
+   if getline(open_line)[open_col-3] . getline(open_line)[open_col-2] . getline(open_line)[open_col-1] =~ '\\\@<!\\\%((\|\[\)'
+       call atplib#CloseLastEnvironment('i', 'math', '', [ open_line, open_col ])
+       if g:atp_debugCB
+	   let b:atp_debugCB = "call atplib#CloseLastEnvironment('i', 'math', '', [ open_line, open_col ])"
+       endif
+       return
+   endif
 
-	let l:bline=strpart(l:line,0,(l:open_col-1))
-	let l:eline=strpart(l:line,l:open_col-1,2)
+   if open_col 
+	let line	= getline(open_line)
 
-	let l:opening_size=matchstr(l:bline,'\zs'.l:pattern_b.'\ze\s*$')
-	let l:closing_size=get(g:atp_sizes_of_brackets,l:opening_size,"")
-	let l:opening_bracket=matchstr(l:eline,'^'.l:pattern_o)
+	let bline	= strpart(line,0,(open_col-1))
+	let eline	= strpart(line,open_col-1,2)
+	if g:atp_debugCB
+	    let g:bline = bline
+	    let g:eline = eline
+	endif
 
-	if l:opening_size =~ '\\' && l:opening_bracket != '(' && l:opening_bracket != '['
-	    let l:bbline=strpart(l:bline, 0, len(l:bline)-1)
-	    let l:opening_size2=matchstr(l:bbline,'\zs'.l:pattern_b.'\ze\s*$')
-	    let l:closing_size2=get(g:atp_sizes_of_brackets,l:opening_size2,"")
-	    let l:closing_size=l:closing_size2.l:closing_size
+	let opening_size=matchstr(bline,'\zs'.pattern_b.'\ze\s*$')
+	let closing_size=get(g:atp_sizes_of_brackets,opening_size,"")
+" 	let opening_bracket=matchstr(eline,'^'.pattern_o)
+" 	let opening_bracket=bracket_list[open_bracket_nr]
+
+	if opening_size =~ '\\' && opening_bracket != '(' && opening_bracket != '['
+	    let bbline		= strpart(bline, 0, len(bline)-1)
+	    let opening_size2	= matchstr(bbline,'\zs'.pattern_b.'\ze\s*$')
+	    let closing_size2	= get(g:atp_sizes_of_brackets,opening_size2,"")
+	    let closing_size	= closing_size2.closing_size
 
 	    " DEBUG
-" 	    let g:bbline=l:bbline
-" 	    let g:opening_size2=l:opening_size2
-" 	    let g:closing_size2=l:closing_size2
+	    if g:atp_debugCB
+		let g:bbline		= bbline
+		let g:opening_size2	= opening_size2
+		let g:closing_size2	= closing_size2
+	    endif
 	endif
 
-	echomsg "Closing " . l:opening_size . l:opening_bracket . " from line " . l:open_line
+	echomsg "Closing " . opening_size . opening_bracket . " from line " . open_line
 
 	" DEBUG:
-" 	let b:o_bra=l:opening_bracket
-" 	let b:o_size=l:opening_size
-" 	let b:bline=l:bline
-" 	let b:line=l:line
-" 	let b:eline=l:eline
-" 	let b:opening_size=l:opening_size
-" 	let b:closing_size=l:closing_size
-
-	let l:cline=getline(line("."))
-	if mode() == 'i'
-	    if !l:only_return
-		call setline(line("."), strpart(l:cline,0,getpos(".")[2]-1).
-			\ l:closing_size.get(g:atp_bracket_dict,l:opening_bracket). 
-			\ strpart(l:cline,getpos(".")[2]-1))
-	    endif
-	    let l:return=l:closing_size.get(g:atp_bracket_dict,l:opening_bracket)
-	elseif mode() == 'n'
-	    if !l:only_return
-		call setline(line("."), strpart(l:cline,0,getpos(".")[2]).
-			\ l:closing_size.get(g:atp_bracket_dict,l:opening_bracket). 
-			\ strpart(l:cline,getpos(".")[2]))
-	    endif
-	    let l:return=l:closing_size.get(g:atp_bracket_dict,l:opening_bracket)
+	if g:atp_debugCB
+	    let g:o_bra		= opening_bracket
+	    let g:o_size	= opening_size
+	    let g:bline		= bline
+	    let g:line		= line
+	    let g:eline		= eline
+	    let g:opening_size	= opening_size
+	    let g:closing_size	= closing_size
 	endif
-	let l:pos=getpos(".")
-	let l:pos[2]+=len(l:closing_size.get(g:atp_bracket_dict,l:opening_bracket))
-	keepjumps call setpos(".",l:pos)
+
+	let cline=getline(line("."))
+	if mode() == 'i'
+	    if !only_return
+		call setline(line("."), strpart(cline, 0, getpos(".")[2]-1).
+			\ closing_size.get(a:bracket_dict, opening_bracket). 
+			\ strpart(cline,getpos(".")[2]-1))
+	    endif
+	    let l:return=closing_size.get(a:bracket_dict, opening_bracket)
+	elseif mode() == 'n'
+	    if !only_return
+		call setline(line("."), strpart(cline,0,getpos(".")[2]).
+			\ closing_size.get(a:bracket_dict,opening_bracket). 
+			\ strpart(cline,getpos(".")[2]))
+	    endif
+	    let l:return=closing_size.get(a:bracket_dict, opening_bracket)
+	endif
+	let pos=getpos(".")
+	let pos[2]+=len(closing_size.get(a:bracket_dict, opening_bracket))
+	keepjumps call setpos(".", pos)
 
 	return l:return
    endif
@@ -2367,9 +2632,6 @@ endfunction
 " 			command in tex which begins with \arrow).
 " 			<S-Tab> or <S-F7> (if g:atp_no_tab_map=1)
 "
-" ToDo: \ref{<Tab> do not closes the '}', its by purpose, as sometimes one
-" wants to add more than one reference. But this is not allowed by this
-" command! :) I can add it.
 " Completion Modes:
 " 	documentclass (\documentclass)
 " 	labels   (\ref,\eqref)
@@ -2393,6 +2655,7 @@ endfunction
 "from what it is. But it might be as it is, there are reasons to keep this.
 "
 try
+" Main tab completion function
 function! atplib#TabCompletion(expert_mode,...)
     " {{{2 Match the completed word 
     let l:normal_mode=0
@@ -2421,34 +2684,42 @@ function! atplib#TabCompletion(expert_mode,...)
     let l:nr=max([l:n,l:m,l:o,l:s,l:p])
 
     " this matches for \...
-    let l:begin=strpart(l:l,l:nr+1)
-    let l:cbegin=strpart(l:l,l:nr)
+    let l:begin		= strpart(l:l,l:nr+1)
+    let l:cbegin	= strpart(l:l,l:nr)
     " and this for '\<\w*$' (beginning of last started word) -- used in
     " tikzpicture completion method 
-    let l:tbegin=matchstr(l:l,'\zs\<\w*$')
-    let l:obegin=strpart(l:l,l:o)
+    let l:tbegin	= matchstr(l:l,'\zs\<\w*$')
+    let l:obegin	= strpart(l:l,l:o)
 
     " what we are trying to complete: usepackage, environment.
-    let l:pline=strpart(l:l,0,l:nr)
-
-"     let g:nchar	= l:nchar
-"     let g:l		= l:l
-"     let g:n		= l:n
-"     let g:o		= l:o
-"     let g:s		= l:s
-"     let g:p		= l:p
-"     let g:nr		= l:nr
-" 
-"     let g:line	= l:line    
-"     let g:tbegin	= l:tbegin
-"     let g:cbegin	= l:cbegin
-"     let g:obegin	= l:obegin
-"     let g:begin	= l:begin 
-"     let g:pline	= l:pline
-
+    let l:pline		= strpart(l:l, 0, l:nr)
+    	" \cite[Theorem~1]{Abcd -> \cite[Theorem~] 
+    let l:ppline	= strpart(l:l, 0, l:nr+1)
+    	" \cite[Theorem~1]{Abcd -> \cite[Theorem~]{ 
 
     let l:limit_line=max([1,(l:pos[1]-g:atp_completion_limits[1])])
-    let g:limit_line=limit_line
+
+    if g:atp_debugTC
+	let g:nchar	= l:nchar
+	let g:l		= l:l
+	let g:n		= l:n
+	let g:o		= l:o
+	let g:s		= l:s
+	let g:p		= l:p
+	let g:nr		= l:nr
+
+	let g:line	= l:line    
+	let g:tbegin	= l:tbegin
+	let g:cbegin	= l:cbegin
+	let g:obegin	= l:obegin
+	let g:begin	= l:begin 
+	let g:pline	= l:pline
+	let g:ppline	= l:ppline
+
+	let g:limit_line=limit_line
+    endif
+
+
 " {{{2 SET COMPLETION METHOD
     " {{{3 --------- command
     if l:o > l:n && l:o > l:s && 
@@ -2484,26 +2755,13 @@ function! atplib#TabCompletion(expert_mode,...)
 " 	    let b:comp_method='environment_names fast return'
 	    return ''
 	endif
-    "{{{3 --------- close environments
-"     elseif !l:normal_mode && 
-" 		\ ((l:pline =~ '\\begin\s*$' && l:begin =~ '}\s*$') || ( l:pline =~ '\\begin\s*{[^}]*}\s*\\label' ) ) || 
-" 		\ l:normal_mode && l:pline =~ '\\begin\s*\({[^}]*}\?\)\?\s*$'
-" 	if (!l:normal_mode && index(g:atp_completion_active_modes, 'close environments') != -1 ) ||
-" 		    \ (l:normal_mode && index(g:atp_completion_active_modes_normal_mode, 'close environments') != -1 )
-" 	    let l:completion_method='close environments'
-" 	    " DEBUG:
-" 	    let b:comp_method='colse environments'
-" 	else
-" 	    let b:comp_method='colse environments fast return'
-" 	    return ''
-" 	endif
     "{{{3 --------- colors
     elseif l:l =~ '\\textcolor{[^}]*$'
 	let l:completion_method='colors'
 	" DEBUG:
 	let b:comp_method='colors'
     "{{{3 --------- label
-    elseif l:pline =~ '\\\%(eq\)\?ref\s*$' && !l:normal_mode
+    elseif l:pline =~ '\\\%(eq\)\?ref\s*$' && strpart(l:l, 0, col(".")) !~ '\\\%(eq\)\?ref\s*{[^}]*}$' && !l:normal_mode
 	if index(g:atp_completion_active_modes, 'labels') != -1 
 	    let l:completion_method='labels'
 	    " DEBUG:
@@ -2513,7 +2771,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    return ''
 	endif
     "{{{3 --------- bibitems
-    elseif l:pline =~ '\\\%(no\)\?cite' && !l:normal_mode && l:l !~ '\\cite\s*{[^}]*}'
+    elseif l:ppline =~ '\\\%(no\)\?cite\(\s*\[[^]]*\]\s*\)\={' && !l:normal_mode && l:l !~ '\\cite\s*{[^}]*}'
 	if index(g:atp_completion_active_modes, 'bibitems') != -1
 	    let l:completion_method='bibitems'
 	    " DEBUG:
@@ -2657,17 +2915,12 @@ function! atplib#TabCompletion(expert_mode,...)
 	    return ''
 	endif
     "{{{3 --------- brackets
-" TODO: make this dependent on g:atp_bracket_dict
-    elseif index(g:atp_completion_active_modes, 'brackets') != -1 && 
-	\ (searchpairpos('\%(\\\@<!\\\)\@<!(', '', '\%(\\\@<!\\\)\@<!)\|\%(\\\cb\Cig\{1,2\}r\=\|\\right\)\.',    'bnW', "", l:limit_line) 	!= [0, 0] ||
-	\ searchpairpos('\%(\\\@<!\\\)\@<!\[', '', '\%(\\\@<!\\\)\@<!\]\|\%(\\\cb\Cig\{1,2\}r\=\|\\right\)\.',   'bnW', "", l:limit_line) 	!= [0, 0] ||
-	\ searchpairpos('{',  '', '}\|\%(\\\cb\Cig\{1,2\}r\=\|\\right\)\.',   'bnW', "", l:limit_line) 	!= [0, 0] )
-		" \{ can be closed with \right\. 
+    elseif atplib#CheckBracket(g:atp_bracket_dict)[1] != 0
 
 	if (!normal_mode &&  index(g:atp_completion_active_modes, 'brackets') != -1 ) ||
 		\ (l:normal_mode && index(g:atp_completion_active_modes_normal_mode, 'brackets') 		!= -1 )
 	    let b:comp_method='brackets'
-	    call atplib#CloseLastBracket()
+	    call atplib#CloseLastBracket(g:atp_bracket_dict, 0, 1)
 	    return '' 
 	else
 	    let b:comp_method='brackets fast return'
@@ -2691,10 +2944,10 @@ function! atplib#TabCompletion(expert_mode,...)
     if l:completion_method=='close_env'
 
 	" Close one line math
-	if atplib#CheckOneLineMath('texMathZoneV') || 
-		    \ atplib#CheckOneLineMath('texMathZoneW') ||
-		    \ atplib#CheckOneLineMath('texMathZoneX') ||
-		    \ b:atp_TexFlavor == 'plaintex' && atplib#CheckOneLineMath('texMathZoneY')
+	if atplib#CheckInlineMath('texMathZoneV') || 
+		    \ atplib#CheckInlineMath('texMathZoneW') ||
+		    \ atplib#CheckInlineMath('texMathZoneX') ||
+		    \ b:atp_TexFlavor == 'plaintex' && atplib#CheckInlineMath('texMathZoneY')
 	    let b:tc_return = "close_env math"
 	    call atplib#CloseLastEnvironment(l:append, 'math')
 	" Close environments
@@ -2786,12 +3039,12 @@ function! atplib#TabCompletion(expert_mode,...)
 	endif
     "{{{3 ------------ PACKAGES
     elseif l:completion_method == 'package'
-	if exists("g:atp_texpackages")
-	    let l:completion_list	= copy(g:atp_texpackages)
+	if exists("g:atp_latexpackages")
+	    let l:completion_list	= copy(g:atp_latexpackages)
 	else
-	    let g:atp_texpackages	= atplib#KpsewhichGlobPath("tex", "", "*.sty")
-	    lockvar g:atp_texpackages
-	    let l:completion_list	= deepcopy(g:atp_texpackages)
+	    let g:atp_latexpackages	= atplib#KpsewhichGlobPath("tex", "", "*.sty")
+	    lockvar g:atp_latexpackages
+	    let l:completion_list	= deepcopy(g:atp_latexpackages)
 	endif
     "{{{3 ------------ COLORS
     elseif l:completion_method == 'colors'
@@ -3010,12 +3263,12 @@ function! atplib#TabCompletion(expert_mode,...)
 	let l:completion_list=atplib#KpsewhichGlobPath("bst", "", "*.bst")
     "{{{3 ------------ DOCUMENTCLASS
     elseif l:completion_method == 'documentclass'
-	if exists("g:atp_texclasses")
-	    let l:completion_list	= copy(g:atp_texclasses)
+	if exists("g:atp_latexclasses")
+	    let l:completion_list	= copy(g:atp_latexclasses)
 	else
-	    let g:atp_texclasses	= atplib#KpsewhichGlobPath("tex", "", "*.cls")
-	    lockvar g:atp_texclasses
-	    let l:completion_list	= deepcopy(g:atp_texclasses)
+	    let g:atp_latexclasses	= atplib#KpsewhichGlobPath("tex", "", "*.cls")
+	    lockvar g:atp_latexclasses
+	    let l:completion_list	= deepcopy(g:atp_latexclasses)
 	endif
 	" \documentclass must be closed right after the name ends:
 	if l:nchar != "}"
@@ -3113,6 +3366,9 @@ function! atplib#TabCompletion(expert_mode,...)
 	endwhile
 	let l:pat=strpart(l:l,l:col)
 	let l:bibitems_list=values(atplib#searchbib(l:pat))
+	if g:atp_debugTC
+	    let g:pat = l:pat
+	endif
 	let l:pre_completion_list=[]
 	let l:completion_dict=[]
 	let l:completion_list=[]
@@ -3194,28 +3450,33 @@ function! atplib#TabCompletion(expert_mode,...)
     "{{{3 --------- l:completion_method = !close environments !env_close
     if l:completion_method != 'close environments' && l:completion_method != 'env_close'
 	let l:completions=[]
-	    " {{{4 --------- Packages, environments, labels, bib and input files 
-	    " must match at the beginning (in expert_mode).
+	    " {{{4 --------- packages, bibstyles, font (family, series, shapre, encoding), document class
 	    if (l:completion_method == 'package' 		||
-			\ l:completion_method == 'environment_names' ||
-			\ l:completion_method == 'colors' 	||
-			\ l:completion_method == 'bibfiles' 	||
 			\ l:completion_method == 'bibstyles' 	||
 			\ l:completion_method == 'font family' 	||
 			\ l:completion_method == 'font series' 	||
 			\ l:completion_method == 'font shape'	||
 			\ l:completion_method == 'font encoding'||
 			\ l:completion_method == 'documentclass' )
-		if a:expert_mode == 1 
-		    let l:completions	= filter(deepcopy(l:completion_list),' v:val =~ "\\C^".l:begin') 
-		elseif a:expert_mode !=1
-		    let l:completions	= filter(deepcopy(l:completion_list),' v:val =~ l:begin') 
+		if a:expert_mode
+		    let l:completions	= filter(deepcopy(l:completion_list),' v:val =~? "^".l:begin') 
+		else
+		    let l:completions	= filter(deepcopy(l:completion_list),' v:val =~? l:begin') 
+		endif
+	    " {{{4 --------- environment names, colors, bibfiles 
+	    elseif ( l:completion_method == 'environment_names'	||
+			\ l:completion_method == 'colors' 	||
+			\ l:completion_method == 'bibfiles' 	)
+		if a:expert_mode
+		    let l:completions	= filter(deepcopy(l:completion_list),' v:val =~# "^".l:begin') 
+		else
+		    let l:completions	= filter(deepcopy(l:completion_list),' v:val =~? l:begin') 
 		endif
 	    " {{{4 --------- tikz libraries, inputfiles 
 	    " match not only in the beginning
 	    elseif (l:completion_method == 'tikz libraries' ||
 			\ l:completion_method == 'inputfiles')
-		let l:completions	= filter(deepcopy(l:completion_list),' v:val =~ l:begin') 
+		let l:completions	= filter(deepcopy(l:completion_list),' v:val =~? l:begin') 
 		if l:nchar != "}" && l:nchar != "," && l:completion_method != 'inputfiles'
 		    call map(l:completions,'v:val')
 		endif
@@ -3224,28 +3485,29 @@ function! atplib#TabCompletion(expert_mode,...)
 	    " (only in expert_mode).
 	    elseif l:completion_method == 'command' 
 			if a:expert_mode == 1 
-			    let l:completions	= filter(copy(l:completion_list),'v:val =~ "\\C^\\\\".l:tbegin')
+			    let l:completions	= filter(copy(l:completion_list),'v:val =~# "\\\\".l:tbegin')
 			elseif a:expert_mode != 1 
-			    let l:completions	= filter(copy(l:completion_list),'v:val =~ l:tbegin')
+			    let l:completions	= filter(copy(l:completion_list),'v:val =~? l:tbegin')
 			endif
 	    " {{{4 --------- Tikzpicture Keywords
 	    elseif l:completion_method == 'tikzpicture keywords'
 		if a:expert_mode == 1 
-		    let l:completions	= filter(deepcopy(l:completion_list),'v:val =~ "\\C^".l:tbegin') 
+		    let l:completions	= filter(deepcopy(l:completion_list),'v:val =~# "^".l:tbegin') 
 		elseif a:expert_mode != 1 
-		    let l:completions	= filter(deepcopy(l:completion_list),'v:val =~ l:tbegin') 
+		    let l:completions	= filter(deepcopy(l:completion_list),'v:val =~? l:tbegin') 
 		endif
 	    " {{{4 --------- Tikzpicture Commands
 	    elseif l:completion_method == 'tikzpicture commands'
 		if a:expert_mode == 1 
-		    let l:completions	= filter(deepcopy(l:completion_list),'v:val =~ "\\C^".l:tbegin') 
+		    let l:completions	= filter(deepcopy(l:completion_list),'v:val =~# "^".l:tbegin') 
 		elseif a:expert_mode != 1 
-		    let l:completions	= filter(deepcopy(l:completion_list),'v:val =~ l:tbegin') 
+		    let l:completions	= filter(deepcopy(l:completion_list),'v:val =~? l:tbegin') 
 		endif
 	    " {{{4 --------- Labels
 	    elseif l:completion_method == 'labels'
 		" Complete label by string or number:
-		let aux_data		= atplib#GrepAuxFile()
+		
+		let aux_data	= atplib#GrepAuxFile()
 		let l:completions 	= []
 		for data in aux_data
 		    " match label by string or number
@@ -3271,7 +3533,7 @@ function! atplib#TabCompletion(expert_mode,...)
     endif
 "     THINK: about this ...
 "     if l:completion_method == "tikzpicture keywords"
-" 	let bracket	= atplib#CloseLastBracket(1)
+" 	let bracket	= atplib#CloseLastBracket(g:atp_bracket_dict, 1)
 " 	if bracket != ""
 " 	    call add(l:completions, bracket)
 " 	endif
@@ -3329,18 +3591,20 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let stopline 	= search('^\s*$\|\\par\>', 'bnW')
 
 	    " Check Brackets 
-	    let cl_return 	= atplib#CloseLastBracket()
-	    let g:return	= cl_return
+	    let cl_return 	= atplib#CloseLastBracket(g:atp_bracket_dict)
+	    if g:atp_debugTC
+		let g:return	= cl_return
+	    endif
 	    " If the bracket was closed return
 	    if cl_return != "0"
 		return ""
 	    endif
 
 	    " Check inline math:
-	    if atplib#CheckOneLineMath('texMathZoneV') || 
-			\ atplib#CheckOneLineMath('texMathZoneW') ||
-			\ atplib#CheckOneLineMath('texMathZoneX') ||
-			\ b:atp_TexFlavor == 'plaintex' && atplib#CheckOneLineMath('texMathZoneY')
+	    if atplib#CheckInlineMath('texMathZoneV') || 
+			\ atplib#CheckInlineMath('texMathZoneW') ||
+			\ atplib#CheckInlineMath('texMathZoneX') ||
+			\ b:atp_TexFlavor == 'plaintex' && atplib#CheckInlineMath('texMathZoneY')
 		let zone = 'texMathZoneVWXY' 	" DEBUG
 		call atplib#CloseLastEnvironment(l:append, 'math')
 
@@ -3365,7 +3629,7 @@ function! atplib#TabCompletion(expert_mode,...)
 		    \  l:completion_method == 'bibstyles' || 
 		    \ l:completion_method == 'bibfiles'
 	    let b:tc_return='close_bracket end'
-	    call atplib#CloseLastBracket()
+	    call atplib#CloseLastBracket(g:atp_bracket_dict)
 	endif
     endif
     "}}}3
@@ -3795,3 +4059,4 @@ endfunction
 " }}}1
 "
 " vim:fdm=marker:ff=unix:noet:ts=8:sw=4:fdc=1
+

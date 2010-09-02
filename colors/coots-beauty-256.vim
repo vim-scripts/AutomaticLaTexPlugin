@@ -25,7 +25,7 @@ highlight VisualNOS      cterm=bold,underline ctermfg=57  ctermbg=233
 highlight Cursor         cterm=none           ctermfg=15  ctermbg=93	guifg=#000000	guibg=#8A4C98
 highlight CursorIM       cterm=bold           ctermfg=15  ctermbg=93	guifg=#000000	guibg=#8A4C98
 "highlight CursorColumn
-"highlight CursorLine
+highlight CursorLine	cterm=none		ctermfg=none ctermbg=53           	guibg=#111111 gui=none
 
 highlight Directory      			ctermfg=5   ctermbg=233	guifg=DarkViolet	guibg=#1c1c1c
 

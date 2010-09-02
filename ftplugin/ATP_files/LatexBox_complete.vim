@@ -249,7 +249,7 @@ endfunction
 function! s:CompleteLabels(regex, ...)
 
 	if a:0 == 0
-		let file = LatexBox_GetAuxFile()
+		let file = fnamemodify(b:atp_MainFile, ":r") . ".aux" 
 	else
 		let file = a:1
 	endif

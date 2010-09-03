@@ -714,14 +714,42 @@ nmap <silent> <buffer>	 <Plug>Delete	:call <SID>Delete("")<CR>
 "{{{1 OpenLog, TexLog, TexLog Buffer Options, PdfFonts, YesNoCompletion
 "{{{2 s:Search function for Log Buffer
 function! <SID>Search(pattern, flag, ...)
+    echo ""
     let center 	= ( a:0 >= 1 ? a:1 : 1 )
     let @/	= a:pattern
-    call search(a:pattern, a:flag)
+
+    " Count:
+"     let nr 	= 1
+"     while nr <= a:count
+" 	let keepjumps = ( a:nr < a:count ? 'keepjumps' : '')
+" 	exe keepjumps . "let line = search(a:pattern, a:flag)"
+" 	let nr	+= 1
+"     endwhile
+
+    let line = search(a:pattern, a:flag)
+
+    if !line
+	let message = a:flag =~# 'b' ? 'previous' : 'next'
+	if a:pattern =~ 'warning'
+	    let type = 'warning'
+	elseif a:pattern =~ '\^!'
+	    let type = 'error'
+	elseif a:pattern =~ 'info'
+	    let type = 'info'
+	else
+	    let type = ''
+	endif
+	echohl WarningMsg
+	echo "No " . message . " " . type . " message."
+	echohl Normal
+    endif
 " This fails (?):
 "     if center
 " 	normal zz
 "     endif
 endfunction
+" command! -count=1 -nargs=* <SID>Search	:call <SID>Search(<count>,<args>)
+
 function! <SID>Searchpair(start, middle, end, flag, ...)
     let center 	= ( a:0 >= 1 ? a:1 : 1 )
     if getline(".")[col(".")-1] == ')' 
@@ -773,16 +801,20 @@ function! s:OpenLog()
 " 	silent w!
 		   
 	function! <SID>SyncTex(bang,...)
+" 	    let g:debug = 0
 
 	    " if sync = 1 sync log file and the window - can be used by autocommand
 	    let sync = ( a:0 >= 1 ? a:1 : 0 )
+" 		let g:sync = sync
+
 	    if sync && !g:atp_SyncLog
+" 		let g:debug = 1
 		return
 	    endif
 
 	    " Find the end pos of error msg
 	    keepjumps let [ stopline, stopcol ] = searchpairpos('(', '', ')', 'nW') 
-		let g:stopline = stopline
+" 		let g:stopline = stopline
 
 	    let saved_pos = getpos(".")
 
@@ -815,9 +847,12 @@ function! s:OpenLog()
 		" which might be not closed, then this while loop is used to find
 		" readable file name.
 		let [ startline, startcol ] = searchpairpos('(', '', ')', 'bW') 
-		if nr >= 1 && [ startline, startcol ] == [ startline_o, startcol_o ] && !test
-		    return
-		endif
+" THIS CODE IS NOT WORKING:
+" 		if nr >= 1 && [ startline, startcol ] == [ startline_o, startcol_o ] && !test
+" 		    keepjumps call setpos(".", saved_pos)
+" 		    let g:debug = "return " . nr
+" 		    break
+" 		endif
 		    let g:startline = startline
 		let fname 	= matchstr(strpart(getline(startline), startcol), '^\f\+')
 		let test 	= filereadable(fname)
@@ -827,7 +862,7 @@ function! s:OpenLog()
 		let [ startline_o, startcol_o ] = deepcopy([ startline, startcol ])
 	    endwhile
 	    keepjumps call setpos(".", saved_pos)
-		let g:fname = fname
+" 		let g:fname = fname
 
 	    " if the file is under texmf directory return unless g:atp_developer = 1
 	    " i.e. do not visit packages and classes.

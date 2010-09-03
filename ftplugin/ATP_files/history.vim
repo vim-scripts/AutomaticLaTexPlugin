@@ -142,7 +142,7 @@ function! <SID>LoadHistory(bang, history_file, type, load_variables, ...)
 
     " Load first b:atp_History variable
     try
-	if filereadble(a:history_file)
+	if filereadable(a:history_file)
 	    execute " source " . a:history_file
 	endif
 
@@ -232,7 +232,9 @@ function! <SID>WriteHistory(bang, history_file, cached_variables, type)
 	    endif
 	endfor
 	" step (2a) source history file
-	execute "source " . a:history_file 
+	if filereadable(a:history_file)
+	    execute "source " . a:history_file 
+	endif
 	let cond = 0
 	for var in g:atp_cached_common_variables
 	    if g:atp_debugHistory
@@ -287,19 +289,25 @@ function! <SID>WriteHistory(bang, history_file, cached_variables, type)
 	silent! exe "edit +setl\\ noswapfile " . a:history_file
     catch /.*/
 	echoerr v:errmsg
-	echoerr "WriteHistory catched error while opening " . a:history_file . " History not written."
+	echoerr "WriteHistory catched error while opening " . a:history_file . ". History not written."
 	return 
     endtry
 
     " Delete the variables which where unlet:
     for var in deleted_variables
-	silent! exe ':%g/^\s*let\s\+' . var . '\>/d'
+	try 
+	    exe 'silent! %g/^\s*let\s\+' . var . '\>/d'
+	catch /E486: Pattern not found: .*/
+	endtry
     endfor
 
     " Write new variables:
     for var in a:cached_variables
 	if exists("l:" . var)
-	    silent! exe ':%g/^\s*let\s\+' . prefix . var . '/d'
+	    try 
+		 exe 'silent! %g/^\s*let\s\+' . prefix . var . '/d'
+	    catch /E486: Pattern not found: .*/
+	    endtry
 	    call append('$', 'let ' . prefix . var . ' = ' . string({ 'l:' . var }))
 	endif
     endfor

@@ -782,7 +782,7 @@ function! s:OpenLog()
 
 	    " Find the end pos of error msg
 	    keepjumps let [ stopline, stopcol ] = searchpairpos('(', '', ')', 'nW') 
-" 		let g:stopline = stopline
+		let g:stopline = stopline
 
 	    let saved_pos = getpos(".")
 
@@ -806,18 +806,28 @@ function! s:OpenLog()
 	    endif
 
 	    " Find the file name/bufnr/winnr where the error occurs. 
-	    let test = 0
+	    let test 	= 0
+	    let nr	= 0
+	    " There should be a finer way to get the file name if it is split in two
+	    " lines.
 	    while !test
 		" Some times in the lof file there is a '(' from the source tex file
 		" which might be not closed, then this while loop is used to find
 		" readable file name.
 		let [ startline, startcol ] = searchpairpos('(', '', ')', 'bW') 
+		if nr >= 1 && [ startline, startcol ] == [ startline_o, startcol_o ] && !test
+		    return
+		endif
 		    let g:startline = startline
 		let fname 	= matchstr(strpart(getline(startline), startcol), '^\f\+')
 		let test 	= filereadable(fname)
+" 		echomsg "test=" . test . " nr=" . nr . " linenr=" . line(".")
+" 		echomsg "fname=" . fname . " start pos " . string([ startline, startcol ])
+		let nr	+= 1
+		let [ startline_o, startcol_o ] = deepcopy([ startline, startcol ])
 	    endwhile
 	    keepjumps call setpos(".", saved_pos)
-" 		let g:fname = fname
+		let g:fname = fname
 
 	    " if the file is under texmf directory return unless g:atp_developer = 1
 	    " i.e. do not visit packages and classes.

@@ -82,14 +82,7 @@ function! s:maketoc(filename)
     let texfile_copy	= deepcopy(texfile)
 
     let true	= 1
-    let i	= 0
-    " remove the part before \begin{document}
-    while true == 1 && len(texfile)>0
-	let true = ( texfile[0] =~ '\\begin\s*{document}' ? 0 : 1 )
-	call remove(texfile,0)
-	let i+=1
-    endwhile
-    let bline		= i
+    let bline		= 0 	" We are not removing the preambule any more.
     let i		= 1
     " set variables for chapter/section numbers
     for section in keys(g:atp_sections)
@@ -225,6 +218,7 @@ function! s:maketoc(filename)
     endif
     return t:atp_toc
 endfunction
+command! -buffer -nargs=1 -complete=buffer MakeToc	:echo s:maketoc(fnamemodify(<f-args>, ":p"))[fnamemodify(<f-args>, ":p")] 
 " {{{2 s:buflist
 if !exists("t:buflist")
     let t:buflist=[]
@@ -489,7 +483,7 @@ function! s:showtoc(toc)
 endfunction
 "}}}2
 
-" This is the User Front End Function 
+" This is User Front End Function 
 "{{{2 TOC
 function! <SID>TOC(bang)
     " skip generating t:atp_toc list if it exists and if a:0 != 0
@@ -739,7 +733,6 @@ function! <SID>GotoEnvironment(flag,...)
 
     " Search (twise if needed)
     silent execute  search_cmd . pattern . search_cmd_e 
-    let g:debug = 1
     if a:flag !~# 'b'
 	if getline(".")[col(".")-1] == "$" 
 	    if ( get(split(getline("."), '\zs'), col(".")-1, '') == "$" && get(split(getline("."), '\zs'), col("."), '') == "$" )
@@ -751,7 +744,6 @@ function! <SID>GotoEnvironment(flag,...)
 	    endif
 	    if rerun
 		silent execute search_cmd . pattern . search_cmd_e
-		let g:debug = 2
 	    endif
 	endif
     else " a:flag =~# 'b'
@@ -765,12 +757,11 @@ function! <SID>GotoEnvironment(flag,...)
 	    endif
 	    if rerun
 		silent execute search_cmd . pattern . search_cmd_e
-		let g:debug = 2
 	    endif
 	endif
     endif
 
-" 	let g:cmd=search_cmd . pattern . search_cmd_e
+	let g:cmd=search_cmd . pattern . search_cmd_e
     call histadd("search", pattern)
     let @/ 	 = pattern
 "     if env_name == "math" && getline(".")[col(".")-1] == '$' && col(".") > 1 && 
@@ -780,19 +771,20 @@ function! <SID>GotoEnvironment(flag,...)
 "     endif
     return ""
 endfunction
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv	:call <SID>GotoEnvironment('W',<q-args>)
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PEnv	:call <SID>GotoEnvironment('bW',<q-args>)
-nnoremap <silent> <buffer> <Plug>GotoNextEnvironment			:call <SID>GotoEnvironment('W','[^}]*')<CR>
-nnoremap <silent> <buffer> <Plug>GotoPreviousEnvironment		:call <SID>GotoEnvironment('bW','[^}]*')<CR>
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv	:call <SID>GotoEnvironment('W',<q-args>)  | let v:searchforward=1 
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PEnv	:call <SID>GotoEnvironment('bW',<q-args>) | let v:searchforward=0
 
-nnoremap <silent> <buffer> <Plug>GotoNextMath				:call <SID>GotoEnvironment('W','math')<CR>
-nnoremap <silent> <buffer> <Plug>GotoPreviousMath			:call <SID>GotoEnvironment('bW','math')<CR>
+nnoremap <silent> <buffer> <Plug>GotoNextEnvironment			:NEnv ^}]*<CR>
+nnoremap <silent> <buffer> <Plug>GotoPreviousEnvironment		:PEnv ^}]*<CR>
 
-nnoremap <silent> <buffer> <Plug>GotoNextInlineMath			:call <SID>GotoEnvironment('W', 'inlinemath')<CR>
-nnoremap <silent> <buffer> <Plug>GotoPreviousInlineMath			:call <SID>GotoEnvironment('bW','inlinemath')<CR>
+nnoremap <silent> <buffer> <Plug>GotoNextMath				:NEnv math<CR>
+nnoremap <silent> <buffer> <Plug>GotoPreviousMath			:PEnv math<CR>
 
-nnoremap <silent> <buffer> <Plug>GotoNextDisplayedMath	 		:call <SID>GotoEnvironment('W','displayedmath')<CR>
-nnoremap <silent> <buffer> <Plug>GotoPreviousDisplayedMath		:call <SID>GotoEnvironment('bW','displayedmath')<CR>
+nnoremap <silent> <buffer> <Plug>GotoNextInlineMath			:Nenv inlinemath<CR>
+nnoremap <silent> <buffer> <Plug>GotoPreviousInlineMath			:PEnv inlinemath<CR>
+
+nnoremap <silent> <buffer> <Plug>GotoNextDisplayedMath	 		:NEnv displayedmath<CR>
+nnoremap <silent> <buffer> <Plug>GotoPreviousDisplayedMath		:PEnv displayedmath<CR>
 
 " Move to next section, the extra argument is a pattern to match for the
 " section title. The first, obsolete argument stands for:
@@ -891,11 +883,11 @@ function! Env_compl(A,P,L)
     let envlist=sort(['algorithm', 'algorithmic', 'abstract', 'definition', 'equation', 'proposition', 
 		\ 'theorem', 'lemma', 'array', 'tikzpicture', 
 		\ 'tabular', 'table', 'align\*\?', 'alignat\*\?', 'proof', 
-		\ 'corollary', 'enumerate', 'examples\?', 'itemize', 'remark', 
+		\ 'corollary', 'enumerate', 'examples\=', 'itemize', 'remark', 
 		\ 'notation', 'center', 'quotation', 'quote', 'tabbing', 
 		\ 'picture', 'math', 'displaymath', 'minipage', 'list', 'flushright', 'flushleft', 
 		\ 'figure', 'eqnarray', 'thebibliography', 'titlepage', 
-		\ 'verbatim', 'verse', 'inlinemath', 'displayedmath' ])
+		\ 'verbatim', 'verse', 'inlinemath', 'displayedmath', 'subequations' ])
     let returnlist=[]
     for env in envlist
 	if env =~ '^' . a:A 
@@ -929,19 +921,17 @@ function! GotoFile(bang,...)
 	return
     endif	
 
-    " This is passed to the newly opened buffer.
-    let s:MainFile	= b:atp_MainFile 
-    let s:OutDir	= b:atp_OutDir
-    let s:ReloadOnError = b:atp_ReloadOnError
-    let s:mapNn		= g:atp_mapNn
-
     let filetype 	= &l:filetype
 
-    if a:bang == "!" || !exists("b:ListOfFiles")
+    if a:bang == "!" || !exists("b:TreeOfFiles") || !exists("b:ListOfFiles") || !exists("b:TypeDict") || !exists("b:LevelDict") 
 	let [tree_d, file_l, type_d, level_d ] 	= TreeOfFiles(b:atp_MainFile)
     else
 	let [tree_d, file_l, type_d, level_d ] 	= deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ])
     endif
+
+    " This is passed to the newly opened buffer.
+    let projectVarDict = SaveProjectVariables()
+
     let file_l_orig = deepcopy(file_l)
 
     " Note: line is set to "" if check_line == 0 => method = "all" is used. 
@@ -1149,10 +1139,7 @@ function! GotoFile(bang,...)
 
 	" Set the main file variable and pass the TreeOfFiles variables to the new
 	" buffer.
-	let b:atp_MainFile	= s:MainFile
-	let b:atp_OutDir	= s:OutDir
-	let b:atp_ReloadOnError = s:ReloadOnError
-	let g:atp_mapNn		= s:mapNn
+	call RestoreProjectVariables(projectVarDict)
 	let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]	= deepcopy([tree_d, file_l_orig, type_d, level_d ])
     else
 	echohl ErrorMsg

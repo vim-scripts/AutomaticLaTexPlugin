@@ -254,11 +254,32 @@ function! s:CompleteLabels(regex, ...)
 		let file = a:1
 	endif
 
+	" Fill in suggestions with the labels in the current buffer.
+	let suggestions=[]
+
+	for line in filter(getline(1,'$'),'v:val =~ ''\\label{'.a:regex.'''')
+	" Trim down the comments
+	let line=substitute(line,'\\\@<!%.*','','')
+	" Add every remaining label to the list of suggestions
+	let index=match(line,'\\label{\zs')
+	let endbracket = match(line,'}',index)
+
+	while index > -1 && endbracket>-1
+	    call add(suggestions,line[index : endbracket-1])
+	    let line=line[endbracket+1 :]
+	    let index=match(line,'\\label{\zs')
+	    let endbracket = match(line,'}',index)
+	endwhile
+	endfor
+
+	let g:test=copy(suggestions)
+
 	if empty(glob(file, 1))
-		return []
+		"return []
+	    return suggestions
 	endif
 
-	let suggestions = []
+	"let suggestions = []
 
 	" search for the target equation number
 	for line in filter(readfile(file), 'v:val =~ ''^\\newlabel{\|^\\@input{''')
@@ -293,7 +314,12 @@ function! s:CompleteLabels(regex, ...)
 				let entry.abbr = entry.word
 				let entry.word = entry.word . '}'
 			endif
-			call add(suggestions, entry)
+      let index=index(suggestions,matches[1])
+      if index > -1
+        let suggestions[index] = entry
+      else
+        call add(suggestions, entry)
+      endif
 		endif
 
 		" search for included files

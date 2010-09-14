@@ -311,15 +311,17 @@ function! ShowLabelContext()
     let buf_name	= s:file()
     let buf_nr		= bufnr("^" . buf_name . "$")
     let win_nr		= bufwinnr(buf_name)
+    let g:buf_name	= buf_name
+    let g:win_nr	= win_nr
     let line		= s:getlinenr(line("."), labels_window)
     if !exists("t:atp_labels")
 	let t:atp_labels=UpdateLabels(buf_name)
     endif
     exe win_nr . " wincmd w"
-	if win_nr == -1
-	    exe "e #" . buf_nr
-	endif
-    exe "12split "
+" 	if win_nr == -1
+" 	    exe "e #" . buf_nr
+" 	endif
+    exe "split #" . buf_nr
     call setpos('.', [0, line, 1, 0])
 endfunction
 endif
@@ -328,13 +330,20 @@ endif
 " {{{1 EchoLine
 if !exists("*EchoLine")
 function! EchoLine()
+
+    " If we are not on a toc/label line 
+    " return
+    if !s:getlinenr(line("."))
+	return 0
+    endif
+
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
 
     let toc		= getbufline("%",1,"$")
     let h_line		= index(reverse(copy(toc)),'')+1
-    if line(".") > len(toc)-h_line
-	return ''
-    endif
+"     if line(".") > len(toc)-h_line
+" 	return 0
+"     endif
 
     let buf_name	= s:file()
     let buf_nr		= bufnr("^" . buf_name . "$")
@@ -343,51 +352,65 @@ function! EchoLine()
     endif
     let line		= s:getlinenr(line("."), labels_window)
     let sec_line	= join(getbufline(buf_name,line))
+    	let g:sec_line	= sec_line
     let sec_type	= ""
 
     if sec_line =~ '\\subparagraph[^\*]'
-	let sec_type="subparagraph"
+	let sec_type="subparagraph  "
     elseif sec_line =~ '\\subparagraph\*'
-	let sec_type="subparagraph*"
+	let sec_type="subparagraph* "
     elseif sec_line =~ '\\paragraph[^\*]'
-	let sec_type="paragraph"
+	let sec_type="paragraph     "
     elseif sec_line =~ '\\paragraph\*'
-	let sec_type="paragraph*"
+	let sec_type="paragraph*    "
     elseif sec_line =~ '\\subsubsection[^\*]'
-	let sec_type="subsubsection"
+	let sec_type="subsubsection "
     elseif sec_line =~ '\\subsubsection\*'
 	let sec_type="subsubsection*"
     elseif sec_line =~ '\\subsection[^\*]'
-	let sec_type="subsection"
+	let sec_type="subsection    "
     elseif sec_line =~ '\\subsection\*'
-	let sec_type="subsection*"
+	let sec_type="subsection*   "
     elseif sec_line =~ '\\section[^\*]'
-	let sec_type="section"
+	let sec_type="section       "
     elseif sec_line =~ '\\section\*'
-	let sec_type="section*"
+	let sec_type="section*      "
     elseif sec_line =~ '\\chapter[^\*]'
-	let sec_type="chapter"
+	let sec_type="chapter       "
     elseif sec_line =~ '\\chapter\*'
-	let sec_type="chapter*"
+	let sec_type="chapter*      "
     elseif sec_line =~ '\\part[^\*]'
-	let sec_type="part"
+	let sec_type="part          "
     elseif sec_line =~ '\\part\*'
-	let sec_type="part*"
+	let sec_type="part*         "
     elseif sec_line =~ '\\bibliography'
-	let sec_type="bibliography"
-    elseif sec_line =~ '\\abstract'
-	let sec_type="abstract"
+	let sec_type="bibliography  "
+    elseif sec_line =~ '\\abstract\|\\begin\s*{\s*abstract\s*}'
+	let sec_type="abstract      "
+    elseif sec_line =~ '\\documentclass'
+	let sec_type="preambule     "
+    endif
+    let sec_type = toupper(sec_type)
+    if expand("%") == "__Labels__"
+	let sec_type="TYPE " 
     endif
 
     let label		= matchstr(sec_line,'\\label\s*{\zs[^}]*\ze}')
-    if label != ""
-	echo sec_type . " : '" . strpart(sec_line,stridx(sec_line,'{')+1,stridx(sec_line,'}')-stridx(sec_line,'{')-1) . "'\t label : " . label
+    let section		= strpart(sec_line,stridx(sec_line,'{')+1,stridx(sec_line,'}')-stridx(sec_line,'{')-1)
+    if section != "" && label != ""
+	echo sec_type . " : '" . section . "'\t label : " . label
+    elseif section != ""
+	echo sec_type . " : '" . section . "'"
     else
-	echo sec_type . " : '" . strpart(sec_line,stridx(sec_line,'{')+1,stridx(sec_line,'}')-stridx(sec_line,'{')-1) . "'"
+	echo ""
     endif
-    return 0
+    return 1
 endfunction
 endif
+setl updatetime=200 
+augroup ATP_TOC
+    au CursorHold __ToC__ :call EchoLine()
+augroup END
 "}}}1
 
 " Compare Numbers Function {{{1
@@ -617,22 +640,36 @@ if expand("%") == "__ToC__"
 endif
 " }}}1
 
-function! Help()
+function! Help() " {{{1
     " Note: here they are not well indented, but in the output they are :)
     echo "Available Mappings:"
     echo "q 			close ToC window"
     echo "<CR>  			go to and close"
     echo "<space>			go to"
     echo "c or y			yank the label to a register"
-    echo "p or P		yank and paste the label (in the source file)"
+    echo "p or P			yank and paste the label (in the source file)"
     echo "e			echo the title to command line"
-    echo ":DeleteSection		Delete section under the cursor"
-    echo ":PasteSection [<arg>] 	Paste section from section stack"
-    echo ":SectionStack		Show section stack"
-    echo "h			this help message"
+    if expand("%")  == "__ToC__"
+	echo ":DeleteSection		Delete section under the cursor"
+	echo ":PasteSection [<arg>] 	Paste section from section stack"
+	echo ":SectionStack		Show section stack"
+	echo ":Undo			Undo"
+    endif
+    echo "<F1>			this help message"
 endfunction
 
-" MAPPINGS
+function! s:CursorLine() "{{{1
+    if s:getlinenr(line(".")) && !&l:cursorline
+	setl cursorline
+    elseif !s:getlinenr(line(".")) && &l:cursorline 
+	setl nocursorline
+    endif
+endfunction
+augroup ATP_CursorLine
+    au CursorMoved,CursorMovedI __ToC__ call s:CursorLine()
+augroup END
+
+" MAPPINGS {{{1
 if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
     map <silent> <buffer> q 		:bdelete<CR>
     map <silent> <buffer> <CR> 		:call GotoLine(1)<CR>
@@ -651,7 +688,3 @@ if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
     map <silent> <buffer> e 		:call EchoLine()<CR>
     map <silent> <buffer> <F1>		:call Help()<CR>
 endif
-setl updatetime=200 
-augroup ATP_TOC
-    au CursorHold __ToC__ :call EchoLine()
-augroup END

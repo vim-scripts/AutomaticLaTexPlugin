@@ -98,7 +98,6 @@ highlight Define         cterm=none           	ctermfg=39   ctermbg=233
 highlight Macro          cterm=none           	ctermfg=39   ctermbg=233
 highlight PreCondit      cterm=bold           	ctermfg=125  ctermbg=233
 
-"jak mutt odpala vima i \bf,\textrm itd:
 highlight Type           cterm=none           	ctermfg=82               	guifg=LawnGreen
 highlight StorageClass   cterm=none           	ctermfg=21   ctermbg=233
 highlight Structure      cterm=none           	ctermfg=21   ctermbg=233
@@ -152,11 +151,6 @@ highlight texSpecialChar		ctermfg=39	ctermbg=233	guifg=DodgerBlue
 highlight texRefZone							guifg=DeepPink2		gui=bold
 highlight texCite							guifg=DeepPink4
 highlight texRefOption							guifg=HotPink4
-
-" " Testing:
-" hi texBfText 		gui=bold
-" hi texItText 		gui=italic
-" hi texUnderlineText 	gui=underline
 
 " texlog /syntax file available in Automatic Tex Package/
 hi texlogKeyword		ctermfg=90 cterm=bold		guifg=magenta4	gui=bold
@@ -263,3 +257,6 @@ highlight ywtxt_bold 		cterm=bold 	gui=bold
 highlight ywtxt_italic 		cterm=italic  	gui=italic
 highlight ywtxt_underline 	cterm=underline gui=underline
 highlight ywtxt_comment guifg=honeydew4
+
+" vim
+highlight vimCommentTitle	cterm=bold	ctermfg=white

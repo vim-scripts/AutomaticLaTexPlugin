@@ -282,7 +282,7 @@ let s:ATP_rs_debug=0	" if 1 sets debugging messages which are appended to '/tmp/
 " {{{2 s:RecursiveSearch function
 try
 function! <SID>RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wrap_nr, winsaveview, bufnr, strftime, vim_options, pattern, ... )
-
+	
     let time0	= reltime()
 
     " set and restore some options:
@@ -346,7 +346,7 @@ function! <SID>RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr,
     	" Add pattern to the search history
 	if a:call_nr == 1
 	    call histadd("search", a:pattern)
-	    let @/	= pattern
+	    let @/ = pattern
 	endif
 
 	" Set up searching flags
@@ -673,7 +673,9 @@ function! <SID>RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr,
 		let open = "keepjumps keepalt " . open
 	    endif
  
+	    let projectVarDict = SaveProjectVariables()
 	    silent! execute open . file
+	    call RestoreProjectVariables(projectVarDict)
 
 	    let b:atp_MainFile=a:main_file
 	    if flags_supplied =~# 'b'
@@ -722,8 +724,12 @@ function! <SID>RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr,
 	    else
 		let open =  'keepjumps keepalt edit +'.g:ATP_branch_line." ".g:ATP_branch
 	    endif
+
+	    let projectVarDict = SaveProjectVariables()
 	    silent! execute open
-	    let b:atp_MainFile=a:main_file
+	    call RestoreProjectVariables(projectVarDict)
+" 	    let b:atp_MainFile=a:main_file
+
 " 	    call cursor(g:ATP_branch_line, 1)
 	    if flags_supplied !~# 'b'
 		keepjumps call search('\m\\input\s*{[^}]*}', 'e', line(".")) 
@@ -771,6 +777,7 @@ function! <SID>RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr,
 	    echohl ErrorMsg
 	    echomsg "This is a bug in ATP."
 	    echohl
+
 	    return 
 	endif
 endfunction
@@ -778,18 +785,25 @@ catch /E127: Cannot redefine function/
 endtry
 " }}}2
 
-" This is a wrapper function around s:ReverseSearch
-" It allows to pass arguments to s:ReverseSearch in a similar way to :vimgrep
-" function
-" {{{2 Search()
-try
-function! Search(Bang, Arg)
+" User interface to s:RecursiveSearch function.
+" s:GetSearchArgs {{{2
+" This functionn returns arguments from <q-args> - a list [ pattern, flag ]
+" It allows to pass arguments to s:Search in a similar way to :vimgrep, :ijump, ... 
+function! s:GetSearchArgs(Arg)
     let pattern		= matchstr(a:Arg, '\m^\(\/\|[^\i]\)\zs.*\ze\1')
     let flag		= matchstr(a:Arg, '\m^\(\/\|[^\i]\).*\1\s*\zs[bcepsSwW]*\ze\s*$')
     if pattern == ""
 	let pattern	= matchstr(a:Arg, '\m^\zs\S*\ze\(\s[bcepsSwW]*\)\=$')
 	let flag	= matchstr(a:Arg, '\m\s\+\zs[SbcewW]*\ze$')
     endif
+    return [ pattern, flag ]
+endfunction
+"}}}2
+" {{{2 Search()
+try
+function! Search(Bang, Arg)
+
+    let [ pattern, flag ] = s:GetSearchArgs(a:Arg)
 
     if pattern == ""
 	echohl ErrorMsg
@@ -798,18 +812,17 @@ function! Search(Bang, Arg)
 	return
     endif
 
-    let g:pattern = pattern
-
     if a:Bang == "!"
 	call s:RecursiveSearch(b:atp_MainFile, expand("%:p"), 'make_tree', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, pattern, flag)
     else
 	call s:RecursiveSearch(b:atp_MainFile, expand("%:p"), '', expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, pattern, flag)
     endif
+
 endfunction
 catch /E127: Cannot redefine function/  
 endtry
 " {{{2 Commands, Maps and Completion functions for Search() function. 
-command! -buffer -bang -complete=customlist,SearchHistCompletion -nargs=* S 			:call Search(<q-bang>,<q-args>)
+command! -buffer -bang -complete=customlist,SearchHistCompletion -nargs=* S 	:call Search(<q-bang>, <q-args>) | let v:searchforward = ( s:GetSearchArgs(<q-args>)[1] =~# 'b' ? 0 : 1 )
 " Debug:
 " function! RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr, wrap_nr, winsaveview, bufnr, strftime, vim_options, pattern, ... )
 "     let a1 =  a:0 >= 1 ? a:1 : "" 
@@ -834,14 +847,16 @@ if g:atp_mapNn
 " These two maps behaves now like n (N): after forward search n (N) acts as forward (backward), after
 " backward search n acts as backward (forward, respectively).
 
-    nmap  n		<Plug>RecursiveSearchn
-    nmap  N		<Plug>RecursiveSearchN
+    nmap <buffer> <silent> n		<Plug>RecursiveSearchn
+    nmap <buffer> <silent> N		<Plug>RecursiveSearchN
 
     " Note: the final step if the mapps n and N are made is in s:LoadHistory 
 endif
 " }}}2
-function! ATP_ToggleNn() " {{{2
-	if g:atp_mapNn
+function! ATP_ToggleNn(...) " {{{2
+    let on	= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) : !g:atp_mapNn )
+    let g:on	= on
+	if !on
 	    silent! nunmap <buffer> n
 	    silent! nunmap <buffer> N
 	    silent! aunmenu LaTeX.Toggle\ Nn\ [on]
@@ -861,8 +876,7 @@ function! ATP_ToggleNn() " {{{2
 	    echomsg "atp nN maps"
 	endif
 endfunction
-command! -buffer ToggleNn		:call ATP_ToggleNn()
-
+command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleNn	:call ATP_ToggleNn(<f-args>)
 function! SearchHistCompletion(ArgLead, CmdLine, CursorPos)
     let search_history=[]
     let hist_entry	= histget("search")

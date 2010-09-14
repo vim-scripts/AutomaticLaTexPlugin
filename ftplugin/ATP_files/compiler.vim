@@ -26,7 +26,7 @@ compiler tex
 " a:1 == "RevSearch" 	if run from RevSearch() function and the output file doesn't
 " exsists call compiler and RevSearch().
 function! <SID>ViewOutput(...)
-    let rev_search	= a:0 == 1 && a:1 == "RevSearch" ? 1 : 0
+    let rev_search	= ( a:0 == 1 && a:1 == "RevSearch" ? 1 : 0 )
 
     call atplib#outdir()
 
@@ -37,7 +37,7 @@ function! <SID>ViewOutput(...)
     let global_options 	= exists("g:atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") ? g:atp_{matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')}Options : ""
     let local_options 	= getbufvar(bufnr("%"), "atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options")
 
-    let g:options	= global_options ." ". local_options
+"     let g:options	= global_options ." ". local_options
 
     " Follow the symbolic link
     let link=system("readlink " . shellescape(b:atp_MainFile))
@@ -212,7 +212,7 @@ function! <SID>copy(input,output)
 endfunction
 "}}}
 
-" This is the CALL BACK mechanism 
+" CALL BACK:
 " (with the help of David Munger - LatexBox) 
 "{{{ call back
 function! <SID>GetSid() "{{{
@@ -243,7 +243,9 @@ endfunction
 " Uses b:atp_TexStatus which is equal to the value returned by tex
 " compiler.
 function! <SID>CallBack(mode)
-	let b:mode	= a:mode
+	if g:atp_debugCallBack
+	    let b:mode	= a:mode
+	endif
 
 	for cmd in keys(g:CompilerMsg_Dict) 
 	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
@@ -660,7 +662,6 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     endif
 
     " Post compeltion works:
-    echomsg  "END"
 	if g:MakeLatex_debug
 	silent echo a:run . " END"
 	redir END
@@ -702,7 +703,7 @@ endfunction
 
 "}}}1
 
-" THE MAIN COMPILER FUNCTION
+" THE MAIN COMPILER FUNCTION:
 " {{{ s:Compiler 
 " This is the MAIN FUNCTION which sets the command and calls it.
 " NOTE: the <filename> argument is not escaped!
@@ -720,6 +721,14 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	redraw!
 	echomsg "Please wait until compilation stops."
 	return
+    endif
+
+    if g:atp_debugCompiler
+	redir! >> /tmp/ATP_CompilerLog
+	silent echomsg "________ATP_COMPILER_LOG_________"
+	silent echomsg "changedtick=" . b:changedtick . " atp_changedtick=" . b:atp_changedtick
+	silent echomsg "a:bibtex=" . a:bibtex . " a:start=" . a:start . " a:runs=" . a:runs . " a:verbose=" . a:verbose . " a:command=" . a:command . " a:filename=" . a:filename . " a:bang=" . a:bang
+	silent echomsg "1 b:changedtick=" . b:changedtick . " b:atp_changedtick" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
     endif
 
     if has('clientserver') && !empty(v:servername) && g:atp_callback && a:verbose != 'verbose'
@@ -788,13 +797,13 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	endfor
 
 " 	HANDLE XPDF RELOAD 
-	if b:atp_Viewer == "xpdf"
+	if b:atp_Viewer =~ '^\s*xpdf\>'
 	    if a:start
 		"if xpdf is not running and we want to run it.
 		let Reload_Viewer = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . shellescape(outfile) . " ; "
 	    else
 " TIME: this take 1/3 of time! 0.039
-		if s:xpdfpid() != ""
+		if <SID>xpdfpid() != ""
 		    "if xpdf is running (then we want to reload it).
 		    "This is where I use 'ps' command to check if xpdf is
 		    "running.
@@ -893,7 +902,7 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	    " 	Reload on Error:
 	    " 	for xpdf it copies the out file but does not reload the xpdf
 	    " 	server for other viewers it simply doesn't copy the out file.
-	    if b:atp_ReloadOnError || a:ang == "!"
+	    if b:atp_ReloadOnError || a:bang == "!"
 		if a:bang == "!"
 		    let s:command="( " . s:texcomp . " ; " . catchstatus_cmd . " cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . "   ; " . s:cpoutfile . " " . Reload_Viewer 
 		else
@@ -908,9 +917,13 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	    endif
 	endif
 
-	" DEBUG
+    if g:atp_debugCompiler
+	silent echomsg "Reload_Viewer=" . Reload_Viewer
 	let g:Reload_Viewer 	= Reload_Viewer
 	let g:command		= s:command
+    elseif g:atp_debugCompiler >= 2 
+	silent echomsg "s:command=" . s:command
+    endif
 
 	" Preserve files with extension belonging to the g:keep list variable.
 	let s:copy=""
@@ -939,13 +952,16 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 
 	endif
 
+    if g:atp_debugCompiler
+	silent echomsg "callback_cmd=" . callback_cmd
+    endif
+
  	let s:rmtmp="rm -r " . shellescape(s:tmpdir)
 	let s:command=s:command . " " . s:rmtmp . ")&"
 
 	if str2nr(a:start) != 0 
 	    let s:command=s:start . s:command
 	endif
-
 
 	" Take care about backup and writebackup options.
 	let s:backup=&backup
@@ -954,7 +970,14 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	    if &backup || &writebackup | setlocal nobackup | setlocal nowritebackup | endif
 	endif
 " This takes lots of time! 0.049s (more than 1/3)	
+    if g:atp_debugCompiler
+	silent echomsg "BEFORE WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
+    endif
 	silent! w
+	let b:atp_changedtick += 1
+    if g:atp_debugCompiler
+	silent echomsg "AFTER WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
+    endif
 	if a:command == "AU"  
 	    let &l:backup=s:backup 
 	    let &l:writebackup=s:writebackup 
@@ -966,18 +989,27 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	    let s:command="!clear;" . s:texcomp . " " . s:cpoutfile . " " . s:copy 
 	    exe s:command
 	endif
-	let g:texcommand=s:command
+
+	unlockvar g:atp_TexCommand
+	let g:atp_TexCommand=s:command
+	lockvar g:atp_TexCommand
+
+
+    if g:atp_debugCompiler
+	silent echomsg "s:command=" . s:command
+	redir END
+    endif
 endfunction
 "}}}
 
-" AUTOMATIC TEX PROCESSING 
+" AUTOMATIC TEX PROCESSING:
 " {{{1 s:auTeX
 " This function calls the compilers in the background. It Needs to be a global
 " function (it is used in options.vim, there is a trick to put function into
 " a dictionary ... )
 augroup ATP_changetick
     au BufEnter *.tex :silent! let b:atp_changedtick = b:changedtick
-    au BufEnter *.tex :lockvar b:atp_changedtick
+"     au BufEnter *.tex :lockvar b:atp_changedtick
 augroup END 
 
 function! <SID>auTeX()
@@ -993,6 +1025,7 @@ function! <SID>auTeX()
     if !b:atp_autex
        return "autex is off"
     endif
+
     " if the file (or input file is modified) compile the document 
     if filereadable(expand("%"))
 	if g:atp_Compare == "changedtick"
@@ -1002,9 +1035,9 @@ function! <SID>auTeX()
 	endif
 	if cond
 	    " This is for changedtick only
-	    unlockvar b:atp_changedtick
-	    let b:atp_changedtick = b:changedtick +1
-	    lockvar b:atp_changedtick
+" 	    unlockvar b:atp_changedtick
+	    let b:atp_changedtick = b:changedtick
+" 	    lockvar b:atp_changedtick
 	    " +1 because s:Compiler saves the file what increases b:changedtick by 1.
 	    
 "
@@ -1016,6 +1049,7 @@ function! <SID>auTeX()
     " if compiling for the first time
     else
 	try 
+	    let b:atp_changedtick = b:changedtick + 1
 	    w
 	catch /E212: Cannot open file for writing/
 	    echohl ErrorMsg
@@ -1051,6 +1085,8 @@ augroup END
 function! <SID>TeX(runs, bang, ...)
 let s:name=tempname()
 
+"     echomsg "TEX_1 CHANGEDTICK=" . b:changedtick . " " . b:atp_running
+
     if a:0 >= 1
 	let mode = ( a:1 != 'default' ? a:1 : g:atp_DefaultDebugMode )
     else
@@ -1066,6 +1102,8 @@ let s:name=tempname()
 	endif
     endfor
 
+"     echomsg "TEX_2 HANGEDTICK=" . b:changedtick . " " . b:atp_running
+
     if l:mode != 'silent'
 	if a:runs > 2 && a:runs <= 5
 	    echomsg Compiler . " will run " . a:1 . " times."
@@ -1077,7 +1115,9 @@ let s:name=tempname()
 	    echomsg Compiler . " will run " . s:runlimit . " times."
 	endif
     endif
+"     echomsg "TEX_3 HANGEDTICK=" . b:changedtick . " " . b:atp_running
     call s:Compiler(0,0, a:runs, mode, "COM", b:atp_MainFile, a:bang)
+"     echomsg "TEX_4 HANGEDTICK=" . b:changedtick . " " . b:atp_running
 endfunction
 command! -buffer -nargs=? -bang -count=1 -complete=customlist,TEX_Comp TEX	:call <SID>TeX(<count>, <q-bang>, <f-args>)
 function! TEX_Comp(ArgLead, CmdLine, CursorPos)
@@ -1127,6 +1167,7 @@ nnoremap <silent> <Plug>BibtexVerbose	:call <SID>Bibtex("", "verbose")<CR>
 "}}}
 
 " Show Errors Function
+" (some error tools are in various.vim: ':ShowErrors o')
 " {{{ SHOW ERRORS
 "
 " this functions sets errorformat according to the flag given in the argument,

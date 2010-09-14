@@ -51,6 +51,75 @@ endif
 " This file contains set of functions which are needed to set to set the atp
 " options and some common tools.
 
+" Set the project name
+"{{{ SetProjectName (function and autocommands)
+" This function sets the main project name (b:atp_MainFile)
+"
+" It is used by EditInputFile which copies the value of this variable to every
+" input file included in the main source file. 
+"
+" nmap gf (GotoFile function) is not using this function.
+"
+" the b:atp_MainFile variable is set earlier in the startup
+" (by the augroup ATP_Syntax_TikzZone), calling SetProjectName to earlier cause
+" problems (g:atp_raw_bibinputs undefined). 
+"
+" ToDo: CHECK IF THIS IS WORKS RECURSIVELY?
+" ToDo: THIS FUNCTION SHUOLD NOT SET AUTOCOMMANDS FOR AuTeX function! 
+" 	every tex file should be compiled (the compiler function calls the  
+" 	right file to compile!
+"
+" {{{ SetProjectName ( function )
+" store a list of all input files associated to some file
+fun! SetProjectName(...)
+    let bang 	= ( a:0 >= 1 ? a:1 : "" )	" do we override g:atp_project	
+    let did 	= ( a:0 >= 2 ? a:2 : 1	) 	" do we check if the project name was set
+    						" but also overrides the current b:atp_MainFile when 0 	
+
+    " if the project name was already set do not set it for the second time
+    " (which sets then b:atp_MainFile to wrong value!)  
+    if &filetype == "fd_atp"
+	" this is needed for EditInputFile function to come back to the main
+	" file.
+	let b:atp_MainFile	= fnamemodify(expand("%"), ":p")
+	let b:did_project_name	= 1
+    endif
+
+    if exists("b:did_project_name") && b:did_project_name && did
+	return " project name was already set"
+    else
+	let b:did_project_name	= 1
+    endif
+
+    if !exists("g:atp_project") || bang == "!"
+	let b:atp_MainFile	= exists("b:atp_MainFile") && did ? b:atp_MainFile : expand("%:p")
+	let pn_return		= " set from history or just set to " . b:atp_MainFile . " exists=" . exists("b:atp_MainFile") . " did=" . did
+    elseif exists("g:atp_project")
+	let b:atp_MainFile	= g:atp_project
+	let pn_return		= " set from g:atp_project to " . b:atp_MainFile 
+    endif
+
+    " we need to escape white spaces in b:atp_MainFile but not in all places so
+    " this is not done here
+
+    " Now we can run things that needs the project name: 
+    if !exists("b:atp_PackageList")
+	let b:atp_PackageList	= atplib#GrepPackageList()
+    endif
+
+    return pn_return
+endfun
+command! -buffer -bang SetProjectName	:call SetProjectName(<q-bang>, 0)
+" }}}
+
+if !s:did_common
+    augroup ATP_SetProjectName
+	au BufEnter *.tex :call SetProjectName()
+	au BufEnter *.fd  :call SetProjectName()
+    augroup END
+endif
+"}}}
+
 " This functions sets the value of b:atp_OutDir variable
 " {{{ s:SetOutDir
 " This options are set also when editing .cls files.
@@ -112,6 +181,52 @@ endfunction
 call s:SetOutDir(0, 1)
 command! -buffer SetOutDir	:call <SID>SetOutDir(1)
 " }}}
+
+" This function sets vim 'errorfile' option.
+" {{{ s:SetErrorFile (function and autocommands)
+" let &l:errorfile=b:atp_OutDir . fnameescape(fnamemodify(expand("%"),":t:r")) . ".log"
+"{{{ s:SetErrorFile
+function! s:SetErrorFile()
+
+    " set b:atp_OutDir if it is not set
+    if !exists("b:atp_OutDir")
+	call s:SetOutDir(0)
+    endif
+
+    " set the b:atp_MainFile varibale if it is not set (the project name)
+    if !exists("b:atp_MainFile")
+	call SetProjectName()
+    endif
+
+    " vim doesn't like escaped spaces in file names ( cg, filereadable(),
+    " writefile(), readfile() - all acepts a non-escaped white spaces)
+    if has("win16") || has("win32") || has("win64") || has("win95")
+	let errorfile	= substitute(atplib#append(b:atp_OutDir, '\') . fnamemodify(b:atp_MainFile,":t:r") . ".log", '\\\s', ' ', 'g') 
+    else
+	let errorfile	= substitute(atplib#append(b:atp_OutDir, '/') . fnamemodify(b:atp_MainFile,":t:r") . ".log", '\\\s', ' ', 'g') 
+" 	let errorfile	= findfile(fnamemodify(b:atp_MainFile, ":t:r") . ".log", b:atp_OutDir) 
+" 	if !errorfile 
+" 	    " This will not work when the out dir is not where main file is put (and
+" 	    " the log file doesn't exist)
+" 	    let errorfile	= fnamemodify(b:atp_MainFile, ":p:r") . ".log"
+" 	endif
+    endif
+    let &l:errorfile	= errorfile
+    return &l:errorfile
+endfunction
+if expand("%:e") == "tex"
+    call s:SetErrorFile()
+endif
+command! -buffer SetErrorFile		:call s:SetErrorFile()
+"}}}
+
+if !s:did_common
+    augroup ATP_SetErrorFile
+	au BufEnter 	*.tex 		call 		<SID>SetErrorFile()
+	au BufRead 	$l:errorfile 	setlocal 	autoread 
+    augroup END
+endif
+"}}}
 
 " Make a tree of input files.
 " {{{1 TreeOfFiles
@@ -241,7 +356,7 @@ function! TreeOfFiles(main_file,...)
 	    " type: preambule,bib,input.
 	    if lnum < end_preamb && run_nr == 1
 		let type	= "preambule"
-	    elseif strpart(line, cnum-1)  =~ '^\\bibliography'
+	    elseif strpart(line, cnum-1)  =~ '^\s*\\bibliography'
 		let type	= "bib"
 	    else
 		let type	= "input"
@@ -264,12 +379,21 @@ function! TreeOfFiles(main_file,...)
 
 	    " Find the full path only if it is not already given. 
 	    for iname in inames
+		let saved_iname = iname
 		if iname != fnamemodify(iname, ":p")
 		    if type != "bib"
 			let iname	= atplib#KpsewhichFindFile('tex', iname, b:atp_OutDir . "," . g:atp_texinputs , 1, ':p', '^\%(\/home\|\.\)', '\(^\/usr\|texlive\|kpsewhich\|generic\|miktex\)')
 		    else
 			let iname	= atplib#KpsewhichFindFile('bib', iname, b:atp_OutDir . "," . g:atp_bibinputs , 1, ':p')
 		    endif
+		endif
+
+		if fnamemodify(iname, ":t") == "" 
+		    let iname  = expand(saved_iname, ":p")
+		endif
+
+		if g:atp_debugToF
+		    silent echo run_nr . ") iname " . string(iname)
 		endif
 
 		call add(ifiles, [ iname, lnum] )
@@ -322,8 +446,6 @@ function! TreeOfFiles(main_file,...)
     return [ tree, list, type_dict, level_dict ]
 
 endfunction
-command! InputFiles		:echo "Found input files:\n" . join(TreeOfFiles(b:atp_MainFile)[1], "\n")
-" let s:TreeOfFiles	= TreeOfFiles(b:atp_MainFile)
 "}}}1
 
 " This function finds all the input and bibliography files declared in the source files (recursive).
@@ -384,6 +506,7 @@ function! FindInputFiles(MainFile,...)
     " return the list  of readable bibfiles
     return Files
 endfunction
+command! -buffer InputFiles :call FindInputFiles(b:atp_MainFile) | echo join(b:ListOfFiles, "\n")
 "}}}
 
 " All Status Line related things:
@@ -541,6 +664,7 @@ function! ATPStatus(bang) "{{{
 		\ '%{g:status_OutDir} %-14.16(%l,%c%V%)%P'
     set statusline=%!g:atp_StatusLine
 endfunction
+
     try
 	command -buffer -bang Status		:call ATPStatus(<q-bang>) 
     catch /E174: Command already exists/

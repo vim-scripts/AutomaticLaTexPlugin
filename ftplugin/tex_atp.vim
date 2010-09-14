@@ -1,10 +1,10 @@
 " Vim filetype plugin file
 " Language:	tex
 " Author:	Marcin Szamotulski
-" Last Changed: 2010 September 3
+" Last Changed: 2010 September 14
 " URL:		https://launchpad.net/automatictexplugin	
 " Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 45 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 46 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
 "		granted to use and distribute this code, with or without
@@ -23,8 +23,13 @@ let g:atp_debugMainScript = 0
 			" This gives loading time information for debuging purposes.
 			" The sourcing of vim scripts is more complicated than this but,
 			" at least, this gives some info.
+			" Loading times are also acessible using
+			" 	vim --startuptime /tmp/time
+			" see :h --startuptime
 if g:atp_debugMainScript
+	redir! > /tmp/ATP_log
 	let time = reltime()
+	let g:time = time
 endif
 
 if &cpoptions =~ '<'
@@ -35,14 +40,6 @@ if &cpoptions =~ '<'
 endif
 	let rtp	= join(map(split(&rtp, ','), 'fnameescape(v:val)'), ',')
 
-	" Source History Script
-	let s:history_src	= findfile("ftplugin/ATP_files/history.vim", rtp) 
-	execute 'source ' 	. fnameescape(s:history_src)
-
-		if g:atp_debugMainScript
-			let g:atphist_loadtime=string(str2float(reltimestr(reltime(time)))
-			echomsg "hist loadtime:" . g:atphist_loadtime
-		endif
 
 	" Execute the atprc file.
 	" They override cached variables
@@ -60,16 +57,26 @@ endif
 	endif
 
 		if g:atp_debugMainScript
-			let g:atprc_loadtime=reltimestr(reltime(time))-str2float(g:atphist_loadtime))
-			echomsg "rc loadtime:" . g:atprc_loadtime
+			let g:atprc_loadtime=str2float(reltimestr(reltime(time)))
+			echomsg "rc loadtime:        " . string(g:atprc_loadtime)
 		endif
+
+	" Source Project Script
+	let s:project_src	= findfile("ftplugin/ATP_files/project.vim", rtp) 
+	execute 'source ' 	. fnameescape(s:project_src)
+
+		if g:atp_debugMainScript
+			let g:atphist_loadtime=str2float(reltimestr(reltime(time)))-g:atprc_loadtime
+			echomsg "project loadtime:   " . string(g:atphist_loadtime)
+		endif
+
 	" Functions needed before setting options.
 	let s:common_src	= findfile("ftplugin/ATP_files/common.vim", rtp) 
 	execute 'source ' 	. fnameescape(s:common_src)
 
 		if g:atp_debugMainScript
-			let g:atpcom_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atprc_loadtime))
-			echomsg "com loadtime:" . g:atpcom_loadtime
+			let g:atpcom_loadtime=str2float(reltimestr(reltime(time)))-g:atprc_loadtime
+			echomsg "com loadtime:       " . string(g:atpcom_loadtime)
 		endif
 
 	" Options, global and local variables, autocommands.
@@ -77,8 +84,8 @@ endif
 	execute 'source '  	. fnameescape(s:options_src)
 
 		if g:atp_debugMainScript
-			let g:atpopt_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atpcom_loadtime))
-			echomsg "opt loadtime:" . g:atpopt_loadtime
+			let g:atpopt_loadtime=str2float(reltimestr(reltime(time)))-g:atpcom_loadtime
+			echomsg "opt loadtime:       " . string(g:atpopt_loadtime)
 		endif
 
 
@@ -87,8 +94,8 @@ endif
 	execute 'source ' 	. fnameescape(s:compiler_src)
 
 		if g:atp_debugMainScript
-			let g:atpcomp_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atpopt_loadtime))
-			echomsg "comp loadtime:" . g:atpcomp_loadtime
+			let g:atpcomp_loadtime=str2float(reltimestr(reltime(time)))-g:atpopt_loadtime
+			echomsg "comp loadtime:      " . string(g:atpcomp_loadtime)
 		endif
 
 " 	let compiler_file = findfile('compiler/tex_atp.vim', &rtp)
@@ -111,8 +118,8 @@ endif
 	endif
 
 		if g:atp_debugMainScript
-			let g:atpLB_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atpcomp_loadtime))
-			echomsg "LB loadtime:" . g:atpLB_loadtime
+			let g:atpLB_loadtime=str2float(reltimestr(reltime(time)))-g:atpcomp_loadtime
+			echomsg "LB loadtime:        " . string(g:atpLB_loadtime)
 		endif
 
 
@@ -120,24 +127,24 @@ endif
 	execute 'source ' . fnameescape(s:motion_src)
 
 		if g:atp_debugMainScript
-			let g:atpmot_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atpLB_loadtime))
-			echomsg "mot loadtime:" . g:atpmot_loadtime
+			let g:atpmot_loadtime=str2float(reltimestr(reltime(time)))-g:atpLB_loadtime
+			echomsg "mot loadtime:       " . string(g:atpmot_loadtime)
 		endif
 
 	let s:search_src	= findfile("ftplugin/ATP_files/search.vim", rtp) 
 	execute 'source ' . fnameescape(s:search_src)
 
 		if g:atp_debugMainScript
-			let g:atpsea_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atpmot_loadtime))
-			echomsg "sea loadtime:" . g:atpsea_loadtime
+			let g:atpsea_loadtime=str2float(reltimestr(reltime(time)))-g:atpmot_loadtime
+			echomsg "sea loadtime:       " . string(g:atpsea_loadtime)
 		endif
 
 	let s:various_src	= findfile("ftplugin/ATP_files/various.vim", rtp) 
 	execute 'source ' . fnameescape(s:various_src)
 
 		if g:atp_debugMainScript
-			let g:atpvar_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atpsea_loadtime))
-			echomsg "var loadtime:" . g:atpvar_loadtime
+			let g:atpvar_loadtime=str2float(reltimestr(reltime(time)))-g:atpsea_loadtime
+			echomsg "var loadtime:       " . string(g:atpvar_loadtime)
 		endif
 
 
@@ -154,8 +161,8 @@ endif
 	endif
 
 		if g:atp_debugMainScript
-			let g:atpmap_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atpvar_loadtime))
-			echomsg "map loadtime:" . g:atpmap_loadtime
+			let g:atpmap_loadtime=str2float(reltimestr(reltime(time)))-g:atpvar_loadtime
+			echomsg "map loadtime:       " . string(g:atpmap_loadtime)
 		endif
 
 	" The menu.
@@ -163,8 +170,8 @@ endif
 	execute 'source ' . fnameescape(s:menu_src)
 
 		if g:atp_debugMainScript
-			let g:atpmenu_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atpmap_loadtime))
-			echomsg "menu loadtime:" . g:atpmenu_loadtime
+			let g:atpmenu_loadtime=str2float(reltimestr(reltime(time)))-g:atpmap_loadtime
+			echomsg "menu loadtime:      " . string(g:atpmenu_loadtime)
 		endif
 
 	" Help functions.
@@ -172,16 +179,16 @@ endif
 	execute 'source ' . fnameescape(s:help_src)
 
 		if g:atp_debugMainScript
-			let g:atphelp_loadtime=string(str2float(reltimestr(reltime(time)))-str2float(g:atpmenu_loadtime))
-			echomsg "help loadtime:" . g:atphelp_loadtime
+			let g:atphelp_loadtime=str2float(reltimestr(reltime(time)))-g:atpmenu_loadtime
+			echomsg "help loadtime:      " . string(g:atphelp_loadtime)
 		endif
 
 
 		if g:atp_debugMainScript
-			let g:atp_loadtime =  reltimestr(reltime(time))
-			echomsg "loadtime:" . g:atp_loadtime
+			let g:atp_loadtime =  str2float(reltimestr(reltime(time)))
+			echomsg "loadtime:           " . string(g:atp_loadtime)
 
-			echomsg "overall load time:"string(str2float(g:atpmenu_loadtime)+str2float(g:atpmap_loadtime)+str2float(g:atpvar_loadtime)+str2float(g:atpsea_loadtime)+str2float(g:atpmot_loadtime)+str2float(g:atpLB_loadtime)+str2float(g:atpcomp_loadtime)+str2float(g:atpopt_loadtime)+str2float(g:atpcom_loadtime)+str2float(g:atphist_loadtime)+str2float(g:atprc_loadtime))
+			echomsg "overall load time:"string(g:atpmenu_loadtime+g:atpmap_loadtime+g:atpvar_loadtime+g:atpsea_loadtime+g:atpmot_loadtime+g:atpLB_loadtime+g:atpcomp_loadtime+g:atpopt_loadtime+g:atpcom_loadtime+g:atphist_loadtime+g:atprc_loadtime)
 		endif
 
 " vim:fdm=marker:ff=unix:noet:ts=4:sw=4

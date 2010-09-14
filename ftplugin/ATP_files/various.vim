@@ -219,32 +219,33 @@ vmap <Plug>InteligentWrapSelection				:<C-U>call <SID>InteligentWrapSelection(''
 " TexAlign {{{1
 " This needs Aling vim plugin.
 function! TexAlign()
+    let save_pos = getpos(".")
     let synstack = map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
     if count(synstack, 'texMathZoneA') || count(synstack, 'texMathZoneAS')
 	let bpat = '\\begin\s*{\s*align\*\=\s*}' 
 	let epat = '\\end\s*{\s*align\*\=\s*}' 
 	let AlignCtr = 'Il+ &'
-	let g:debug = "align"
+" 	let g:debug = "align"
     elseif count(synstack, 'texMathZoneB') || count(synstack, 'texMathZoneBS')
 	let bpat = '\\begin\s*{\s*alignat\*\=\s*}' 
 	let epat = '\\end\s*{\s*alignat\*\=\s*}' 
 	let AlignCtr = 'Il+ &'
-	let g:debug = "alignat"
+" 	let g:debug = "alignat"
     elseif count(synstack, 'texMathZoneD') || count(synstack, 'texMathZoneDS')
 	let bpat = '\\begin\s*{\s*eqnarray\*\=\s*}' 
 	let epat = '\\end\s*{\s*eqnarray\*\=\s*}' 
 	let AlignCtr = 'Il+ &'
-	let g:debug = "eqnarray"
+" 	let g:debug = "eqnarray"
     elseif count(synstack, 'texMathZoneE') || count(synstack, 'texMathZoneES')
 	let bpat = '\\begin\s*{\s*equation\*\=\s*}' 
 	let epat = '\\end\s*{\s*equation\*\=\s*}' 
 	let AlignCtr = 'Il+ =+-'
-	let g:debug = "equation"
+" 	let g:debug = "equation"
     elseif count(synstack, 'texMathZoneF') || count(synstack, 'texMathZoneFS')
 	let bpat = '\\begin\s*{\s*flalign\*\=\s*}' 
 	let epat = '\\end\s*{\s*flalign\*\=\s*}' 
 	let AlignCtr = 'jl+ &'
-	let g:debug = "falign"
+" 	let g:debug = "falign"
 "     elseif count(synstack, 'texMathZoneG') || count(synstack, 'texMathZoneGS')
 "     gather doesn't need alignment (by design it give unaligned equation.
 " 	let bpat = '\\begin\s*{\s*gather\*\=\s*}' 
@@ -255,12 +256,12 @@ function! TexAlign()
 	let bpat = '\\begin\s*{\s*displaymath\*\=\s*}' 
 	let epat = '\\end\s*{\s*displaymath\*\=\s*}' 
 	let AlignCtr = 'Il+ =+-'
-	let g:debug = "displaymath"
+" 	let g:debug = "displaymath"
     elseif searchpair('\\begin\s*{\s*tabular\s*\}', '', '\\end\s*{\s*tabular\s*}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
 	let bpat = '\\begin\s*{\s*tabular\*\=\s*}' 
 	let epat = '\\end\s*{\s*tabular\*\=\s*}' 
 	let AlignCtr = 'jl+ &'
-	let g:debug = "tabular"
+" 	let g:debug = "tabular"
     else
 	return
     endif
@@ -274,19 +275,21 @@ function! TexAlign()
 	let AlignCtr = 'Il+ &'
     endif
 
-    let g:AlignCtr = AlignCtr
+"     let g:AlignCtr = AlignCtr
 
     if !exists("bline")
 	let bline = search(bpat, 'cnb') + 1
     endif
     let eline = search(epat, 'cn')  - 1
 
-	let g:bline = bline
-	let g:eline = eline
+" 	let g:bline = bline
+" 	let g:eline = eline
 
     if bline <= eline
 	execute bline . ',' . eline . 'Align ' . AlignCtr
     endif
+
+    call setpos(".", save_pos) 
 endfunction
 
 command! TexAlign	:call TexAlign()
@@ -438,7 +441,7 @@ if !exists("g:atp_toggle_environment_5")
     let g:atp_toggle_environment_5=[ 'corollary', 'remark', 'note' ]
 endif
 if !exists("g:atp_toggle_environment_6")
-    let g:atp_toggle_environment_6=[  'equation', 'align', 'array', 'alignat', 'gather', 'flalign'  ]
+    let g:atp_toggle_environment_6=[  'equation', 'align', 'array', 'alignat', 'gather', 'flalign', 'multline'  ]
 endif
 if !exists("g:atp_toggle_environment_7")
     let g:atp_toggle_environment_7=[ 'smallmatrix', 'pmatrix', 'bmatrix', 'Bmatrix', 'vmatrix' ]
@@ -497,6 +500,7 @@ nnoremap <silent> <Plug>ToggleStar		:call <SID>ToggleStar()<CR>
 " a:ask = 0 toggle, 1 ask for the new env name if not given as the first argument. 
 " the argument specifies the speed (if -1 then toggle back)
 " default is '1' or the new environment name
+try
 function! s:ToggleEnvironment(ask, ...)
 
     let l:add = ( a:0 >= 1 ? a:1 : 1 ) 
@@ -563,9 +567,9 @@ function! s:ToggleEnvironment(ask, ...)
     " DEBUG
 "     let g:i=l:i
 "     let g:env_idx=l:env_idx
-    let g:env_name=l:env_name
-    let g:add = l:add
-    let g:new_env_name=l:new_env_name
+"     let g:env_name=l:env_name
+"     let g:add = l:add
+"     let g:new_env_name=l:new_env_name
 
     let l:env_name=escape(l:env_name,'*')
     let l:close_pos=searchpairpos('\\begin\s*{'.l:env_name.'}','','\\end\s*{'.l:env_name.'}\zs','nW',"",l:to_line)
@@ -577,7 +581,7 @@ function! s:ToggleEnvironment(ask, ...)
     endif
 
     if l:label != "" && g:atp_toggle_labels
-	if g:env_name == ""
+	if l:env_name == ""
 	    let l:new_env_name_ws=substitute(l:new_env_name,'\*$','','')
 	    let l:new_short_name=get(g:atp_shortname_dict,l:new_env_name_ws,"")
 	    let l:new_label =  l:new_short_name . strpart(l:label, stridx(l:label, g:atp_separator))
@@ -588,7 +592,7 @@ function! s:ToggleEnvironment(ask, ...)
 " 	    let g:new_env_name_ws=l:new_env_name_ws
 	    let l:new_short_name=get(g:atp_shortname_dict,l:new_env_name_ws,"")
 " 	    let g:new_short_name=l:new_short_name
-	    let l:short_pattern= '^\(\|' . join(values(filter(g:atp_shortname_dict,'v:val != ""')),'\|') . '\)'
+	    let l:short_pattern= '^\(\ze:\|' . join(values(filter(g:atp_shortname_dict,'v:val != ""')),'\|') . '\)'
 " 	    let g:short_pattern=l:short_pattern
 	    let l:short_name=matchstr(l:label, l:short_pattern)
 " 	    let g:short_name=l:short_name
@@ -598,15 +602,31 @@ function! s:ToggleEnvironment(ask, ...)
 
 
 	" check if new label is in use!
-	let l:pos_save=getpos(".")
-	let l:n=search('\m\C\\\(label\|\%(eq\|page\)\?ref\)\s*{'.l:new_label.'}','nwc')
-	let g:n=l:n
+	let pos_save=getpos(".")
+	let n=search('\m\C\\\(label\|\%(eq\|page\)\?ref\)\s*{'.l:new_label.'}','nwc')
 
-	if l:n == 0 && l:new_label != l:label
-	    silent! keepjumps execute '%substitute /\\\(eq\|page\)\?\(ref\s*\){'.l:label.'}/\\\1\2{'.l:new_label.'}/gIe'
+	if n == 0 && l:new_label != l:label
+	    let hidden =  &hidden
+	    set hidden
 	    silent! keepjumps execute l:open_pos[0].'substitute /\\label{'.l:label.'}/\\label{'.l:new_label.'}'
-	    keepjumps call setpos(".",l:pos_save)
-	elseif l:n != 0 && l:new_label != l:label
+	    " This should be done for every file in the project. 
+	    if !exists("b:TypeDict")
+		call TreeOfFiles(b:atp_MainFile)
+	    endif
+	    let save_view 	= winsaveview()
+	    let file		= expand("%:p")
+	    let g:files 	= keys(filter(b:TypeDict, "v:val == 'input'")) + [ b:atp_MainFile ]
+	    for project_file in keys(filter(b:TypeDict, "v:val == 'input'")) + [ b:atp_MainFile ]
+		exe "keepalt edit " . project_file
+" 		echo " IN FILE : " . expand("%")
+		let pos_save_pf=getpos(".")
+		silent! keepjumps execute '%substitute /\\\(eq\|page\)\?\(ref\s*\){'.l:label.'}/\\\1\2{'.l:new_label.'}/gIe'
+		keepjumps call setpos(".", pos_save_pf)
+	    endfor
+	    execute "keepalt buffer " . file
+	    keepjumps call setpos(".", pos_save)
+	    let &hidden = hidden
+	elseif n != 0 && l:new_label != l:label
 	    echohl WarningMsg
 	    echomsg "Labels not changed, new label: ".l:new_label." is in use!"
 	    echohl Normal
@@ -614,6 +634,8 @@ function! s:ToggleEnvironment(ask, ...)
     endif
     return  l:open_pos[0]."-".l:close_pos[0]
 endfunction
+catch /E127: Cannot redefine function /
+endtry
 command! -buffer -nargs=? ToggleEnv	   		:call <SID>ToggleEnvironment(0, <f-args>)
 command! -buffer -nargs=* ChengeEnv			:call <SID>ToggleEnvironment(1, <f-args>)
 nnoremap <silent> <Plug>ToggleEnvForward		:call <SID>ToggleEnvironment(0, 1)<CR>
@@ -775,6 +797,8 @@ function! s:OpenLog()
 	let b:atp_Viewer	= s:atp_Viewer
 	let b:atp_XpdfServer	= s:atp_XpdfServer
 	map <buffer> q :bd!<CR>
+	nnoremap <silent> <buffer> ]m :call <SID>Search('\CWarning\\|^!', 'W')<CR>
+	nnoremap <silent> <buffer> [m :call <SID>Search('\CWarning\\|^!', 'bW')<CR>
 	nnoremap <silent> <buffer> ]w :call <SID>Search('\CWarning', 'W')<CR>
 	nnoremap <silent> <buffer> [w :call <SID>Search('\CWarning', 'bW')<CR>
 	nnoremap <silent> <buffer> ]c :call <SID>Search('\CLaTeX Warning: Citation', 'W')<CR>
@@ -792,29 +816,32 @@ function! s:OpenLog()
 	nnoremap <silent> <buffer> ]i :call <SID>Search('\CInfo', 'W')<CR>
 	nnoremap <silent> <buffer> [i :call <SID>Search('\CInfo', 'bW')<CR>
 	nnoremap <silent> <buffer> % :call <SID>Searchpair('(', '', ')', 'W')<CR>
+
 "	This prevents vim from reloading with 'autoread' option: the buffer is
 "	modified outside and inside vim.
-" 	execute "normal m'"
-	silent! execute '%g/^\s*$/d'
-	silent! execute "normal ''"
-" 	To deal with the above we save the log file.
-" 	silent w!
+	try
+	    silent! execute 'keepjumps %g/^\s*$/d'
+	    silent! execute "keepjumps normal ''"
+	catch /E486: Pattern not found:/ 
+	endtry
 		   
 	function! <SID>SyncTex(bang,...)
-" 	    let g:debug = 0
 
 	    " if sync = 1 sync log file and the window - can be used by autocommand
 	    let sync = ( a:0 >= 1 ? a:1 : 0 )
-" 		let g:sync = sync
+		if g:atp_debugST
+		    let g:sync = sync
+		endif 
 
 	    if sync && !g:atp_SyncLog
-" 		let g:debug = 1
 		return
 	    endif
 
 	    " Find the end pos of error msg
 	    keepjumps let [ stopline, stopcol ] = searchpairpos('(', '', ')', 'nW') 
-" 		let g:stopline = stopline
+		if g:atp_debugST
+		    let g:stopline = stopline
+		endif
 
 	    let saved_pos = getpos(".")
 
@@ -834,7 +861,9 @@ function! s:OpenLog()
 	    if getline(LineNr) =~ '^l\.\d\+'
 		let error = escape(matchstr(getline(LineNr), '^l\.\d\+\s*\zs.*$'), '\.')
 " 		let error = escape(matchstr(getline(LineNr), '^l\.\d\+\s*\zs.*$'), '\.') . '\s*' .  escape(substitute(strpart(getline(LineNr+1), 0, stridx(getline(LineNr+1), '...')), '^\s*', '', ''), '\.')
-" 		let g:error = error
+		if g:atp_debugST
+		    let g:error = error
+		endif
 	    endif
 
 	    " Find the file name/bufnr/winnr where the error occurs. 
@@ -847,14 +876,45 @@ function! s:OpenLog()
 		" which might be not closed, then this while loop is used to find
 		" readable file name.
 		let [ startline, startcol ] = searchpairpos('(', '', ')', 'bW') 
+		if g:atp_debugST
+		    redir! >> /tmp/SyncTex_log
+		    let g:startline = startline
+		    silent! echomsg " [ startline, startcol ] " . string([ startline, startcol ])
+		endif
 " THIS CODE IS NOT WORKING:
 " 		if nr >= 1 && [ startline, startcol ] == [ startline_o, startcol_o ] && !test
 " 		    keepjumps call setpos(".", saved_pos)
 " 		    let g:debug = "return " . nr
 " 		    break
 " 		endif
-		    let g:startline = startline
-		let fname 	= matchstr(strpart(getline(startline), startcol), '^\f\+')
+		if !startline
+		    if g:atp_debugST
+			silent! echomsg "END startline = " . startline
+			redir END
+		    endif
+		    keepjumps call setpos(".", saved_pos)
+		    return
+		endif
+		let fname 	= matchstr(strpart(getline(startline), startcol), '^\f\+') 
+		" if the file name was broken in the log file in two lines,
+		" get the end of file name from the next line. 
+		if fname !~# '\.\%(tex\|sty\|cls\|clo\|def\)$'
+		    let stridx = {}
+		    for end in [ 'tex', 'sty', 'cls', 'clo', 'def' ]
+			call extend(stridx, { end : stridx(getline(startline+1), "." . end) })
+		    endfor
+		    call filter(stridx, "v:val != -1")
+		    let StrIdx = {}
+		    for end in keys(stridx)
+			call extend(StrIdx, { stridx[end] : end }, 'keep')
+		    endfor
+		    let idx = min(keys(StrIdx))
+		    let end = StrIdx[idx]
+		    let fname .= strpart(getline(startline+1), 0, idx + len(end) + 1)
+		endif
+		if g:atp_debugST
+		    silent! echomsg "fname=" . fname
+		endif
 		let test 	= filereadable(fname)
 " 		echomsg "test=" . test . " nr=" . nr . " linenr=" . line(".")
 " 		echomsg "fname=" . fname . " start pos " . string([ startline, startcol ])
@@ -862,11 +922,14 @@ function! s:OpenLog()
 		let [ startline_o, startcol_o ] = deepcopy([ startline, startcol ])
 	    endwhile
 	    keepjumps call setpos(".", saved_pos)
-" 		let g:fname = fname
+		if g:atp_debugST
+		    let g:fname = fname
+		endif
 
 	    " if the file is under texmf directory return unless g:atp_developer = 1
 	    " i.e. do not visit packages and classes.
 	    if fnamemodify(fname, ':p') =~ '\%(\/\|\\\)texmf' && !g:atp_developer
+		keepjumps call setpos(".", saved_pos)
 		return
 	    elseif fnamemodify(fname, ':p') =~ '\%(\/\|\\\)texmf'
 		" comma separated list of options
@@ -946,7 +1009,8 @@ function! s:OpenLog()
 	    endif
 	endfunction
 	command! -buffer -bang SyncTex		:call <SID>SyncTex(<q-bang>)
-	nnoremap <buffer> <LocalLeader>g	:SyncTex<CR>	
+	map <buffer> <Enter>			:SyncTex<CR>
+" 	nnoremap <buffer> <LocalLeader>g	:SyncTex<CR>	
 	augroup ATP_SyncLog
 	    au CursorMoved *.log :call <SID>SyncTex("", 1)
 	augroup END
@@ -956,7 +1020,7 @@ function! s:OpenLog()
 	    " check the value of g:atp_SyncXpdfLog
 	    let check = ( a:0 >= 1 ? a:1 : 1 )
 
-	    if b:atp_Viewer != 'xpdf' || b:atp_XpdfServer == "" || check && !g:atp_SyncXpdfLog
+	    if b:atp_Viewer !~ '^\s*xpdf\>' || b:atp_XpdfServer == "" || check && !g:atp_SyncXpdfLog
 		return
 	    endif
 
@@ -976,6 +1040,7 @@ function! s:OpenLog()
 	endfunction
 	command! -buffer SyncXpdf 	:call s:SyncXpdfLog(0)
 	command! -buffer Xpdf 		:call s:SyncXpdfLog(0)
+	map <buffer> <silent> <F3> 	:SyncXpdf<CR>
 	augroup ATP_SyncXpdfLog
 	    au CursorMoved *.log :call s:SyncXpdfLog(1)
 	augroup END
@@ -1153,6 +1218,9 @@ let g:atp_open_completion = []
 "     return filter(deepcopy(g:atp_open_completion), "v:val =~ '^' . a:ArgLead")
 " endfunction
 " }}}1
+
+" List Packages:
+command! -buffer ShowPackages	:let b:atp_PackageList = atplib#GrepPackageList() | echo join(b:atp_PackageList, "\n")
 
 " ToDo notes
 " {{{1 ToDo

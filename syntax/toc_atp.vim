@@ -1,8 +1,7 @@
-" Vim syntax file
-" Language:	toc_atp
-" Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 Aug 7
-" URL:		
+" Title:	Vim syntax file
+" Author:	Marcin Szamotulski
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
 
 syntax match  atp_FileName /^\s*\D.*$/
 syntax match  atp_LineNr /^\s*\d\+/ skipwhite nextgroup=atp_Number,atp_Abstract

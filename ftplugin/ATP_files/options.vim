@@ -1,7 +1,11 @@
 " Author: 	Marcin Szamotulski	
-" This file contains all the options defined on startup of ATP
-" you can add your local settings to ~/.atprc.vim or ftplugin/ATP_files/atprc.vim file
+" Description: 	This file contains all the options defined on startup of ATP
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
 
+" NOTE: you can add your local settings to ~/.atprc.vim or
+" ftplugin/ATP_files/atprc.vim file
 
 " Some options (functions) should be set once:
 let s:did_options 	= exists("s:did_options") ? 1 : 0
@@ -35,26 +39,38 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
+if !exists("g:atp_debugSIT")
+    " debug <SID>SearchInTree (search.vim)
+    let g:atp_debugSIT		= 0
+endif
+if !exists("g:atp_debugRS")
+    " debug <SID>RecursiveSearch() (search.vim)
+    let g:atp_debugRS		= 0
+endif
+if !exists("g:atp_debugV")
+    " debug ViewOutput() (compiler.vim)
+    let g:atp_debugV		= 0
+endif
 if !exists("g:atp_debugLPS")
-    " Debug s:LoadProjectFile (history.vim)
+    " Debug s:LoadProjectFile() (history.vim)
     " (currently it gives just the loading time info)
     let g:atp_debugLPS		= 0
 endif
 if !exists("g:atp_debugCompiler")
-    " Debug s:Compiler function (compiler.vim)
+    " Debug s:Compiler() function (compiler.vim)
     " when equal 2 output is more verbose.
     let g:atp_debugCompiler 	= 0
 endif
 if !exists("g:atp_debugST")
-    " Debug <SID>CallBack function (compiler.vim)
+    " Debug <SID>CallBack() function (compiler.vim)
     let g:atp_debugCallBack	= 0
 endif
 if !exists("g:atp_debugST")
-    " Debug SyncTex (various.vim) function
+    " Debug SyncTex() (various.vim) function
     let g:atp_debugST 		= 0
 endif
 if !exists("g:atp_debugCLE")
-    " Debug atplib#CloseLastEnvironment
+    " Debug atplib#CloseLastEnvironment()
     let g:atp_debugCLE 		= 0
 endif
 if !exists("g:atp_debugMainScript")
@@ -65,7 +81,7 @@ if !exists("g:atp_debugMainScript")
 endif
 
 if !exists("g:atp_debugProject")
-    " <SID>LoadScript, <SID>LoadProjectScript, <SID>WriteProject
+    " <SID>LoadScript(), <SID>LoadProjectScript(), <SID>WriteProject()
     " The value that is set in history file matters!
     let g:atp_debugProject 	= 0
 endif
@@ -165,13 +181,108 @@ setl keywordprg=texdoc\ -m
 
 " }}}
 
+" Buffer Local Variables:
+" {{{ buffer variables
+let b:atp_running	= 0
+
+" these are all buffer related variables:
+let s:optionsDict= { 	"atp_TexOptions" 	: "", 		
+	        \ "atp_ReloadOnError" 		: "1", 
+		\ "atp_OpenViewer" 		: "1", 		
+		\ "atp_autex" 			: !&l:diff, 
+		\ "atp_ProjectScript"		: "1",
+		\ "atp_Viewer" 			: has("win26") || has("win32") || has("win64") || has("win95") || has("win32unix") ? "AcroRd32.exe" : "xpdf" , 
+		\ "atp_TexFlavor" 		: &l:filetype, 
+		\ "atp_XpdfServer" 		: fnamemodify(b:atp_MainFile,":t:r"), 
+		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
+		\ "atp_TexCompiler" 		: &filetype == "plaintex" ? "pdftex" : "pdflatex",	
+		\ "atp_auruns"			: "1",
+		\ "atp_TruncateStatusSection"	: "40", 
+		\ "atp_LastBibPattern"		: "" }
+
+" the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
+" remember what is the default used by s:SetOutDir().
+
+" This function sets options (values of buffer related variables) which were
+" not already set by the user.
+" {{{ s:SetOptions
+let s:ask = { "ask" : "0" }
+function! s:SetOptions()
+
+    let s:optionsKeys		= keys(s:optionsDict)
+    let s:optionsinuseDict	= getbufvar(bufname("%"),"")
+
+    "for each key in s:optionsKeys set the corresponding variable to its default
+    "value unless it was already set in .vimrc file.
+    for l:key in s:optionsKeys
+	if string(get(s:optionsinuseDict,l:key, "optionnotset")) == string("optionnotset") && l:key != "atp_OutDir" && l:key != "atp_autex"
+" 	    echomsg l:key . " " . s:optionsDict[l:key]
+	    call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
+	elseif l:key == "atp_OutDir"
+
+	    " set b:atp_OutDir and the value of errorfile option
+	    if !exists("b:atp_OutDir")
+		call s:SetOutDir(1)
+	    endif
+	    let s:ask["ask"] 	= 1
+	endif
+    endfor
+    " Do not run tex on tex files which are in texmf tree
+    " Exception: if it is opened using the command ':EditInputFile'
+    " 		 which sets this itself.
+    if string(get(s:optionsinuseDict,"atp_autex", 'optionnotset')) == string('optionnotset')
+	let atp_texinputs=split(substitute(substitute(system("kpsewhich -show-path tex"),'\/\/\+','\/','g'),'!\|\n','','g'),':')
+	call remove(atp_texinputs, '.')
+	call filter(atp_texinputs, 'v:val =~ b:atp_OutDir')
+	if len(l:atp_texinputs) == 0
+	    let b:atp_autex	= 1
+	else
+	    let b:atp_autex	= 0
+	endif
+    endif
+
+    if !exists("b:TreeOfFiles") || !exists("b:ListOfFiles") || !exists("b:TypeDict") || !exists("b:LevelDict")
+	if exists("b:atp_MainFile") 
+	    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+	    call TreeOfFiles(atp_MainFile)
+	else
+	    echomsg "b:atp_MainFile " . "doesn't exists."
+	endif
+    endif
+endfunction
+"}}}
+call s:SetOptions()
+
+"}}}
+
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_vmap_text_font_leader")
+    let g:atp_vmap_text_font_leader="<LocalLeader>"
+endif
+if !exists("g:atp_vmap_environment_leader")
+    let g:atp_vmap_environment_leader=""
+endif
+if !exists("g:atp_vmap_bracket_leader")
+    let g:atp_vmap_bracket_leader="<LocalLeader>"
+endif
+if !exists("g:atp_vmap_big_bracket_leader")
+    let g:atp_vmap_big_bracket_leader='<LocalLeader>b'
+endif
+if !exists("g:atp_map_forward_motion_leader")
+    let g:atp_map_forward_motion_leader='}'
+endif
+if !exists("g:atp_map_backward_motion_leader")
+    let g:atp_map_backward_motion_leader='{'
+endif
+if !exists("g:atp_RelativePath")
+    let g:atp_RelativePath 	= 1
+endif
 if !exists("g:atp_SyncXpdfLog")
-    let g:atp_SyncXpdfLog = 0
+    let g:atp_SyncXpdfLog 	= 0
 endif
 if !exists("g:atp_SyncLog")
-    let g:atp_SyncLog = 0
+    let g:atp_SyncLog 		= 0
 endif
 
 	function! s:Sync(...)
@@ -325,7 +436,6 @@ if !exists("g:atp_no_star_environments")
 		\ 'enumerate', 'itemize', 'tikzpicture', 'scope', 
 		\ 'picture', 'array', 'proof', 'tabular', 'table' ]
 endif
-let s:ask={ "ask" : "0" }
 if !exists("g:atp_sizes_of_brackets")
     let g:atp_sizes_of_brackets={'\left': '\right', 
 			    \ '\bigl' 	: '\bigr', 
@@ -470,78 +580,6 @@ endif
 " endif
 " }}}
 
-" Buffer Local Variables:
-" {{{ buffer variables
-let b:atp_running	= 0
-
-" these are all buffer related variables:
-let s:optionsDict= { 	"atp_TexOptions" 	: "", 		
-	        \ "atp_ReloadOnError" 		: "1", 
-		\ "atp_OpenViewer" 		: "1", 		
-		\ "atp_autex" 			: "1", 
-		\ "atp_ProjectScript"		: "1",
-		\ "atp_Viewer" 			: has("unix") ? "xpdf" : "AcroRd32.exe" , 	
-		\ "atp_TexFlavor" 		: &l:filetype, 
-		\ "atp_XpdfServer" 		: fnamemodify(b:atp_MainFile,":t"), 
-		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
-		\ "atp_TexCompiler" 		: &filetype == "plaintex" ? "pdftex" : "pdflatex",	
-		\ "atp_auruns"			: "1",
-		\ "atp_TruncateStatusSection"	: "40", 
-		\ "atp_LastBibPattern"		: "" }
-
-" the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
-" remember what is the default used by s:SetOutDir().
-
-" This function sets options (values of buffer related variables) which were
-" not already set by the user.
-" {{{ s:SetOptions
-function! s:SetOptions()
-
-    let s:optionsKeys		= keys(s:optionsDict)
-    let s:optionsinuseDict	= getbufvar(bufname("%"),"")
-
-    "for each key in s:optionsKeys set the corresponding variable to its default
-    "value unless it was already set in .vimrc file.
-    for l:key in s:optionsKeys
-	if string(get(s:optionsinuseDict,l:key, "optionnotset")) == string("optionnotset") && l:key != "atp_OutDir" && l:key != "atp_autex"
-" 	    echomsg l:key . " " . s:optionsDict[l:key]
-	    call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
-	elseif l:key == "atp_OutDir"
-
-	    " set b:atp_OutDir and the value of errorfile option
-	    if !exists("b:atp_OutDir")
-		call s:SetOutDir(1)
-	    endif
-	    let s:ask["ask"] 	= 1
-	endif
-    endfor
-    " Do not run tex on tex files which are in texmf tree
-    " Exception: if it is opened using the command ':EditInputFile'
-    " 		 which sets this itself.
-    if string(get(s:optionsinuseDict,"atp_autex", 'optionnotset')) == string('optionnotset')
-	let atp_texinputs=split(substitute(substitute(system("kpsewhich -show-path tex"),'\/\/\+','\/','g'),'!\|\n','','g'),':')
-	call remove(atp_texinputs, '.')
-	call filter(atp_texinputs, 'v:val =~ b:atp_OutDir')
-	if len(l:atp_texinputs) == 0
-	    let b:atp_autex	= 1
-	else
-	    let b:atp_autex	= 0
-	endif
-    endif
-
-    if !exists("b:TreeOfFiles") || !exists("b:ListOfFiles") || !exists("b:TypeDict") || !exists("b:LevelDict")
-	if exists("b:atp_MainFile") 
-	    call TreeOfFiles(b:atp_MainFile)
-	else
-	    echomsg "b:atp_MainFile " . "doesn't exists."
-	endif
-    endif
-endfunction
-"}}}
-call s:SetOptions()
-
-"}}}
-
 " Project Settings:
 " {{{1
 if !exists("g:atp_ProjectLocalVariables")
@@ -550,12 +588,15 @@ if !exists("g:atp_ProjectLocalVariables")
 		\ "b:atp_MainFile", 	"g:atp_mapNn", 		"b:atp_autex", 
 		\ "b:atp_TexCompiler", 	"b:atp_TexFlavor", 	"b:atp_OutDir" , 
 		\ "b:atp_auruns", 	"b:atp_ReloadOnErr", 	"b:atp_OpenViewer", 
-		\ "b:atp_XpdfServer" 
+		\ "b:atp_XpdfServer",	"b:atp_ProjectDir", 	"b:atp_Viewer"
 		\ ] 
 endif
-function! SaveProjectVariables()
-    let variables_Dict = {}
-    for var in g:atp_ProjectLocalVariables
+" the variable a:1 is the name of the variable which stores the list of variables to
+" save.
+function! SaveProjectVariables(...)
+    let variables_List	= ( a:0 >= 1 ? {a:1} : g:atp_ProjectLocalVariables )
+    let variables_Dict 	= {}
+    for var in variables_List
 	if exists(var)
 	    call extend(variables_Dict, { var : {var} })
 	endif
@@ -564,8 +605,9 @@ function! SaveProjectVariables()
 endfunction
 function! RestoreProjectVariables(variables_Dict)
     for var in keys(a:variables_Dict)
-" 	echo "let " . var . "='" . a:variables_Dict[var] . "'"
-	exe "let " . var . "='" . a:variables_Dict[var] . "'"
+ 	let g:cmd =  "let " . var . "=" . string(a:variables_Dict[var])
+" 	echo g:cmd
+	exe "let " . var . "=" . string(a:variables_Dict[var])
     endfor
 endfunction
 " }}}1
@@ -684,13 +726,16 @@ function! <SID>Babel()
 	" but it might work for plain tex documents as well!
 	return
     endif
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     let saved_loclist = getloclist(0)
     try
-	execute '1lvimgrep /\\usepackage.*{babel}/j ' . b:atp_MainFile
+	execute '1lvimgrep /\\usepackage.*{babel}/j ' . atp_MainFile
 	" Find \usepackage[babel_options]{babel} - this is the only way that one can
 	" pass options to babel.
     catch /E480: No match:/
+	return
+    catch /E683: File name missing or invalid pattern/ 
 	return
     endtry
     let babel_line 	= get(get(getloclist(0), 0, {}), 'text', '')
@@ -747,7 +792,8 @@ fun! SetXdvi()
     " Set Reverse Search Function.
     if !exists("*RevSearch")
     function! RevSearch()
-	let dvi_file	= fnameescape(fnamemodify(b:atp_MainFile,":p:r") . ".dvi")
+	let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+	let dvi_file	= fnameescape(fnamemodify(atp_MainFile,":p:r") . ".dvi")
 	if !filereadable(dvi_file)
 	   echomsg "dvi file doesn't exist" 
 	   ViewOutput RevSearch
@@ -858,8 +904,6 @@ function! ATP_ToggleAuTeX(...)
 	echo "automatic tex processing is OFF"
     endif
 endfunction
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleAuTeX 	:call ATP_ToggleAuTeX(<f-args>)
-nnoremap <silent> <Plug>ToggleAuTeX 		:call ATP_ToggleAuTeX()<CR>
 "}}}
 " {{{ ATP_ToggleSpace
 " Special Space for Searching 
@@ -888,8 +932,6 @@ function! ATP_ToggleSpace(...)
 	tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
     endif
 endfunction
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleSpace 	:call ATP_ToggleSpace(<f-args>)
-nnoremap <silent> <Plug>ToggleSpace 	:call ATP_ToggleSpace()<CR>
 "}}}
 " {{{ ATP_ToggleCheckMathOpened
 " This function toggles if ATP is checking if editing a math mode.
@@ -922,8 +964,6 @@ function! ATP_ToggleCheckMathOpened(...)
 		    \ <Esc>:ToggleCheckMathOpened<CR>a
     endif
 endfunction
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleCheckMathOpened 	:call ATP_ToggleCheckMathOpened(<f-args>)
-nnoremap <silent> <Plug>ToggleCheckMathOpened	:call ATP_ToggleCheckMathOpened()<CR>
 "}}}
 " {{{ ATP_ToggleCallBack
 function! ATP_ToggleCallBack(...)
@@ -952,8 +992,6 @@ function! ATP_ToggleCallBack(...)
 		    \ <Esc>:call ToggleCallBack()<CR>a
     endif
 endfunction
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleCallBack 		:call ATP_ToggleCallBack(<f-args>)
-nnoremap <silent> <Plug>ToggleCallBack		:call ATP_ToggleCallBack()<CR>
 "}}}
 " {{{ ATP_ToggleDebugMode
 " ToDo: to doc.
@@ -1012,14 +1050,11 @@ function! ATP_ToggleDebugMode(...)
 	exe winnr . " wincmd w"
     endif
 endfunction
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleDebugMode 	:call ATP_ToggleDebugMode(<f-args>)
-nnoremap <silent> <Plug>ToggleDebugMode		:call ATP_ToggleDebugMode()<CR>
-if !s:did_options
-    augroup ATP_DebugModeCommandsAndMaps
-	au FileType qf command! -buffer ToggleDebugMode 	:call <SID>ToggleDebugMode()
-	au FileType qf nnoremap <silent> <LocalLeader>D		:ToggleDebugMode<CR>
-    augroup END
-endif
+augroup ATP_DebugModeCommandsAndMaps
+    au!
+    au FileType qf command! -buffer ToggleDebugMode 	:call <SID>ToggleDebugMode()
+    au FileType qf nnoremap <silent> <LocalLeader>D		:ToggleDebugMode<CR>
+augroup END
 " }}}
 " {{{ ATP_ToggleTab
 " switches on/off the <Tab> map for TabCompletion
@@ -1035,11 +1070,28 @@ function! ATP_ToggleTab(...)
 	endif
     endif
 endfunction
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleTab	 	:call ATP_ToggleTab(<f-args>)
-nnoremap <silent> <Plug>ToggleTab		:call ATP_ToggleTab()<CR>
-inoremap <silent> <Plug>ToggleTab		<Esc>:call ATP_ToggleTab()<CR>
 " }}}
 endif
+ 
+"  Commands And Maps:
+command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleAuTeX 	:call ATP_ToggleAuTeX(<f-args>)
+nnoremap <silent> <buffer> 	<Plug>ToggleAuTeX 		:call ATP_ToggleAuTeX()<CR>
+
+command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleSpace 	:call ATP_ToggleSpace(<f-args>)
+nnoremap <silent> <buffer> 	<Plug>ToggleSpace 	:call ATP_ToggleSpace()<CR>
+
+command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleCheckMathOpened 	:call ATP_ToggleCheckMathOpened(<f-args>)
+nnoremap <silent> <buffer> 	<Plug>ToggleCheckMathOpened	:call ATP_ToggleCheckMathOpened()<CR>
+
+command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleCallBack 		:call ATP_ToggleCallBack(<f-args>)
+nnoremap <silent> <buffer> 	<Plug>ToggleCallBack		:call ATP_ToggleCallBack()<CR>
+
+command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleDebugMode 	:call ATP_ToggleDebugMode(<f-args>)
+nnoremap <silent> <buffer> 	<Plug>ToggleDebugMode		:call ATP_ToggleDebugMode()<CR>
+
+command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleTab	 	:call ATP_ToggleTab(<f-args>)
+nnoremap <silent> <buffer> 	<Plug>ToggleTab		:call ATP_ToggleTab()<CR>
+inoremap <silent> <buffer> 	<Plug>ToggleTab		<Esc>:call ATP_ToggleTab()<CR>
 "}}}
 
 " Tab Completion Variables:

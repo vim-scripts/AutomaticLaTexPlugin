@@ -1,14 +1,18 @@
-
-" Language:	tex
+" Author:	David Mnuger (latexbox vim plugin)
 " Maintainer:	Marcin Szamotulski
-" Author:	David Mnuger
-" Comment:	This is a part of LatexBox plugin 
-" URL:		
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
 " Email:	mszamot [AT] gmail [DOT] com
+" Language:	tex
 
+let s:sourced = exists("s:sourced") ? 1 : 0
+if s:sourced
+    finish
+endif
+
+let s:atp_MainFile	= ( g:atp_RelativePath ? globpath(b:atp_ProjectDir, fnamemodify(b:atp_MainFile, ":t")) : b:atp_MainFile )
 
 " latex-box/complete.vim
-
 " <SID> Wrap {{{
 function! s:GetSID()
 	return matchstr(expand('<sfile>'), '\m\zs<SNR>\d\+_\ze.*$')
@@ -30,7 +34,6 @@ function! s:SIDWrap(func,...)
 endfunction
 
 " }}}
-
 
 " Omni Completion {{{
 
@@ -118,7 +121,6 @@ function! LatexBox_Complete(findstart, base)
 endfunction
 " }}}
 
-
 " BibTeX search {{{
 
 " find the \bibliography{...} commands
@@ -142,7 +144,7 @@ endfunction
 function! s:FindBibData(...)
 
 	if a:0 == 0
-		let file = b:atp_MainFile
+		let file = ( g:atp_RelativePath ? globpath(b:atp_ProjectDir, fnamemodify(b:atp_MainFile, ":t")) : b:atp_MainFile )
 	else
 		let file = a:1
 	endif
@@ -184,14 +186,15 @@ function! LatexBox_BibSearch(regexp)
     endif
 
     " write temporary aux file
-    let tmpbase = fnamemodify(b:atp_MainFile,":h") . '/_LatexBox_BibComplete'
+    let tmpbase = b:atp_ProjectDir  . '/_LatexBox_BibComplete'
     let auxfile = tmpbase . '.aux'
     let bblfile = tmpbase . '.bbl'
     let blgfile = tmpbase . '.blg'
 
     call writefile(['\citation{*}', '\bibstyle{' . s:bstfile . '}', '\bibdata{' . bibdata . '}'], auxfile)
 
-    silent execute '! cd ' shellescape(fnamemodify(b:atp_MainFile,":h")) .
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    silent execute '! cd ' shellescape(fnamemodify(atp_MainFile,":h")) .
 				\ ' ; bibtex -terse ' . fnamemodify(auxfile, ':t') . ' >/dev/null'
 
     let res = []
@@ -249,7 +252,8 @@ endfunction
 function! s:CompleteLabels(regex, ...)
 
 	if a:0 == 0
-		let file = fnamemodify(b:atp_MainFile, ":r") . ".aux" 
+	    let atp_MainFile = atplib#FullPath(b:atp_MainFile)
+		let file = fnamemodify(atp_MainFile, ":r") . ".aux" 
 	else
 		let file = a:1
 	endif

@@ -1,12 +1,10 @@
-" Vim color file
+" Description: 	Vim color file
 " Maintainer:	Marcin Szamotulski  <mszamot at gmail dot com>
-" Last Change:	2009 Feb 19
-" Version:	1.0.0
-" URL:		http://www.axisym3.net/jdany/vim-the-editor/#ocean237256
-"
-" These are the colors of the "Ocean237" theme by Chris Vertonghen modified
-" to work on 256-color xterms.
-"
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+
+" This color scheme was based on "Ocean237" theme by Chris Vertonghen.
+
 set background=dark
 
 highlight clear

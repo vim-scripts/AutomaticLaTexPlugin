@@ -1,5 +1,6 @@
 " Maintainer:	Marcin Szamotulski
-" Note:		This is a part of ATP plugin for (La)TeX files.
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
 
 " b:atp_TexFlavor will be set to plaintex automatically
 source $HOME/.vim/ftplugin/tex_atp.vim

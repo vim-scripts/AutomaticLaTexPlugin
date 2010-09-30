@@ -1,8 +1,7 @@
-" Vim syntax file
-" Language:	toc_atp
-" Maintainer:	Marcin Szamotulski
-" Last Changed: 7 Aug 2010 
-" URL:		
+" Title: 	Vim syntax file
+" Author:	Marcin Szamotulski
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
 
 syntax region 	atp_Label_Line start=/^/ end=/$/ transparent contains=atp_Label_CounterValue,atp_Label_Name,atp_Label_LineNr  oneline nextgroup=atp_Label_Section
 syntax match 	atp_Label_CounterValue	/^\%(\d\%(\d\|\.\)*[[:alpha:]]\=\)\|\%(\C[IXVL]\+\)/ nextgroup=atp_Label_Counter,atp_Label_Name

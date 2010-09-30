@@ -1,6 +1,12 @@
-" Author: Marcin Szamotulski
-" This file contains help commands and variables (for mappings used by ATP) 
+" Author: 	Marcin Szamotulski
+" Description: 	This file contains help commands and variables (for mappings used by ATP) 
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
 
+let s:sourced = !exists("s:loaded") ? 0 : 1
+
+if !s:sourced
 " {{{1 Help Math IMAPS
 function! <SID>HelpMathIMaps()
 
@@ -43,7 +49,6 @@ function! <SID>HelpMathIMaps()
     return g:help_mathimaps
 endfunction
 silent call <SID>HelpMathIMaps()
-command! -buffer HelpMathIMaps :echo <SID>HelpMathIMaps()
 
 " {{{1 Help Environment IMAPS
 function! <SID>HelpEnvIMaps()
@@ -77,7 +82,6 @@ function! <SID>HelpEnvIMaps()
     return g:help_envimaps
 endfunction
 silent call <SID>HelpEnvIMaps()
-command! -buffer HelpEnvIMaps :echo <SID>HelpEnvIMaps()
 
 " {{{1 Help VMaps
 function! <SID>HelpVMaps() 
@@ -139,7 +143,6 @@ function! <SID>HelpVMaps()
     return g:help_vmaps 
 endfunction
 silent call <SID>HelpVMaps()
-command! -buffer HelpVMaps :echo <SID>HelpVMaps()
 " {{{1 Help IMaps
 " function! <SID>HelpIMaps()
 " let tc_imap = maparg("<Tab>  ", 'i') =~# 'atplib#TabCompletion' ? '<Tab>' : 
@@ -152,3 +155,10 @@ command! -buffer HelpVMaps :echo <SID>HelpVMaps()
 " endfunction
 " silent call <SID>HelpIMaps()
 " command! -buffer HelpIMaps :echo <SID>HelpIMaps()
+" }}}1
+endif
+
+" Commands:
+command! -buffer HelpMathIMaps 	:echo <SID>HelpMathIMaps()
+command! -buffer HelpEnvIMaps 	:echo <SID>HelpEnvIMaps()
+command! -buffer HelpVMaps 	:echo <SID>HelpVMaps()

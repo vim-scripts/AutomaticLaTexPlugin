@@ -1,21 +1,29 @@
-" Vim filetype plugin file
-" Language:	tex
-" Author:	Marcin Szamotulski
-" Last Changed: 2010 September 14
-" URL:		https://launchpad.net/automatictexplugin	
-" Email:	mszamot [AT] gmail [DOT] com
-" GetLatestVimScripts: 2945 46 :AutoInstall: tex_atp.vim
+" Title:		Vim filetype plugin file
+" Author:		Marcin Szamotulski
+" Email:		mszamot [AT] gmail [DOT] com
+" URL:			https://launchpad.net/automatictexplugin	
+" BUG Trucer:	https://bugs.launchpad.net/automatictexplugin
+" Language:		tex
+" Last Changed: 30 September 2010
+" GetLatestVimScripts: 2945 48 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
-" Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby 
-"		granted to use and distribute this code, with or without
-" 		modifications, provided that this copyright notice is copied
-" 		with it. Like anything else that's free, Automatic TeX Plugin
-" 		is provided *as is* and comes with no warranty of any kind,
-" 		either expressed or implied. By using this plugin, you agree
-" 		that in no event will the copyright holder be liable for any
-" 		damages resulting from the use of this software. 
-" 		This licence is valid for all files distributed with ATP
-" 		plugin.
+" Copyright Statement: 
+" 	  This file is part of Automatic Tex Plugin for Vim.
+"
+"     Automatic Tex Plugin for Vim is free software: you can redistribute it
+"     and/or modify it under the terms of the GNU General Public License as
+"     published by the Free Software Foundation, either version 3 of the
+"     License, or (at your option) any later version.
+" 
+"     Automatic Tex Plugin for Vim is distributed in the hope that it will be
+"     useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+"     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+"     General Public License for more details.
+" 
+"     You should have received a copy of the GNU General Public License along
+"     with Automatic Tex Plugin for Vim.  If not, see <http://www.gnu.org/licenses/>.
+"
+"     This licence applies to all files shipped with Automatic Tex Plugin.
 
 let b:did_ftplugin	= 1
 
@@ -27,7 +35,8 @@ let g:atp_debugMainScript = 0
 			" 	vim --startuptime /tmp/time
 			" see :h --startuptime
 if g:atp_debugMainScript
-	redir! > /tmp/ATP_log
+	redir! >> /tmp/ATP_log
+	silent! echo "+++ FILE: " . expand("%")
 	let time = reltime()
 	let g:time = time
 endif
@@ -43,11 +52,12 @@ endif
 
 	" Execute the atprc file.
 	" They override cached variables
-	if filereadable(fnameescape($HOME . '/.atprc.vim')) && has("unix")
+	if filereadable(globpath($HOME, '/.atprc.vim', 1)) && has("unix")
 
 		" Note: in $HOME/.atprc file the user can set all the local buffer
 		" variables without using autocommands
-		execute 'source ' . fnameescape($HOME . '/.atprc.vim')
+		let path = fnameescape(globpath($HOME, '/.atprc.vim', 1))
+		execute 'source ' . path
 
 	else
 		let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), '\n'), 0, "")
@@ -58,7 +68,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atprc_loadtime=str2float(reltimestr(reltime(time)))
-			echomsg "rc loadtime:        " . string(g:atprc_loadtime)
+			silent echo "rc loadtime:        " . string(g:atprc_loadtime)
 		endif
 
 	" Source Project Script
@@ -67,7 +77,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atphist_loadtime=str2float(reltimestr(reltime(time)))-g:atprc_loadtime
-			echomsg "project loadtime:   " . string(g:atphist_loadtime)
+			silent echo "project loadtime:   " . string(g:atphist_loadtime)
 		endif
 
 	" Functions needed before setting options.
@@ -76,7 +86,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atpcom_loadtime=str2float(reltimestr(reltime(time)))-g:atprc_loadtime
-			echomsg "com loadtime:       " . string(g:atpcom_loadtime)
+			silent echo "com loadtime:       " . string(g:atpcom_loadtime)
 		endif
 
 	" Options, global and local variables, autocommands.
@@ -85,7 +95,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atpopt_loadtime=str2float(reltimestr(reltime(time)))-g:atpcom_loadtime
-			echomsg "opt loadtime:       " . string(g:atpopt_loadtime)
+			silent echo "opt loadtime:       " . string(g:atpopt_loadtime)
 		endif
 
 
@@ -95,7 +105,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atpcomp_loadtime=str2float(reltimestr(reltime(time)))-g:atpopt_loadtime
-			echomsg "comp loadtime:      " . string(g:atpcomp_loadtime)
+			silent echo "comp loadtime:      " . string(g:atpcomp_loadtime)
 		endif
 
 " 	let compiler_file = findfile('compiler/tex_atp.vim', &rtp)
@@ -115,11 +125,13 @@ endif
 		let s:LatexBox_motion_src		= findfile("ftplugin/ATP_files/LatexBox_motion.vim", rtp) 
 		execute 'source ' . fnameescape(s:LatexBox_motion_src)
 
+		let s:LatexBox_latexmk_src		= findfile("ftplugin/ATP_files/LatexBox_latexmk.vim", rtp) 
+		execute 'source ' . fnameescape(s:LatexBox_latexmk_src)
 	endif
 
 		if g:atp_debugMainScript
 			let g:atpLB_loadtime=str2float(reltimestr(reltime(time)))-g:atpcomp_loadtime
-			echomsg "LB loadtime:        " . string(g:atpLB_loadtime)
+			silent echo "LB loadtime:        " . string(g:atpLB_loadtime)
 		endif
 
 
@@ -128,7 +140,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atpmot_loadtime=str2float(reltimestr(reltime(time)))-g:atpLB_loadtime
-			echomsg "mot loadtime:       " . string(g:atpmot_loadtime)
+			silent echo "mot loadtime:       " . string(g:atpmot_loadtime)
 		endif
 
 	let s:search_src	= findfile("ftplugin/ATP_files/search.vim", rtp) 
@@ -136,7 +148,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atpsea_loadtime=str2float(reltimestr(reltime(time)))-g:atpmot_loadtime
-			echomsg "sea loadtime:       " . string(g:atpsea_loadtime)
+			silent echo "sea loadtime:       " . string(g:atpsea_loadtime)
 		endif
 
 	let s:various_src	= findfile("ftplugin/ATP_files/various.vim", rtp) 
@@ -144,7 +156,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atpvar_loadtime=str2float(reltimestr(reltime(time)))-g:atpsea_loadtime
-			echomsg "var loadtime:       " . string(g:atpvar_loadtime)
+			silent echo "var loadtime:       " . string(g:atpvar_loadtime)
 		endif
 
 
@@ -162,7 +174,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atpmap_loadtime=str2float(reltimestr(reltime(time)))-g:atpvar_loadtime
-			echomsg "map loadtime:       " . string(g:atpmap_loadtime)
+			silent echo "map loadtime:       " . string(g:atpmap_loadtime)
 		endif
 
 	" The menu.
@@ -171,7 +183,7 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atpmenu_loadtime=str2float(reltimestr(reltime(time)))-g:atpmap_loadtime
-			echomsg "menu loadtime:      " . string(g:atpmenu_loadtime)
+			silent echo "menu loadtime:      " . string(g:atpmenu_loadtime)
 		endif
 
 	" Help functions.
@@ -180,15 +192,16 @@ endif
 
 		if g:atp_debugMainScript
 			let g:atphelp_loadtime=str2float(reltimestr(reltime(time)))-g:atpmenu_loadtime
-			echomsg "help loadtime:      " . string(g:atphelp_loadtime)
+			silent echo "help loadtime:      " . string(g:atphelp_loadtime)
 		endif
 
 
 		if g:atp_debugMainScript
 			let g:atp_loadtime =  str2float(reltimestr(reltime(time)))
-			echomsg "loadtime:           " . string(g:atp_loadtime)
-
-			echomsg "overall load time:"string(g:atpmenu_loadtime+g:atpmap_loadtime+g:atpvar_loadtime+g:atpsea_loadtime+g:atpmot_loadtime+g:atpLB_loadtime+g:atpcomp_loadtime+g:atpopt_loadtime+g:atpcom_loadtime+g:atphist_loadtime+g:atprc_loadtime)
+			silent echo "LOADTIME:           " . string(g:atp_loadtime)
+			redir END
 		endif
+
+
 
 " vim:fdm=marker:ff=unix:noet:ts=4:sw=4

@@ -2,7 +2,8 @@
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
 " Last Changed: 2010 July 3
-" Note:		This file is a part of ATP plugin.
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
 
 "
 " {{{ Load Once

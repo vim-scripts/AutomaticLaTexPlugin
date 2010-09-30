@@ -1,4 +1,11 @@
-" LaTeX Box common functions
+" Author:		David Munger (latexbox vim plugin)
+" Description: 	LaTeX Box common functions
+" Maintainer: 	Marcin Szamotulski
+" Note:			This file is a part of Automatic Tex Plugin for Vim.
+" URL:			https://launchpad.net/automatictexplugin
+" Language:		tex
+
+let s:sourced = exists("s:sourced") ? 1 : 0
 
 " Settings {{{
 
@@ -59,6 +66,81 @@ if !exists('g:LatexBox_split_width')
 	let g:LatexBox_split_width = 30
 endif
 " }}}
+" }}}
+
+if s:sourced
+    finish
+endif
+
+" Compilation {{{
+
+" g:vim_program {{{
+if !exists('g:vim_program')
+
+	" attempt autodetection of vim executable
+	let g:vim_program = ''
+	let tmpfile = tempname()
+	silent execute '!ps -o command= -p $PPID > ' . tmpfile
+	for line in readfile(tmpfile)
+		let line = matchstr(line, '^\S\+\>')
+		if !empty(line) && executable(line)
+			let g:vim_program = line . ' -g'
+			break
+		endif
+	endfor
+	call delete(tmpfile)
+
+	if empty(g:vim_program)
+		if has('gui_macvim')
+			let g:vim_program = '/Applications/MacVim.app/Contents/MacOS/Vim -g'
+		else
+			let g:vim_program = v:progname
+		endif
+	endif
+endif
+" }}}
+
+if !exists('g:LatexBox_latexmk_options')
+	let g:LatexBox_latexmk_options = ''
+endif
+if !exists('g:LatexBox_output_type')
+	let g:LatexBox_output_type = 'pdf'
+endif
+if !exists('g:LatexBox_viewer')
+	let g:LatexBox_viewer = b:atp_Viewer
+endif
+" }}}
+
+" Filename utilities {{{
+"
+function! LatexBox_GetMainTexFile()
+	return atplib#FullPath(b:atp_MainFile)
+endfunction
+
+" Return the directory of the main tex file
+function! LatexBox_GetTexRoot()
+	return fnamemodify(LatexBox_GetMainTexFile(), ':h')
+endfunction
+
+function! LatexBox_GetTexBasename(with_dir)
+	if a:with_dir
+		return fnamemodify(LatexBox_GetMainTexFile(), ':r')
+	else
+		return fnamemodify(LatexBox_GetMainTexFile(), ':t:r')
+	endif
+endfunction
+
+function! LatexBox_GetAuxFile()
+	return LatexBox_GetTexBasename(1) . '.aux'
+endfunction
+
+function! LatexBox_GetLogFile()
+	return LatexBox_GetTexBasename(1) . '.log'
+endfunction
+
+function! LatexBox_GetOutputFile()
+	return LatexBox_GetTexBasename(1) . '.' . g:LatexBox_output_type
+endfunction
 " }}}
 
 " In Comment {{{

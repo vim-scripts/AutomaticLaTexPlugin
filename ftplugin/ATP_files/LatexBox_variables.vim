@@ -1,5 +1,13 @@
 " Author: 	David Munger
 " Maintainer:	Marcin Szamotulski
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
+
+let s:sourced = exists("s:sourced") ? 1 : 0
+if s:sourced
+    finish
+endif
 
 " Latex_Box variables used by tools from David Munger.
 if g:atp_LatexBox == 1 || (g:atp_check_if_LatexBox && len(split(globpath(&rtp,'ftplugin/tex_LatexBox.vim')))) 

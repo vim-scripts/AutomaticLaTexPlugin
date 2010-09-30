@@ -1,4 +1,8 @@
 " Author:	Marcin Szmotulski
+" Description:  This file contains mappings defined by ATP.
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
 
 " Commands to library functions (autoload/atplib.vim)
 command! -buffer -bang -nargs=* FontSearch	:call atplib#FontSearch(<q-bang>, <f-args>)
@@ -6,10 +10,18 @@ command! -buffer -bang -nargs=* FontPreview	:call atplib#FontPreview(<q-bang>,<f
 command! -buffer -nargs=1 -complete=customlist,atplib#Fd_completion OpenFdFile	:call atplib#OpenFdFile(<f-args>) 
 command! -buffer -nargs=* CloseLastEnvironment	:call atplib#CloseLastEnvironment(<f-args>)
 command! -buffer 	  CloseLastBracket	:call atplib#CloseLastBracket()
-command! -buffer NInput				:S /\(\\input\|\\include\s*{\)/
-command! -buffer PInput 			:S /\(\\input\|\\include\s*{\)/ b
-nmap <buffer> ]gf				:NInput<CR>
-nmap <buffer> [gf				:PInput<CR>
+let g:atp_map_list	= [ 
+	    \ [ g:atp_map_forward_motion_leader, 'i', 		':NInput<CR>', 			'nmap <buffer>' ],
+	    \ [ g:atp_map_backward_motion_leader, 'i', 		':NPnput<CR>', 			'nmap <buffer>' ],
+	    \ [ g:atp_map_forward_motion_leader, 'gf', 		':NInput<CR>', 			'nmap <buffer>' ],
+	    \ [ g:atp_map_backward_motion_leader, 'gf',		':NPnput<CR>', 			'nmap <buffer>' ],
+	    \ [ g:atp_map_forward_motion_leader, 'S', 		'<Plug>GotoNextSubSection',	'nmap <buffer>' ],
+	    \ [ g:atp_map_backward_motion_leader, 'S', 		'<Plug>vGotoNextSubSection', 	'nmap <buffer>' ],
+	    \ ] 
+execute "nmap <buffer> ".g:atp_map_forward_motion_leader."i				:NInput<CR>"
+execute "nmap <buffer> ".g:atp_map_backward_motion_leader."i				:PInput<CR>"
+execute "nmap <buffer> ".g:atp_map_forward_motion_leader."gf				:NInput<CR>"
+execute "nmap <buffer> ".g:atp_map_backward_motion_leader."gf				:PInput<CR>"
 
 
 " Add maps, unless the user didn't want them.
@@ -17,20 +29,38 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
 	    \ ( !exists("g:no_atp_maps") || exists("g:no_plugin_maps") && g:no_atp_maps == 0 ) 
 
     " ToDo to doc. + vmaps!
-    map <buffer> <LocalLeader>ns 	<Plug>GotoNextSection
-    map <buffer> <LocalLeader>ps 	<Plug>GotoPreviousSection
-    map <buffer> <LocalLeader>nc 	<Plug>GotoNextChapter
-    map <buffer> <LocalLeader>pc 	<Plug>GotoPreviousChapter
-    map <buffer> <LocalLeader>np 	<Plug>GotoNextPart
-    map <buffer> <LocalLeader>pp 	<Plug>GotoPreviousPart
-    map <buffer> <LocalLeader>ne	<Plug>GotoNextEnvironment
-    map <buffer> <LocalLeader>pe	<Plug>GotoPreviousEnvironment
+    execute "nmap <buffer> ".g:atp_map_forward_motion_leader."S 	<Plug>GotoNextSubSection"
+    execute "vmap <buffer> ".g:atp_map_forward_motion_leader."S		<Plug>vGotoNextSubSection"
+    execute "nmap <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>GotoPreviousSubSection"
+    execute "vmap <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>vGotoPreviousSubSection"
+    " Toggle this maps on/off!
+    execute "nmap <buffer> ".g:atp_map_forward_motion_leader."s 	<Plug>GotoNextSection"
+    execute "vmap <buffer> ".g:atp_map_forward_motion_leader."s		<Plug>vGotoNextSection"
+    execute "nmap <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>GotoPreviousSection"
+    execute "vmap <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>vGotoPreviousSection"
+    if !( g:atp_map_forward_motion_leader == "]" && &l:diff )
+	execute "nmap <buffer> ".g:atp_map_forward_motion_leader."c 	<Plug>GotoNextChapter"
+	execute "vmap <buffer> ".g:atp_map_forward_motion_leader."c 	<Plug>vGotoNextChapter"
+    endif
+    if !( g:atp_map_backward_motion_leader == "]" && &l:diff )
+	execute "nmap <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>GotoPreviousChapter"
+	execute "vmap <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>vGotoPreviousChapter"
+    endif
+    execute "nmap <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>GotoNextPart"
+    execute "vmap <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>vGotoNextPart"
+    execute "nmap <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>GotoPreviousPart"
+    execute "vmap <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>vGotoPreviousPart"
+
+    execute "map <buffer> ".g:atp_map_forward_motion_leader."e		<Plug>GotoNextEnvironment"
+    execute "map <buffer> ".g:atp_map_backward_motion_leader."e		<Plug>GotoPreviousEnvironment"
+"     exe "map <buffer> ".g:atp_map_forward_motion_leader."  <Plug>GotoNextEnvironment"
+"     exe "map <buffer> ".g:atp_map_backward_motion_leader." <Plug>GotoPreviousEnvironment"
 "     map <buffer> ]m			<Plug>GotoNextInlineMath
 "     map <buffer> [m			<Plug>GotoPreviousInlineMath
-    map <buffer> ]m			<Plug>GotoNextMath
-    map <buffer> [m			<Plug>GotoPreviousMath
-    map <buffer> ]M			<Plug>GotoNextDisplayedMath
-    map <buffer> [M			<Plug>GotoPreviousDisplayedMath
+    execute "map <buffer> ".g:atp_map_forward_motion_leader."m		<Plug>GotoNextMath"
+    execute "map <buffer> ".g:atp_map_backward_motion_leader."m		<Plug>GotoPreviousMath"
+    execute "map <buffer> ".g:atp_map_forward_motion_leader."M		<Plug>GotoNextDisplayedMath"
+    execute "map <buffer> ".g:atp_map_backward_motion_leader."M		<Plug>GotoPreviousDisplayedMath"
 
     " Goto File Map:
     if has("path_extra")
@@ -55,10 +85,6 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
     endif
 
     " Fonts:
-    if !exists("g:atp_vmap_text_font_leader")
-	let g:atp_vmap_text_font_leader="<LocalLeader>"
-    endif
-
     execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."f		:WrapSelection '{\\usefont{".g:atp_font_encoding."}{}{}{}\\selectfont ', '}', '".(len(g:atp_font_encoding)+11)."'<CR>"
 
 
@@ -82,10 +108,6 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
     execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."cal	:<C-U>InteligentWrapSelection [''],['\\mathcal{']<CR>"
 
     " Environments:
-    if !exists("atp_vmap_environment_leader")
-	let g:atp_vmap_environment_leader=""
-    endif
-
     execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."C   :WrapSelection '"."\\"."begin{center}','"."\\"."end{center}','0','1'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."R   :WrapSelection '"."\\"."begin{flushright}','"."\\"."end{flushright}','0','1'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."L   :WrapSelection '"."\\"."begin{flushleft}','"."\\"."end{flushleft}','0','1'<CR>"
@@ -95,9 +117,6 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
     vmap <buffer> M						:<C-U>WrapSelection '\[', '\]'<CR>
 
     " Brackets:
-    if !exists("*atp_vmap_bracket_leader")
-	let g:atp_vmap_bracket_leader="<LocalLeader>"
-    endif
     execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."( 	:WrapSelection '(', ')', 'begin'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."[ 	:WrapSelection '[', ']', 'begin'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."\\{ 	:WrapSelection '\\{', '\\}', 'begin'<CR>"
@@ -108,9 +127,6 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
     execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."\\}	:WrapSelection '\\{', '\\}', 'end'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."}	:WrapSelection '{', '}', 'end'<CR>"
 
-    if !exists("*atp_vmap_big_bracket_leader")
-	let g:atp_vmap_big_bracket_leader='<LocalLeader>b'
-    endif
     execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."(	:WrapSelection '\\left(', '\\right)', 'begin'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."[	:WrapSelection '\\left[', '\\right]', 'begin'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."{	:WrapSelection '\\left\\{','\\right\\}', 'begin'<CR>"
@@ -148,6 +164,26 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
 
     vmap <buffer> <silent> aS		<Plug>SelectOuterSyntax
     vmap <buffer> <silent> iS		<Plug>SelectInnerSyntax
+
+    " From vim.vim plugin (by Bram Mooleaner)
+    " Move around functions.
+    nnoremap <silent><buffer> [[ m':call search('\\begin\s*{', "bW")<CR>
+    vnoremap <silent><buffer> [[ m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{', "bW")<CR>
+    nnoremap <silent><buffer> ]] m':call search('\\begin\s*{', "W")<CR>
+    vnoremap <silent><buffer> ]] m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{', "W")<CR>
+    nnoremap <silent><buffer> [] m':call search('\\end\s*{', "bW")<CR>
+    vnoremap <silent><buffer> [] m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{', "bW")<CR>
+    nnoremap <silent><buffer> ][ m':call search('\\end\s*{', "W")<CR>
+    vnoremap <silent><buffer> ][ m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{', "W")<CR>
+
+    " Move around comments
+    nnoremap <silent><buffer> ]% :call search('^\(\s*%.*\n\)\@<!\(\s*%\)', "W")<CR>
+    vnoremap <silent><buffer> ]% :<C-U>exe "normal! gv"<Bar>call search('^\(\s*%.*\n\)\@<!\(\s*%\)', "W")<CR>
+    nnoremap <silent><buffer> [% :call search('\%(^\s*%.*\n\)\%(^\s*%\)\@!', "bW")<CR>
+    vnoremap <silent><buffer> [% :<C-U>exe "normal! gv"<Bar>call search('\%(^\s*%.*\n\)\%(^\s*%\)\@!', "bW")<CR>
+
+    " Select comment
+    vmap <silent><buffer> c	<Plug>vSelectComment
 
     " Normal mode maps (mostly)
     nmap  <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput

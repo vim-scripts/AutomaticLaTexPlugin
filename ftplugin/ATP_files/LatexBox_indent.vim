@@ -1,5 +1,13 @@
-" LaTeX indent file (part of LaTeX Box)
-" Maintainer: David Munger (mungerd@gmail.com)
+" Title:	vim indent file for tex files.
+" Author: 	David Munger (mungerd@gmail.com)
+" Maintainer:	Marcin Szamotulski
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
+
+if exists("b:did_indent")
+	finish
+endif
 
 let b:did_indent = 1
 

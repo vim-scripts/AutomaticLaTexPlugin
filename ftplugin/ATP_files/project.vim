@@ -1,10 +1,19 @@
-" Author: M. Szamotulski
+" Author: 	Marcin Szamotulski
 " Description: 	A vim script which stores values of variables in a project script.
-" 		It is read, updated and written (two last via autocommands,
-" 		first on sturup).
+" 		It is read, and written via autocommands.
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
+
+let s:sourced 	= exists("s:sourced") ? 1 : 0
 
 " Variables:
-" Variables {{{1
+" Variables {{{
+
+" If the user set g:atp_RelativePath
+" if exists("g:atp_RelativePath") && g:atp_RelativePath
+"     setl noautochdir
+" endif
 
 let s:file	= expand('<sfile>:p')
 
@@ -12,7 +21,11 @@ let s:file	= expand('<sfile>:p')
 " which project scripts are written.
 " Debug File: /tmp/ATP_ProjectScriptDebug.vim  / only for s:WriteProjectScript() /
 if !exists("g:atp_debugProject")
-    let g:atp_debugProject = 0
+    let g:atp_debugProject 	= 0
+endif
+if !exists("g:atp_debugLPS")
+    " debug <SID>LoadProjectScript (project.vim)
+    let g:atp_debugLPS		= 0
 endif
 " Also can be set in vimrc file or atprc file! (tested)
 " The default value (0) is set in options.vim
@@ -41,15 +54,26 @@ endif
 let s:common_project_script	= s:windows ? g:atp_CommonScriptDirectory  . '\common_var.vim' : g:atp_CommonScriptDirectory . '/common_var.vim' 
 
 " These local variables will be saved:
-let g:atp_cached_local_variables = [ 'b:atp_MainFile', 'b:atp_ProjectScript', 'b:atp_LocalCommands', 'b:atp_LocalColors', 'b:atp_LocalEnvironments', 'b:TreeOfFiles', 'b:ListOfFiles', 'b:TypeDict', 'b:LevelDict']
+let g:atp_cached_local_variables = [ 
+	    \ 'b:atp_MainFile',
+	    \ 'b:atp_ProjectScript',
+	    \ 'b:atp_LocalCommands', 		'b:atp_LocalEnvironments', 
+	    \ 'b:atp_LocalColors',
+	    \ 'b:TreeOfFiles', 			'b:ListOfFiles', 
+	    \ 'b:TypeDict', 			'b:LevelDict', 
+	    \ ]
+" Note: b:atp_ProjectDir is not here by default by the following reason: it is
+" specific to the host, without it sharing the project file is possible.
 " b:atp_PackageList is another variable that could be put into project script.
 
 " This are common variable to all tex files.
 let g:atp_cached_common_variables = ['g:atp_latexpackages', 'g:atp_latexclasses', 'g:atp_Library']
-" }}}1
+" }}}
 
+" Functions: (soure once)
+if !s:sourced "{{{
 " Load Script:
- "{{{1 s:LoadScript(), :LoadScript, autocommads
+"{{{ s:LoadScript(), :LoadScript, autocommads
 " s:LoadScript({bang}, {project_script}, {type}, {load_variables}, [silent], [ch_load])
 "
 " a:bang == "!" ignore texmf tree and ignore b:atp_ProjectScript, g:atp_ProjectScript
@@ -63,7 +87,7 @@ let g:atp_cached_common_variables = ['g:atp_latexpackages', 'g:atp_latexclasses'
 " a:2 = ch_load		check if project script was already loaded
 " a:3 = ignore		ignore b:atp_ProjectScript and g:atp_ProjectScript variables
 " 				used by commands
-function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{2
+function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 
     if g:atp_debugProject
 	redir! >> /tmp/ATP_ProjectScriptDebug.vim
@@ -84,8 +108,6 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{2
     " When starting the vim b:atp_ProjectScript might not be yet defined (will be
     " defined later, and g:atp_ProjectScript might already be defined, so not always
     " global variables override local ones).
-
-"     if !ignore && ( exists("b:atp_ProjectScript") && !b:atp_ProjectScript || exists("g:atp_ProjectScript") && ( !g:atp_ProjectScript && (!exists("b:atp_ProjectScript") || exists("b:atp_ProjectScript") && !b:atp_ProjectScript )) )
 
     " Global variable overrides local one
     if !ignore && ( exists("g:atp_ProjectScript") && !g:atp_ProjectScript || exists("b:atp_ProjectScript") && ( !b:atp_ProjectScript && (!exists("g:atp_ProjectScript") || exists("g:atp_ProjectScript") && !g:atp_ProjectScript )) )
@@ -110,6 +132,13 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{2
 
     let cond_A	= get(s:project_Load, expand("%:p"), 0)
     let cond_B	= get(get(s:project_Load, expand("%:p"), []), a:type, 0)
+    if empty(expand("%:p"))
+	echoerr "ATP Error : File name is empty. Not loading project script."
+	if g:atp_debugProject
+	    redir END
+	endif
+	return
+    endif
     if cond_B
 	let s:project_Load[expand("%:p")][a:type][0] += 1 
     elseif cond_A
@@ -147,7 +176,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{2
     " Load first b:atp_ProjectScript variable
     try
 	if filereadable(a:project_script)
-	    execute " source " . a:project_script
+	    execute "silent! source " . a:project_script
 	endif
 
 	if g:atp_debugProject
@@ -174,10 +203,72 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{2
 "     if a:type == 'local'
 " 	call <SID>TEST()
 "     endif
-endfunction
-
+endfunction "}}}
+" This functoin finds recursilevy (upward) all project scripts. 
+" {{{ FindProjectScripts()
+function! FindProjectScripts()
+    let dir = fnamemodify(resolve(expand("%:p")), ":p:h")
+    let cwd	= getcwd()
+    exe "lcd " . dir 
+    while glob('*.project.vim', 1) == '' 
+	let dir_l 	= dir
+	let dir 	= fnamemodify(dir, ":h")
+	if dir == $HOME || dir == dir_l
+	    break
+	endif
+	exe "lcd " . dir
+    endwhile
+    let project_files = map(split(glob('*project.vim', 1), "\n"), "fnamemodify(v:val, \":p\")")
+    exe "lcd " . cwd
+    return project_files
+endfunction "}}}
+" This function looks to which project current buffer belongs.
+" {{{ GetProjectScript(project_files)
+" a:project_files = FindProjectScripts()
+function! GetProjectScript(project_files)
+    for pfile in a:project_files
+	if g:atp_debugLPS
+	    echomsg "Checking " . pfile 
+	endif
+	let save_loclist 	= getloclist(0)
+	let file_name 	= s:windows ? escape(expand("%:p"), '\') : escape(expand("%:p"), '/') 
+	let sfile_name 	= expand("%:t")
+	try
+	    if !g:atp_RelativePath
+		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)\%(' . file_name . '\|' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)' . file_name . '\>\)/j ' . pfile
+	    else
+		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)[^''"]*\%(' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)[^''"]*' . sfile_name . '\>\)/j ' . pfile
+	    endif
+	catch /E480: No match:/ 
+	    if g:atp_debugProject
+		silent echomsg "Script file " . pfile . " doesn't match."
+	    endif
+	endtry
+	let loclist		= getloclist(0)
+	if len(loclist) 
+	    let bufnr 	= get(get(loclist, 0, {}), 'bufnr', 'no match')
+	    if bufnr != 'no match'
+		let project_script 	= fnamemodify(bufname(bufnr), ":p")
+	    endif
+	    return project_script
+" 		break
+	endif
+    endfor
+    return "no project script found"
+endfunction "}}}
+" This function uses all three above functions: FindProjectScripts(),
+" GetProjectScript() and <SID>LoadScript()
+" {{{ <SID>LoadProjectScript
 " Note: bang has a meaning only for loading the common project script.
-function! <SID>LoadProjectScript(bang,...) "{{{2
+function! <SID>LoadProjectScript(bang,...)
+
+    if ( exists("g:atp_ProjectScript") && !g:atp_ProjectScript || exists("b:atp_ProjectScript") && ( !b:atp_ProjectScript && (!exists("g:atp_ProjectScript") || exists("g:atp_ProjectScript") && !g:atp_ProjectScript )) )
+	redir! >> /tmp/ATP_rs_debug 
+	silent echo "+++ SCIPING : LOAD PROJECT SCRIPT +++"
+	redir END
+	return
+    endif
+
     let local = (a:0 >= 1 ? a:1 : 'local' )
     if g:atp_debugLPS
 	let time = reltime()
@@ -194,22 +285,14 @@ function! <SID>LoadProjectScript(bang,...) "{{{2
 
     if !exists("b:atp_ProjectScriptFile")
 	" Look for the project file
-	let dir = fnamemodify(resolve("%:p"), ":p:h")
-	exe "cd " . dir 
-	while glob('*.project.vim', 1) == '' 
-	    let dir_l 	= dir
-	    let dir 	= fnamemodify(dir, ":h")
-	    if dir == $HOME || dir == dir_l
-		break
-	    endif
-	endwhile
-	let project_files = map(split(glob('*project.vim', 1), "\n"), "fnamemodify(v:val, \":p\")")
 " 	echo join(project_files, "\n")
+	let project_files = FindProjectScripts()
 	let g:project_files = project_files
 
 	" Return if nothing was found
 	if len(project_files) == 0
-	    let b:atp_ProjectScriptFile = expand("%:p") . ".project.vim"
+	    let b:atp_ProjectScriptFile = resolve(expand("%:p")) . ".project.vim"
+	    let b:atp_ProjectDir	= fnamemodify(b:atp_ProjectScriptFile, ":h")
 	    return
 	endif
 
@@ -226,66 +309,45 @@ function! <SID>LoadProjectScript(bang,...) "{{{2
 	let save_loclist = getloclist(0)
 	call setloclist(0, [])
 
-	for pfile in project_files
-	    if g:atp_debugLPS
-		echomsg "Checking " . pfile 
-	    endif
-	    let save_loclist 	= getloclist(0)
-	    let file_name 	= s:windows ? escape(expand("%:p"), '\') : escape(expand("%:p"), '/') 
-	    let sfile_name 	= expand("%:t")
-	    try
-		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)\%(' . file_name . '\|' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)' . file_name . '\>\)/j ' . pfile
-	    catch /E480: No match:/ 
-		if g:atp_debugProject
-		    silent echomsg "Script file " . pfile . " doesn't match."
-		endif
-	    endtry
-	    let loclist		= getloclist(0)
-	    if len(loclist) 
-		let bufnr 	= get(get(loclist, 0, {}), 'bufnr', 'no match')
-		if bufnr != 'no match'
-		    let project_script 	= fnamemodify(bufname(bufnr), ":p")
-		endif
-		break
-	    endif
-	endfor
 
-	if exists("project_script")
+	let project_script = GetProjectScript(project_files)
+	if project_script != "no project script found"
 	    if g:atp_debugLPS
 		echomsg "Loading  " . project_script 
 	    endif
 	    call <SID>LoadScript("", project_script, "local", 0, "silent", 1, 0)
 	    let b:atp_ProjectScriptFile = project_script
+	    let b:atp_ProjectDir	= fnamemodify(b:atp_ProjectScriptFile, ":h")
 	else
 	    " If there was no project script we set the variable and it will
 	    " be written when quiting vim by <SID>WriteProjectScript().
-	    let b:atp_ProjectScriptFile = expand("%:p") . ".project.vim"
+	    let b:atp_ProjectScriptFile = resolve(expand("%:p")) . ".project.vim"
+	    let b:atp_ProjectDir	= fnamemodify(b:atp_ProjectScriptFile, ":h")
 	    return
 	endif
     else
-	execute "source " . b:atp_ProjectScriptFile
+	try
+	execute "silent! source " . b:atp_ProjectScriptFile
+	let b:atp_ProjectDir	= fnamemodify(b:atp_ProjectScriptFile, ":h")
+	catch /E484 Cannot open file/
+	    " this is used by the s:Babel() function.
+	    " if b:atp_ProjectDir is unset it returns.
+	    unlet b:atp_ProjectDir
+	endtry
     endif
+
     if g:atp_debugLPS
 	let g:LPS_time = reltimestr(reltime(time))
 	echomsg "LPS time: " . g:LPS_time
     endif
 endfunction
-" command! -buffer LoadProjectScript		:call <SID>LoadProjectScript(...) 
-" command! -buffer -bang LoadCommonScript		:call s:LoadScript(<q-bang>,s:common_project_script, 'global', 0, '', 1)
-command! -buffer -bang -nargs=? -complete=customlist,s:LocalCommonGlobalComp LoadProjectScript :call <SID>LoadProjectScript(<q-bang>,<f-args>)
 function! s:LocalCommonComp(ArgLead, CmdLine, CursorPos)
     return filter([ 'local', 'common'], 'v:val =~ "^" . a:ArgLead')
 endfunction
-call <SID>LoadProjectScript("", "local")
-" }}}2
-
-" Project script should by loaded now, and not by autocommands which are executed after
-" sourcing scripts. In this way variables set in project script will be used
-" when sourcing other atp scripts.
-call s:LoadScript("", s:common_project_script, 'global', 0, 'silent',1)
-"}}}1
+" }}}
+"}}}
 " Write Project Script:
-"{{{1 s:WriteProjectScript(), :WriteProjectScript, autocommands
+"{{{ s:WriteProjectScript(), :WriteProjectScript, autocommands
 try
 function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 
@@ -299,7 +361,8 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     endif
 
     if !exists("b:ListOfFiles")
-	call TreeOfFiles(b:atp_MainFile)
+	let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+	call TreeOfFiles(atp_MainFile)
     endif
 
     if g:atp_debugProject
@@ -566,19 +629,20 @@ function! <SID>WriteProjectScriptInterface(bang,...)
     endif
     call s:WriteProjectScript(a:bang, script, variables, type)
 endfunction
-command! -buffer -bang -nargs=? -complete=customlist,s:WPSI_comp WriteProjectScript	:call <SID>WriteProjectScriptInterface(<q-bang>,<f-args>)
 function! s:WPSI_comp(ArgLead, CmdLine, CursorPos)
     return filter(['local', 'global'], 'v:val =~ a:ArgLead')
-endfunction
-"{{{2 WriteProjectScript autocommands
+endfunction 
+"{{{ WriteProjectScript autocommands
 augroup ATP_WriteProjectScript 
     au!
     au VimLeave *.tex call s:WriteProjectScript("", b:atp_ProjectScriptFile, g:atp_cached_local_variables, 'local')
     au VimLeave *.tex call s:WriteProjectScript("", s:common_project_script, g:atp_cached_common_variables, 'global')
-augroup END "}}}1
+augroup END 
+"}}}
+"}}}
 
 " Set Project Script: on/off
-" {{{1 s:ProjectScript
+" {{{ s:ProjectScript
 function! <SID>ProjectScript(...)
     let arg = ( a:0 >=1 ? a:1 : "" )
     if arg == ""
@@ -597,14 +661,13 @@ function! <SID>ProjectScript(...)
     endif
     return b:atp_ProjectScript
 endfunction
-command! -buffer -nargs=* -complete=customlist,HistComp ProjectScript 	:call s:ProjectScript(<f-args>)
 function! HistComp(ArgLead, CmdLine, CursorPos)
     return filter(['on', 'off'], 'v:val =~ a:ArgLead')
-endfunction "}}}1
+endfunction "}}}
 
 " Delete Project Script:
-" s:DeleteProjectScript {{{1
-" 	It has one argument a:1 == "local" or " a:0 == 0 " delete the 
+" s:DeleteProjectScript {{{
+" 	It has one argument a:1 == "local" or " a:0 == 0 " delete the		 
 " 	b:atp_ProjectScriptFile.
 " 	otherwise delete s:common_project_script.  With bang it forces to delete the
 " 	s:common_project_script" 
@@ -631,7 +694,6 @@ function! <SID>DeleteProjectScript(bang,...)
 	endfor
     endif
 endfunction
-command! -buffer -bang -complete=customlist,s:DelPS -nargs=? DeleteProjectScript 	:call s:DeleteProjectScript(<q-bang>, <f-args>)
 function! s:DelPS(CmdArg, CmdLine, CursorPos)
     let comp	= [ "local", "common" ]  
     call filter(comp, "v:val =~ '^' . a:CmdArg")
@@ -642,3 +704,19 @@ endfunction
 " 
 "     let history_file
 " endfunction
+" }}}
+endif "}}}
+call <SID>LoadProjectScript("", "local")
+" Project script should by loaded now, and not by autocommands which are executed after
+" sourcing scripts. In this way variables set in project script will be used
+" when sourcing other atp scripts.
+call s:LoadScript("", s:common_project_script, 'global', 0, 'silent',1)
+
+" Commands:
+command! -buffer -bang -nargs=? -complete=customlist,s:LocalCommonGlobalComp LoadProjectScript :call <SID>LoadProjectScript(<q-bang>,<f-args>)
+" write:
+command! -buffer -bang -nargs=? -complete=customlist,s:WPSI_comp WriteProjectScript	:call <SID>WriteProjectScriptInterface(<q-bang>,<f-args>)
+command! -buffer -nargs=* -complete=customlist,HistComp 	ProjectScript 		:call <SID>ProjectScript(<f-args>)
+
+" delete:
+command! -buffer -bang -complete=customlist,s:DelPS -nargs=? 	DeleteProjectScript 	:call s:DeleteProjectScript(<q-bang>, <f-args>)

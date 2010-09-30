@@ -1,7 +1,13 @@
-"Author:	Marcin Szamotulski	
-"Email:		mszamot/AT/gmail/DOT/com
-"These are various editting tools used in ATP.
+" Author:	Marcin Szamotulski	
+" Descriptiion:	These are various editting tools used in ATP.
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
 
+let s:sourced 	= exists("s:sourced") ? 1 : 0
+
+" Functions: (source once)
+if !s:sourced "{{{
 " This is the wrap selection function.
 " {{{ WrapSelection
 function! s:WrapSelection(wrapper,...)
@@ -157,9 +163,6 @@ function! s:WrapSelection(wrapper,...)
 	keepjumps call setpos(".",l:begin)
     endif
 endfunction
-command! -buffer -nargs=? -range WrapSelection	:call <SID>WrapSelection(<args>)
-vmap <Plug>WrapSelection			:<C-U>call <SID>WrapSelection('')<CR>i
-
 "}}}
 "{{{ Inteligent Wrap Selection 
 " This function selects the correct font wrapper for math/text environment.
@@ -211,12 +214,10 @@ function! s:InteligentWrapSelection(text_wrapper, math_wrapper, ...)
 
     call s:WrapSelection(begin_wrapper, end_wrapper, cursor_pos, new_line) 
 endfunction
-command! -buffer -nargs=? -range InteligentWrapSelection	:call <SID>InteligentWrapSelection(<args>)
-vmap <Plug>InteligentWrapSelection				:<C-U>call <SID>InteligentWrapSelection('')<CR>i
 "}}}
 
 " Inteligent Aling
-" TexAlign {{{1
+" TexAlign {{{
 " This needs Aling vim plugin.
 function! TexAlign()
     let save_pos = getpos(".")
@@ -291,9 +292,7 @@ function! TexAlign()
 
     call setpos(".", save_pos) 
 endfunction
-
-command! TexAlign	:call TexAlign()
-"}}}1
+"}}}
 
 " Insert() function, which is used to insert text depending on mode: text/math. 
 " {{{ Insert()
@@ -330,7 +329,7 @@ function! Insert(text, math)
 endfunction
 " }}}
 " Insert \item update the number. 
-" {{{1 InsertItem()
+" {{{ InsertItem()
 " ToDo: indent
 function! InsertItem()
     let begin_line	= searchpair( '\\begin\s*{\s*\%(enumerate\|itemize\)\s*}', '', '\\end\s*{\s*\%(enumerate\|itemize\)\s*}', 'bnW')
@@ -418,7 +417,7 @@ function! InsertItem()
 
     return ""
 endfunction
-" }}}1
+" }}}
 
 " Editing Toggle Functions
 "{{{ Variables
@@ -491,8 +490,6 @@ function! s:ToggleStar()
 	endif
     endif
 endfunction
-command! -buffer 	ToggleStar   		:call <SID>ToggleStar()<CR>
-nnoremap <silent> <Plug>ToggleStar		:call <SID>ToggleStar()<CR>
 "}}}
 "{{{ ToggleEnvironment
 " this function toggles envrionment name.
@@ -503,6 +500,7 @@ nnoremap <silent> <Plug>ToggleStar		:call <SID>ToggleStar()<CR>
 try
 function! s:ToggleEnvironment(ask, ...)
 
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let l:add = ( a:0 >= 1 ? a:1 : 1 ) 
 
     " limit:
@@ -611,12 +609,11 @@ function! s:ToggleEnvironment(ask, ...)
 	    silent! keepjumps execute l:open_pos[0].'substitute /\\label{'.l:label.'}/\\label{'.l:new_label.'}'
 	    " This should be done for every file in the project. 
 	    if !exists("b:TypeDict")
-		call TreeOfFiles(b:atp_MainFile)
+		call TreeOfFiles(atp_MainFile)
 	    endif
 	    let save_view 	= winsaveview()
 	    let file		= expand("%:p")
-	    let g:files 	= keys(filter(b:TypeDict, "v:val == 'input'")) + [ b:atp_MainFile ]
-	    for project_file in keys(filter(b:TypeDict, "v:val == 'input'")) + [ b:atp_MainFile ]
+	    for project_file in keys(filter(b:TypeDict, "v:val == 'input'")) + [ atp_MainFile ]
 		exe "keepalt edit " . project_file
 " 		echo " IN FILE : " . expand("%")
 		let pos_save_pf=getpos(".")
@@ -635,14 +632,9 @@ function! s:ToggleEnvironment(ask, ...)
     return  l:open_pos[0]."-".l:close_pos[0]
 endfunction
 catch /E127: Cannot redefine function /
-endtry
-command! -buffer -nargs=? ToggleEnv	   		:call <SID>ToggleEnvironment(0, <f-args>)
-command! -buffer -nargs=* ChengeEnv			:call <SID>ToggleEnvironment(1, <f-args>)
-nnoremap <silent> <Plug>ToggleEnvForward		:call <SID>ToggleEnvironment(0, 1)<CR>
-nnoremap <silent> <Plug>ToggleEnvBackward		:call <SID>ToggleEnvironment(0, -1)<CR>
-nnoremap <silent> <Plug>ChangeEnv			:call <SID>ToggleEnvironment(1)<CR>
+endtry "}}}
 " TexDoc commanand and its completion
-" {{{1 TexDoc 
+" {{{ TexDoc 
 " This is non interactive !, use :!texdoc for interactive command.
 " But it simulates it with a nice command completion (Ctrl-D, <Tab>)
 " based on alias files for texdoc.
@@ -678,15 +670,14 @@ function! s:TeXdoc_complete(ArgLead, CmdLine, CursorPos)
 
     return filter(copy(aliases), "v:val =~ '^' . a:ArgLead")
 endfunction
-command! -buffer -nargs=* -complete=customlist,<SID>TeXdoc_complete TexDoc 	:call <SID>TexDoc(<f-args>)
-nnoremap <silent> <buffer> <Plug>TexDoc						:TexDoc 
-" }}}1
+" }}}
 
 " This function deletes tex specific output files (exept the pdf/dvi file, unless
 " bang is used - then also delets the current output file)
-" {{{1 Delete
+" {{{ Delete
 function! s:Delete(delete_output)
 
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     call atplib#outdir()
 
     let l:atp_tex_extensions=deepcopy(g:atp_tex_extensions)
@@ -707,7 +698,7 @@ function! s:Delete(delete_output)
 		if l:ext != "dvi" && l:ext != "pdf"
 		    let l:rm=g:rmcommand . " " . shellescape(b:atp_OutDir) . "*." . l:ext . " 2>/dev/null && echo Removed: ./.*" . l:ext 
 		else
-		    let l:rm=g:rmcommand . " " . fnamemodify(b:atp_MainFile,":r").".".l:ext . " 2>/dev/null && echo Removed: " . fnamemodify(b:atp_MainFile,":r").".".l:ext
+		    let l:rm=g:rmcommand . " " . fnamemodify(atp_MainFile,":r").".".l:ext . " 2>/dev/null && echo Removed: " . fnamemodify(atp_MainFile,":r").".".l:ext
 		endif
 	    endif
 	    if !exists("g:rm")
@@ -729,12 +720,10 @@ function! s:Delete(delete_output)
 " 		echo "Please set g:rmcommand to clear the working directory"
 " 	endif
 endfunction
-command! -buffer -bang Delete		:call <SID>Delete(<q-bang>)
-nmap <silent> <buffer>	 <Plug>Delete	:call <SID>Delete("")<CR>
-"}}}1
+"}}}
 
-"{{{1 OpenLog, TexLog, TexLog Buffer Options, PdfFonts, YesNoCompletion
-"{{{2 s:Search function for Log Buffer
+"{{{ OpenLog, TexLog, TexLog Buffer Options, PdfFonts, YesNoCompletion
+"{{{ s:Search function for Log Buffer
 function! <SID>Search(pattern, flag, ...)
     echo ""
     let center 	= ( a:0 >= 1 ? a:1 : 1 )
@@ -787,15 +776,13 @@ endfunction
 "}}}
 function! s:OpenLog()
     if filereadable(&l:errorfile)
-	let s:atp_MainFile 	= b:atp_MainFile  
-	let s:atp_Viewer	= b:atp_Viewer
-	let s:atp_XpdfServer	= b:atp_XpdfServer
 
+	let projectVarDict = SaveProjectVariables()
+	let g:projectVarDict = projectVarDict
 	let s:winnr		= bufwinnr("")
 	exe "rightbelow split +setl\\ nospell\\ ruler\\ syn=log_atp\\ autoread " . fnameescape(&l:errorfile)
-	let b:atp_MainFile 	= s:atp_MainFile
-	let b:atp_Viewer	= s:atp_Viewer
-	let b:atp_XpdfServer	= s:atp_XpdfServer
+	call RestoreProjectVariables(projectVarDict)
+
 	map <buffer> q :bd!<CR>
 	nnoremap <silent> <buffer> ]m :call <SID>Search('\CWarning\\|^!', 'W')<CR>
 	nnoremap <silent> <buffer> [m :call <SID>Search('\CWarning\\|^!', 'bW')<CR>
@@ -826,6 +813,9 @@ function! s:OpenLog()
 	endtry
 		   
 	function! <SID>SyncTex(bang,...)
+
+	    let cwd = getcwd()
+	    exe "normal! lcd " . b:atp_ProjectDir 
 
 	    " if sync = 1 sync log file and the window - can be used by autocommand
 	    let sync = ( a:0 >= 1 ? a:1 : 0 )
@@ -898,9 +888,11 @@ function! s:OpenLog()
 		let fname 	= matchstr(strpart(getline(startline), startcol), '^\f\+') 
 		" if the file name was broken in the log file in two lines,
 		" get the end of file name from the next line. 
-		if fname !~# '\.\%(tex\|sty\|cls\|clo\|def\)$'
+		let tex_extensions = extend(copy(g:atp_tex_extensions), [ 'tex', 'cls', 'sty', 'clo', 'def' ], 0)
+		let pat = '\.\%('.join(tex_extensions, '\|').'\)$'
+		if fname !~# pat
 		    let stridx = {}
-		    for end in [ 'tex', 'sty', 'cls', 'clo', 'def' ]
+		    for end in tex_extensions
 			call extend(stridx, { end : stridx(getline(startline+1), "." . end) })
 		    endfor
 		    call filter(stridx, "v:val != -1")
@@ -909,15 +901,18 @@ function! s:OpenLog()
 			call extend(StrIdx, { stridx[end] : end }, 'keep')
 		    endfor
 		    let idx = min(keys(StrIdx))
-		    let end = StrIdx[idx]
+		    let end = get(StrIdx, idx, "")
 		    let fname .= strpart(getline(startline+1), 0, idx + len(end) + 1)
 		endif
 		if g:atp_debugST
-		    silent! echomsg "fname=" . fname
+		    let g:fname = fnamemodify(fname, ":t")
+		    let g:dir	= fnamemodify(g:fname, ":p:h")
+		    let g:pat	= pat
+" 		    if g:fname =~# '^' .  escape(fnamemodify(tempname(), ":h"), '\/')
+" 			let g:fname = substitute(g:fname, fnamemodify(tempname(), ":h"), b:atp_ProjectDir)
+" 		    endif
 		endif
 		let test 	= filereadable(fname)
-" 		echomsg "test=" . test . " nr=" . nr . " linenr=" . line(".")
-" 		echomsg "fname=" . fname . " start pos " . string([ startline, startcol ])
 		let nr	+= 1
 		let [ startline_o, startcol_o ] = deepcopy([ startline, startcol ])
 	    endwhile
@@ -928,7 +923,7 @@ function! s:OpenLog()
 
 	    " if the file is under texmf directory return unless g:atp_developer = 1
 	    " i.e. do not visit packages and classes.
-	    if fnamemodify(fname, ':p') =~ '\%(\/\|\\\)texmf' && !g:atp_developer
+	    if ( fnamemodify(fname, ':p') =~ '\%(\/\|\\\)texmf' || index(['cls', 'sty', 'bst'], fnamemodify(fname, ":e")) != -1 ) && !g:atp_developer
 		keepjumps call setpos(".", saved_pos)
 		return
 	    elseif fnamemodify(fname, ':p') =~ '\%(\/\|\\\)texmf'
@@ -1007,6 +1002,8 @@ function! s:OpenLog()
 	    else
 		setl nocursorline
 	    endif
+
+	    exe "normal! lcd " . cwd
 	endfunction
 	command! -buffer -bang SyncTex		:call <SID>SyncTex(<q-bang>)
 	map <buffer> <Enter>			:SyncTex<CR>
@@ -1017,6 +1014,7 @@ function! s:OpenLog()
 
 	function! s:SyncXpdfLog(...)
 
+	    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 	    " check the value of g:atp_SyncXpdfLog
 	    let check = ( a:0 >= 1 ? a:1 : 1 )
 
@@ -1033,7 +1031,7 @@ function! s:OpenLog()
 	    let g:pageNr	= pageNr
 
 	    if pageNr	!= ""
-		let cmd = "xpdf -remote " . b:atp_XpdfServer . " " . fnamemodify(b:atp_MainFile, ":r") . ".pdf " . pageNr . " &"
+		let cmd = "xpdf -remote " . b:atp_XpdfServer . " " . fnamemodify(atp_MainFile, ":r") . ".pdf " . pageNr . " &"
 		let g:cmd = cmd
 		call system(cmd)
 	    endif
@@ -1049,8 +1047,6 @@ function! s:OpenLog()
 	echo "No log file"
     endif
 endfunction
-command! -buffer OpenLog			:call <SID>OpenLog()
-nnoremap <silent> <buffer> <Plug>OpenLog	:call <SID>OpenLog()<CR>
 
 " TeX LOG FILE
 if &buftype == 'quickfix'
@@ -1065,22 +1061,19 @@ function! s:TexLog(options)
        echo "Please install 'texloganalyser' to have this functionality. The perl program written by Thomas van Oudenhove."  
     endif
 endfunction
-command! -buffer TexLog			:call <SID>TexLog()
-nnoremap <silent> <buffer> <Plug>TexLog	:call <SID>TexLog()<CR>
 
 function! s:PdfFonts()
     if b:atp_OutDir !~ "\/$"
 	b:atp_OutDir=b:atp_OutDir . "/"
     endif
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     if executable("pdffonts")
-	let s:command="pdffonts " . fnameescape(fnamemodify(b:atp_MainFile,":r")) . ".pdf"
+	let s:command="pdffonts " . fnameescape(fnamemodify(atp_MainFile,":r")) . ".pdf"
 	echo system(s:command)
     else
 	echo "Please install 'pdffonts' to have this functionality. In 'gentoo' it is in the package 'app-text/poppler-utils'."  
     endif
 endfunction	
-command! -buffer PdfFonts			:call <SID>PdfFonts()
-nnoremap <silent> <buffer> <Plug>PdfFonts	:call <SID>PdfFonts()<CR>
 
 " function! s:setprintexpr()
 "     if b:atp_TexCompiler == "pdftex" || b:atp_TexCompiler == "pdflatex"
@@ -1092,13 +1085,13 @@ nnoremap <silent> <buffer> <Plug>PdfFonts	:call <SID>PdfFonts()<CR>
 " endfunction
 " call s:setprintexpr()
 
-fun! YesNoCompletion(A,P,L)
+function! YesNoCompletion(A,P,L)
     return ['yes','no']
-endfun
-"}}}1
+endfunction
+"}}}
 
 " Ssh printing tools
-"{{{1 Print, Lpstat, ListPrinters
+"{{{ Print, Lpstat, ListPrinters
 " This function can send the output file to local or remote printer.
 " a:1   = file to print		(if not given printing the output file)
 " a:2	= printer name		(if g:atp_ssh is non empty or different from
@@ -1179,8 +1172,6 @@ endfun
     endif
 endfunction
 " The command only prints the output file.
-command! -complete=custom,<SID>ListPrinters  -buffer -nargs=* SshPrint 	:call <SID>SshPrint("", <f-args>)
-nnoremap <buffer> <Plug>SshPrint					:SshPrint 
 
 fun! s:Lpstat()
     if exists("g:apt_ssh") 
@@ -1194,8 +1185,6 @@ fun! s:Lpstat()
 	echo system("ssh " . g:atp_ssh . " lpstat -l ")
     endif
 endfunction
-command! -buffer Lpstat			:call <SID>Lpstat()
-nnoremap <silent> <buffer> <Plug>Lpstat	:call <SID>Lpstat()<CR>
 
 " it is used for completetion of the command SshPrint
 function! s:ListPrinters(A,L,P)
@@ -1206,24 +1195,20 @@ function! s:ListPrinters(A,L,P)
     endif
     return system(l:com)
 endfunction
-command! -buffer ListPrinters	:echo <SID>ListPrinters("", "", "")
-" }}}1
+" }}}
 
 " Open Library Command
-" {{{1 :Open
+" {{{ :Open
 command! -nargs=? -bang -complete=file  Open call atplib#Open(<q-bang>, g:atp_LibraryPath, g:atp_OpenTypeDict, <q-args>)
 let g:atp_open_completion = []
 " -complete=customlist,ATP_CompleteOpen
 " function! ATP_CompleteOpen(ArgLead, CmdLead, CurPos)
 "     return filter(deepcopy(g:atp_open_completion), "v:val =~ '^' . a:ArgLead")
 " endfunction
-" }}}1
-
-" List Packages:
-command! -buffer ShowPackages	:let b:atp_PackageList = atplib#GrepPackageList() | echo join(b:atp_PackageList, "\n")
+" }}}
 
 " ToDo notes
-" {{{1 ToDo
+" {{{ ToDo
 "
 " TODO if the file was not found ask to make one.
 function! ToDo(keyword,stop,...)
@@ -1264,7 +1249,7 @@ function! ToDo(keyword,stop,...)
 	" show all comment lines right below the found todo line.
 	while true && texfile[linenr] !~ '%.*\c\<todo\>' 
 	    let linenr=key+a-1
-	    if texfile[linenr] =~ "\s*%" && texfile[linenr] !~ a:stop
+	    if texfile[linenr] =~ '\s*%' && texfile[linenr] !~ a:stop
 		" make space of length equal to len(linenr)
 		let space=""
 		let j=0
@@ -1281,12 +1266,10 @@ function! ToDo(keyword,stop,...)
     endfor
     echohl None
 endfunction
-command! -buffer -nargs=? -complete=buffer ToDo		:call ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
-command! -buffer -nargs=? -complete=buffer Note		:call ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
-" }}}1
+" }}}
 
 " This functions reloads ATP (whole or just a function)
-" {{{1  RELOAD
+" {{{  RELOAD
 
 if !exists("g:debug_atp_plugin")
     let g:debug_atp_plugin=0
@@ -1365,6 +1348,40 @@ fun! Reload(...)
 endfunction
 endif
 " command! -buffer -nargs=* -complete=function Reload	:call Reload(<f-args>)
-" }}}1
+" }}}
+endif "}}}
 
+" Maps: "{{{1
+vmap <buffer> 	<Plug>WrapSelection				:<C-U>call <SID>WrapSelection('')<CR>i
+vmap <buffer> 	<Plug>InteligentWrapSelection			:<C-U>call <SID>InteligentWrapSelection('')<CR>i
+nnoremap <silent> <buffer> 	<Plug>ToggleStar		:call <SID>ToggleStar()<CR>
+nnoremap <silent> <buffer> 	<Plug>ToggleEnvForward		:call <SID>ToggleEnvironment(0, 1)<CR>
+nnoremap <silent> <buffer> 	<Plug>ToggleEnvBackward		:call <SID>ToggleEnvironment(0, -1)<CR>
+nnoremap <silent> <buffer> 	<Plug>ChangeEnv			:call <SID>ToggleEnvironment(1)<CR>
+nnoremap <silent> <buffer> 	<Plug>TexDoc			:TexDoc 
+" Commands: "{{{1
+command! -buffer -nargs=? -range WrapSelection			:call <SID>WrapSelection(<args>)
+command! -buffer -nargs=? -range InteligentWrapSelection	:call <SID>InteligentWrapSelection(<args>)
+command! 		TexAlign				:call TexAlign()
+command! -buffer 	ToggleStar   				:call <SID>ToggleStar()<CR>
+command! -buffer -nargs=? ToggleEnv	   			:call <SID>ToggleEnvironment(0, <f-args>)
+command! -buffer -nargs=* ChengeEnv				:call <SID>ToggleEnvironment(1, <f-args>)
+command! -buffer -nargs=* -complete=customlist,<SID>TeXdoc_complete TexDoc 	:call <SID>TexDoc(<f-args>)
+command! -buffer -bang 	Delete					:call <SID>Delete(<q-bang>)
+nmap <silent> <buffer>	 <Plug>Delete				:call <SID>Delete("")<CR>
+command! -buffer 	OpenLog					:call <SID>OpenLog()
+nnoremap <silent> <buffer> <Plug>OpenLog			:call <SID>OpenLog()<CR>
+command! -buffer 	TexLog					:call <SID>TexLog()
+nnoremap <silent> <buffer> <Plug>TexLog				:call <SID>TexLog()<CR>
+command! -buffer 	PdfFonts				:call <SID>PdfFonts()
+nnoremap <silent> <buffer> <Plug>PdfFonts			:call <SID>PdfFonts()<CR>
+command! -complete=custom,<SID>ListPrinters  -buffer -nargs=* SshPrint 	:call <SID>SshPrint("", <f-args>)
+nnoremap <buffer> 	<Plug>SshPrint				:SshPrint 
+command! -buffer 	Lpstat					:call <SID>Lpstat()
+nnoremap <silent> <buffer> <Plug>Lpstat				:call <SID>Lpstat()<CR>
+command! -buffer 	ListPrinters				:echo <SID>ListPrinters("", "", "")
+" List Packages:
+command! -buffer 	ShowPackages				:let b:atp_PackageList = atplib#GrepPackageList() | echo join(b:atp_PackageList, "\n")
+command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
+command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

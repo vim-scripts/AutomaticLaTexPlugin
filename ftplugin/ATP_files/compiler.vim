@@ -1,16 +1,15 @@
 " Author: 	Marcin Szamotulski	
 " Note:		this file contain the main compiler function and related tools, to
 " 		view the output, see error file.
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
 
 " Some options (functions) should be set once:
 let s:sourced	 		= exists("s:sourced") ? 1 : 0
 
-if !exists("b:loaded_compiler")
-	let b:loaded_compiler = 1
-else
-	let b:loaded_compiler += 1
-endif
-
+" Functions: (source once)
+if !s:sourced  " {{{
 " Internal Variables
 " {{{
 " This limits how many consecutive runs there can be maximally.
@@ -18,14 +17,17 @@ let s:runlimit		= 9
 
 let s:texinteraction	= "nonstopmode"
 compiler tex
-"}}}
-"
+" }}}
+
 " This is the function to view output. It calls compiler if the output is a not
 " readable file.
 " {{{ ViewOutput
 " a:1 == "RevSearch" 	if run from RevSearch() function and the output file doesn't
 " exsists call compiler and RevSearch().
 function! <SID>ViewOutput(...)
+
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+
     let rev_search	= ( a:0 == 1 && a:1 == "RevSearch" ? 1 : 0 )
 
     call atplib#outdir()
@@ -40,11 +42,11 @@ function! <SID>ViewOutput(...)
 "     let g:options	= global_options ." ". local_options
 
     " Follow the symbolic link
-    let link=system("readlink " . shellescape(b:atp_MainFile))
+    let link=system("readlink " . shellescape(atp_MainFile))
     if link != ""
 	let outfile	= fnamemodify(link,":r") . ext
     else
-	let outfile	= fnamemodify(b:atp_MainFile,":r"). ext 
+	let outfile	= fnamemodify(atp_MainFile,":r"). ext 
     endif
 
     if b:atp_Viewer == "xpdf"	
@@ -54,6 +56,10 @@ function! <SID>ViewOutput(...)
     endif
 
     let view_cmd	= viewer . " " . global_options . " " . local_options . " " . shellescape(outfile)  . " &"
+
+    if g:atp_debugV
+	let g:view_cmd	= view_cmd
+    endif
 
     if filereadable(outfile)
 	if b:atp_Viewer == "xpdf"	
@@ -65,14 +71,13 @@ function! <SID>ViewOutput(...)
     else
 	echomsg "Output file do not exists. Calling " . b:atp_TexCompiler
 	if rev_search
-	    call s:Compiler( 0, 2, 1, 'silent' , "AU" , b:atp_MainFile, "")
+	    call s:Compiler( 0, 2, 1, 'silent' , "AU" , atp_MainFile, "")
 	else
-	    call s:Compiler( 0, 1, 1, 'silent' , "AU" , b:atp_MainFile, "")
+	    call s:Compiler( 0, 1, 1, 'silent' , "AU" , atp_MainFile, "")
 	endif
     endif	
 endfunction
-command! -buffer -nargs=? ViewOutput		:call <SID>ViewOutput(<f-args>)
-noremap <silent> <Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
+noremap <silent> 		<Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
 "}}}
 
 " This function gets the pid of the running compiler
@@ -92,7 +97,6 @@ function! <SID>GetPID()
 	    echomsg b:atp_TexCompiler . " is not running"
 	endif
 endfunction
-command! -buffer PID		:call <SID>GetPID()
 "}}}
 
 " To check if xpdf is running we use 'ps' unix program.
@@ -301,7 +305,7 @@ endfunction
 
 " This function is called to run TeX compiler and friends as many times as necessary.
 " Makes references and bibliographies (supports bibtex), indexes.  
-"{{{1 MakeLatex
+"{{{ MakeLatex
 " a:texfile		full path to the tex file
 " a:index		0/1
 " 			0 - do not check for making index in this run
@@ -693,15 +697,15 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     endif
     return "Proper end"
 endfunction
-command! -buffer -bang MakeLatex		:call <SID>MakeLatex(b:atp_MainFile, 0,0, [],1,1,<q-bang>,1)
 function! Make()
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     if &l:filetype =~ 'tex$'
-	call <SID>MakeLatex(b:atp_MainFile, 0,0, [],1,1,0,1)
+	call <SID>MakeLatex(atp_MainFile, 0,0, [],1,1,0,1)
     endif
     return ""
 endfunction
 
-"}}}1
+"}}}
 
 " THE MAIN COMPILER FUNCTION:
 " {{{ s:Compiler 
@@ -974,7 +978,7 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	silent echomsg "BEFORE WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
     endif
 	silent! w
-	let b:atp_changedtick += 1
+" 	let b:atp_changedtick += 1
     if g:atp_debugCompiler
 	silent echomsg "AFTER WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
     endif
@@ -1003,16 +1007,19 @@ endfunction
 "}}}
 
 " AUTOMATIC TEX PROCESSING:
-" {{{1 s:auTeX
+" {{{ s:auTeX
 " This function calls the compilers in the background. It Needs to be a global
 " function (it is used in options.vim, there is a trick to put function into
 " a dictionary ... )
-augroup ATP_changetick
-    au BufEnter *.tex :silent! let b:atp_changedtick = b:changedtick
-"     au BufEnter *.tex :lockvar b:atp_changedtick
+augroup ATP_changedtick
+    au!
+    au BufEnter 	*.tex 	:let b:atp_changedtick = b:changedtick
+    au BufWritePost 	*.tex 	:let b:atp_changedtick = b:changedtick
 augroup END 
 
 function! <SID>auTeX()
+
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     " Using vcscommand plugin the diff window ends with .tex thus the autocommand
     " applies but the filetype is 'diff' thus we can switch tex processing by:
@@ -1035,21 +1042,23 @@ function! <SID>auTeX()
 	endif
 	if cond
 	    " This is for changedtick only
-" 	    unlockvar b:atp_changedtick
-	    let b:atp_changedtick = b:changedtick
-" 	    lockvar b:atp_changedtick
+	    let b:atp_changedtick = b:changedtick + 1
 	    " +1 because s:Compiler saves the file what increases b:changedtick by 1.
+	    " this is still needed as I use not nesting BufWritePost autocommand to set
+	    " b:atp_changedtick (by default autocommands do not nest). Alternate solution is to
+	    " run s:AuTeX() with nested autocommand (|autocmd-nested|). But this seems
+	    " to be less user friendly, nested autocommands allows only 10 levels of
+	    " nesting (which seems to be high enough).
 	    
 "
 " 	if NewCompare()
-	    call s:Compiler(0, 0, b:atp_auruns, mode, "AU", b:atp_MainFile, "")
+	    call s:Compiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 	    redraw
 	    return "compile" 
 	endif
     " if compiling for the first time
     else
 	try 
-	    let b:atp_changedtick = b:changedtick + 1
 	    w
 	catch /E212: Cannot open file for writing/
 	    echohl ErrorMsg
@@ -1060,7 +1069,7 @@ function! <SID>auTeX()
 	    " This option can be set by VCSCommand plugin using VCSVimDiff command
 	    return " E382"
 	endtry
-	call s:Compiler(0, 0, b:atp_auruns, mode, "AU", b:atp_MainFile, "")
+	call s:Compiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 	redraw
 	return "compile for the first time"
     endif
@@ -1071,7 +1080,7 @@ endfunction
 augroup ATP_auTeX
     au!
     au CursorHold 	*.tex call s:auTeX()
-    au CursorHoldI 	*.tex  if g:atp_insert_updatetime | call s:auTeX() | endif
+    au CursorHoldI 	*.tex if g:atp_insert_updatetime | call s:auTeX() | endif
 augroup END 
 "}}}
 
@@ -1083,7 +1092,8 @@ augroup END
 " 		  if not specified uses 'default' mode
 " 		  (g:atp_DefaultDebugMode).
 function! <SID>TeX(runs, bang, ...)
-let s:name=tempname()
+
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
 "     echomsg "TEX_1 CHANGEDTICK=" . b:changedtick . " " . b:atp_running
 
@@ -1116,15 +1126,13 @@ let s:name=tempname()
 	endif
     endif
 "     echomsg "TEX_3 HANGEDTICK=" . b:changedtick . " " . b:atp_running
-    call s:Compiler(0,0, a:runs, mode, "COM", b:atp_MainFile, a:bang)
+    call s:Compiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
 "     echomsg "TEX_4 HANGEDTICK=" . b:changedtick . " " . b:atp_running
 endfunction
-command! -buffer -nargs=? -bang -count=1 -complete=customlist,TEX_Comp TEX	:call <SID>TeX(<count>, <q-bang>, <f-args>)
 function! TEX_Comp(ArgLead, CmdLine, CursorPos)
     return filter(['silent', 'debug', 'verbose'], "v:val =~ '^' . a:ArgLead")
 endfunction
 " command! -buffer -count=1	VTEX		:call <SID>TeX(<count>, 'verbose') 
-command! -buffer -count=1	DTEX		:call <SID>TeX(<count>, <q-bang>, 'debug') 
 noremap <silent> <Plug>ATP_TeXCurrent		:<C-U>call <SID>TeX(v:count1, "", t:atp_DebugMode)<CR>
 noremap <silent> <Plug>ATP_TeXDefault		:<C-U>call <SID>TeX(v:count1, "", 'default')<CR>
 noremap <silent> <Plug>ATP_TeXSilent		:<C-U>call <SID>TeX(v:count1, "", 'silent')<CR>
@@ -1135,7 +1143,8 @@ inoremap <silent> <Plug>iATP_TeXVerbose		<Esc>:<C-U>call <SID>TeX(v:count1, "", 
 "{{{ Bibtex
 function! <SID>SimpleBibtex()
     let bibcommand 	= "bibtex "
-    let auxfile		= b:atp_OutDir . (fnamemodify(b:atp_MainFile,":t:r")) . ".aux"
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    let auxfile		= b:atp_OutDir . (fnamemodify(resolve(atp_MainFile),":t:r")) . ".aux"
     if filereadable(auxfile)
 	let command	= bibcommand . shellescape(l:auxfile)
 	echo system(command)
@@ -1151,15 +1160,17 @@ function! <SID>Bibtex(bang,...)
 	call <SID>SimpleBibtex()
 	return
     endif
+
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+
     if a:0 >= 1
 	let mode = ( a:1 != 'default' ? a:1 : g:atp_DefaultDebugMode )
     else
 	let mode = g:atp_DefaultDebugMode
     endif
 
-    call s:Compiler(1, 0, 0, mode, "COM", b:atp_MainFile, "")
+    call s:Compiler(1, 0, 0, mode, "COM", atp_MainFile, "")
 endfunction
-command! -buffer -bang -nargs=? Bibtex	:call <SID>Bibtex(<q-bang>, <f-args>)
 nnoremap <silent> <Plug>BibtexDefault	:call <SID>Bibtex("", "")<CR>
 nnoremap <silent> <Plug>BibtexSilent	:call <SID>Bibtex("", "silent")<CR>
 nnoremap <silent> <Plug>BibtexDebug	:call <SID>Bibtex("", "debug")<CR>
@@ -1324,7 +1335,6 @@ function! <SID>SetErrorFormat(...)
 " 			    \%-G\ ...%.%#,
     endif
 endfunction
-command! -buffer -nargs=? 	SetErrorFormat 	:call <SID>SetErrorFormat(<f-args>)
 "}}}
 "{{{ s:ShowErrors
 " each argument can be a word in flags as for s:SetErrorFormat (except the
@@ -1381,7 +1391,6 @@ function! <SID>ShowErrors(...)
 	return 1
     endif
 endfunction
-command! -buffer -nargs=? -complete=custom,ListErrorsFlags 	ShowErrors 	:call <SID>ShowErrors(<f-args>)
 "}}}
 if !exists("*ListErrorsFlags")
 function! ListErrorsFlags(A,L,P)
@@ -1389,5 +1398,16 @@ function! ListErrorsFlags(A,L,P)
 endfunction
 endif
 "}}}
+endif "}}}
 
+" Commands: 
+command! -buffer -nargs=? 	ViewOutput		:call <SID>ViewOutput(<f-args>)
+command! -buffer 		PID			:call <SID>GetPID()
+command! -buffer -bang 		MakeLatex		:call <SID>MakeLatex(( g:atp_RelativePath ? globpath(b:atp_ProjectDir, fnamemodify(b:atp_MainFile, ":t")) : b:atp_MainFile ), 0,0, [],1,1,<q-bang>,1)
+command! -buffer -nargs=? -bang -count=1 -complete=customlist,TEX_Comp TEX	:call <SID>TeX(<count>, <q-bang>, <f-args>)
+command! -buffer -count=1	DTEX			:call <SID>TeX(<count>, <q-bang>, 'debug') 
+command! -buffer -bang -nargs=? Bibtex			:call <SID>Bibtex(<q-bang>, <f-args>)
+command! -buffer -nargs=? 	SetErrorFormat 		:call <SID>SetErrorFormat(<f-args>)
+command! -buffer -nargs=? 	SetErrorFormat 		:call <SID>SetErrorFormat(<f-args>)
+command! -buffer -nargs=? -complete=custom,ListErrorsFlags 	ShowErrors 	:call <SID>ShowErrors(<f-args>)
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

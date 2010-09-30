@@ -1,6 +1,7 @@
-" Title: Syntax file for tex log messages
-" Author: Marcin Szamotulski
-" Email: mszamot[AT]gmail[DOT]com
+" Title: 	Syntax file for tex log messages
+" Author: 	Marcin Szamotulski
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
 
 syntax keyword texlogKeyword 		LuaTeX LaTeX2e Babel pdfTeXk pdfTeX Web2C pdflatex latex teTeX TeXLive ON OFF 
 

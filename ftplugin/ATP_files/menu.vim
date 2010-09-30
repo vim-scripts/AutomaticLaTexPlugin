@@ -1,5 +1,13 @@
-"Author:		Marcin Szamotulski
-" This file sets up the menu.
+" Author:	Marcin Szamotulski
+" Description:	This file sets up the menu.
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
+
+let s:sourced = ( !exists("s:sourced") ? 0 : 1 )
+if s:sourced
+    finish
+endif
 
 let Compiler	= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\zs\S*'), 'Compile')
 

@@ -1,5 +1,10 @@
 " Author:	David Mungerd
 " Maintainer:	Marcin Szamotulski
+" URL:		https://launchpad.net/automatictexplugin
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" Language:	tex
+
+let s:loaded = ( !exists("s:loaded") ? 1 : s:loaded+1 )
 
 " begin/end pairs {{{
 nmap <buffer> % <Plug>LatexBox_JumpToMatch

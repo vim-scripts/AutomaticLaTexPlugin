@@ -2,9 +2,10 @@
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
 " Last Changed: 2010 May 31
-" URL:		
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
 
-if exists("b:did_ftplugin") | finish | endif
+" if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1
 
 function! ATP_TOC_StatusLine() " {{{
@@ -18,14 +19,25 @@ setlocal statusline=%{ATP_TOC_StatusLine()}
 " {{{ s:getlinenr(...)
 " a:1 	line number to get, if not given the current line
 " a:2	0/1 	0 (default) return linenr as for toc/labels
-function! s:getlinenr(...)
-    let line 	=  a:0 >= 1 ? getline(a:1) : getline('.')
-    let labels 	=  a:0 >= 2 ? a:2	   : expand("%") == "__Labels__" ? 1 : 0
+function! Getlinenr(...)
+    let line 	=  a:0 >= 1 ? a:1 : line('.')
+    let labels 	=  a:0 >= 2 ? a:2 : expand("%") == "__Labels__" ? 1 : 0
+    let g:line	= line 
 
     if labels == 0
-	return get(b:atp_Toc, line("."), ["", ""])[1]
+	return get(b:atp_Toc, line, ["", ""])[1]
     else
-	return get(b:atp_Labels, line("."), ["", ""])[1]
+	return get(b:atp_Labels, line, ["", ""])[1]
+    endif
+endfunction
+function! s:getlinenr(...)
+    let line 	=  a:0 >= 1 ? a:1 : line('.')
+    let labels 	=  a:0 >= 2 ? a:2 : expand("%") == "__Labels__" ? 1 : 0
+
+    if labels == 0
+	return get(b:atp_Toc, line, ["", ""])[1]
+    else
+	return get(b:atp_Labels, line, ["", ""])[1]
     endif
 endfunction
 command! -buffer GetLine :echo <SID>getlinenr(line("."))
@@ -434,7 +446,7 @@ if expand("%") == "__ToC__"
 
 	" if under help lines do nothing:
 	let toc_line	= getbufline("%",1,"$")
-	let h_line		= index(reverse(copy(toc_line)),'')+1
+	let h_line	= index(reverse(copy(toc_line)),'')+1
 	if line(".") > len(toc_line)-h_line
 	    return ''
 	endif
@@ -552,11 +564,13 @@ if expand("%") == "__ToC__"
 
     " Paste the section from the stack
     " just before where the next section starts.
+    " type = p/P	like paste p/P.
     " a:1	- the number of the section in the stack (from 1,...)
     " 	- by default it is the last one.
-    function! s:PasteSection(...)
+    function! s:PasteSection(type, ...)
 
 	let stack_number = a:0 >= 1 ? a:1-1 : 0 
+	let g:stack_number = stack_number
 
 	if !len(t:atp_SectionStack)
 	    sleep 750m
@@ -567,10 +581,19 @@ if expand("%") == "__ToC__"
 	let buffer		= s:file()
 
     "     if a:after 
-	    let begin_line	= s:getlinenr(line(".")+1)
-    "     else
-    " 	let begin_line	= s:getlinenr()
-    "     endif
+	if a:type ==# "P" || line(".") == 1
+	    let g:debug =1
+	    let g:line = line(".")
+	    let begin_line	= s:getlinenr((line(".")))
+	else
+	    let g:debug =2
+	    let g:line = line(".")+1
+	    let begin_line	= s:getlinenr((line(".")+1))
+	    if begin_line	== ""
+		let begin_line	= "last_line"
+	    endif
+	endif
+	let g:begin_line = begin_line
 
 	" Window to go to
 	let gotowinnr	= s:gotowinnr()
@@ -583,7 +606,15 @@ if expand("%") == "__ToC__"
 	endif
 
 	if begin_line != ""
-	    call setpos(".", begin_line-1)
+	    if begin_line != "last_line"
+		call setpos(".", begin_line-1)
+	    else
+		keepjumps call setpos(".", [0, line("$"), 1, 0])
+		keepjumps exe "normal $"
+		keepjumps call search('\n.*\\end\s*{\s*document\s*}', 'bW')
+		let begin_line = line(".")
+		let g:linenr = line(".")
+	    endif
 	elseif &l:filetype != 'plaintex'
 	    keepjumps let begin_line	= search('\\end\s*{\s*document\s*}', 'nw')
 	else
@@ -598,12 +629,12 @@ if expand("%") == "__ToC__"
 	call setpos(".", [0, begin_line, 1, 0])
 
 	" Regenerate the Table of Contents:
-	TOC
+	TOC!
 
 	" Update the stack
 	call remove(t:atp_SectionStack, stack_number)
     endfunction
-    command! -buffer -nargs=? PasteSection	:call <SID>PasteSection(<f-args>)
+    command! -buffer -nargs=? PasteSection	:call <SID>PasteSection('p', <f-args>)
 
     " Lists title of sections in the t:atp_SectionStack
     function! s:SectionStack()

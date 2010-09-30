@@ -1,10 +1,10 @@
-" Vim syntax file
-" Language:	bibsearchTeX (bibsearchliographic database format for (La)TeX)
+" Title:	Vim syntax file
 " Author:	Bernd Feige <Bernd.Feige@gmx.net>
 " Modified:	Marcin Szamotulski
-" Last Change:	Feb 19, 2010
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
 
-" This is a modification of syntax/bibsearch.vim
+" This is a modification of the standard syntax/bib.vim
 
 " Initialization
 " ==============

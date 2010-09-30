@@ -1,11 +1,12 @@
-" Vim library for atp filetype plugin
-" Language:	tex
-" Maintainer:	Marcin Szamotulski
+" Title: 	Vim library for ATP filetype plugin.
+" Author:	Marcin Szamotulski
 " Email:	mszamot [AT] gmail [DOT] com
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
 
 " Outdir: append to '/' to b:atp_OutDir if it is not present. 
-"{{{ atplib#outdir
-function! atplib#outdir()
+function! atplib#outdir() "{{{1
     if has("win16") || has("win32") || has("win64") || has("win95")
 	if b:atp_OutDir !~ "\/$"
 	    let b:atp_OutDir=b:atp_OutDir . "\\"
@@ -17,7 +18,29 @@ function! atplib#outdir()
     endif
     return b:atp_OutDir
 endfunction
-"}}}
+"}}}1
+" Return {path} relative to {rel}, if not under {rel} return {path}
+function! atplib#RelativePath(path, rel) "{{{1
+    let current_dir 	= getcwd()
+    exe "cd " . a:rel
+    let rel_path	= fnamemodify(a:path, ':.')
+    exe "cd " . current_dir
+    return rel_path
+endfunction
+"}}}1
+" Return fullpath
+function! atplib#FullPath(file_name) "{{{1
+    let cwd = getcwd()
+    if a:file_name =~ '^\s*\/'
+	let file_path = a:file_name
+    else
+	exe "lcd " . b:atp_ProjectDir
+	let file_path = fnamemodify(a:file_name, ":p")
+	exe "lcd " . cwd
+    endif
+    return file_path
+endfunction
+"}}}1
 
 " Toggle On/Off Completion 
 " {{{1 atplib#OnOffComp
@@ -147,7 +170,8 @@ endfunction
 " {{{2 --------------- atplib#GrepAuxFile
 function! atplib#GrepAuxFile(...)
     " Aux file to read:
-    let aux_filename	= a:0 == 0 ? fnamemodify(b:atp_MainFile, ":r") . ".aux" : a:1 
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    let aux_filename	= a:0 == 0 ? fnamemodify(atp_MainFile, ":r") . ".aux" : a:1 
 
     if !filereadable(aux_filename)
 	" We should worn the user that there is no aux file
@@ -161,7 +185,7 @@ function! atplib#GrepAuxFile(...)
 	" for v:servername
 	" Here we should run latex to produce auxfile
 " 	echomsg "Running " . b:atp_TexCompiler . " to get aux file."
-" 	let labels 	= system(b:atp_TexCompiler . " -interaction nonstopmode " . b:atp_MainFile . " 1&>/dev/null  2>1 ; " . " vim --servername ".v:servername." --remote-expr 'atplib#GrepAuxFile()'")
+" 	let labels 	= system(b:atp_TexCompiler . " -interaction nonstopmode " . atp_MainFile . " 1&>/dev/null  2>1 ; " . " vim --servername ".v:servername." --remote-expr 'atplib#GrepAuxFile()'")
 " 	return labels
     endif
 "     let aux_file	= readfile(aux_filename)
@@ -304,6 +328,7 @@ function! atplib#generatelabels(filename, ...)
 
     " Look for labels in all input files.
     for file in ListOfFiles
+	let file	= atplib#FullPath(file)
 	silent! execute "lvimgrepadd /\\label\s*{/j " . fnameescape(file)
     endfor
     let loc_list	= getloclist(0)
@@ -533,7 +558,7 @@ function! atplib#ReadInputFile(ifile,check_texmf)
 endfunction
 "}}}1
 
-" Bib Search:
+" BIB SEARCH:
 " These are all bibsearch realted variables and functions.
 "{{{ BIBSEARCH
 "{{{ atplib#variables
@@ -548,7 +573,7 @@ let atplib#bibflagsdict={ 't' : ['title', 'title        '] , 'a' : ['author', 'a
 		\ 'o' : ['organization', 'organization '], 'I' : ['institution' , 'institution '],
 		\ 'u' : ['url', 'url          '],
 		\ 'H' : ['homepage', 'homepage     '], 	'i' : ['issn', 'issn         '],
-		\ 'k' : ['key', 'key          ']}
+		\ 'k' : ['key', 'key          '], 	'R' : ['mrreviewer', 'mrreviewer   ']}
 " they do not work in the library script :(
 " using g:bibflags... .
 " let atplib#bibflagslist=keys(atplib#bibflagsdict)
@@ -566,15 +591,17 @@ function! atplib#searchbib(pattern, ...)
     " for tex files this should be a flat search.
     let flat 	= &filetype == "plaintex" ? 1 : 0
     let bang	= a:0 >=1 ? a:1 : ""
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     " Caching bibfiles saves 0.27sec.
     if !exists("b:ListOfFiles") || !exists("b:TypeDict") || bang == "!"
-	let [ TreeOfFiles, ListOfFiles, TypeDict, LevelDict ] = TreeOfFiles(b:atp_MainFile, '^[^%]*\\bibliography\s*{', flat)
+	let [ TreeOfFiles, ListOfFiles, TypeDict, LevelDict ] = TreeOfFiles(atp_MainFile, '^[^%]*\\bibliography\s*{', flat)
     else
 	let [ ListOfFiles, TypeDict ] = deepcopy([ b:ListOfFiles, b:TypeDict ])
     endif
     let s:bibfiles = []
     for f in ListOfFiles
+" 	let f	= atplib#FullPath(f)
 	if TypeDict[f] == 'bib' 
 	    call add(s:bibfiles, f)
 	endif
@@ -658,7 +685,7 @@ function! atplib#searchbib(pattern, ...)
 		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\l', 'l', 'g')
 		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\L', 'L', 'g')
 
-		if line_without_ligatures =~ a:pattern
+		if line_without_ligatures =~? a:pattern
 
 		    if g:atp_debugBS
 			redir! >> /tmp/ATP_log 
@@ -917,6 +944,7 @@ endfunction
 " it specifies in which file to search for include files.
 function! atplib#SearchBibItems(name)
 
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     " we are going to make a dictionary { citekey : label } (see :h \bibitem) 
     let l:citekey_label_dict={}
 
@@ -928,7 +956,7 @@ function! atplib#SearchBibItems(name)
 	    call add(l:includefile_list,atplib#append(l:key,'.tex'))
 	endif
     endfor
-    call add(l:includefile_list,b:atp_MainFile) 
+    call add(l:includefile_list, atp_MainFile) 
 "     let b:ifl=l:includefile_list
 
     " search for bibitems in all include files.
@@ -976,6 +1004,7 @@ endfunction
 " h - howpublished
 " o - organization
 " i - institution
+" R - mrreviewer
 
 function! atplib#showresults(bibresults, flags, pattern)
  
@@ -1194,7 +1223,22 @@ function! atplib#showresults(bibresults, flags, pattern)
 	    endif
 	endfor
     endfor
-    call matchadd("Search",a:pattern)
+    if g:atp_debugBS
+	let g:pattern	= a:pattern
+    endif
+    let pattern_tomatch = substitute(a:pattern, '\Co', 'oe\\=', 'g')
+    let pattern_tomatch = substitute(pattern_tomatch, '\CO', 'OE\\=', 'g')
+    let pattern_tomatch = substitute(pattern_tomatch, '\Ca', 'ae\\=', 'g')
+    let pattern_tomatch = substitute(pattern_tomatch, '\CA', 'AE\\=', 'g')
+    if g:atp_debugBS
+	let g:pm = pattern_tomatch
+    endif
+    let pattern_tomatch	= join(split(pattern_tomatch, '\zs\\\@!\\\@<!'),  '[''"{\}]\{,3}')
+    if g:atp_debugBS
+	let g:pattern_tomatch = pattern_tomatch
+    endif
+    silent! call matchadd("Search", '\c' . pattern_tomatch)
+    let @/=pattern_tomatch
     " return l:listofkeys which will be available in the bib search buffer
     " as b:ListOfKeys (see the BibSearch function below)
     let b:ListOfBibKeys = l:listofkeys
@@ -1558,11 +1602,21 @@ endfunction
 " to match \usetikzlibrary{...,..., - 
 function! atplib#SearchPackage(name,...)
 
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    if !filereadable(atp_MainFile)
+	silent echomsg "atp_MainFile : " . atp_MainFile . " is not readable "
+	return
+    endif
+    let cwd = getcwd()
+    if exists("b:atp_ProjectDir") && getcwd() != b:atp_ProjectDir
+	exe "cd " . b:atp_ProjectDir
+    endif
+
     if getbufvar("%", "atp_MainFile") == ""
 	call SetProjectName()
-	let g:PName = 0 . " " . b:atp_MainFile
+	let g:PName = 0 . " " . atp_MainFile
     else
-	let g:PName = 1 . " " . b:atp_MainFile
+	let g:PName = 1 . " " . atp_MainFile
     endif
 
 "     let time	= reltime()
@@ -1576,14 +1630,14 @@ function! atplib#SearchPackage(name,...)
     if a:0 != 0
 	let stop_line	= a:1
     else
-	if expand("%:p") == b:atp_MainFile
+	if expand("%:p") == atp_MainFile
 	    let saved_pos=getpos(".")
 	    keepjumps call setpos(".", [0,1,1,0])
-	    keepjumps let stop_line=search('\\begin\s*{document}','nW')
+	    keepjumps let stop_line=search('\\begin\s*{\s*document\s*}','nW')
 	else
 	    if &l:filetype == 'tex'
 		let saved_loclist	= getloclist(0)
-		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
+		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . fnameescape(atp_MainFile)
 		let stop_line	= get(get(getloclist(0), 0, {}), 'lnum', 0)
 		call setloclist(0, saved_loclist) 
 	    else
@@ -1594,8 +1648,8 @@ function! atplib#SearchPackage(name,...)
 
     let com	= a:0 >= 2 ? a:2 : 'usepackage\s*\%(\[[^]]*]\)\?'
 
-    " If the current file is the b:atp_MainFile
-    if expand("%:p") == b:atp_MainFile
+    " If the current file is the atp_MainFile
+    if expand("%:p") == atp_MainFile
 
 	if !exists("saved_pos")
 	    let saved_pos=getpos(".")
@@ -1607,6 +1661,7 @@ function! atplib#SearchPackage(name,...)
 	    keepjump call setpos(".",saved_pos)
 
 " 	    echo reltimestr(reltime(time))
+	    exe "cd " . cwd
 	    return ret
 
 	else
@@ -1616,6 +1671,7 @@ function! atplib#SearchPackage(name,...)
 	    keepjump call setpos(".", saved_pos)
 
 " 	    echo reltimestr(reltime(time))
+	    exe "cd " . cwd
 	    return ret
 
 	endif
@@ -1624,7 +1680,7 @@ function! atplib#SearchPackage(name,...)
     else
 	" Cache the Preambule / it is not changing so this is completely safe /
 	if !exists("s:Preambule")
-	    let s:Preambule = readfile(b:atp_MainFile) 
+	    let s:Preambule = readfile(atp_MainFile) 
 	    if stop_line != 0
 		silent! call remove(s:Preambule, stop_line+1, -1)
 	    endif
@@ -1635,6 +1691,7 @@ function! atplib#SearchPackage(name,...)
 	    if line =~ '^[^%]*\\'.com."\s*{[^}]*".a:name
 
 " 		echo reltimestr(reltime(time))
+		exe "cd " . cwd
 		return lnum
 	    endif
 	    let lnum += 1
@@ -1644,6 +1701,7 @@ function! atplib#SearchPackage(name,...)
 "     echo reltimestr(reltime(time))
 
     " If the package was not found return 0 
+    exe "cd " . cwd
     return 0
 
 endfunction
@@ -2704,6 +2762,7 @@ endfunction
 try
 " Main tab completion function
 function! atplib#TabCompletion(expert_mode,...)
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     " {{{2 Match the completed word 
     let normal_mode=0
 
@@ -3087,7 +3146,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    endif
 	endif
 	" AMSMATH
-	if atplib#SearchPackage('amsmath', l:stop_line) || g:atp_amsmath != 0 || atplib#DocumentClass() =~ '^ams'
+	if atplib#SearchPackage('amsmath', l:stop_line) || g:atp_amsmath != 0 || atplib#DocumentClass(b:atp_MainFile) =~ '^ams'
 	    if l:end !~ '\s*}'
 		call extend(l:completion_list,atplib#Add(g:atp_amsmath_environments,'}'),0)
 	    else
@@ -3153,7 +3212,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	let l:completion_list=[]
 	
 	" Find end of the preambule.
-	if expand("%:p") == b:atp_MainFile
+	if expand("%:p") == atp_MainFile
 	    " if the file is the main file
 	    let saved_pos=getpos(".")
 	    keepjumps call setpos(".", [0,1,1,0])
@@ -3163,7 +3222,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    " if the file doesn't contain the preambule
 	    if &l:filetype == 'tex'
 		let saved_loclist	= getloclist(0)
-		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
+		silent! execute '1lvimgrep /\\begin\s*{\s*document\s*}/j ' . fnameescape(atp_MainFile)
 		let stop_line	= get(get(getloclist(0), 0, {}), 'lnum', 0)
 		call setloclist(0, saved_loclist) 
 	    else
@@ -3184,7 +3243,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    call extend(l:completion_list,g:atp_math_commands)
 	    " amsmath && amssymb {{{5
 	    " if g:atp_amsmath is set or the document class is ams...
-	    if (g:atp_amsmath != 0 || atplib#DocumentClass() =~ '^ams')
+	    if (g:atp_amsmath != 0 || atplib#DocumentClass(b:atp_MainFile) =~ '^ams')
 		call extend(l:completion_list, g:atp_amsmath_commands,0)
 		call extend(l:completion_list, g:atp_ams_negations)
 		call extend(l:completion_list, g:atp_amsfonts)
@@ -3496,7 +3555,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	endfor
 
 	" add the \bibitems found in include files
-	call extend(l:completion_list,keys(atplib#SearchBibItems(b:atp_MainFile)))
+	call extend(l:completion_list,keys(atplib#SearchBibItems(atp_MainFile)))
     elseif l:completion_method == 'colors'
 	" ToDo:
 	let l:completion_list=[]
@@ -4118,5 +4177,6 @@ endfunction
 " }}}1
 
 " vim:fdm=marker:ff=unix:noet:ts=8:sw=4:fdc=1
+
 
 

@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 2010 September 14
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 30 September 2010
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -82,6 +82,77 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 
 ================================================================================
 NEWS							*atp-news*
+>
+  Changes in version 7.6
+<
+    Project Licence: General Public Licence 3.
+
+    The support of 'latexmk' program is added from LatexBox vim plugin by
+    D. Munger (http://www.vim.org/scripts/script.php?script_id=3109).
+    This includes the commands: :Latexmk, :LatexmkForce, :LatemkStop,
+    :LatexmkStatus, :LatexmkStatusDetailed, :LatexmkClean, :LatexmkCLeanAll.
+    (Now whole, LatexBox plugin is included in ATP - note that some tools have
+    been extended). You can pass options to latexmk using the variable
+    g:LatexBox_latexmk_options. Output type is set by g:LatexBox_output_type
+    (default value is 'pdf').
+
+    Maps |atp-]]|, |atp-[[|, |atp-][|, |atp-[]| and |atp-]%|, |atp-[%|.
+
+    Maps |atp-}p|, |atp-{p|, |atp-}c|, |atp-{c|, |atp-}s|, |atp-{s|, |atp-}S|,
+    |atp-{S| which nicely work in visual mode. Previously these maps were
+    <Localleader>np, <LocalLeader>pp. {:} are configurable with two variables:
+    |g:atp_map_forward_motion_leader| and |g:atp_map_backward_motion_leader|. 
+
+    Maps |atp-}i| and |atp-{i| (the same as |atp-]gf| and |atp-[gf|, but
+    shorter). Note that }} maped to } (the same with {{ and {).
+
+    Maps |atp-}e| and |atp-{e| to go o next/previous environment.
+
+    |atp-:NInput|, |atp-:PInput| depends on |g:atp_mapNn| (and thus also the
+    above maps).
+
+    |atp-:NSec|, |atp-:NSSec|, |atp-:NChap|, |atp-:NPart|
+    |atp-:PSec|, |atp-:PSSec|, |atp-:PChap|, |atp-:PPart|
+    admits bang "!" (see |:command-bang|). Without bang it skips sections
+    which are commented with bang it doesn't skip them. The 'wrapscan' option
+    applies to these commands (and corresponding maps).
+    
+
+    vMap c  (see |atp-vc|) 	select comment lines which begin with '^\s*%'. 
+    vMap ip (see |atp-vip|)	also \newline starts/ends inner paragraph.  
+
+    :BibSearch /{pattern}/ [flag]
+    The command now has the same syntax as |:vimgrep| and |atp-:S|. It is now
+    possible to pass any vim pattern. Note that /.../ can be omitted if the
+    pattern doesn't contain white spaces (you can use |/\s| instead).
+    :BibSearch without any arguments still works (shows all bib files attached
+    to source tex file).
+
+    The pattern to highlight matching string is made better and is passed to
+    @/ hence you can use |n| and |N| in the BibSearch buffer.
+
+    *g:atp_RelativePath*
+	If set to 1 (the default is 1), project variables: b:atp_MainFile,
+	b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict will store path
+	relative to |b:atp_ProjectDir| (which is the same as path to
+	your main file, however if the file is a symbolic link it will hint
+	to the resolved path). The |atp-:S| will use correctly these values. 
+	This is particulary useful if you want to share the project file.
+	 
+	If you run into problems with |atp-:S| you can set this variable to
+	0 and use |atp-:InputFiles| to regenerate the variables - they will
+	now store the full path (the other way around also works).
+
+    *b:atp_ProjectDir*
+	Stores the project direcory, by default where |b:atp_MainFile| is
+	located (the filename is resovled if it is a symbolic link). It is not
+	written to the |atp-ProjectScript| (this makes the |atp-ProjectScript|
+	independent of the host when |g:atp_RelativePath| is set). This
+	variable is mainly for internal purposes. If you want to set the
+	output directory use |b:atp_OutDir|.
+
+    |atp-:PasteSection|
+    	By default it puts the section after the current one.
 >
   Changes in version 7.5.3
 <
@@ -285,7 +356,7 @@ appropriate files.
 
 The last top most important variable is |g:keep| which is a list of extensions,
 by default it is
-	let g:keep = ["log","aux","toc","bbl"]
+	let g:keep = ["log", "aux", "toc", "bbl"]
 Files with this extension will be copied from |b:atp_OutDir| to the temporary
 directory with appropriate name to be used when (La)TeX is compiling. (log file
 will be only copied after it is created, other files will be copied back and
@@ -337,12 +408,12 @@ forth between you |b:atp_OutDir| and the temporary directory)
 	 You can invoke compiler in the 'debug' mode with '<LocalLeader>d',
 	 '<LocalLeader>l' uses the default mode.
 
-:DebugMode {debug-mode}						*atp-:DebugMode*
+:DebugMode {debug-mode}					*atp-:DebugMode*
 	Command which help to set b:atp_DebugMode variable (has nice completion).
 	{debug-mode} is one of "silent", "debug", "verbose".
 							
 
-						*b:atp_ReloadOnError*
+							*b:atp_ReloadOnError*
 The variable b:atp_ReloadOnError if set to 1 (which is the default) reload the
 file even when the exit status of compiler was non zero. If set to 0, then the
 file will not be reloaded [actually for viewers other than xpdf it will not be
@@ -354,7 +425,7 @@ your tex compiler, see |g:atp_TexCommand|.
 
 Below I explain commands (functions) which are accesible: 
 
-:{runs}TEX[!] [debug_mode]						*atp-:TEX*
+:{runs}TEX[!] [debug_mode]				*atp-:TEX*
 map \l, map \d
 	If anyway you want to run TeX yourself but you do not want to see the
 	output this is the right tool. This runs TeX in 'nonstopmode'. You can
@@ -447,7 +518,8 @@ this is not a texloganalyzer mapping but it is a good place to mention it:
 						 
 
 :Compiler {compiler-program}				*atp-:Compiler*
-    Command which help to set b:atp_TexCompiler variable (with completion).
+	Command which help to set b:atp_TexCompiler variable (with
+	completion).
 
 :Bibtex[!] [debug_mode]					*atp-:Bibtex*
 map \b
@@ -510,19 +582,20 @@ map \v,map <F3>, imap <F3>
 	b:atp_xpdfOptions and g:atp_xpdfOptions.
 
 						
-:BibSearch [pattern] [flag]				see |atp-:BibSearch|
+:BibSearch /{pattern}/ [flag]				see |atp-:BibSearch|
 	This function finds bib entries in bib files defined in your tex file
 	and in the variable b:atp_BibFiles (see |b:atp_BibFiles|), which match the
 	[pattern] (a vim regular expression). The output is configurable by
-	the [flag] argument, see |atp-bibflags|.
+	the [flag] argument, see |atp-bibflags|. By default the pattern is
+	case insensitive.
 
 :BibChoose						see |atp-:BibChoose|
 map c, map y, map p
-	This function is defined in the window with results of BibSearch
-	command. It is mapped to 'y' and 'c' and let you copy the bib entry key
-	to a register (see |atp-:BibChoose|) or directly to last opened
-	buffer (after the last cursor position). When you chose to paste, it
-	will close the BibSearch window.
+	This function is defined in the buffer with results of BibSearch
+	command. It is mapped to 'y', 'c' and 'p' and let you copy the bib
+	entry key to a register (see |atp-:BibChoose|) or directly to last
+	opened buffer (after the last cursor position). When you choose to
+	paste, it will close the BibSearch window.
 
 						
 :FindBibFiles						*atp-:FindBibFiles*
@@ -879,8 +952,9 @@ map \L
 	Difference of \t and \L  is that \L regenerates the database (whichc is
 	quite fast).
 
-							*atp-:NEnv*
+							*atp-:NEnv* *atp-}e*
 :NEnv {environment}
+map }e
 	Move to next environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
@@ -888,8 +962,9 @@ map \L
 	If g:atp_mapNn is set to one (see |atp-:ToggleNn|) then this command
 	is using |atp-:S|.
 
-							*atp-:PEnv*
+							*atp-:PEnv* *atp-{e*
 :PEnv {environment}
+map {e
 	Move to previous environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
@@ -898,20 +973,35 @@ map \L
 	is using |atp-:S|.
 
 							*atp-:NextSection*
-							*atp-:NPart*
-							*atp-:NChap*
-							*atp-:NSec*
-							*atp-:NSSec*
+							*atp-:NPart*	*atp-}p*
+							*atp-:NChap*	*atp-}c*
+							*atp-:NSec*	*atp-}s*
+							*atp-:NSSec*	*atp-}S*
 							*atp-:NSSSec*
-:NPart, :NChap, :NSec, :NSSec, :NSSSec [title_pattern]
-map <LocalLeaader>np, map <LocalLeader>ns, map <LocalLeader>ns
+:NPart[!], :NChap[!], :NSec[!], :NSSec[!], :NSSSec[!] [title_pattern]
+ map }p,  map }c,  map }s,  map }S
+vmap }p, vmap }c, vmap }s, vmap }S
 
-	Go to next <section>, :NSec goes to next section, chapter or part,
-	other commands work in a similar way.
+	Go to next part/chapter/section/subsection/subsubsection which title
+	matches optionally given [title_pattern]. With bang "!" the command
+	doesn't skip commented sections. Maps skip them. The search will wrap
+	around the end of a file if 'wrapscan' is set.
+
+	Map  		Command			Meaning
+	}p		:NPart			go to next part
+	}c		:NChap			go to next chapter
+	}s		:NSec			go to next section	
+	}S		:NSSec			go to next subsection
+
+	The leader } can be changed by setting the variable
+	*g:atp_map_forward_motion_leader* .
 
 	Note: the maps work in visual mode and operator pending mode ('d\ns'
-	will delete till the end of the section). You can use 'n' and 'N' vim
-	in normal or visual mode to go further. 
+	will delete till the end of the section). You can use |n| and |N| vim
+	normal commands (also in visual mode) to go further. 
+
+	In visual mode these maps go to end of current section or, if already
+	at the end of section, end of next section. 
 
 	[title_pattern] is the pattern which will match for the pattern, it
 	should start with '.*' when you want to match somewhere in a midle of
@@ -919,23 +1009,50 @@ map <LocalLeaader>np, map <LocalLeader>ns, map <LocalLeader>ns
 	
 	These commands (and maps) use vim |search()| function or |atp-:S| command
 	depending on the value of |g:atp_mapNn| (see |atp-:ToggleNn|, when
-	g:atp_mapNn == 1 the |atp-:S| command is used). You can set the value
-	of |g:atp_mapNn|using the command |atp-:ToggleNn|.
+	g:atp_mapNn=1 the |atp-:S| command is used). You can set the value
+	of |g:atp_mapNn| using the command |atp-:ToggleNn|. If 'wrapscan' is
+	set and g:atp_mapNn=1 the search will wrap around the end of the project (not the end of
+	the current buffer).
+
+	You can unmap these keys and use <Plug>GotoNextSubSection,
+	<Plug>GotoNextSection, <Plug>GotoNextChapter, <Plug>GotoNextPart to
+	define new maps.
 
 							*atp-:PrevSection*
-							*atp-:PPart*
-							*atp-:PChap*
-							*atp-:PSec*
-							*atp-:PSSec*
+							*atp-:PPart*	*atp-{p*
+							*atp-:PChap*	*atp-{c*
+							*atp-:PSec*     *atp-{e*
+							*atp-:PSSec*	*atp-{E*
 							*atp-:PSSSec*
-:PPart, :PChap, :PSec, :PSSec, :PSSSec, [title_pattern]
-map <LocalLeader>pp, map <LocalLeader>pc, map <LocalLeader>ps
-	Goes to previous <section>.
+:PPart[!], :PChap[!], :PSec[!], :PSSec[!], :PSSSec[!] [title_pattern]
+ map {p,  map {c,  map {s,  map {S
+vmap {p, vmap {c, vmap {s, vmap {S
+
+	Go to previous part/chapter/section/subsection/subsubsection which
+	title matches [title_pattern] (an optional argument). With bang "!"
+	the command doesn't skip commented sections. Maps skip them. The
+	search will wrap around the begining of a file if 'wrapscan' is set.
+
+	The leader { can be changed by setting the variable
+	*g:atp_map_backward_motion_leader* .
+
 	For descirption of arguments read |atp-:NextSection| just above.
 
-	These commands (and maps) use vim |search()| function or |atp-:S| command
-	depending on the value of |g:atp_mapNn| (see |atp-:ToggleNn|, when
-	g:atp_mapNn == 1 the |atp-:S| command is used).
+	Map  		Command			Meaning
+	{p		:PPart			go to previous part
+	{c		:PChap			go to previous chapter
+	{s		:PSec			go to previous section	
+	{S		:PSSec			go to previous subsection
+
+	These commands (and maps) use vim |search()| function or |atp-:S|
+	command depending on the value of |g:atp_mapNn| (see |atp-:ToggleNn|,
+	when g:atp_mapNn=1 the |atp-:S| command is used). If 'wrapscan' is
+	set and g:atp_mapNn=1 the search will wrap around the beginning of
+	the project (not the beginning of the current buffer).
+
+	You can unmap these keys and use <Plug>GotoPreviousSubSection,
+	<Plug>GotoPreviousSection, <Plug>GotoPreviousChapter,
+	<Plug>GotoPreviousPart to define new maps.
 
 ToDo({keyword}, {stop}, [bufname])		*atp-function-ToDo*
 :ToDo [bufname]					*atp-:ToDo*
@@ -1143,11 +1260,11 @@ TABLE OF CONTENTS WINDOW					 *atp-toc-window*
 	will be added to a stack which can be shown using the command
 	':SectionStack' There is a command to paste the section from section
 	stack ':PasteSection'. By default it pastes the most recent element in
-	the stack.  Passing a number will paste that element of the stack
+	the stack. Passing a number will paste that element of the stack
 	/bear in mind that then numbers of sections in the stack will change/.
 
-	':PasteSection' puts the section just before where next section
-	starts.
+	':PasteSection' puts the section just after where current section
+	ends (section under the cursor in the ToC buffer).
 
 	Note: If you use bibtex commands to make bibliography ATP finds the
 	line which contains '\bibliography' command. And then searches
@@ -1464,7 +1581,7 @@ map c, map y, map p
 	this is a nice set of colours for dark background 
 		
 							 	
-:BibSearch [pattern] [flag] 					*atp-:BibSearch*
+:BibSearch /{pattern}/ [flag] 					*atp-:BibSearch*
 	which do what you expect. The arguments should not be quoted and
 	separated by a white spaces (if you want to include a white space use
 	'\ '), for more see |f-args|. If you do not provide any argument then
@@ -2212,7 +2329,7 @@ autocommand:
 If you put just let b:atp_TexCompiler, this will also work but not always: for
 example when you open a new buffer in existing Vim session.
 
-let b:atp_TexCompiler	= "pdflatex" 			*b:atp_TexCompiler*
+let b:atp_TexCompiler	= "pdflatex"			*b:atp_TexCompiler*
 	Used by functions: TEX() (map \l, imap \l), VTEX() (map <F5>, imap <F5>)
 
 	You can set it to latex, tex, luatex, and so on and possibly to
@@ -2235,9 +2352,7 @@ let b:atp_TexOptions	= ""
 	|atp-xdvi|.
 
 							*b:atp_OutDir*
-let b:atp_OutDir	= fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/"
-Used by ViewOutput(), TEX(), VTEX(), BibTeX(), TexLog(), Pdffonts(), Delete() 
-			i.e. in all functions.
+let b:atp_OutDir	= fnameescape(fnamemodify(resolve(b:atp_MainFile,":h")) . "/"
 
 	This is the directory in which tex will put the output files. If the
 	open file is not a symbolic link it is equal to the directory in which
@@ -2425,8 +2540,8 @@ PROJECT SCRIPT						*atp-ProjectScript*
 
 								*atp-:S*
 :S[!] /{pattern}/ [flags]
-	The E and S flags are removed. The pattern is a vim pattern (with
-	'magic'). With bang "!" it regenerates the tree of input files.
+	The pattern is a vim pattern (with 'magic'). With bang "!" it
+	regenerates the tree of input files.
 
 	This is command does the same job as |/| but is recursive in the tree
 	of files (so it is useful only in project files). The syntax of this
@@ -2442,7 +2557,8 @@ PROJECT SCRIPT						*atp-ProjectScript*
 	The {pattern} is any vim pattern as desribed in |pattern| (it was only
 	tested with 'magic' set on).
 			
-	The supported flags are 'bcewW' (see |search()|). 
+	The supported [flags] are 'bcewW'. Their meaning is the same as flags
+	for |search()| function. 
 
 	You can enclose the pattern with any non-ID character (see
 	|'isident'|) instead of /, as far as it does not appear in the
@@ -2452,12 +2568,15 @@ PROJECT SCRIPT						*atp-ProjectScript*
 			    :S pattern with spaces
 <	will not.		
 
-	There is a new function to check where the input file is on the hard
-	drive if the name in the input command doesn't include the full path.
-	It asks kpsewhich which directories to search, filters out some
-	directories (which are not under '/home', I assume that there is your
-	local texmf tree, and also directories which name contains one of the
-	two keywords 'texlive' and 'kpsewhich'). This makes the searching
+	Note that the function might be slow when the project files where not
+	yet opened.
+
+	There is a function to check where the input file is on the hard drive
+	if the name in the input command doesn't include the full path.  It
+	asks kpsewhich which directories to search, filters out 
+	directories which are not under '/home' (I assume that there is your
+	local texmf tree) and also directories which name contains one of the
+	two keywords 'texlive' and 'kpsewhich'. This makes the searching
 	faster. 
 							*atp-:S_input*
 	Furthermore, the command is designed so that it can find all patterns
@@ -2465,7 +2584,7 @@ PROJECT SCRIPT						*atp-ProjectScript*
 	use: >
 		:S \\input
 		:S \\input b 
-<	and you can use 'n' and 'N' vim normal commands. Note that it if you
+<	and you can use |n| and |N| vim normal commands. Note that it if you
 	go backward, then it means that it will find the most deep line, e.g.:
 >
 		file.tex
@@ -2483,14 +2602,17 @@ PROJECT SCRIPT						*atp-ProjectScript*
 	The pattern can be '\\input'. Then it goes recursively to the first
 	input line. 
 	
-							*atp-:NInput*
-							*atp-:PInput*
+							*atp-:NInput* 	*atp-}i*   *atp-]gf*
+							*atp-:PInput* 	*atp-{i*   *atp-[gf*
 	Now it also doesn't search inside commented input files. There two
 	commands:
-:NInput, nmap ]gf
-:PInput, nmap [gf
+:NInput, nmap ]gf, nmap }i
+:PInput, nmap [gf, nmap {i
 	which finds the next/previous input line (also commented). See
-	|atp-:S_input| to find how it works.
+	|atp-:S_input| to find how it works. They depend on |g:atp_mapNn|, if
+	1 |atp-S:| is used if 0 vim |search()| function. To repeat search you
+	can use |n| and |N| vim normal commands. These commands omit comment
+	lines.
 
 							*b:atp_auruns*
 >
@@ -2781,7 +2903,31 @@ nmap ]m, nmap [m 					*atp-[m*
 							*atp-]M*
 nmap ]M, nmap [M 					*atp-[M*
 	Goto the beginning of next/previous displayed math environment. 
+							
+							*atp-]]*
+nmap ]], vmap ]]
+	Goto next \begin{
 
+							*atp-[[*
+nmap ]], vmap ]]
+	Goto previous \begin{
+
+							*atp-][*
+nmap ]], vmap ][
+	Goto next \end{
+
+							*atp-[]*
+nmap [], vmap []
+	Goto previous \end{
+
+							*atp-[%*
+nmap ]%, vmap ]%
+	Goto begin of next comment group
+
+							*atp-]%*
+nmap ]%, vmap ]%
+	Goto begin of previous comment group
+	    
 								*atp-:TexDoc*
 TexDoc:
 map <F1>, imap <F1>
@@ -2924,7 +3070,7 @@ LOG FILE MAPS						*atp-maps-log*
 	]p, [p		- go to next/previous font package message in log file 
 	]P, [P		- go to next/previous page in log file
 	%		- searchpair for (:).
-<	You can use n/N normal mapping to repeat previous search [count] times.
+<	You can use |n| and |N| vim normal commands to repeat previous search [count] times.
 
 ================================================================================
 DEBUGGING						*atp-errors*
@@ -2946,7 +3092,7 @@ count.)
 EDITING TOOLS							*atp-editing*
 
 								*atp-visual*
-visual mode: ie, iE, ae, im, am, ip, ap, iS, aS
+visual mode: ie, iE, ae, im, am, ip, ap, iS, aS, c
 
 	They select the current environment in two ways: >
 				i 	- inner
@@ -2957,31 +3103,36 @@ visual mode: ie, iE, ae, im, am, ip, ap, iS, aS
 					  or math environment \begin:\end.
 				)	- bracket
 				s	- syntax
-<	ie, iE, ae select environment: from the nearest \begin (top) to the nearest \end (bottom).	
+<								*atp-vie* *atp-viE* *atp-vae*
+	ie, iE, ae select environment: from the nearest \begin (top) to the nearest \end (bottom).	
 
 		'viE' selects a bit more than 'vie' but less than 'vae', it
 		selects a bracket pair before the beginning of the inner part
 		of an environment, so it can be environment name or an option
 		just after. 	
 
+								*atp-vim* *atp-vam*
 	im, am	selects mathematics.
-
+								*atp-vip* *atp-vap*
 	ip, ap  selects paragraph. 
 		In inner mode: from the nearest >
-			\begin, \end, \par or empty line (top) 
+			\begin, \end, \par, \newline or empty line (top) 
 <		to the nearest >
-			\begin, \end, \par or empty line (bottom).
+			\begin, \end, \par, \newline or empty line (bottom).
 <		in outer mode: from the nearest >
 			\par or empty line (top) 
 <		to the nearest >
 			\par or empty line (bottom).
-<				
+<								*atp-viS* *atp-vaS*
 	iS, aS	selects using syntax stack (see |synstack()|), inner is the
 		top element in the syntax stack (the highlighted area will be
 		small) and outer uses the most bottom element in the syntax
 		stack (the resulting are will be wide). Some syntax groups are
 		filtered out (like 'texDocZone') which not always are
 		synchronised.
+								*atp-vc*
+	c	select comment lines which begin with '^\s*%'. If not in
+		comment line, end visual mode.
 
 								*atp-gw*	
 nmap gw

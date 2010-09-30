@@ -1,13 +1,14 @@
 " Language:	tex
+" Author:	David Mnuger (latexbox vim plugin)
 " Maintainer:	Marcin Szamotulski
-" Author:	David Mnuger
-" Comment:	This is a part of ATP plugin borrowed from LatexBox plugin 
-" URL:		
-" Email:	mszamot [AT] gmail [DOT] com
+" Note:		This file is a part of Automatic Tex Plugin for Vim.
+" URL:		https://launchpad.net/automatictexplugin
+" Language:	tex
 
 " Some things is enough to source once
-let s:did_script = exists("s:did_script") ? 1 : 0
+let s:sourced = exists("s:sourced") ? 1 : 0
 
+if !s:sourced
 " HasSyntax {{{
 " s:HasSyntax(syntaxName, [line], [col])
 function! s:HasSyntax(syntaxName, ...)
@@ -326,8 +327,6 @@ function! s:SelectSyntax(syntax)
 
     let &l:ww	= save_ww
 endfunction
-vnoremap <silent> <buffer> <Plug>SelectInnerSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('inner')<CR>
-vnoremap <silent> <buffer> <Plug>SelectOuterSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('outer')<CR>
 " }}}
 
 " select current environment {{{
@@ -366,9 +365,6 @@ function! s:SelectCurrentEnV()
 	execute 'normal o'
 endfunction
 
-vnoremap <silent> <Plug>LatexBox_SelectCurrentEnvInner :<C-U>call <SID>SelectCurrentEnv('inner')<CR>
-vnoremap <silent> <Plug>LatexBox_SelectCurrentEnVInner :<C-U>call <SID>SelectCurrentEnV()<CR>
-vnoremap <silent> <Plug>LatexBox_SelectCurrentEnvOuter :<C-U>call <SID>SelectCurrentEnv('outer')<CR>
 " }}}
 
 " Jump to the next braces {{{
@@ -527,8 +523,8 @@ endfunction
 " select current paragraph {{{
 function! s:SelectCurrentParagraph(seltype) 
     if a:seltype == "inner"
-	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', 'ebcnW')
-	let [ eline, ecol ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|\<subsubsection\*\=\|\<paragraph\*\=\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=\|^\s*\\\@<!\\\[\|^\s*\\\@<!\$\$\|\\\\\*\=\)', 'nW')
+	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', 'ebcnW')
+	let [ eline, ecol ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\zs\\newline\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|\<subsubsection\*\=\|\<paragraph\*\=\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=\|^\s*\\\@<!\\\[\|^\s*\\\@<!\$\$\|\\\\\*\=\)', 'nW')
 	" inner type ends and start with \[:\] if \[ is at the begining of
 	" line (possibly with white spaces) and \] is at the end of line
 	" (possibly with white spaces, aswell).
@@ -543,7 +539,7 @@ function! s:SelectCurrentParagraph(seltype)
     endif
 "     let [ g:bline, g:bcol]	= deepcopy([ bline, bcol])
 "     let [ g:eline, g:ecol]	= deepcopy([ eline, ecol])
-    if getline(bline) =~ '\\par'
+    if getline(bline) =~ '\\par\|\\newline' 
 	" move to the beginning of \par
 	let bmove	= ''
     else
@@ -573,16 +569,30 @@ function! s:SelectCurrentParagraph(seltype)
     call cursor(eline, ecol)
     execute "normal " . emove
 endfunction
-vnoremap <silent> <Plug>ATP_SelectCurrentParagraphInner :<C-U>call <SID>SelectCurrentParagraph('inner')<CR>
-vnoremap <silent> <Plug>ATP_SelectCurrentParagraphOuter :<C-U>call <SID>SelectCurrentParagraph('outer')<CR>
 " }}}
 
-if !s:did_script
-    augroup LatexBox_HighlightPairs
+" {{{ select comment
+" This only works with lines which begin with the comment sign '%'.
+function! SelectComment()
+    if getline(".") !~ '^\s*%'
+	return
+    endif
+    call search('^\(\s*%.*\n\)\@<!\zs\(\s*%\)', "cbW")
+    if visualmode() ==# 'V'
+	    normal! V
+    else
+	    normal! v
+    endif
+    call search('\%(^\s*%.*\zs\n\)\%(^\s*%\)\@!', "cW")
+endfunction
+" }}}
+
+" {{{ LatexBox_HighlightPairs augroup
+    augroup LatexBox_HighlightPairs 
       " Replace all matchparen autocommands
-      autocmd! CursorMoved *.tex call s:HighlightMatchingPair()
-    augroup END
-endif
+      au!
+      au! CursorMoved *.tex call s:HighlightMatchingPair()
+    augroup END 
 
 " Highlight bold and italic, by M. Szamotulski
 " (to add: optionaly only in gui) 
@@ -650,10 +660,19 @@ function! HighlightEmphText()
  endfunction
 " the 2match function can be run once:
 " call s:HighlightEmphText()
-" if !s:did_script
 "     augroup HighlightEmphText
 "       " Replace all matchparen autocommands
 "       autocmd CursorMoved *.tex call HighlightEmphText()
 "     augroup END
-" endif
 " }}}
+endif
+
+" Mappings:
+vnoremap <silent> <buffer> <Plug>SelectInnerSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('inner')<CR>
+vnoremap <silent> <buffer> <Plug>SelectOuterSyntax 	<ESC>:<C-U>call <SID>SelectSyntax('outer')<CR>
+vnoremap <silent> <Plug>LatexBox_SelectCurrentEnvInner 	:<C-U>call <SID>SelectCurrentEnv('inner')<CR>
+vnoremap <silent> <Plug>LatexBox_SelectCurrentEnVInner 	:<C-U>call <SID>SelectCurrentEnV()<CR>
+vnoremap <silent> <Plug>LatexBox_SelectCurrentEnvOuter 	:<C-U>call <SID>SelectCurrentEnv('outer')<CR>
+vnoremap <silent> <Plug>ATP_SelectCurrentParagraphInner :<C-U>call <SID>SelectCurrentParagraph('inner')<CR>
+vnoremap <silent> <Plug>ATP_SelectCurrentParagraphOuter :<C-U>call <SID>SelectCurrentParagraph('outer')<CR>
+vmap <silent><buffer> <Plug>vSelectComment 		:<C-U>call SelectComment()<CR>

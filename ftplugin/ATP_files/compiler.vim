@@ -199,7 +199,7 @@ function! NewCompare()
     let saved_loclist 	= getloclist(0)
     try
 	exe "lvimgrep /^". escape(line, '\^$') . "$/j " . expand("%:p")
-    catch /E480: No match:/ 
+    catch /E480:/ 
     endtry
 "     call setloclist(0, saved_loclist)
     let loclist		= getloclist(0)
@@ -439,10 +439,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     " grep in aux file for 
     " 'Citation .* undefined\|Rerun to get cross-references right\|Writing index file'
     let saved_llist	= getloclist(0)
-    try
-	silent execute "lvimgrep /C\\n\\=i\\n\\=t\\n\\=a\\n\\=t\\n\\=i\\n\\=o\\n\\=n\\_s\\_.*\\_su\\n\\=n\\n\\=d\\n\\=e\\n\\=f\\n\\=i\\n\\=n\\n\\=e\\n\\=d\\|L\\n\\=a\\n\\=b\\n\\=e\\n\\=l\\n\\=(\\n\\=s\\n\\=)\\_sm\\n\\=a\\n\\=y\\_sh\\n\\=a\\n\\=v\\n\\=e\\_sc\\n\\=h\\n\\=a\\n\\=n\\n\\=g\\n\\=e\\n\\=d\\n\\=.\\|W\\n\\=r\\n\\=i\\n\\=t\\n\\=i\\n\\=n\\n\\=g\\_si\\n\\=n\\n\\=d\\n\\=e\\n\\=x\\_sf\\n\\=i\\n\\=l\\n\\=e/j " . fnameescape(logfile)
-    catch /No match:/
-    endtry
+    execute "silent! lvimgrep /C\\n\\=i\\n\\=t\\n\\=a\\n\\=t\\n\\=i\\n\\=o\\n\\=n\\_s\\_.*\\_su\\n\\=n\\n\\=d\\n\\=e\\n\\=f\\n\\=i\\n\\=n\\n\\=e\\n\\=d\\|L\\n\\=a\\n\\=b\\n\\=e\\n\\=l\\n\\=(\\n\\=s\\n\\=)\\_sm\\n\\=a\\n\\=y\\_sh\\n\\=a\\n\\=v\\n\\=e\\_sc\\n\\=h\\n\\=a\\n\\=n\\n\\=g\\n\\=e\\n\\=d\\n\\=.\\|W\\n\\=r\\n\\=i\\n\\=t\\n\\=i\\n\\=n\\n\\=g\\_si\\n\\=n\\n\\=d\\n\\=e\\n\\=x\\_sf\\n\\=i\\n\\=l\\n\\=e/j " . fnameescape(logfile)
     let location_list	= copy(getloclist(0))
     call setloclist(0, saved_llist)
 
@@ -455,10 +452,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 
     " Check what to use to make the 'Bibliography':
     let saved_llist	= getloclist(0)
-    try
-	silent execute 'lvimgrep /\\bibdata\s*{/j ' . fnameescape(auxfile)
-    catch /No match:/
-    endtry
+    execute 'silent! lvimgrep /\\bibdata\s*{/j ' . fnameescape(auxfile)
     " Note: if the auxfile is not there it returns 0 but this is the best method for
     " looking if we have to use 'bibtex' as the bibliography might be not written in
     " the main file.
@@ -499,10 +493,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 
     " Check table of contents:
     let saved_llist	= getloclist(0)
-    try
-	silent execute "lvimgrep /\\\\openout\\d\\+/j " . fnameescape(logfile)
-    catch /No match:/
-    endtry
+    execute "silent! lvimgrep /\\\\openout\\d\\+/j " . fnameescape(logfile)
 
     let open_out = map(getloclist(0), "v:val['text']")
     call setloclist(0, saved_llist)
@@ -556,7 +547,15 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 
     if condition
 	if runtex_before
+	    " Do not write project script file while saving the file.
+	    let atp_ProjectScript	= ( exists("g:atp_ProjectScript") ? g:atp_ProjectScript : -1 )
+	    let g:atp_ProjectScript	= 0
 	    w
+	    if atp_ProjectScript == -1
+		unlet g:atp_ProjectScript
+	    else
+		let g:atp_ProjectScript	= atp_ProjectScript
+	    endif
 	endif
 	let did_bibtex	= 0
 	let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID . 
@@ -1059,13 +1058,21 @@ function! <SID>auTeX()
     " if compiling for the first time
     else
 	try 
+	    " Do not write project script file while saving the file.
+	    let atp_ProjectScript	= ( exists("g:atp_ProjectScript") ? g:atp_ProjectScript : -1 )
+	    let g:atp_ProjectScript	= 0
 	    w
-	catch /E212: Cannot open file for writing/
+	    if atp_ProjectScript == -1
+		unlet g:atp_ProjectScript
+	    else
+		let g:atp_ProjectScript	= atp_ProjectScript
+	    endif
+	catch /E212:/
 	    echohl ErrorMsg
 	    echomsg expand("%") . "E212: Cannon open file for writing"
 	    echohl Normal
 	    return " E212"
-	catch /E382: Cannot write, 'buftype' option is set/
+	catch /E382:/
 	    " This option can be set by VCSCommand plugin using VCSVimDiff command
 	    return " E382"
 	endtry

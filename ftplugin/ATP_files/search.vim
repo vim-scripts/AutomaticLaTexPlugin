@@ -982,7 +982,7 @@ function! <SID>RecursiveSearch(main_file, start_file, tree, cur_branch, call_nr,
 	    return 
 	endif
 endfunction
-catch /E127: Cannot redefine function/  
+catch /E127:/  
 endtry
 " }}}2
 

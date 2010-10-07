@@ -79,7 +79,7 @@ function! s:maketoc(filename)
     let bufname		= fnamemodify(a:filename,":t")
     try
 	let texfile = ( bufexists(bufname)  ? getbufline("^" . bufname . "$","1","$") : readfile(a:filename) )
-    catch /E484: Cannot open file/
+    catch /E484:/
 	echohl Warning
 	echo "File " . a:filename . " not readable."
     endtry
@@ -990,14 +990,14 @@ function! GotoFile(bang,...)
 		let space = ""
 		if g:atp_RelativePath
 		    let cwd = getcwd()
-		    exe "normal lcd " . b:atp_ProjectDir
+		    exe "lcd " . b:atp_ProjectDir
 		    let level = get(level_d,fnamemodify(f, ':.'), get(level_d, f, 1))
-		    exe "normal lcd " . cwd
+		    exe "lcd " . cwd
 		else
 		    let cwd = getcwd()
-		    exe "normal lcd " . b:atp_ProjectDir
+		    exe "lcd " . b:atp_ProjectDir
 		    let level = get(level_d,f, get(level_d,fnamemodify(f, ':.'), 1))
-		    exe "normal lcd " . cwd
+		    exe "lcd " . cwd
 		endif
 		for j in range(level)
 		    let space .= "   "
@@ -1105,10 +1105,199 @@ function! GotoFile(bang,...)
 	return file
     endif
 endfunction
-catch /E127: Cannot redefine function GotoFile: It is in use/
+catch /E127:/
 endtry "}}}
 "}}}
+
+" Syntax motion
+" {{{ TexSyntaxMotion
+function! TexSyntaxMotion(forward, how, ...)
+
+    " If the function is used in imap.
+    let in_imap	= ( a:0 >= 1 ? a:1 : 0 )
+    let g:imap	= in_imap
+
+    let whichwrap	= split(&l:whichwrap, ',')
+    if !count(whichwrap, 'l') 
+	setl ww+=l
+    endif
+    if !count(whichwrap, 'h')
+	setl ww+=h
+    endif
+
+"     echomsg "________"
+    " before we use <Esc> 
+    let line=line(".")
+    if in_imap && len(getline(".")) > col(".")
+	let col = col(".")+1
+    else
+	let col = col(".")
+    endif
+    let g:pos	= [ line(".") , col(".")]
+    let g:pos0	= [ line , col]
+"     execute "normal l"
+    let step 		= ( a:forward > 0 ? "l" : "h" )
+    let synstack	= map(synstack(line, col), 'synIDattr( v:val, "name")')
+    let synstackh	= map(synstack(line, max([1, col-1])), 'synIDattr( v:val, "name")')
+    let g:isynstack	= deepcopy(synstack)
+    while count(synstack, "Delimiter")
+	execute "normal " . step 
+	let synstack	= map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
+    endwhile
+    let g:pos1	= [ line(".") , col(".")]
+
+    let g:synstack	= deepcopy(synstack)
+"     let g:pos		= getpos(".")
+"     let DelimiterCount	= count(synstack, 'Delimiter') 
+"     let g:DelimiterCount = DelimiterCount 
+    let ScriptCount	= count(synstack, 'texSuperscript') + count(synstack, 'texSubscript')
+    let ScriptsCount	= count(synstack, 'texSuperscripts') + count(synstack, 'texSubscripts')
+    let StatementCount	= count(synstack, 'texStatement')
+    let StatementCounth	= count(synstackh, 'texStatement') && col(".") > 1
+    let SectionCount	= count(synstack, 'texSection')
+
+    let TypeStyleCount	= count(synstack, 'texTypeStyle')
+    let TypeStyleCounth	= count(synstackh, 'texTypeStyle') && col(".") > 1
+    let MathTextCount	= count(synstack, 'texMathText')
+    let MathTextCounth	= count(synstackh, 'texMathText') && col(".") > 1
+    let RefZoneCount	= count(synstack, 'texRefZone')
+    let RefZoneCounth	= count(synstackh, 'texRefZone') && col(".") > 1 
+    let RefOptionCount	= count(synstack, 'texRefOption')
+    let RefOptionCounth	= count(synstackh, 'texRefOption') && !count(synstackh, 'Delimiter') && col(".") > 1
+    let CiteCount	= count(synstack, 'texCite')
+    let CiteCounth	= count(synstackh, 'texCite') && !count(synstackh, 'Delimiter') && col(".") > 1
+    let MatcherCount 	= count(synstack, 'texMatcher')
+    let MatcherCounth 	= count(synstackh, 'texMatcher') && !count(synstackh, 'Delimiter') && col(".") > 1
+	let g:MatcherCount 	= MatcherCount
+	let g:MatcherCounth 	= MatcherCounth
+    let MathMatcherCount 	= count(synstack, 'texMathMatcher')
+    let MathMatcherCounth 	= count(synstackh, 'texMathMatcher') && !count(synstackh, 'Delimiter') && col(".") > 1
+	let g:MathMatcherCount 	= MathMatcherCount
+	let g:MathMatcherCounth 	= MathMatcherCounth
+    let SectionNameCount 	= count(synstack, 'texSectionName')
+    let SectionNameCounth 	= count(synstackh, 'texSectionName') && !count(synstackh, 'Delimiter') && col(".") > 1
+    let SectionMarkerCount 	= count(synstack, 'texSectionMarker')
+
+    let SectionModifierCount 	= count(synstack, 'texSectionModifier')
+    let SectionModifierCounth 	= count(synstackh, 'texSectionModifier') && !count(synstackh, 'Delimiter') && col(".") > 1
+"     let MathZonesCount		= len(filter(copy(synstack), 'v:val =~ ''^texMathZone[A-Z]'''))
+
+"     let g:col	= col(".")
+"     let g:line	= line(".")
+
+    if StatementCount && StatementCounth && step == "h"
+	let syntax	= [ 'texStatement' ]
+    elseif StatementCount && step != "h"
+	let syntax	= [ 'texStatement' ]
+    elseif SectionCount 
+	let syntax	= [ 'texSection' ]
+    elseif ScriptCount
+	if a:how == 1
+	    let syntax	= [ 'texSuperscript', 'texSubscript']
+	else
+	    let syntax	= [ 'texSuperscripts', 'texSubscripts']
+	endif
+    elseif TypeStyleCount && TypeStyleCounth && step == "h"
+	let syntax	= [ 'texTypeStyle' ]
+    elseif TypeStyleCount && step != "h"
+	let syntax	= [ 'texTypeStyle' ]
+    elseif RefZoneCount && RefZoneCounth && step == "h"
+	let syntax	= [ 'texRefZone' ]
+    elseif RefZoneCount && step != "h"
+	let syntax	= [ 'texRefZone' ]
+    elseif RefOptionCount && RefOptionCounth && step == "h"
+	let syntax	= [ 'texRefOption' ]
+    elseif RefOptionCount && step != "h"
+	let syntax	= [ 'texRefOption' ]
+    elseif CiteCount && CiteCounth && step == "h"
+	let syntax	= [ 'texCite' ]
+    elseif CiteCount && step != "h"
+	let syntax	= [ 'texCite' ]
+    elseif MatcherCount && MatcherCounth && step == "h"
+	let syntax	= [ 'texMatcher' ]
+    elseif MatcherCount && step != "h"
+	let syntax	= [ 'texMatcher' ]
+    elseif MathMatcherCount && MathMatcherCounth && step == "h"
+	let syntax	= [ 'texMathMatcher' ]
+    elseif MathMatcherCount && step != "h"
+	let syntax	= [ 'texMathMatcher' ]
+    elseif SectionNameCount && SectionNameCounth && step == "h"
+	let syntax	= [ 'texSectionName' ]
+    elseif SectionNameCount && step != "h"
+	let syntax	= [ 'texSectionName' ]
+    elseif SectionMarkerCount
+	let syntax	= [ 'texSectionMarker' ]
+    elseif SectionModifierCount && SectionModifierCounth && step == "h"
+	let syntax	= [ 'texSectionModifier' ]
+    elseif SectionModifierCount && step != "h"
+	let syntax	= [ 'texSectionModifier' ]
+    elseif MathTextCount && MathTextCounth && step == "h"
+	let syntax	= [ 'texMathText' ]
+    elseif MathTextCount && step != "h"
+	let syntax	= [ 'texMathText' ]
+"     elseif MathZonesCount
+"     This might be slow
+"     but we might change 'normal l' to 'normal w'
+" 	let syntax	= [ 'texMathZoneA', 'texMathZoneB', 'texMathZoneC', 'texMathZoneD', 'texMathZoneE', 'texMathZoneF', 'texMathZoneG', 'texMathZoneH', 'texMathZoneI', 'texMathZoneJ', 'texMathZoneK', 'texMathZoneL', 'texMathZoneT', 'texMathZoneV', 'texMathZoneW', 'texMathZoneX', 'texMathZoneY' ]
+    else
+	" Go after first Delimiter
+	let g:syntax = [ 'Delimiter motion' ]
+	let i=0
+	let DelimiterCount	= count(synstack, 'Delimiter') 
+	while !DelimiterCount
+	    exe "normal " . step
+" 	    echomsg step . " " . line(".") . " " . col(".")
+	    let synstack	= map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
+	    let DelimiterCount	= count(synstack, 'Delimiter') 
+	    if i == 1
+		let DelimiterCount = 0
+	    endif
+	    let i+=1
+	endwhile
+	if in_imap
+	    normal a
+"         else
+" 	    normal l
+	endif
+	return "Delimiter motion"
+    endif
+
+    let g:syntax	= deepcopy(syntax)
+
+    let true	= 0
+    for syn in syntax
+	let true += count(synstack, syn)
+    endfor
+    let initial_count	= true
+
+    while true >= initial_count
+	let true	= 0
+	execute "normal " . step
+	let synstack	= map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
+	for syn in syntax
+	    let true += count(synstack, syn)
+	endfor
+" 	echomsg string(synstack) . " " . string(syntax) . " " . true
+    endwhile
+    while getline(".")[col(".")] =~ '^{\|}\|(\|)\|\[\|\]$'
+	exe "normal l"
+    endwhile
+    if getline(".")[col(".")-2] == "{"
+	exe "normal h"
+    endif
+    let &l:whichwrap	= join(whichwrap, ',')
+    if in_imap
+	normal a
+"     else
+" 	normal l
+    endif
+endfunction "}}}
 endif "}}}
+
+imap <Plug>TexSyntaxMotionForward	<Esc>:call TexSyntaxMotion(1,1,1)<CR>a
+imap <Plug>TexSyntaxMotionBackward	<Esc>:call TexSyntaxMotion(0,1,1)<CR>a
+nmap <Plug>TexSyntaxMotionForward	:call TexSyntaxMotion(1,1)<CR>
+nmap <Plug>TexSyntaxMotionBackward	:call TexSyntaxMotion(0,1)<CR>
 
 " Commands And Maps:
 command! -buffer -nargs=1 -complete=buffer MakeToc	:echo s:maketoc(fnamemodify(<f-args>, ":p"))[fnamemodify(<f-args>, ":p")] 

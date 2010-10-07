@@ -313,7 +313,7 @@ function! TreeOfFiles(main_file,...)
     if run_nr == 1 && &l:filetype =~ '^\(ams\)\=tex$'
 	try
 	    silent execute 'lvimgrep /\\begin\s*{\s*document\s*}/j ' . fnameescape(a:main_file)
-	catch /E480: No match:/
+	catch /E480:/
 	endtry
 	let end_preamb	= get(get(getloclist(0), 0, {}), 'lnum', 0)
     else
@@ -322,8 +322,8 @@ function! TreeOfFiles(main_file,...)
 
     try
 	silent execute "lvimgrep /".pattern."/jg " . fnameescape(a:main_file)
-    catch /E480: No match:/
-    catch /E683: File name missing or invalid pattern/ 
+    catch /E480:/
+    catch /E683:/ 
 	let g:pattern = pattern
 	let g:filename = fnameescape(a:main_file)
     endtry
@@ -429,10 +429,6 @@ function! TreeOfFiles(main_file,...)
 	if type_dict[ifile] == "input" && flat <= 0 || ( type_dict[ifile] == "preambule" && flat <= -1 )
 	     let [ ntree, nlist, ntype_dict, nlevel_dict ] = TreeOfFiles(ifile, pattern, flat, run_nr+1)
 
-" 		    if g:atp_debugToF
-" 			silent echo run_nr . ") nlist=".string(nlist)
-" 		    endif
-
 	     call extend(tree, 		{ ifile : [ ntree, line ] } )
 	     call extend(list, nlist, index(list, ifile)+1)  
 	     call extend(type_dict, 	ntype_dict)
@@ -530,9 +526,6 @@ function! FindInputFiles(MainFile,...)
     " return the list  of readable bibfiles
     return Files
 endfunction
-function! UIInputFiles()
-    let atp_MainFile 	= atplib#FullPath(b:atp_MainFile)
-endfunction
 function! UpdateMainFile()
     if b:atp_MainFile =~ '^\s*\/'
 	let cwd = getcwd()
@@ -558,7 +551,8 @@ if exists("b:atp_OutDir")
     endif
 endif	
     return status
-endfunction "}}}
+endfunction 
+"}}}
 
 " There is a copy of this variable in compiler.vim
 
@@ -665,7 +659,7 @@ function! s:SetNotificationColor() "{{{
     " Highlight command:
     try
     execute "hi User".g:atp_statusNotifHi ." ". hi_gui . hi_guifg . hi_guibg
-    catch /E418: Illegal value:/
+    catch /E418:/
     endtry
 
 endfunction
@@ -683,19 +677,21 @@ function! ATPStatus(bang) "{{{
 	    let s:errormsg = 1
 	endif
     endif
-    let status_NotifHi	= g:atp_statusNotif && g:atp_statusNotifHi ? '%#User'.g:atp_statusNotifHi . '#' : ''
-    let status_NotifHiPost	
-		\ = g:atp_statusNotif && g:atp_statusNotifHi ? '%#StatusLine#' : ''
-    let status_Notif	= g:atp_statusNotif ? '%{ATPRunning()}' : ''
+    let status_NotifHi	= 
+		\ ( g:atp_statusNotif && g:atp_statusNotifHi 	? '%#User'.g:atp_statusNotifHi . '#' : '' )
+    let status_NotifHiPost =
+		\ ( g:atp_statusNotif && g:atp_statusNotifHi 	? '%#StatusLine#' 	: '' )
+    let status_Notif	= ( g:atp_statusNotif 			? '%{ATPRunning()}' 	: '' )
+    let status_KeyMap	= ( has("keymap") && g:atp_babel && exists("b:keymap_name") 	
+								\ ? b:keymap_name 	: '' )
 
-    let g:atp_StatusLine= '%<%f %(%h%m%r%) %='.status_CTOC." ".status_NotifHi.status_Notif.status_NotifHiPost. 
-		\ '%{g:status_OutDir} %-14.16(%l,%c%V%)%P'
+    let g:atp_StatusLine= '%<%f '.status_KeyMap.'%(%h%m%r%) %='.status_CTOC." ".status_NotifHi.status_Notif.status_NotifHiPost.'%{g:status_OutDir} %-14.16(%l,%c%V%)%P'
     set statusline=%!g:atp_StatusLine
 endfunction
 
     try
 	command -buffer -bang Status		:call ATPStatus(<q-bang>) 
-    catch /E174: Command already exists/
+    catch /E174:/
 	command! -buffer -bang ATPStatus	:call ATPStatus(<q-bang>) 
     endtry
 " }}}

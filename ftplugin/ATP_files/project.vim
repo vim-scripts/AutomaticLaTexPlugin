@@ -27,6 +27,9 @@ if !exists("g:atp_debugLPS")
     " debug <SID>LoadProjectScript (project.vim)
     let g:atp_debugLPS		= 0
 endif
+if !exists("g:atp_RelativePath")
+    let g:atp_RelativePath 	= 1
+endif
 " Also can be set in vimrc file or atprc file! (tested)
 " The default value (0) is set in options.vim
 
@@ -159,7 +162,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 	let save_loclist = getloclist(0)
 	try
 	    silent exe 'lvimgrep /\Clet\s\+b:atp_ProjectScript\>\s*=/j ' . a:project_script
-	catch /E480: No match:/
+	catch /E480:/
 	endtry
 	let loclist = getloclist(0)
 	call setloclist(0, save_loclist)
@@ -182,7 +185,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 	if g:atp_debugProject
 	    echomsg "ATP_ProjectScript: sourcing " . a:project_script
 	endif
-    catch /E484: Cannot open file/
+    catch /E484:/
     endtry
 
     if g:atp_debugProject
@@ -237,9 +240,9 @@ function! GetProjectScript(project_files)
 	    if !g:atp_RelativePath
 		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)\%(' . file_name . '\|' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)' . file_name . '\>\)/j ' . pfile
 	    else
-		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)[^''"]*\%(' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)[^''"]*' . sfile_name . '\>\)/j ' . pfile
+		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)[^''"]*\<\%(' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)[^''"]*\<' . sfile_name . '\>\)/j ' . pfile
 	    endif
-	catch /E480: No match:/ 
+	catch /E480:/ 
 	    if g:atp_debugProject
 		silent echomsg "Script file " . pfile . " doesn't match."
 	    endif
@@ -329,7 +332,7 @@ function! <SID>LoadProjectScript(bang,...)
 	try
 	execute "silent! source " . b:atp_ProjectScriptFile
 	let b:atp_ProjectDir	= fnamemodify(b:atp_ProjectScriptFile, ":h")
-	catch /E484 Cannot open file/
+	catch /E484/
 	    " this is used by the s:Babel() function.
 	    " if b:atp_ProjectDir is unset it returns.
 	    unlet b:atp_ProjectDir
@@ -348,6 +351,9 @@ endfunction
 "}}}
 " Write Project Script:
 "{{{ s:WriteProjectScript(), :WriteProjectScript, autocommands
+" This function writes the project file but only if there there are changes.
+" This is so, because writing very long lines is much slower than reading (it
+" reads the file and compare the variables with the existing ones).
 try
 function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 
@@ -490,7 +496,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 		endif
 		try
 		    let {var} = {lvar}
-		catch /E741: Value is locked/ 
+		catch /E741:/ 
 		    exe "unlockvar " . var
 		    let {var} = {lvar}
 		    exe "lockvar " . var
@@ -576,7 +582,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     for var in deleted_variables
 	try 
 	    exe 'silent! %g/^\s*let\s\+' . var . '\>/d'
-	catch /E486: Pattern not found: .*/
+	catch /E486:/
 	endtry
     endfor
 
@@ -592,7 +598,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 
 	    try 
 		 exe 'silent! %g/^\s*let\s\+' . var . '\>/d'
-	    catch /E486: Pattern not found: .*/
+	    catch /E486:/
 	    endtry
 	    call append('$', 'let ' . var . ' = ' . string({lvar}))
 	endif
@@ -612,7 +618,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 	echomsg "time " . reltimestr(reltime(time))
     endif
 endfunction
-catch /E127: Cannot redefine function .*WriteProjectScript: It is in use/
+catch /E127:/
 endtry
 function! <SID>WriteProjectScriptInterface(bang,...)
     let type 	= ( a:0 >= 1 ? a:1 : 'local' )
@@ -635,8 +641,9 @@ endfunction
 "{{{ WriteProjectScript autocommands
 augroup ATP_WriteProjectScript 
     au!
-    au VimLeave *.tex call s:WriteProjectScript("", b:atp_ProjectScriptFile, g:atp_cached_local_variables, 'local')
-    au VimLeave *.tex call s:WriteProjectScript("", s:common_project_script, g:atp_cached_common_variables, 'global')
+    " Before it was VimLeave
+    au BufWrite *.tex call s:WriteProjectScript("", b:atp_ProjectScriptFile, g:atp_cached_local_variables, 'local')
+    au BufWrite *.tex call s:WriteProjectScript("", s:common_project_script, g:atp_cached_common_variables, 'global')
 augroup END 
 "}}}
 "}}}
@@ -706,6 +713,7 @@ endfunction
 " endfunction
 " }}}
 endif "}}}
+
 call <SID>LoadProjectScript("", "local")
 " Project script should by loaded now, and not by autocommands which are executed after
 " sourcing scripts. In this way variables set in project script will be used

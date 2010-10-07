@@ -276,6 +276,7 @@ if !exists("g:atp_map_backward_motion_leader")
     let g:atp_map_backward_motion_leader='{'
 endif
 if !exists("g:atp_RelativePath")
+    " This is here only for completness, the default value is set in project.vim
     let g:atp_RelativePath 	= 1
 endif
 if !exists("g:atp_SyncXpdfLog")
@@ -317,7 +318,7 @@ endif
 	" Changing this variable is not yet supported *see ToDo: in
 	" atplib#CloseLastBracket() (autoload/atplib.vim)
 	lockvar g:atp_closebracket_checkenv
-    catch /E741: Value is locked: g:atp_closebracket_checkenv/
+    catch /E741:/
 " 	echomsg "Changing this variable is not supported"
     endtry
 " endif
@@ -482,7 +483,7 @@ if !exists("g:atp_no_math_command_completion")
     let g:atp_no_math_command_completion = 0
 endif
 if !exists("g:atp_tex_extensions")
-    let g:atp_tex_extensions	= ["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
+    let g:atp_tex_extensions	= ["tex.project.vim", "aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
 endif
 if !exists("g:atp_delete_output")
     let g:atp_delete_output	= 0
@@ -721,7 +722,7 @@ endif
 " {{{1 function
 function! <SID>Babel()
     " Todo: make notification.
-    if &filetype != "tex" || !exists("b:atp_MainFile")
+    if &filetype != "tex" || !exists("b:atp_MainFile") || !has("keymap")
 	" This only works for LaTeX documents.
 	" but it might work for plain tex documents as well!
 	return
@@ -733,9 +734,9 @@ function! <SID>Babel()
 	execute '1lvimgrep /\\usepackage.*{babel}/j ' . atp_MainFile
 	" Find \usepackage[babel_options]{babel} - this is the only way that one can
 	" pass options to babel.
-    catch /E480: No match:/
+    catch /E480:/
 	return
-    catch /E683: File name missing or invalid pattern/ 
+    catch /E683:/ 
 	return
     endtry
     let babel_line 	= get(get(getloclist(0), 0, {}), 'text', '')
@@ -759,6 +760,8 @@ function! <SID>Babel()
 
     if keymap != 'ignore'
 	execute "set keymap=" . keymap
+    else
+	execute "set keymap="
     endif
 endfunction
 command! -buffer Babel	:call <SID>Babel()
@@ -782,7 +785,7 @@ fun! SetXdvi()
 	execute "unmenu LaTeX.".Compiler."\\ debug"
 	execute "unmenu LaTeX.".Compiler."\\ twice"
 	execute "unmenu LaTeX.View\\ with\\ ".Viewer
-    catch /E329: No menu/
+    catch /E329:/
     endtry
 
     " Set new options:
@@ -816,7 +819,7 @@ fun! SetXdvi()
     map <buffer> <LocalLeader>rs				:call RevSearch()<CR>
     try
 	nmenu 550.65 &LaTeX.Reverse\ Search<Tab>:map\ <LocalLeader>rs	:RevSearch<CR>
-    catch /E329: No menu/
+    catch /E329:/
     endtry
 
     " Put new menu entries:
@@ -845,7 +848,7 @@ fun! SetXpdf()
 	execute "unmenu LaTeX.".Compiler."\\ debug"
 	execute "unmenu LaTeX.".Compiler."\\ twice"
 	execute "unmenu LaTeX.View\\ with\\ ".Viewer
-    catch /E329: No menu/
+    catch /E329:/
     endtry
 
     let b:atp_TexCompiler	= "pdflatex"
@@ -863,7 +866,7 @@ fun! SetXpdf()
     " Delete menu entry.
     try
 	silent aunmenu LaTeX.Reverse\ Search
-    catch /E329: No menu/
+    catch /E329:/
     endtry
 
     " Put new menu entries:
@@ -1111,7 +1114,7 @@ let g:atp_completion_modes=[
 	    \ 'font family',		'font series',
 	    \ 'font shape',		'algorithmic' ]
 lockvar 2 g:atp_completion_modes
-catch /E741: Value is locked/
+catch /E741:/
 endtry
 
 if !exists("g:atp_completion_modes_normal_mode")
@@ -1225,7 +1228,7 @@ endif
 	\ "\\rmdefault", "\\sfdefault", "\\ttdefault", "\\bfdefault", "\\mddefault", "\\itdefault",
 	\ "\\sldefault", "\\scdefault", "\\updefault",  "\\renewcommand{", "\\newcommand{",
 	\ "\\addcontentsline{", "\\addtocontents",
-	\ "\\input", "\\include", "\\includeonly", "\\inlucegraphics",  
+	\ "\\input", "\\include", "\\includeonly", "\\includegraphics",  
 	\ "\\savebox", "\\sbox", "\\usebox", "\\rule", "\\raisebox{", 
 	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
 	\ "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", 
@@ -1255,7 +1258,7 @@ endif
 	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
 	\ "\\tableofcontents", "\\newfont{", "\\phantom",
 	\ "\\DeclareRobustCommand", "\\show", "\\CheckCommand", "\\mathnormal",
-	\ "\\pounds" ]
+	\ "\\pounds", "\\magstep{" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -1665,13 +1668,13 @@ function! s:ATP_SyntaxGroups()
     if atplib#SearchPackage('tikz') || atplib#SearchPackage('pgfplots')
 	try
 	    call TexNewMathZone("T", "tikzpicture", 0)
-	catch /E117/
+	catch /E117:/
 	endtry
     endif
     if atplib#SearchPackage('algorithmic')
 	try
 	    call TexNewMathZone("ALG", "algorithmic", 0)
-	catch /E117/ 
+	catch /E117:/ 
 	endtry
     endif
 endfunction

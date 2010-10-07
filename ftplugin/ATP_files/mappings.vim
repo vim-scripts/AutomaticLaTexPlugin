@@ -23,6 +23,11 @@ execute "nmap <buffer> ".g:atp_map_backward_motion_leader."i				:PInput<CR>"
 execute "nmap <buffer> ".g:atp_map_forward_motion_leader."gf				:NInput<CR>"
 execute "nmap <buffer> ".g:atp_map_backward_motion_leader."gf				:PInput<CR>"
 
+" Syntax motions:
+imap <C-j> <Plug>TexSyntaxMotionForward
+imap <C-k> <Plug>TexSyntaxMotionBackward
+nmap <C-j> <Plug>TexSyntaxMotionForward
+nmap <C-k> <Plug>TexSyntaxMotionBackward
 
 " Add maps, unless the user didn't want them.
 if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_maps == 0 ) && 

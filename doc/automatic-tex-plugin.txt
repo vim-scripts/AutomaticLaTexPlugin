@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 30 September 2010
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 7 October 2010
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -82,6 +82,28 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 
 ================================================================================
 NEWS							*atp-news*
+>
+  Changes in version 7.6.3
+<
+  - ATP is published on the rights of GLP v3 or higher.
+
+
+  imap <Ctrl-j>, imap <Ctrl-k>	- these are two motions (based on syntax)
+  which help to navigate throught brackets (but not only) in insert mode.
+   
+  map <Ctrl-j>, map <Ctrl-k> 	- as above but in normal mode.
+
+  These motions emulate the behaviour of latex-suite place holder system <++>.
+
+
+  - A bug fixed so that the script should now work in any locale (thanks to the
+  user report).
+
+  - If g:atp_babel is set to 1 the keymap name is shown in the status line.
+
+  - Project script is written via BufWrite autocommand group (it used to be
+    VimLeave). Both <SID>Compiler() (map \l) and <SID>MakeLatex() (:MakeLatex)
+    functions do not write project file while saving the buffer to the disk.
 >
   Changes in version 7.6
 <
@@ -1021,8 +1043,8 @@ vmap }p, vmap }c, vmap }s, vmap }S
 							*atp-:PrevSection*
 							*atp-:PPart*	*atp-{p*
 							*atp-:PChap*	*atp-{c*
-							*atp-:PSec*     *atp-{e*
-							*atp-:PSSec*	*atp-{E*
+							*atp-:PSec*     *atp-{s*
+							*atp-:PSSec*	*atp-{S*
 							*atp-:PSSSec*
 :PPart[!], :PChap[!], :PSec[!], :PSSec[!], :PSSSec[!] [title_pattern]
  map {p,  map {c,  map {s,  map {S
@@ -1249,7 +1271,6 @@ TABLE OF CONTENTS WINDOW					 *atp-toc-window*
 							*atp-:DeleteSection*
 							*atp-:PasteSection*
 							*atp-:SectionStack*
-
 >
     :DeleteSection
     :PasteSection
@@ -2431,7 +2452,6 @@ WRITING PROJECTS					*atp-ProjectFiles*
 	when using |atp-:S| command. If you want to have project specific
 	setting use |atp-ProjectScript|.
 
-							*b:atp_TexFlavor*
 	Another good tip for LaTeX project files is to set |b:atp_TexFlavor|
 	variable to 'tex' (in your |vimrc| or |atprc| file). This will prevent
 	from situations that vim recognizes input file as a plain TeX while it

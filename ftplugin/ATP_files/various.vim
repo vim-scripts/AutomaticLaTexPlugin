@@ -631,7 +631,7 @@ function! s:ToggleEnvironment(ask, ...)
     endif
     return  l:open_pos[0]."-".l:close_pos[0]
 endfunction
-catch /E127: Cannot redefine function /
+catch /E127:/
 endtry "}}}
 " TexDoc commanand and its completion
 " {{{ TexDoc 
@@ -696,7 +696,7 @@ function! s:Delete(delete_output)
 	if executable(g:rmcommand)
 	    if g:rmcommand =~ "^\s*rm\p*" || g:rmcommand =~ "^\s*perltrash\p*"
 		if l:ext != "dvi" && l:ext != "pdf"
-		    let l:rm=g:rmcommand . " " . shellescape(b:atp_OutDir) . "*." . l:ext . " 2>/dev/null && echo Removed: ./.*" . l:ext 
+		    let l:rm=g:rmcommand . " " . shellescape(b:atp_OutDir) . "*." . l:ext . " 2>/dev/null && echo Removed: ./*" . l:ext 
 		else
 		    let l:rm=g:rmcommand . " " . fnamemodify(atp_MainFile,":r").".".l:ext . " 2>/dev/null && echo Removed: " . fnamemodify(atp_MainFile,":r").".".l:ext
 		endif
@@ -809,13 +809,15 @@ function! s:OpenLog()
 	try
 	    silent! execute 'keepjumps %g/^\s*$/d'
 	    silent! execute "keepjumps normal ''"
-	catch /E486: Pattern not found:/ 
+	catch /E486:/ 
 	endtry
 		   
 	function! <SID>SyncTex(bang,...)
 
 	    let cwd = getcwd()
-	    exe "normal! lcd " . b:atp_ProjectDir 
+	    exe "lcd " . b:atp_ProjectDir 
+
+	    let g:debugST	= 0
 
 	    " if sync = 1 sync log file and the window - can be used by autocommand
 	    let sync = ( a:0 >= 1 ? a:1 : 0 )
@@ -824,6 +826,8 @@ function! s:OpenLog()
 		endif 
 
 	    if sync && !g:atp_SyncLog
+		exe "normal! " . cwd
+		let g:debugST 	= 1
 		return
 	    endif
 
@@ -1003,7 +1007,7 @@ function! s:OpenLog()
 		setl nocursorline
 	    endif
 
-	    exe "normal! lcd " . cwd
+	    exe "lcd " . cwd
 	endfunction
 	command! -buffer -bang SyncTex		:call <SID>SyncTex(<q-bang>)
 	map <buffer> <Enter>			:SyncTex<CR>
@@ -1338,7 +1342,15 @@ fun! Reload(...)
 	endif
     endif
     augroup! ATP_auTeX
+    " Do not write project script file while saving the file.
+    let atp_ProjectScript	= ( exists("g:atp_ProjectScript") ? g:atp_ProjectScript : -1 )
+    let g:atp_ProjectScript	= 0
     w
+    if atp_ProjectScript == -1
+	unlet g:atp_ProjectScript
+    else
+	let g:atp_ProjectScript	= atp_ProjectScript
+    endif
 "   THIS IS THE SLOW WAY:
     bd!
     execute "edit " . fnameescape(l:bufname)

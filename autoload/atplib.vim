@@ -193,7 +193,7 @@ function! atplib#GrepAuxFile(...)
     let saved_llist	= getloclist(0)
     try
 	silent execute 'lvimgrep /\\newlabel\s*{/j ' . fnameescape(aux_filename)
-    catch /E480: No match:/
+    catch /E480:/
     endtry
     let loc_list	= getloclist(0)
     call setloclist(0, saved_llist)
@@ -1738,7 +1738,7 @@ function! atplib#GrepPackageList(...)
     let saved_loclist	= getloclist(0)
     try
 	silent execute 'lvimgrep /^[^%]*'.pat.'/j ' . fnameescape(file)
-    catch /E480: No match:/
+    catch /E480:/
 	call setloclist(0, [{'text' : 'empty' }])
     endtry
     let loclist		= getloclist(0)
@@ -1766,7 +1766,7 @@ function! atplib#DocumentClass(file)
     let saved_loclist	= getloclist(0)
     try
 	silent execute 'lvimgrep /\\documentclass/j ' . fnameescape(a:file)
-    catch /E480: No match:/
+    catch /E480:/
     endtry
     let line		= get(get(getloclist(0), 0, "no_document_class"), 'text')
     call setloclist(0, saved_loclist)
@@ -3774,7 +3774,7 @@ function! atplib#TabCompletion(expert_mode,...)
     return ''
     "}}}2
 endfunction
-catch /E127: Cannot redefine function atplib#TabCompletion: It is in use/
+catch /E127:/
 endtry
 " }}}1
 

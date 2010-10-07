@@ -421,6 +421,8 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 	return
     endif
 
+    let winsaveview	= winsaveview()
+
     " Check if global variables where changed.
     " (1) copy global variable to l:variables
     " 	  and remove defined global variables.
@@ -609,6 +611,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     exe "silent keepalt b " . bufnr
 
     let &l:lazyredraw = lazyredraw
+    call winrestview(winsaveview)
 
     if g:atp_debugProject
 	silent echo "time = " . reltimestr(reltime(time))

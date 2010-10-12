@@ -159,6 +159,9 @@ silent call <SID>HelpVMaps()
 endif
 
 " Commands:
+" {{{
 command! -buffer HelpMathIMaps 	:echo <SID>HelpMathIMaps()
 command! -buffer HelpEnvIMaps 	:echo <SID>HelpEnvIMaps()
 command! -buffer HelpVMaps 	:echo <SID>HelpVMaps()
+"}}}
+" vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

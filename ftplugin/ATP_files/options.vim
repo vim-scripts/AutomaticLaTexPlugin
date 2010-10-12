@@ -10,6 +10,7 @@
 " Some options (functions) should be set once:
 let s:did_options 	= exists("s:did_options") ? 1 : 0
 
+let g:atp_reload	= 0
 "{{{ tab-local variables
 " We need to know bufnumber and bufname in a tabpage.
 " ToDo: we can set them with s: and call them using <SID> stack
@@ -39,81 +40,81 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
-if !exists("g:atp_debugSIT")
+if !exists("g:atp_debugSIT") || g:atp_reload
     " debug <SID>SearchInTree (search.vim)
     let g:atp_debugSIT		= 0
 endif
-if !exists("g:atp_debugRS")
+if !exists("g:atp_debugRS") || g:atp_reload
     " debug <SID>RecursiveSearch() (search.vim)
     let g:atp_debugRS		= 0
 endif
-if !exists("g:atp_debugV")
+if !exists("g:atp_debugV") || g:atp_reload
     " debug ViewOutput() (compiler.vim)
     let g:atp_debugV		= 0
 endif
-if !exists("g:atp_debugLPS")
+if !exists("g:atp_debugLPS") || g:atp_reload
     " Debug s:LoadProjectFile() (history.vim)
     " (currently it gives just the loading time info)
     let g:atp_debugLPS		= 0
 endif
-if !exists("g:atp_debugCompiler")
+if !exists("g:atp_debugCompiler") || g:atp_reload
     " Debug s:Compiler() function (compiler.vim)
     " when equal 2 output is more verbose.
     let g:atp_debugCompiler 	= 0
 endif
-if !exists("g:atp_debugST")
+if !exists("g:atp_debugST") || g:atp_reload
     " Debug <SID>CallBack() function (compiler.vim)
     let g:atp_debugCallBack	= 0
 endif
-if !exists("g:atp_debugST")
+if !exists("g:atp_debugST") || g:atp_reload
     " Debug SyncTex() (various.vim) function
     let g:atp_debugST 		= 0
 endif
-if !exists("g:atp_debugCLE")
+if !exists("g:atp_debugCLE") || g:atp_reload
     " Debug atplib#CloseLastEnvironment()
     let g:atp_debugCLE 		= 0
 endif
-if !exists("g:atp_debugMainScript")
+if !exists("g:atp_debugMainScript") || g:atp_reload
     " loading times of scripts sources by main script file: ftpluing/tex_atp.vim
     " NOTE: it is listed here for completeness, it can only be set in
     " ftplugin/tex_atp.vim script file.
     let g:atp_debugMainScript 	= 0
 endif
 
-if !exists("g:atp_debugProject")
+if !exists("g:atp_debugProject") || g:atp_reload
     " <SID>LoadScript(), <SID>LoadProjectScript(), <SID>WriteProject()
     " The value that is set in history file matters!
     let g:atp_debugProject 	= 0
 endif
-if !exists("g:atp_debugCB")
+if !exists("g:atp_debugCB") || g:atp_reload
     " atplib#CheckBracket()
     let g:atp_debugCB 		= 0
 endif
-if !exists("g:atp_debugCLB")
+if !exists("g:atp_debugCLB") || g:atp_reload
     " atplib#CloseLastBracket()
     let g:atp_debugCLB 		= 0
 endif
-if !exists("g:atp_debugTC")
+if !exists("g:atp_debugTC") || g:atp_reload
     " atplib#TabCompletion()
     let g:atp_debugTC 		= 0
 endif
-if !exists("g:atp_debugBS")
+if !exists("g:atp_debugBS") || g:atp_reload
     " atplib#searchbib()
     " atplib#showresults()
     " BibSearch() in ATP_files/search.vim
     " log file: /tmp/ATP_log 
     let g:atp_debugBS 		= 0
 endif
-if !exists("g:atp_debugToF")
+if !exists("g:atp_debugToF") || g:atp_reload
     " TreeOfFiles() ATP_files/common.vim
     let g:atp_debugToF 		= 0
 endif
-if !exists("g:atp_debgTOF")
+if !exists("g:atp_debgTOF") || g:atp_reload
     " TreeOfFiles() redirect only the output to
     " /tmp/ATP_log
     let g:atp_debugTOF 		= 0
 endif
-if !exists("g:atp_debugBabel")
+if !exists("g:atp_debugBabel") || g:atp_reload
     " echo msg if  babel language is not supported.
     let g:atp_debugBabel 	= 0
 endif
@@ -257,32 +258,32 @@ call s:SetOptions()
 
 " Global Variables: (almost all)
 " {{{ global variables 
-if !exists("g:atp_vmap_text_font_leader")
+if !exists("g:atp_vmap_text_font_leader") || g:atp_reload
     let g:atp_vmap_text_font_leader="<LocalLeader>"
 endif
-if !exists("g:atp_vmap_environment_leader")
+if !exists("g:atp_vmap_environment_leader") || g:atp_reload
     let g:atp_vmap_environment_leader=""
 endif
-if !exists("g:atp_vmap_bracket_leader")
+if !exists("g:atp_vmap_bracket_leader") || g:atp_reload
     let g:atp_vmap_bracket_leader="<LocalLeader>"
 endif
-if !exists("g:atp_vmap_big_bracket_leader")
+if !exists("g:atp_vmap_big_bracket_leader") || g:atp_reload
     let g:atp_vmap_big_bracket_leader='<LocalLeader>b'
 endif
-if !exists("g:atp_map_forward_motion_leader")
+if !exists("g:atp_map_forward_motion_leader") || g:atp_reload
     let g:atp_map_forward_motion_leader='}'
 endif
-if !exists("g:atp_map_backward_motion_leader")
+if !exists("g:atp_map_backward_motion_leader") || g:atp_reload
     let g:atp_map_backward_motion_leader='{'
 endif
-if !exists("g:atp_RelativePath")
+if !exists("g:atp_RelativePath") || g:atp_reload
     " This is here only for completness, the default value is set in project.vim
     let g:atp_RelativePath 	= 1
 endif
-if !exists("g:atp_SyncXpdfLog")
+if !exists("g:atp_SyncXpdfLog") || g:atp_reload
     let g:atp_SyncXpdfLog 	= 0
 endif
-if !exists("g:atp_SyncLog")
+if !exists("g:atp_SyncLog") || g:atp_reload
     let g:atp_SyncLog 		= 0
 endif
 
@@ -302,14 +303,14 @@ endif
 		return filter(['on', 'off'], "v:val =~ a:ArgLead") 
 	    endfunction
 
-if !exists("g:atp_Compare")
+if !exists("g:atp_Compare") || g:atp_reload
     " Use b:changedtick variable to run s:Compiler automatically.
     let g:atp_Compare = "changedtick"
 endif
-if !exists("g:atp_babel") 
+if !exists("g:atp_babel") || g:atp_reload 
     let g:atp_babel = 0
 endif
-" if !exists("g:atp_closebracket_checkenv")
+" if !exists("g:atp_closebracket_checkenv") || g:atp_reload
     " This is a list of environment names. They will be checked by
     " atplib#CloseLastBracket() function (if they are opened/closed:
     " ( \begin{array} ... <Tab>       will then close first \begin{array} and then ')'
@@ -322,26 +323,26 @@ endif
 " 	echomsg "Changing this variable is not supported"
     endtry
 " endif
-" if !exists("g:atp_ProjectScript")
+" if !exists("g:atp_ProjectScript") || g:atp_reload
 "     let g:atp_ProjectScript = 1
 " endif
-if !exists("g:atp_OpenTypeDict")
+if !exists("g:atp_OpenTypeDict") || g:atp_reload
     let g:atp_OpenTypeDict = { 
 		\ "pdf" 	: "xpdf",		"ps" 	: "evince",
 		\ "djvu" 	: "djview",		"txt" 	: "split" ,
 		\ "tex"		: "edit",		"dvi"	: "xdvi -s 5" }
     " for txt type files supported viewers: cat, gvim = vim = tabe, split, edit
 endif
-if !exists("g:atp_LibraryPath")
+if !exists("g:atp_LibraryPath") || g:atp_reload
     let g:atp_LibraryPath	= 0
 endif
-if !exists("g:atp_statusOutDir")
+if !exists("g:atp_statusOutDir") || g:atp_reload
     let g:atp_statusOutDir 	= 1
 endif
-if !exists("g:atp_developer")
+if !exists("g:atp_developer") || g:atp_reload
     let g:atp_developer		= 0
 endif
-if !exists("g:atp_mapNn")
+if !exists("g:atp_mapNn") || g:atp_reload
 	let g:atp_mapNn		= 0 " This value is used only on startup, then :LoadHistory sets the default value.
 endif  				    " user cannot change the value set by :LoadHistory on startup in atprc file.
 " 				    " Unless using: 
@@ -349,12 +350,12 @@ endif  				    " user cannot change the value set by :LoadHistory on startup in 
 " 				    " Recently I changed this: in project files it is
 " 				    better to start with atp_mapNn = 0 and let the
 " 				    user change it. 
-if !exists("g:atp_TeXdocDefault")
+if !exists("g:atp_TeXdocDefault") || g:atp_reload
     let g:atp_TeXdocDefault	= '-a lshort'
 endif
 "ToDo: to doc.
 "ToDo: luatex! (can produce both!)
-if !exists("g:atp_CompilersDict")
+if !exists("g:atp_CompilersDict") || g:atp_reload
     let g:atp_CompilersDict 	= { 
 		\ "pdflatex" 	: ".pdf", 	"pdftex" 	: ".pdf", 
 		\ "xetex" 	: ".pdf", 	"latex" 	: ".dvi", 
@@ -362,7 +363,7 @@ if !exists("g:atp_CompilersDict")
 		\ "etex"	: ".dvi", 	"luatex"	: ".pdf"}
 endif
 
-if !exists("g:CompilerMsg_Dict")
+if !exists("g:CompilerMsg_Dict") || g:atp_reload
     let g:CompilerMsg_Dict	= { 
 		\ 'tex'			: 'TeX', 
 		\ 'etex'		: 'eTeX', 
@@ -375,7 +376,7 @@ if !exists("g:CompilerMsg_Dict")
 		\ 'xetex'		: 'XeTeX'}
 endif
 
-if !exists("g:ViewerMsg_Dict")
+if !exists("g:ViewerMsg_Dict") || g:atp_reload
     let g:ViewerMsg_Dict	= {
 		\ 'xpdf'		: 'Xpdf',
 		\ 'xdvi'		: 'Xdvi',
@@ -387,39 +388,39 @@ if !exists("g:ViewerMsg_Dict")
 endif
 
 "ToDo: to doc.
-if !exists("g:atp_insert_updatetime")
+if !exists("g:atp_insert_updatetime") || g:atp_reload
     let g:atp_insert_updatetime = max([ 2000, &l:updatetime])
 endif
-if !exists("g:atp_DefaultDebugMode")
+if !exists("g:atp_DefaultDebugMode") || g:atp_reload
     " recognised values: silent, debug.
     let g:atp_DefaultDebugMode	= "silent"
 endif
-if !exists("g:atp_show_all_lines")
+if !exists("g:atp_show_all_lines") || g:atp_reload
     " boolean
     let g:atp_show_all_lines 	= 0
 endif
-if !exists("g:atp_ignore_unmatched")
+if !exists("g:atp_ignore_unmatched") || g:atp_reload
     " boolean
     let g:atp_ignore_unmatched 	= 1
 endif
-if !exists("g:atp_imap_first_leader")
+if !exists("g:atp_imap_first_leader") || g:atp_reload
     let g:atp_imap_first_leader	= "#"
 endif
-if !exists("g:atp_imap_second_leader")
+if !exists("g:atp_imap_second_leader") || g:atp_reload
     let g:atp_imap_second_leader= "##"
 endif
-if !exists("g:atp_imap_third_leader")
+if !exists("g:atp_imap_third_leader") || g:atp_reload
     let g:atp_imap_third_leader	= "]"
 endif
-if !exists("g:atp_imap_fourth_leader")
+if !exists("g:atp_imap_fourth_leader") || g:atp_reload
     let g:atp_imap_fourth_leader= "["
 endif
 " todo: to doc.
-if !exists("g:atp_completion_font_encodings")
+if !exists("g:atp_completion_font_encodings") || g:atp_reload
     let g:atp_completion_font_encodings	= ['T1', 'T2', 'T3', 'T5', 'OT1', 'OT2', 'OT4', 'UT1']
 endif
 " todo: to doc.
-if !exists("g:atp_font_encoding")
+if !exists("g:atp_font_encoding") || g:atp_reload
     let s:line=atplib#SearchPackage('fontenc')
     if s:line != 0
 	" the last enconding is the default one for fontenc, this we will
@@ -437,7 +438,7 @@ if !exists("g:atp_no_star_environments")
 		\ 'enumerate', 'itemize', 'tikzpicture', 'scope', 
 		\ 'picture', 'array', 'proof', 'tabular', 'table' ]
 endif
-if !exists("g:atp_sizes_of_brackets")
+if !exists("g:atp_sizes_of_brackets") || g:atp_reload
     let g:atp_sizes_of_brackets={'\left': '\right', 
 			    \ '\bigl' 	: '\bigr', 
 			    \ '\Bigl' 	: '\Bigr', 
@@ -452,120 +453,120 @@ if !exists("g:atp_sizes_of_brackets")
    " the last one is not a size of a bracket is to a hack to close \(:\), \[:\] and
    " \{:\}
 endif
-if !exists("g:atp_algorithmic_dict")
+if !exists("g:atp_algorithmic_dict") || g:atp_reload
     let g:atp_algorithmic_dict = { 'IF' : 'ENDIF', 'FOR' : 'ENDFOR', 'WHILE' : 'ENDWHILE' }
 endif
-if !exists("g:atp_bracket_dict")
+if !exists("g:atp_bracket_dict") || g:atp_reload
     let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']', '\lceil' : '\rceil', '\lfloor' : '\rfloor', '\langle' : '\rangle', '\lgroup' : '\rgroup' }
 endif
 " }}}2 			variables
-if !exists("g:atp_LatexBox")
+if !exists("g:atp_LatexBox") || g:atp_reload
     let g:atp_LatexBox		= 1
 endif
-if !exists("g:atp_check_if_LatexBox")
+if !exists("g:atp_check_if_LatexBox") || g:atp_reload
     let g:atp_check_if_LatexBox	= 1
 endif
-if !exists("g:atp_autex_check_if_closed")
+if !exists("g:atp_autex_check_if_closed") || g:atp_reload
     let g:atp_autex_check_if_closed = 1
 endif
-if !exists("g:rmcommand") && executable("perltrash")
+if ( !exists("g:rmcommand") || g:atp_reload ) && executable("perltrash")
     let g:rmcommand="perltrash"
-elseif !exists("g:rmcommand")
+elseif !exists("g:rmcommand") || g:atp_reload   
     let g:rmcommand		= "rm"
 endif
-if !exists("g:atp_env_maps_old")
+if !exists("g:atp_env_maps_old") || g:atp_reload
     let g:atp_env_maps_old	= 0
 endif
-if !exists("g:atp_amsmath")
+if !exists("g:atp_amsmath") || g:atp_reload
     let g:atp_amsmath=atplib#SearchPackage('ams')
 endif
-if !exists("g:atp_no_math_command_completion")
+if !exists("g:atp_no_math_command_completion") || g:atp_reload
     let g:atp_no_math_command_completion = 0
 endif
-if !exists("g:atp_tex_extensions")
+if !exists("g:atp_tex_extensions") || g:atp_reload
     let g:atp_tex_extensions	= ["tex.project.vim", "aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
 endif
-if !exists("g:atp_delete_output")
+if !exists("g:atp_delete_output") || g:atp_reload
     let g:atp_delete_output	= 0
 endif
-if !exists("g:keep")
+if !exists("g:keep") || g:atp_reload
     let g:keep=[ "log", "aux", "toc", "bbl", "ind", "pdfsync" ]
 endif
-if !exists("g:printingoptions")
+if !exists("g:printingoptions") || g:atp_reload
     let g:printingoptions	= ''
 endif
-if !exists("g:atp_ssh")
+if !exists("g:atp_ssh") || g:atp_reload
     let g:atp_ssh=substitute(system("whoami"),'\n','','') . "@localhost"
 endif
 " opens bibsearch results in vertically split window.
-if !exists("g:vertical")
+if !exists("g:vertical") || g:atp_reload
     let g:vertical		= 1
 endif
-if !exists("g:matchpair")
+if !exists("g:matchpair") || g:atp_reload
     let g:matchpair="(:),[:],{:}"
 endif
-if !exists("g:texmf")
+if !exists("g:texmf") || g:atp_reload
     let g:texmf			= $HOME . "/texmf"
 endif
-if !exists("g:atp_compare_embedded_comments") || g:atp_compare_embedded_comments != 1
+if !exists("g:atp_compare_embedded_comments") || g:atp_reload || g:atp_compare_embedded_comments != 1
     let g:atp_compare_embedded_comments  = 0
 endif
-if !exists("g:atp_compare_double_empty_lines") || g:atp_compare_double_empty_lines != 0
+if !exists("g:atp_compare_double_empty_lines") || g:atp_reload || g:atp_compare_double_empty_lines != 0
     let g:atp_compare_double_empty_lines = 1
 endif
 "TODO: put toc_window_with and labels_window_width into DOC file
-if !exists("t:toc_window_width")
+if !exists("t:toc_window_width") || g:atp_reload
     if exists("g:toc_window_width")
 	let t:toc_window_width	= g:toc_window_width
     else
 	let t:toc_window_width	= 30
     endif
 endif
-if !exists("t:atp_labels_window_width")
+if !exists("t:atp_labels_window_width") || g:atp_reload
     if exists("g:labels_window_width")
-	let t:atp_labels_window_width=g:labels_window_width
+	let t:atp_labels_window_width = g:labels_window_width
     else
 	let t:atp_labels_window_width = 30
     endif
 endif
-if !exists("g:atp_completion_limits")
+if !exists("g:atp_completion_limits") || g:atp_reload
     let g:atp_completion_limits	= [40,60,80,120]
 endif
-if !exists("g:atp_long_environments")
+if !exists("g:atp_long_environments") || g:atp_reload
     let g:atp_long_environments	= []
 endif
-if !exists("g:atp_no_complete")
+if !exists("g:atp_no_complete") || g:atp_reload
      let g:atp_no_complete	= ['document']
 endif
-" if !exists("g:atp_close_after_last_closed")
+" if !exists("g:atp_close_after_last_closed") || g:atp_reload
 "     let g:atp_close_after_last_closed=1
 " endif
-if !exists("g:atp_no_env_maps")
+if !exists("g:atp_no_env_maps") || g:atp_reload
     let g:atp_no_env_maps	= 0
 endif
-if !exists("g:atp_extra_env_maps")
+if !exists("g:atp_extra_env_maps") || g:atp_reload
     let g:atp_extra_env_maps	= 0
 endif
 " todo: to doc. Now they go first.
-" if !exists("g:atp_math_commands_first")
+" if !exists("g:atp_math_commands_first") || g:atp_reload
 "     let g:atp_math_commands_first=1
 " endif
-if !exists("g:atp_completion_truncate")
+if !exists("g:atp_completion_truncate") || g:atp_reload
     let g:atp_completion_truncate	= 4
 endif
 " ToDo: to doc.
 " add server call back (then automatically reads errorfiles)
-if !exists("g:atp_statusNotif")
+if !exists("g:atp_statusNotif") || g:atp_reload
     if has('clientserver') && !empty(v:servername) 
 	let g:atp_statusNotif	= 1
     else
 	let g:atp_statusNotif	= 0
     endif
 endif
-if !exists("g:atp_statusNotifHi")
+if !exists("g:atp_statusNotifHi") || g:atp_reload
     let g:atp_statusNotifHi	= 0
 endif
-if !exists("g:atp_callback")
+if !exists("g:atp_callback") || g:atp_reload
     if exists("g:atp_status_notification") && g:atp_status_notification == 1
 	let g:atp_callback	= 1
     elseif has('clientserver') && !empty(v:servername) 
@@ -576,14 +577,14 @@ if !exists("g:atp_callback")
 endif
 " ToDo: to doc.
 " I switched this off.
-" if !exists("g:atp_complete_math_env_first")
+" if !exists("g:atp_complete_math_env_first") || g:atp_reload
 "     let g:atp_complete_math_env_first=0
 " endif
 " }}}
 
 " Project Settings:
 " {{{1
-if !exists("g:atp_ProjectLocalVariables")
+if !exists("g:atp_ProjectLocalVariables") || g:atp_reload
     " This is a list of variable names which will be preserved in project files
     let g:atp_ProjectLocalVariables = [
 		\ "b:atp_MainFile", 	"g:atp_mapNn", 		"b:atp_autex", 
@@ -693,7 +694,7 @@ endif
 
 " Babel
 " {{{1 variables
-if !exists("g:atp_keymaps")
+if !exists("g:atp_keymaps") || g:atp_reload
 let g:atp_keymaps = { 
 		\ 'british'	: 'ignore',		'english' 	: 'ignore',
 		\ 'USenglish'	: 'ignore', 		'UKenglish'	: 'ignore',
@@ -1117,21 +1118,21 @@ lockvar 2 g:atp_completion_modes
 catch /E741:/
 endtry
 
-if !exists("g:atp_completion_modes_normal_mode")
+if !exists("g:atp_completion_modes_normal_mode") || g:atp_reload
     let g:atp_completion_modes_normal_mode=[ 
 		\ 'close environments' , 'brackets', 'algorithmic' ]
     lockvar g:atp_completion_modes_normal_mode
 endif
 
 " By defualt all completion modes are ative.
-if !exists("g:atp_completion_active_modes")
+if !exists("g:atp_completion_active_modes") || g:atp_reload
     let g:atp_completion_active_modes=deepcopy(g:atp_completion_modes)
 endif
-if !exists("g:atp_completion_active_modes_normal_mode")
+if !exists("g:atp_completion_active_modes_normal_mode") || g:atp_reload
     let g:atp_completion_active_modes_normal_mode=deepcopy(g:atp_completion_modes_normal_mode)
 endif
 
-if !exists("g:atp_sort_completion_list")
+if !exists("g:atp_sort_completion_list") || g:atp_reload
     let g:atp_sort_completion_list = 12
 endif
 
@@ -1190,13 +1191,13 @@ endif
 
 	" ToDo: Doc.
 	" Usage: \label{l:shorn_env_name . g:atp_separator
-	if !exists("g:atp_separator")
+	if !exists("g:atp_separator") || g:atp_reload
 	    let g:atp_separator=':'
 	endif
-	if !exists("g:atp_no_separator")
+	if !exists("g:atp_no_separator") || g:atp_reload
 	    let g:atp_no_separator = 0
 	endif
-	if !exists("g:atp_no_short_names")
+	if !exists("g:atp_no_short_names") || g:atp_reload
 	    let g:atp_env_short_names = 1
 	endif
 	" the separator will not be put after the environments in this list:  
@@ -1216,8 +1217,8 @@ endif
 	let g:atp_Commands=["\\begin{", "\\end{", 
 	\ "\\cite{", "\\nocite{", "\\ref{", "\\pageref{", "\\eqref{", "\\item",
 	\ "\\emph{", "\\documentclass{", "\\usepackage{",
-	\ "\\section{", "\\subsection{", "\\subsubsection{", "\\part{", 
-	\ "\\chapter{", "\\appendix", "\\subparagraph", "\\paragraph",
+	\ "\\section", "\\subsection", "\\subsubsection", "\\part", 
+	\ "\\chapter", "\\appendix", "\\subparagraph", "\\paragraph",
 	\ "\\textbf{", "\\textsf{", "\\textrm{", "\\textit{", "\\texttt{", 
 	\ "\\textsc{", "\\textsl{", "\\textup{", "\\textnormal", "\\textcolor{",
 	\ "\\bfseries", "\\mdseries", "\\bigskip", "\\bibitem",
@@ -1246,7 +1247,7 @@ endif
 	\ "\\roman{", "\\Roman{", "\\stepcounter{", "\\setcounter{", 
 	\ "\\usecounter{", "\\value{", 
 	\ "\\newlength{", "\\setlength{", "\\addtolength{", "\\settodepth{", 
-	\ "\\settoheight{", "\\settowidth{", 
+	\ "\\settoheight{", "\\settowidth{", "\\stretch{",
 	\ "\\width", "\\height", "\\depth", "\\totalheight",
 	\ "\\footnote{", "\\footnotemark", "\\footnotetetext", 
 	\ "\\bibliography{", "\\bibliographystyle{", 
@@ -1329,7 +1330,7 @@ endif
 	" wrong b:atp_MainFile, it is still equal to the bufername and not the
 	" real main file. Maybe it is better to use s:mainfile variable.
 
-	if !exists("g:atp_local_completion")
+	if !exists("g:atp_local_completion") || g:atp_reload
 	    let g:atp_local_completion = 1
 	endif
 
@@ -1486,7 +1487,7 @@ endif
 	let g:atp_tikz_library_through_keywords	= ['through']
 	let g:atp_tikz_library_trees_keywords	= ['grow', 'via', 'three', 'points', 'two', 'child', 'children', 'sibling', 'clockwise', 'counterclockwise', 'edge', 'parent', 'fork'] 
 
-if !exists("g:atp_MathOpened")
+if !exists("g:atp_MathOpened") || g:atp_reload
     let g:atp_MathOpened = 1
 endif
 " augroup ATP_MathOpened
@@ -1579,17 +1580,17 @@ endif
 " editing a math mode. Currently, supported are $:$, \(:\), \[:\] and $$:$$.
 " {{{  SetMathVimOptions
 
-if !exists("g:atp_SetMathVimOptions")
+if !exists("g:atp_SetMathVimOptions") || g:atp_reload
     let g:atp_SetMathVimOptions 	= 1
 endif
 
-if !exists("g:atp_MathVimOptions")
+if !exists("g:atp_MathVimOptions") || g:atp_reload
 "     { 'option_name' : [ val_in_math, normal_val], ... }
     let g:atp_MathVimOptions 		=  { 'textwidth' 	: [ 0, 	&textwidth],
 						\ }
 endif
 
-if !exists("g:atp_MathZones")
+if !exists("g:atp_MathZones") || g:atp_reload
 let g:atp_MathZones	= &l:filetype == "tex" ? [ 
 	    		\ 'texMathZoneV', 	'texMathZoneW', 
 	    		\ 'texMathZoneX', 	'texMathZoneY',

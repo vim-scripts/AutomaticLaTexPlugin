@@ -9,7 +9,7 @@
 let s:sourced	 		= exists("s:sourced") ? 1 : 0
 
 " Functions: (source once)
-if !s:sourced  " {{{
+if !s:sourced || g:atp_reload_functions  "{{{
 " Internal Variables
 " {{{
 " This limits how many consecutive runs there can be maximally.
@@ -101,12 +101,10 @@ endfunction
 
 " To check if xpdf is running we use 'ps' unix program.
 "{{{ s:xpdfpid
-if !exists("*s:xpdfpid")
 function! <SID>xpdfpid() 
     let s:checkxpdf="ps -ef | grep -v grep | grep xpdf | grep '-remote '" . shellescape(b:atp_XpdfServer) . " | awk '{print $2}'"
     return substitute(system(s:checkxpdf),'\D','','')
 endfunction
-endif
 "}}}
 
 " This function compares two files: file written on the disk a:file and the current
@@ -1408,6 +1406,7 @@ endif
 endif "}}}
 
 " Commands: 
+" {{{
 command! -buffer -nargs=? 	ViewOutput		:call <SID>ViewOutput(<f-args>)
 command! -buffer 		PID			:call <SID>GetPID()
 command! -buffer -bang 		MakeLatex		:call <SID>MakeLatex(( g:atp_RelativePath ? globpath(b:atp_ProjectDir, fnamemodify(b:atp_MainFile, ":t")) : b:atp_MainFile ), 0,0, [],1,1,<q-bang>,1)
@@ -1417,4 +1416,5 @@ command! -buffer -bang -nargs=? Bibtex			:call <SID>Bibtex(<q-bang>, <f-args>)
 command! -buffer -nargs=? 	SetErrorFormat 		:call <SID>SetErrorFormat(<f-args>)
 command! -buffer -nargs=? 	SetErrorFormat 		:call <SID>SetErrorFormat(<f-args>)
 command! -buffer -nargs=? -complete=custom,ListErrorsFlags 	ShowErrors 	:call <SID>ShowErrors(<f-args>)
+" }}}
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

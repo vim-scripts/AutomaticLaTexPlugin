@@ -6,8 +6,8 @@
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
-" Functions: (source once)
-if !s:sourced "{{{
+" FUNCTIONS: (source once)
+if !s:sourced || g:atp_reload_functions "{{{
 " This is the wrap selection function.
 " {{{ WrapSelection
 function! s:WrapSelection(wrapper,...)
@@ -1190,7 +1190,7 @@ fun! s:Lpstat()
     endif
 endfunction
 
-" it is used for completetion of the command SshPrint
+" This function is used for completetion of the command SshPrint
 function! s:ListPrinters(A,L,P)
     if exists("g:atp_ssh") && g:atp_ssh !~ '@localhost' && g:atp_ssh != ""
 	let l:com="ssh -q " . g:atp_ssh . " lpstat -a | awk '{print $1}'"
@@ -1281,88 +1281,126 @@ endif
 if g:debug_atp_plugin==1 && !exists("*Reload")
 " Reload() - reload all the tex_apt functions
 " Reload(func1,func2,...) reload list of functions func1 and func2
-fun! Reload(...)
-    let l:pos_saved=getpos(".")
-    let l:bufname=fnamemodify(expand("%"),":p")
-
-    if a:0 == 0
-	let l:runtime_path=split(&runtimepath,',')
-	echo "Searching for atp plugin files"
-	let l:file_list=['ftplugin/tex_atp.vim', 'ftplugin/fd_atp.vim', 
-		    \ 'ftplugin/bibsearch_atp.vim', 'ftplugin/toc_atp.vim', 
-		    \ 'autoload/atplib.vim', 'ftplugin/atp_LatexBox.vim',
-		    \ 'indent/tex_atp.vim' ]
-	let l:file_path=[]
-	for l:file in l:file_list
-		call add(l:file_path,globpath(&rtp,l:file))
-	endfor
-" 	if exists("b:atp_debug")
-" 	    if b:atp_debug == "v" || b:atp_debug == "verbose"
-" 		echomsg string(l:file_path)
-" 	    endif
+" function! Reload(...)
+"     let l:pos_saved=getpos(".")
+"     let l:bufname=fnamemodify(expand("%"),":p")
+" 
+"     if a:0 == 0
+" 	let l:runtime_path=split(&runtimepath,',')
+" 	echo "Searching for atp plugin files"
+" 	let l:file_list=['ftplugin/tex_atp.vim', 'ftplugin/fd_atp.vim', 
+" 		    \ 'ftplugin/bibsearch_atp.vim', 'ftplugin/toc_atp.vim', 
+" 		    \ 'autoload/atplib.vim', 'ftplugin/atp_LatexBox.vim',
+" 		    \ 'indent/tex_atp.vim' ]
+" 	let l:file_path=[]
+" 	for l:file in l:file_list
+" 		call add(l:file_path,globpath(&rtp,l:file))
+" 	endfor
+" " 	if exists("b:atp_debug")
+" " 	    if b:atp_debug == "v" || b:atp_debug == "verbose"
+" " 		echomsg string(l:file_path)
+" " 	    endif
+" " 	endif
+" 	for l:file in l:file_path
+" 	    echomsg "deleting FUNCTIONS and VARIABLES from " . l:file
+" 	    let l:atp=readfile(l:file)
+" 	    for l:line in l:atp
+" 		let l:function_name=matchstr(l:line,'^\s*fun\%(ction\)\?!\?\s\+\zs\<[^(]*\>\ze(')
+" 		if l:function_name != "" && l:function_name != "Reload"
+" 		    if exists("*" . l:function_name)
+" 			if exists("b:atp_debug")
+" 			    if b:atp_debug == "v" || b:atp_debug == "verbose"
+" 				echomsg "deleting function " . l:function_name
+" 			    endif
+" 			endif
+" 			execute "delfunction " . l:function_name
+" 		    endif
+" 		endif
+" 		let l:variable_name=matchstr(l:line,'^\s*let\s\+\zsg:[a-zA-Z_^{}]*\ze\>')
+" 		if exists(l:variable_name)
+" 		    execute "unlet ".l:variable_name
+" 		    if exists("b:atp_debug")
+" 			if b:atp_debug == "v" || b:atp_debug == "verbose"
+" 			    echomsg "unlet ".l:variable_name
+" 			endif
+" 		    endif
+" 		endif
+" 	    endfor
+" 	endfor
+"     else
+" 	if a:1 != "maps" && a:1 != "reload"
+" 	    let l:f_list=split(a:1,',')
+" 	    let g:f_list=l:f_list
+" 	    for l:function in l:f_list
+" 		execute "delfunction " . l:function
+" 		if exists("b:atp_debug")
+" 		    if b:atp_debug == "v" || b:atp_debug == "verbose"
+" 			echomsg "delfunction " . l:function
+" 		    endif
+" 		endif
+" 	    endfor
 " 	endif
-	for l:file in l:file_path
-	    echomsg "deleting FUNCTIONS and VARIABLES from " . l:file
-	    let l:atp=readfile(l:file)
-	    for l:line in l:atp
-		let l:function_name=matchstr(l:line,'^\s*fun\%(ction\)\?!\?\s\+\zs\<[^(]*\>\ze(')
-		if l:function_name != "" && l:function_name != "Reload"
-		    if exists("*" . l:function_name)
-			if exists("b:atp_debug")
-			    if b:atp_debug == "v" || b:atp_debug == "verbose"
-				echomsg "deleting function " . l:function_name
-			    endif
-			endif
-			execute "delfunction " . l:function_name
-		    endif
+"     endif
+"     augroup! ATP_auTeX
+"     " Do not write project script file while saving the file.
+"     let atp_ProjectScript	= ( exists("g:atp_ProjectScript") ? g:atp_ProjectScript : -1 )
+"     let g:atp_ProjectScript	= 0
+"     w
+"     if atp_ProjectScript == -1
+" 	unlet g:atp_ProjectScript
+"     else
+" 	let g:atp_ProjectScript	= atp_ProjectScript
+"     endif
+" "   THIS IS THE SLOW WAY:
+"     bd!
+"     execute "edit " . fnameescape(l:bufname)
+"     keepjumps call setpos(".",l:pos_saved)
+" "   This could be faster: but aparently doesn't work.
+" "     execute "source " . l:file_path[0]
+" endfunction
+
+" Source options.vim
+try
+function! <SID>ReloadATP(bang)
+    " First source the option file
+    let common_file	= globpath(&rtp, 'ftplugin/ATP_files/common.vim')
+    let options_file	= globpath(&rtp, 'ftplugin/ATP_files/options.vim')
+    let g:atp_reload_functions = ( a:bang == "!" ? 1 : 0 ) 
+    let g:atp_reload	= 1
+    if a:bang == ""
+	execute "source " . common_file
+	execute "source " . options_file 
+	let g:atp_reload	= 0
+	" Then source atprc file
+	if filereadable(globpath($HOME, '/.atprc.vim', 1)) && has("unix")
+
+		" Note: in $HOME/.atprc file the user can set all the local buffer
+		" variables without using autocommands
+		let path = fnameescape(globpath($HOME, '/.atprc.vim', 1))
+		execute 'source ' . path
+
+	else
+		let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), '\n'), 0, "")
+		if path != ""
+			execute 'source ' . path
 		endif
-		let l:variable_name=matchstr(l:line,'^\s*let\s\+\zsg:[a-zA-Z_^{}]*\ze\>')
-		if exists(l:variable_name)
-		    execute "unlet ".l:variable_name
-		    if exists("b:atp_debug")
-			if b:atp_debug == "v" || b:atp_debug == "verbose"
-			    echomsg "unlet ".l:variable_name
-			endif
-		    endif
-		endif
-	    endfor
-	endfor
-    else
-	if a:1 != "maps" && a:1 != "reload"
-	    let l:f_list=split(a:1,',')
-	    let g:f_list=l:f_list
-	    for l:function in l:f_list
-		execute "delfunction " . l:function
-		if exists("b:atp_debug")
-		    if b:atp_debug == "v" || b:atp_debug == "verbose"
-			echomsg "delfunction " . l:function
-		    endif
-		endif
-	    endfor
 	endif
-    endif
-    augroup! ATP_auTeX
-    " Do not write project script file while saving the file.
-    let atp_ProjectScript	= ( exists("g:atp_ProjectScript") ? g:atp_ProjectScript : -1 )
-    let g:atp_ProjectScript	= 0
-    w
-    if atp_ProjectScript == -1
-	unlet g:atp_ProjectScript
     else
-	let g:atp_ProjectScript	= atp_ProjectScript
+	let tex_atp_file = globpath(&rtp, 'ftplugin/tex_atp.vim')
+	execute "source " . tex_atp_file
+	" This reloads all functions except autoload/atplib.vim
+	let g:atp_reload		= 0
+	let g:atp_reload_functions 	= 0
     endif
-"   THIS IS THE SLOW WAY:
-    bd!
-    execute "edit " . fnameescape(l:bufname)
-    keepjumps call setpos(".",l:pos_saved)
-"   This could be faster: but aparently doesn't work.
-"     execute "source " . l:file_path[0]
 endfunction
+catch /E127:/
+    " Cannot redefine function, function is in use.
+endtry
 endif
-" command! -buffer -nargs=* -complete=function Reload	:call Reload(<f-args>)
 " }}}
 endif "}}}
 
+" COMMANDS AND MAPS:
 " Maps: "{{{1
 vmap <buffer> 	<Plug>WrapSelection				:<C-U>call <SID>WrapSelection('')<CR>i
 vmap <buffer> 	<Plug>InteligentWrapSelection			:<C-U>call <SID>InteligentWrapSelection('')<CR>i
@@ -1396,4 +1434,5 @@ command! -buffer 	ListPrinters				:echo <SID>ListPrinters("", "", "")
 command! -buffer 	ShowPackages				:let b:atp_PackageList = atplib#GrepPackageList() | echo join(b:atp_PackageList, "\n")
 command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
 command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
+command! -buffer -bang ReloadATP					:call <SID>ReloadATP(<q-bang>)
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 7 October 2010
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 12 October 2010
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -83,7 +83,21 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 ================================================================================
 NEWS							*atp-news*
 >
-  Changes in version 7.6.3
+  Changes in version 7.7.2
+<
+  - Alternate buffer is kept by :Labels, :TOC, and :S commands.
+  - :S works slightly faster. 
+  - if subfiles.sty is loaded in main file, g:atp_inputfile_pattern is set
+    accordingly. There is no need to reload ATP if you add this package. The
+    TreeOfFiles function will automatically change g:atp_inputfile_pattern.
+  - :ReloadATP[!] with out bang it just reload all variables (atprc.vim,
+    common.vim and options.vim - but not your $VIMRC file). With bang it
+    reloads also the functions (this is done mainly for development).
+  - :DefiSearch[!] [pattern] - the command repsects the options: 'ignorecase'
+    and 'smartcase'. You can override them with '\C' (match case what follows)
+    and '\c' (ignore case in what follows).
+>
+  Changes in version 7.7
 <
   - ATP is published on the rights of GLP v3 or higher.
 
@@ -332,14 +346,16 @@ on the disk and the buffer differ. There are two comparing mechanism, the
 default one is using |b:changedtick-variable| , the seconds compares the buffer
 with the on-disk version:
 							*g:atp_Compare*
+							*g:atp_compare_double_empty_lines*
+							*g:atp_compare_embedded_comments*
 	The default value is "changedtick". Then the |b:changedtick-variable|
 	is used to find if there buffer differs and to run latex. With any other
 	value a compare function will be used (which compares the buffer and
 	the written file on the disk) - this method is much slower but has
-	additional features: by defualt differences in comments are skipped
+	additional features: by default differences in comments are skipped
 	(if you set g:atp_compare_embedded_comments = 1 (the default is 0)
-	then also the comments which do not start right at the begging of line
-	will be skipped). The second feature is to not see differences in
+	then also the comments which do not start right at the beginning of
+	line will be skipped). The second feature is to not see differences in
 	amount of blank lines: two or more blank lines is the same as one
 	blank line, for this set g:atp_compare_double_empty_lines to 1, which
 	is the default.

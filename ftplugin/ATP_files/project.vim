@@ -74,7 +74,7 @@ let g:atp_cached_common_variables = ['g:atp_latexpackages', 'g:atp_latexclasses'
 " }}}
 
 " Functions: (soure once)
-if !s:sourced "{{{
+if !s:sourced || g:atp_reload_functions "{{{
 " Load Script:
 "{{{ s:LoadScript(), :LoadScript, autocommads
 " s:LoadScript({bang}, {project_script}, {type}, {load_variables}, [silent], [ch_load])
@@ -717,6 +717,10 @@ endfunction
 " }}}
 endif "}}}
 
+" The Script:
+" (includes commands, and maps - all the things 
+" 		that must be sources for each file)
+" {{{
 call <SID>LoadProjectScript("", "local")
 " Project script should by loaded now, and not by autocommands which are executed after
 " sourcing scripts. In this way variables set in project script will be used
@@ -731,3 +735,4 @@ command! -buffer -nargs=* -complete=customlist,HistComp 	ProjectScript 		:call <
 
 " delete:
 command! -buffer -bang -complete=customlist,s:DelPS -nargs=? 	DeleteProjectScript 	:call s:DeleteProjectScript(<q-bang>, <f-args>)
+" }}}

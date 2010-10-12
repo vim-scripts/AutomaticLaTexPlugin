@@ -7,7 +7,7 @@
 let s:sourced = ( !exists("s:sourced") ? 0 : 1 )
 
 " Functions: (source once)
-if !s:sourced "{{{
+if !s:sourced || g:atp_reload_functions "{{{
 " All table  of contents stuff: variables, functions and commands. 
 " {{{ Table Of Contents
 " {{{2 Variabels
@@ -238,19 +238,17 @@ function! s:buflist()
 endfunction
 call s:buflist()
 " {{{2 RemoveFromBufList
-if !exists("*RemoveFromBufList")
-    function RemoveFromBufList()
-	let i=1
-	for f in t:buflist
-	    echo "(" . i . ") " . f
-	    let i+=1
-	endfor
-	let which=input("Which file to remove (press <Enter> for none)")
-	if which != "" && which =~ '\d\+'
-	    call remove(t:buflist,f-1)
-	endif
-    endfunction
-endif
+function! RemoveFromBufList()
+    let i=1
+    for f in t:buflist
+	echo "(" . i . ") " . f
+	let i+=1
+    endfor
+    let which=input("Which file to remove (press <Enter> for none)")
+    if which != "" && which =~ '\d\+'
+	call remove(t:buflist,f-1)
+    endif
+endfunction
 " {{{2 s:showtoc
 function! s:showtoc(toc)
 
@@ -276,8 +274,8 @@ function! s:showtoc(toc)
 	    echoerr "t:toc_window_width not set"
 	    return
 	endif
-	let openbuffer=t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
-	keepalt silent exe openbuffer
+	let openbuffer="keepalt " . t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
+	keepalt silent exe  openbuffer
 	" We are setting the address from which we have come.
 	silent call atplib#setwindow()
     endif
@@ -973,6 +971,14 @@ function! GotoFile(bang,...)
     let g:method = method
     let g:file_l = file_l
 
+"     " Set location list
+"     let loclist	= []
+"     let i	= 1
+"     for file in file_l
+" 	call add(loclist, {"bufnr" : bufnr(file), "filename" : file, "lnum" : 1, "pattern" : "", "col" : 1, "vcol" : 1, "nr" : i, "text" : file, "type" : " "})
+" 	let i += 1
+"     endfor
+"     call setloclist(bufnr("%"), loclist)
     if len(file_l) > 1 
 	if method == "all"
 	    let msg = "Which file to edit?"
@@ -1294,12 +1300,13 @@ function! TexSyntaxMotion(forward, how, ...)
 endfunction "}}}
 endif "}}}
 
+" Commands And Maps:
+" {{{
 imap <Plug>TexSyntaxMotionForward	<Esc>:call TexSyntaxMotion(1,1,1)<CR>a
 imap <Plug>TexSyntaxMotionBackward	<Esc>:call TexSyntaxMotion(0,1,1)<CR>a
 nmap <Plug>TexSyntaxMotionForward	:call TexSyntaxMotion(1,1)<CR>
 nmap <Plug>TexSyntaxMotionBackward	:call TexSyntaxMotion(0,1)<CR>
 
-" Commands And Maps:
 command! -buffer -nargs=1 -complete=buffer MakeToc	:echo s:maketoc(fnamemodify(<f-args>, ":p"))[fnamemodify(<f-args>, ":p")] 
 command! -buffer -bang -nargs=? TOC	:call <SID>TOC(<q-bang>)
 command! -buffer CTOC		:call CTOC()
@@ -1364,4 +1371,5 @@ command! -buffer NInput				:call <SID>Input("w") 	| let v:searchforward = 1
 command! -buffer PInput 			:call <SID>Input("bw")	| let v:searchforward = 0
 command! -buffer -bang GotoFile		:call GotoFile(<q-bang>, 0)
 command! -buffer -bang EditInputFile	:call GotoFile(<q-bang>, 0)
+" }}}
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

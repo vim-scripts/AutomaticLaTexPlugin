@@ -43,7 +43,7 @@ function! s:SearchAndSkipComments(pat, ...)
 
 	if !ret
 		" if no match found, restore position
-		keepjumps call setpos('.', saved_pos)
+		call setpos('.', saved_pos)
 	endif
 
 	return ret
@@ -87,7 +87,7 @@ function! s:JumpToMatch(mode, ...)
 				\	'\m\C\%(' . join(open_pats + close_pats + [dollar_pat], '\|') . '\)',
 				\	sflags, line('.'))
 		" abort if no match or if match is inside a comment
-		keepjumps call setpos('.', saved_pos)
+		call setpos('.', saved_pos)
 		return
 	endif
 
@@ -118,12 +118,12 @@ function! s:JumpToMatch(mode, ...)
 
 			if rest_of_line =~ '^\C\%(' . open_pat . '\)'
 			" if on opening pattern, go to closing pattern
-				call searchpair('\C' . open_pat, '', '\C' . close_pat, 'W', 'LatexBox_InComment()')
-			return
+			call searchpair('\C' . open_pat, '', '\C' . close_pat, 'W', 'LatexBox_InComment()')
+			break
 			elseif rest_of_line =~ '^\C\%(' . close_pat . '\)'
 			" if on closing pattern, go to opening pattern
-				call searchpair('\C' . open_pat, '', '\C' . close_pat, 'bW', 'LatexBox_InComment()')
-			return
+			call searchpair('\C' . open_pat, '', '\C' . close_pat, 'bW', 'LatexBox_InComment()')
+			break
 		endif
 
 	endfor

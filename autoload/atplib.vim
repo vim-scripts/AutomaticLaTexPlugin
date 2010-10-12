@@ -434,8 +434,8 @@ function! atplib#showlabels(labels)
 	endif
 
 	" tabstop option is set to be the longest counter number + 1
-	let l:openbuffer= t:atp_labels_window_width . "vsplit +setl\\ tabstop=" . tabstop . "\\ nowrap\\ buftype=nofile\\ filetype=toc_atp\\ syntax=labels_atp __Labels__"
-	keepalt silent exe l:openbuffer
+	let l:openbuffer= "keepalt " . t:atp_labels_window_width . "vsplit +setl\\ tabstop=" . tabstop . "\\ nowrap\\ buftype=nofile\\ filetype=toc_atp\\ syntax=labels_atp __Labels__"
+	silent exe l:openbuffer
 	silent call atplib#setwindow()
 	let t:atp_labelsbufnr=bufnr("")
     endif

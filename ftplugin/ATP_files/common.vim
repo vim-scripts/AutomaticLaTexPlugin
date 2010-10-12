@@ -4,11 +4,18 @@
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 
+" This file contains set of functions which are needed to set to set the atp
+" options and some common tools.
+
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
-" {{{1 Variables
-if !exists("g:askfortheoutdir")
-    let g:askfortheoutdir=0
+if !exists("g:atp_reload")
+    let g:atp_reload 	= 0
+endif
+
+" {{{ Variables
+if !exists("g:askfortheoutdir") || g:atp_reload
+    let g:askfortheoutdir = 0
 endif
 if !exists("g:atp_raw_texinputs")
     let g:atp_raw_texinputs = substitute(substitute(substitute(system("kpsewhich -show-path tex"),'!!','','g'),'\/\/\+','\/','g'), ':\|\n', ',', 'g')
@@ -16,7 +23,7 @@ if !exists("g:atp_raw_texinputs")
 endif
 
 " atp tex and bib inputs directories (kpsewhich)
-if !exists("g:atp_texinputs")
+if !exists("g:atp_texinputs") || g:atp_reload
     let path_list	= split(g:atp_raw_texinputs, ',')
     let idx		= index(path_list, '.')
     if idx != -1
@@ -30,14 +37,14 @@ if !exists("g:atp_texinputs")
 endif
 " a list where tex looks for bib files
 " It must be defined before SetProjectName function.
-if !exists("g:atp_raw_bibinputs")
+if !exists("g:atp_raw_bibinputs") || g:atp_reload
     let g:atp_raw_bibinputs=substitute(substitute(substitute(
 		\ system("kpsewhich -show-path bib"),
 		\ '\/\/\+',	'\/',	'g'),	
 		\ '!\|\n',	'',	'g'),
 		\ ':',		',' ,	'g')
 endif
-if !exists("g:atp_bibinputs")
+if !exists("g:atp_bibinputs") || g:atp_reload
     let path_list	= split(g:atp_raw_bibinputs, ',')
     let idx		= index(path_list, '.')
     if idx != -1
@@ -49,13 +56,10 @@ if !exists("g:atp_bibinputs")
 
     let g:atp_bibinputs	= dot . join(path_list, ',')
 endif
-" }}}1
-
-" This file contains set of functions which are needed to set to set the atp
-" options and some common tools.
+" }}}
 
 " Functions: (source once)
-if !s:sourced "{{{
+if !s:sourced || g:atp_reload_functions "{{{
 " Set the project name
 "{{{ SetProjectName (function and autocommands)
 " This function sets the main project name (b:atp_MainFile)
@@ -76,7 +80,7 @@ if !s:sourced "{{{
 "
 " {{{ SetProjectName ( function )
 " store a list of all input files associated to some file
-fun! SetProjectName(...)
+function! SetProjectName(...)
     let bang 	= ( a:0 >= 1 ? a:1 : "" )	" do we override b:atp_project	
     let did 	= ( a:0 >= 2 ? a:2 : 1	) 	" do we check if the project name was set
     						" but also overrides the current b:atp_MainFile when 0 	
@@ -119,7 +123,7 @@ fun! SetProjectName(...)
     endif
 
     return pn_return
-endfun
+endfunction
 " }}}
 " if !s:sourced
 "     augroup ATP_SetProjectName
@@ -252,16 +256,9 @@ command! -buffer SetErrorFile		:call s:SetErrorFile()
 " {flat} = -1 	include input and premabule files into the tree
 " 		
 
-" Should match till the begining of the file name and not use \zs:\ze patterns.
-" It skips input files with extension other than '.tex' or '' (for example '.fd').
-if &filetype == 'plaintex'
-    let g:atp_inputfile_pattern = '^[^%]*\\input\s*'
-else
-    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|bibliography\s*{\)'
-endif
-
 " TreeOfFiles({main_file}, [{pattern}, {flat}, {run_nr}])
 " debug file - /tmp/tof_log
+" a:main_file	is the main file to start with
 function! TreeOfFiles(main_file,...)
 " let time	= reltime()
 
@@ -273,7 +270,6 @@ function! TreeOfFiles(main_file,...)
 
     let tree		= {}
 
-    let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
     " flat = do a flat search, i.e. fo not search in input files at all.
     let flat		= a:0 >= 2	? a:2 : 0	
 
@@ -284,6 +280,11 @@ function! TreeOfFiles(main_file,...)
 	return [ {}, [], {}, {} ]
     endif
     let run_nr		= a:0 >= 3	? a:3 : 1 
+
+    let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
+    if run_nr == 1 && '\subfile{' !~ g:atp_inputfile_pattern && atplib#SearchPackage('subfiles')
+	let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|bibliography\s*{\|subfile\s*{\)'
+    endif
 
 	if g:atp_debugToF
 	    if run_nr == 1
@@ -698,7 +699,27 @@ endfunction
 "}}}
 endif "}}}
 
+" The Script:
+" (includes commands, and maps - all the things 
+" 		that must be sources for each file
+" 		+ sets g:atp_inputfile_pattern variable)
+" {{{
 call SetProjectName()
+
+" The pattern g:atp_inputfile_pattern should match till the begining of the file name
+" and shouldn't use \zs:\ze. 
+if !exists("g:atp_inputfile_pattern") || g:atp_reload
+    if &filetype == 'plaintex'
+	let g:atp_inputfile_pattern = '^[^%]*\\input\s*'
+    else
+	if atplib#SearchPackage("subfiles")
+	    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|bibliography\s*{\|subfile\s*{\)'
+	else
+	    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|bibliography\s*{\)'
+	endif
+    endif
+endif
+
 call s:SetOutDir(0, 1)
 if expand("%:e") == "tex"
     " cls and sty files also have filetype 'tex', this prevents from setting the error
@@ -717,5 +738,6 @@ augroup ATP_SetStatusLineNotificationColor
     au BufEnter 	*tex 	:call s:SetNotificationColor()
     au ColorScheme 	* 	:call s:SetNotificationColor()
 augroup END
+"}}}
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

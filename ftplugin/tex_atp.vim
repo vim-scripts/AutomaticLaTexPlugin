@@ -4,8 +4,8 @@
 " URL:			https://launchpad.net/automatictexplugin	
 " BUG Trucer:	https://bugs.launchpad.net/automatictexplugin
 " Language:		tex
-" Last Changed: 7 October 2010
-" GetLatestVimScripts: 2945 50 :AutoInstall: tex_atp.vim
+" Last Changed: 12 October 2010
+" GetLatestVimScripts: 2945 51 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.
@@ -26,6 +26,10 @@
 "     This licence applies to all files shipped with Automatic Tex Plugin.
 
 let b:did_ftplugin	= 1
+
+if !exists("g:atp_reload_functions")
+	let g:atp_reload_functions = 0
+endif
 
 let g:atp_debugMainScript = 0
 			" This gives loading time information for debuging purposes.

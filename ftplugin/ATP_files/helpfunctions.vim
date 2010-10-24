@@ -125,6 +125,8 @@ function! <SID>HelpVMaps()
 	    \."\n ".l:atp_vmap_environment_leader."C		   wrap in center environment"
 	    \."\n ".l:atp_vmap_environment_leader."L		   wrap in flushleft environment"
 	    \."\n ".l:atp_vmap_environment_leader."R		   wrap in flushright environment"
+	    \."\n ".l:atp_vmap_environment_leader."E		   wrap in equation environment"
+	    \."\n ".l:atp_vmap_environment_leader."A		   wrap in align environment"
 	    \."\n "
 	    \."\n <maplocalleader> has value g:atp_vmap_bracket_leader"
 	    \."\n ".l:atp_vmap_bracket_leader."(                (:)            ".l:atp_vmap_bracket_leader.")           (:)" 

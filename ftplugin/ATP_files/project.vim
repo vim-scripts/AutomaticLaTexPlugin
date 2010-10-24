@@ -73,6 +73,12 @@ let g:atp_cached_local_variables = [
 let g:atp_cached_common_variables = ['g:atp_latexpackages', 'g:atp_latexclasses', 'g:atp_Library']
 " }}}
 
+" Autocommands:
+augroup ATP_ProjectFile
+    au!
+    au BufWritePre *.tex.project.vim setlocal noundofile
+augroup END
+
 " Functions: (soure once)
 if !s:sourced || g:atp_reload_functions "{{{
 " Load Script:
@@ -161,7 +167,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
     if a:type == "local"
 	let save_loclist = getloclist(0)
 	try
-	    silent exe 'lvimgrep /\Clet\s\+b:atp_ProjectScript\>\s*=/j ' . a:project_script
+	    silent exe 'lvimgrep /\Clet\s\+b:atp_ProjectScript\>\s*=/j ' . fnameescape(a:project_script)
 	catch /E480:/
 	endtry
 	let loclist = getloclist(0)
@@ -179,7 +185,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
     " Load first b:atp_ProjectScript variable
     try
 	if filereadable(a:project_script)
-	    execute "silent! source " . a:project_script
+	    execute "silent! source " . fnameescape(a:project_script)
 	endif
 
 	if g:atp_debugProject
@@ -211,18 +217,19 @@ endfunction "}}}
 " {{{ FindProjectScripts()
 function! FindProjectScripts()
     let dir = fnamemodify(resolve(expand("%:p")), ":p:h")
+    let g:dir = dir
     let cwd	= getcwd()
-    exe "lcd " . dir 
+    exe "lcd " . fnameescape(dir)
     while glob('*.project.vim', 1) == '' 
 	let dir_l 	= dir
 	let dir 	= fnamemodify(dir, ":h")
 	if dir == $HOME || dir == dir_l
 	    break
 	endif
-	exe "lcd " . dir
+	exe "lcd " . fnameescape(dir)
     endwhile
     let project_files = map(split(glob('*project.vim', 1), "\n"), "fnamemodify(v:val, \":p\")")
-    exe "lcd " . cwd
+    exe "lcd " . fnameescape(cwd)
     return project_files
 endfunction "}}}
 " This function looks to which project current buffer belongs.
@@ -238,9 +245,9 @@ function! GetProjectScript(project_files)
 	let sfile_name 	= expand("%:t")
 	try
 	    if !g:atp_RelativePath
-		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)\%(' . file_name . '\|' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)' . file_name . '\>\)/j ' . pfile
+		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)\%(' . file_name . '\|' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)' . file_name . '\>\)/j ' . fnameescape(pfile)
 	    else
-		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)[^''"]*\<\%(' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)[^''"]*\<' . sfile_name . '\>\)/j ' . pfile
+		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)[^''"]*\<\%(' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)[^''"]*\<' . sfile_name . '\>\)/j ' . fnameescape(pfile)
 	    endif
 	catch /E480:/ 
 	    if g:atp_debugProject
@@ -330,7 +337,7 @@ function! <SID>LoadProjectScript(bang,...)
 	endif
     else
 	try
-	execute "silent! source " . b:atp_ProjectScriptFile
+	execute "silent! source " . fnameescape(b:atp_ProjectScriptFile)
 	let b:atp_ProjectDir	= fnamemodify(b:atp_ProjectScriptFile, ":h")
 	catch /E484/
 	    " this is used by the s:Babel() function.
@@ -430,7 +437,6 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     " (3) resore variables and write the project script.
     if a:type == "global"
 	let existing_variables 	= {}
-	let g:existing_gvariables	= existing_variables
 	for var in a:cached_variables 
 	    if g:atp_debugProject >= 2
 		echomsg var . " EXISTS " . exists(var)
@@ -447,7 +453,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 	endfor
 	" step (2a) source project script
 	if filereadable(a:project_script)
-	    execute "source " . a:project_script 
+	    execute "source " . fnameescape(a:project_script)
 	endif
 	let cond = 0
 	for var in a:cached_variables
@@ -524,7 +530,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     " Make a list of variables defined in project script
     let defined_variables	= []
     let save_loclist		= getloclist(0)
-    silent! exe 'lvimgrep /^\s*\<let\>\s\+[bg]:/j ' . a:project_script
+    silent! exe 'lvimgrep /^\s*\<let\>\s\+[bg]:/j ' . fnameescape(a:project_script)
     let defined_variables	= getloclist(0) 
     call map(defined_variables, 'matchstr(v:val["text"], ''^\s*let\s\+\zs[bg]:[^[:blank:]=]*'')') 
     call setloclist(0, save_loclist) 
@@ -565,7 +571,8 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 
     let bufnr	= bufnr("%")
     try
-	silent! exe "keepalt edit +setl\\ noswapfile " . a:project_script
+	silent! exe "keepalt edit +setl\\ noswapfile " . fnameescape(a:project_script)
+	setl noundofile
     catch /.*/
 	echoerr v:errmsg
 	echoerr "WriteProjectScript catched error while opening " . a:project_script . ". Project script not written."

@@ -24,10 +24,15 @@ execute "nmap <buffer> ".g:atp_map_forward_motion_leader."gf				:NInput<CR>"
 execute "nmap <buffer> ".g:atp_map_backward_motion_leader."gf				:PInput<CR>"
 
 " Syntax motions:
-imap <C-j> <Plug>TexSyntaxMotionForward
-imap <C-k> <Plug>TexSyntaxMotionBackward
-nmap <C-j> <Plug>TexSyntaxMotionForward
-nmap <C-k> <Plug>TexSyntaxMotionBackward
+" imap <C-j> <Plug>TexSyntaxMotionForward
+" imap <C-k> <Plug>TexSyntaxMotionBackward
+" nmap <C-j> <Plug>TexSyntaxMotionForward
+" nmap <C-k> <Plug>TexSyntaxMotionBackward
+
+imap <C-j> <Plug>TexJMotionForward
+imap <C-k> <Plug>TexJMotionBackward
+nmap <C-j> <Plug>TexJMotionForward
+nmap <C-k> <Plug>TexJMotionBackward
 
 " Add maps, unless the user didn't want them.
 if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_maps == 0 ) && 
@@ -116,6 +121,8 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
     execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."C   :WrapSelection '"."\\"."begin{center}','"."\\"."end{center}','0','1'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."R   :WrapSelection '"."\\"."begin{flushright}','"."\\"."end{flushright}','0','1'<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."L   :WrapSelection '"."\\"."begin{flushleft}','"."\\"."end{flushleft}','0','1'<CR>"
+    execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."E   :WrapSelection '"."\\"."begin{equation}','"."\\"."end{equation}','0','1'<CR>"
+    execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."A   :WrapSelection '"."\\"."begin{align}','"."\\"."end{align}','0','1'<CR>"
 
     " Math Modes:
     vmap <buffer> m						:<C-U>WrapSelection '\(', '\)'<CR>
@@ -306,7 +313,7 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
     execute 'imap <buffer> '.g:atp_imap_first_leader.'W \Omega'
     execute 'imap <buffer> '.g:atp_imap_first_leader.'Z \mathrm{Z}'  
 
-    let infty_leader = (g:atp_imap_first_leader == "#" ? "\\" : g:atp_imap_first_leader ) 
+    let infty_leader = (g:atp_imap_first_leader == "#" ? "_" : g:atp_imap_first_leader ) 
     execute 'imap <buffer> '.infty_leader.'8 \infty'  
     execute 'imap <buffer> '.g:atp_imap_first_leader.'& \wedge'  
     execute 'imap <buffer> '.g:atp_imap_first_leader.'+ \bigcup' 
@@ -393,8 +400,12 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
 	endif
 	return s:insert
     endfunction
-    inoremap <silent> <buffer> _ <C-R>=<SID>SubBracket()<CR>
-"     imap <buffer> __ _{}<Left>
+    if g:atp_imap_first_leader == "_" || g:atp_imap_first_leader == "_" || 
+		\ g:atp_imap_third_leader == "_" || g:atp_imap_fourth_leader == "_"   
+	imap <buffer> __ _{}<Left>
+    else
+	inoremap <silent> <buffer> _ <C-R>=<SID>SubBracket()<CR>
+    endif
 
     " Taken from AucTex:
     " Typing ^^ results in ^{}
@@ -406,8 +417,12 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
 	endif
 	return s:insert
     endfunction
-    inoremap <silent> <buffer> ^ <C-R>=<SID>SuperBracket()<CR>
-"     imap <buffer> ^^ ^{}<Left>
+    if g:atp_imap_first_leader == "_" || g:atp_imap_first_leader == "_" || 
+		\ g:atp_imap_third_leader == "_" || g:atp_imap_fourth_leader == "_"   
+	imap <buffer> ^^ ^{}<Left>
+    else
+	inoremap <silent> <buffer> ^ <C-R>=<SID>SuperBracket()<CR>
+    endif
 
 "     function! <SID>Infty()
 " 	let g:insert 	= g:atp_imap_first_leader

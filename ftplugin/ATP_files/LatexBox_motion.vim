@@ -521,10 +521,24 @@ endfunction
 " }}}
 
 " select current paragraph {{{
+function! s:InnerSearchPos(begin, line, col, run)
+        let cline 	= line(".")
+	let ccol	= col(".") 
+	call cursor(a:line, a:col)
+	if a:begin == 1
+" 	    echomsg a:begin
+	    let flag = 'bnW' . (a:run == 1 ? 'c' : '')
+	    let [ line, column ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', flag)
+	else
+" 	    echomsg a:begin
+	    let [ line, column ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\zs\\newline\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|\<subsubsection\*\=\|\<paragraph\*\=\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=\|^\s*\\\@<!\\\[\|^\s*\\\@<!\$\$\|\\\\\*\=\)', 'nW')
+	endif
+" 	echomsg "IS: " . string([line, column])
+	call cursor(cline, ccol)
+	return [ line, column ] 
+endfunction
 function! s:SelectCurrentParagraph(seltype) 
     if a:seltype == "inner"
-	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', 'ebcnW')
-	let [ eline, ecol ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\zs\\newline\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|\<subsubsection\*\=\|\<paragraph\*\=\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=\|^\s*\\\@<!\\\[\|^\s*\\\@<!\$\$\|\\\\\*\=\)', 'nW')
 	" inner type ends and start with \[:\] if \[ is at the begining of
 	" line (possibly with white spaces) and \] is at the end of line
 	" (possibly with white spaces, aswell).
@@ -532,13 +546,51 @@ function! s:SelectCurrentParagraph(seltype)
 	" alwasy ends inner paragraph. But how I use tex it is 'gantz egal'
 	" but this solution can make a difference for some users, so I keep
 	" the first way.
+	"
+	" Find begin position (iterate over math zones).
+	let true = 1
+	let [ bline, bcol, eline, ecol ] = copy([ line("."), col("."), line("."), col(".") ])
+	let i =1
+	if g:atp_debugSCP
+	    echomsg " B pos:" . string([line("."), col(".")]) . " e-pos:" . string([bline, bcol]) 
+	endif
+	while true
+	    let [ bline, bcol ] = s:InnerSearchPos(1, bline, bcol, i)
+	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, bline, bcol)
+	    if g:atp_debugSCP
+		echomsg i . ") " . string([bline, bcol]) . " pos:" . string([line("."), col(".")]) . " true: " . true 
+	    endif
+	    let i+=1
+	endwhile
+	" Move to the end of match
+	let [ cline, ccolumn ] = [ line("."), col(".") ]
+	call cursor(bline, bcol)
+	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', 'ecnW')
+	call cursor(cline, ccolumn)
+
+	" Find end position (iterate over math zones).
+	let true = 1
+	let i = 1
+	if g:atp_debugSCP
+	    echomsg " E pos:" . string([line("."), col(".")]) . " e-pos:" . string([eline, ecol]) 
+	endif
+	while true
+	    let [ eline, ecol ] = s:InnerSearchPos(0, eline, ecol, i)
+	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol)
+	    if g:atp_debugSCP
+		echomsg i . ") " . string([eline, ecol]) . " pos:" . string([line("."), col(".")]) . " true: " . true
+	    endif
+	    let i+=1
+	endwhile
+" 	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', 'ebcnW')
+" 	let [ eline, ecol ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\zs\\newline\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|\<subsubsection\*\=\|\<paragraph\*\=\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=\|^\s*\\\@<!\\\[\|^\s*\\\@<!\$\$\|\\\\\*\=\)', 'nW')
 	let emove	= "ge"
     else
 	let [ bline, bcol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'bcnW')
 	let [ eline, ecol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'nW')
     endif
-"     let [ g:bline, g:bcol]	= deepcopy([ bline, bcol])
-"     let [ g:eline, g:ecol]	= deepcopy([ eline, ecol])
+    let [ g:bline, g:bcol]	= deepcopy([ bline, bcol])
+    let [ g:eline, g:ecol]	= deepcopy([ eline, ecol])
     if getline(bline) =~ '\\par\|\\newline' 
 	" move to the beginning of \par
 	let bmove	= ''
@@ -550,7 +602,7 @@ function! s:SelectCurrentParagraph(seltype)
     if getline(eline) =~ '\\par'
 	let emove	= 'gE'
     else
-	let emove	= 'gE'
+	let emove	= 'ge'
     endif
 
     call cursor(bline, bcol)

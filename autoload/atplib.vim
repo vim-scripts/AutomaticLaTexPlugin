@@ -22,9 +22,9 @@ endfunction
 " Return {path} relative to {rel}, if not under {rel} return {path}
 function! atplib#RelativePath(path, rel) "{{{1
     let current_dir 	= getcwd()
-    exe "cd " . a:rel
+    exe "lcd " . fnameescape(a:rel)
     let rel_path	= fnamemodify(a:path, ':.')
-    exe "cd " . current_dir
+    exe "lcd " . fnameescape(current_dir)
     return rel_path
 endfunction
 "}}}1
@@ -34,9 +34,9 @@ function! atplib#FullPath(file_name) "{{{1
     if a:file_name =~ '^\s*\/'
 	let file_path = a:file_name
     else
-	exe "lcd " . b:atp_ProjectDir
+	exe "lcd " . fnameescape(b:atp_ProjectDir)
 	let file_path = fnamemodify(a:file_name, ":p")
-	exe "lcd " . cwd
+	exe "lcd " . fnameescape(cwd)
     endif
     return file_path
 endfunction
@@ -191,6 +191,9 @@ function! atplib#GrepAuxFile(...)
 "     let aux_file	= readfile(aux_filename)
 
     let saved_llist	= getloclist(0)
+    if bufloaded(aux_filename)
+	exe "silent! bd! " . bufnr(aux_filename)
+    endif
     try
 	silent execute 'lvimgrep /\\newlabel\s*{/j ' . fnameescape(aux_filename)
     catch /E480:/
@@ -1563,7 +1566,6 @@ function! atplib#CheckSyntaxGroups(zones,...)
     let zones		= copy(a:zones)
 
     let synstack	= map(synstack( line, col), 'synIDattr(v:val, "name")') 
-    let g:synstack	= synstack
 
     return max(map(zones, "count(synstack, v:val)"))
 endfunction
@@ -1609,7 +1611,7 @@ function! atplib#SearchPackage(name,...)
     endif
     let cwd = getcwd()
     if exists("b:atp_ProjectDir") && getcwd() != b:atp_ProjectDir
-	exe "cd " . b:atp_ProjectDir
+	exe "lcd " . fnameescape(b:atp_ProjectDir)
     endif
 
     if getbufvar("%", "atp_MainFile") == ""
@@ -1661,7 +1663,7 @@ function! atplib#SearchPackage(name,...)
 	    keepjump call setpos(".",saved_pos)
 
 " 	    echo reltimestr(reltime(time))
-	    exe "cd " . cwd
+	    exe "lcd " . fnameescape(cwd)
 	    return ret
 
 	else
@@ -1671,7 +1673,7 @@ function! atplib#SearchPackage(name,...)
 	    keepjump call setpos(".", saved_pos)
 
 " 	    echo reltimestr(reltime(time))
-	    exe "cd " . cwd
+	    exe "lcd " . fnameescape(cwd)
 	    return ret
 
 	endif
@@ -1691,7 +1693,7 @@ function! atplib#SearchPackage(name,...)
 	    if line =~ '^[^%]*\\'.com."\s*{[^}]*".a:name
 
 " 		echo reltimestr(reltime(time))
-		exe "cd " . cwd
+		exe "lcd " . fnameescape(cwd)
 		return lnum
 	    endif
 	    let lnum += 1
@@ -1701,7 +1703,7 @@ function! atplib#SearchPackage(name,...)
 "     echo reltimestr(reltime(time))
 
     " If the package was not found return 0 
-    exe "cd " . cwd
+    exe "lcd " . fnameescape(cwd)
     return 0
 
 endfunction
@@ -1768,7 +1770,7 @@ function! atplib#DocumentClass(file)
 	silent execute 'lvimgrep /\\documentclass/j ' . fnameescape(a:file)
     catch /E480:/
     endtry
-    let line		= get(get(getloclist(0), 0, "no_document_class"), 'text')
+    let line		= get(get(getloclist(0), 0, { 'text' : "no_document_class"}), 'text')
     call setloclist(0, saved_loclist)
 
 
@@ -2640,7 +2642,7 @@ function! atplib#CloseLastBracket(bracket_dict, ...)
     "}}}3
     " {{{3 main if statements
 
-   if getline(open_line)[open_col-3] . getline(open_line)[open_col-2] . getline(open_line)[open_col-1] =~ '\\\@<!\\\%((\|\[\)'
+   if getline(open_line)[open_col-3] . getline(open_line)[open_col-2] . getline(open_line)[open_col-1] =~ '\\\@<!\\\%((\|\[\)$'
        call atplib#CloseLastEnvironment('i', 'math', '', [ open_line, open_col ])
        if g:atp_debugCLB
 	   let b:atp_debugCLB = "call atplib#CloseLastEnvironment('i', 'math', '', [ open_line, open_col ])"
@@ -3136,9 +3138,8 @@ function! atplib#TabCompletion(expert_mode,...)
 	keepjumps call setpos(".",[0,1,1,0])
 	let l:stop_line=search('\\begin\s*{document}','cnW')
 	keepjumps call setpos(".",l:pos_saved)
-	if (atplib#SearchPackage('tikz', l:stop_line) || count(b:atp_PackageList, 'tikz.tex')  ) && 
-	    \ ( atplib#CheckOpened('\\begin\s*{\s*tikzpicture\s*}', '\\end\s*{\s*tikzpicture\s*}', line('.'),g:atp_completion_limits[2]) || 
-	    \ atplib#CheckOpened('\\tikz{','}',line("."),g:atp_completion_limits[2]) )
+	let in_tikz=searchpair('\\begin\s*{tikzpicture}','','\\end\s*{tikzpicture}','bnW',"", max([1,(line(".")-g:atp_completion_limits[2])])) || atplib#CheckOpened('\\tikz{','}',line("."),g:atp_completion_limits[0])
+	if in_tikz
 	    if l:end !~ '\s*}'
 		call extend(l:completion_list,atplib#Add(g:atp_tikz_environments,'}'))
 	    else
@@ -4100,12 +4101,11 @@ function! atplib#FontPreview(method, fd_file,...)
 	else
 	    let l:fd_file=a:fd_file
 	endif
-" 	let l:path=substitute(substitute(system("kpsewhich -show-path tex"),'!!','','g'),'\/\/\+','\/','g')
-" 	let l:path=substitute(l:path,':\|\n',',','g')
-" 	let l:fd_all=split(globpath(l:path,"**/*.fd"),'\n') 
-" 	let l:fd=filter(l:fd_all,'v:val =~ l:fd_file && fnamemodify(v:val,":t") =~ "^".l:enc')
 
 	let l:fd=atplib#FdSearch(a:fd_file, l:method)
+	if !empty(l:enc)
+	    call filter(l:fd, "fnamemodify(v:val, ':t') =~ '^' . l:enc")
+	endif
 
 	if len(l:fd) == 0
 	    if !l:method

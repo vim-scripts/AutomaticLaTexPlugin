@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 12 October 2010
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 24 October 2010
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -50,9 +50,8 @@ FEATURES INCLUDE:
  	See |atp-:FontSearch|, and |atp-:FontPreview|,
 * indentation
 
-			Table of Contents
 -----------------------------------------------------------------------------
-								*atp*
+			TABLE OF CONTENTS			*atp*
                                                 		*atp-help-toc*
 	|atp-news|			News
 	|atp-installation| 		Installation								
@@ -82,6 +81,79 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 
 ================================================================================
 NEWS							*atp-news*
+  - bib_atp.vim (the ftplugin for bib files) has motions: 
+    ]], }	go to next field (and use zz to redraw the screen)
+    [[, {	go to previous field (and use zz to redraw the screen)
+    ][		go to end of the current bib field
+    []		go to end of the previous bib field
+    <C-j>	(both map and imap) go to next bib entry (after { or ( or " or ').
+    <C-k>	(both map and imap) go to previous bib entry (after { or ( or " or ').
+    
+>
+  Changes in version 8
+<
+  - :AMSRef[!] {bib_data}  - a command to get bib data from amsref:
+    'http://www.ams.org/mathscinet-mref'. The bib data will be appended to
+    bibliography of the current document. If there are many bib files will get
+    a choice which one to use. This command is also available in bib files.
+    With bang "!" it writes and closes the bib buffer. You will be also asked
+    for the bib key, the default choice is to use the AMS bib key.  This
+    command also works when you use \begin{bibliography} environment. But the
+    default is to use a bib file (which might be changed in the future).  The
+    obtained bibliographic reference is copied to the register
+    g:atp_bibrefRegister (the default is "0" so you can paste it using vim
+    command 'p') and also is stored in the variable g:atp_bibref.
+	
+  - There is a new ftplugin for bib files. It only defines a small set of
+    useful maps and the AMSRef command. The defined maps are listead below: 
+		MAP KEY			FIELD TYPE: 
+		<LocalLeader>a		article
+		<LocalLeader>b (or bo)	book
+		<LocalLeader>bl		booklet
+		<LocalLeader>c		conference
+		<LocalLeader>ib		inbook
+		<LocalLeader>ic		incollection
+		<LocalLeader>ip		inproceedings
+		<LocalLeader>ma		manual
+		<LocalLeader>mt		mastersthesis
+		<LocalLeader>mi		misc
+		<LocalLeader>phd	phdthesis
+		<LocalLeader>pr		proceedings
+		<LocalLeader>tr		techreport
+		<LocalLeader>un		unpublished
+  - <F1> in bib filetype is mapped to texdoc bibtex
+  - vmaps A,E (using |g:atp_vmap_environment_leader| with default value "")
+    which wraps selection into \begin{align}:\end{align} and
+    \begin{equation}:\end{equation}
+  - if one of the imap leaders
+    (|g:atp_imap_first_leader|,...,|g:atp_imap_fourth_leader|) is equal to "_"
+    then an imap with left hand side __ for _{} (and ^^ for ^{}) is used
+    rather than autex function (which has this nice feature that it puts _{}
+    when you type __ disregarding the time between first '_' and second '_',
+    which is not the case for imap '__' .  By default none of imap leaders is
+    eual to '_'.
+  - Completion for |:ToggleEnv|
+  - <Ctrl-j>, <Ctrl-k> motions redisigned: their purpose is to make it easy to
+    go to an argument of a latex command or environment not leaving insert
+    mode. It adds one <space> after a closing bracket at the end of a line.
+  - Small fixed in bracket closing now: \((<Tab> will work!    
+  - There is |g:atp_CompilersDict| variable. This is dictionary with entry:
+    latex program (like latex, pdflatex) and the associated extension of the
+    output which it makes. The default value is: >
+    let g:atp_CompilersDict 	= { 
+		    \ "pdflatex": ".pdf", 	"pdftex" 	: ".pdf", 
+		    \ "xetex" 	: ".pdf", 	"latex" 	: ".dvi", 
+		    \ "tex" 	: ".dvi",	"elatex"	: ".dvi",
+		    \ "etex"	: ".dvi", 	"luatex"	: ".pdf"}
+<   It is used be ViewOutput (|atp-:ViewOutput|), Compiler (|atp-:TEX|) and
+    SshPrint (|atp-:SshPrint|) functions (commands).
+  - MakeLatex : if aux or log files are loaded in a buffer then they will be
+    deleted - this is a requirement of vimgrep internal grep command (other
+    wise vimgrep will search in the buffer not the hard diks version and they
+    may differ). 
+  - MakeLatex : returns with error message if log contains '! Emergency stop.'
+  - vip : is not stoping inside a math zone (|g:atp_MathZones|).
+  - 'errorformat' includes pdfTeX error type messages (|atp-:ShowErrors|).
 >
   Changes in version 7.7.2
 <
@@ -90,6 +162,7 @@ NEWS							*atp-news*
   - if subfiles.sty is loaded in main file, g:atp_inputfile_pattern is set
     accordingly. There is no need to reload ATP if you add this package. The
     TreeOfFiles function will automatically change g:atp_inputfile_pattern.
+  							*atp-:ReloadATP*
   - :ReloadATP[!] with out bang it just reload all variables (atprc.vim,
     common.vim and options.vim - but not your $VIMRC file). With bang it
     reloads also the functions (this is done mainly for development).
@@ -206,8 +279,8 @@ NEWS							*atp-news*
     Small change in |atp-:NSec|: it goes to next section, chapter or part,
     similarly with the other commands.
 
-    The command |atp-:ToggleEnvironment| supports project files
-    (see|g:atp_toggle_labels| for details.)
+    The command |atp-:ToggleEnv| supports project files
+    (see |g:atp_toggle_labels| for details.)
 
     |b:atp_ReloadOnError| works in project files.
 
@@ -1124,7 +1197,7 @@ map <LocalLeader>s		environment (if it is not one belonging
 				to the list: >
 					g:atp_no_star_environments
 <				
-							*atp-:ToggleEnvironment*
+							*atp-:ToggleEnv*
 :ToggleEnv	 	mapped to <F4> and <S-F4>, switches environment
 map <S-F4>    		name. See (i.e. echo ) g:atp_toggle_environments_1...7 
 			(you can change or add your own variables,
@@ -1133,7 +1206,7 @@ map <S-F4>    		name. See (i.e. echo ) g:atp_toggle_environments_1...7
 			Read |g:atp_toggle_labels| below how it handles the
 			prefixes of labels.
 
-							*atp-:ChangeEnvironment*
+							*atp-:ChangeEnv*
 :ChangeEnv		This does the same as the above command but asks for
 map <F4>		environment name
 
@@ -1141,8 +1214,8 @@ map <F4>		environment name
 			prefixes of labels.
 
 							*g:atp_toggle_labels*
-	The commands |atp-:ToggleEnvironment| and |atp-:ChangeEnvironment|
-	changes the prefixes of labels (if there is one, which belongs to
+	The commands |atp-:ToggleEnvironment| and |atp-:ChangeEnv| changes the
+	prefixes of labels (if there is one, which belongs to
 	g:atp_shortnames_dict) and all ref's (\ref, \eqref and \pageref).  You
 	have to turn on this feature by putting g:atp_toggle_labels=1 (by
 	default it is 0).  Check if it works for you!  If there is a label or
@@ -2167,7 +2240,7 @@ put it here).
 				command (like \textrm{}) inside math use non
 				expert mode (see |atp-completion-non-expert-mode|)
 
-								*g:atp_math_modes*
+								*g:atp_MathZones*
 >
 	let g:atp_MathZones	= [ 
 	    		\ 'texMathZoneV', 	'texMathZoneW', 
@@ -2183,7 +2256,8 @@ put it here).
 	    		\ 'texMathZoneI', 	'texMathZoneIS',
 	    		\ 'texMathZoneJ', 	'texMathZoneJS',
 	    		\ 'texMathZoneK', 	'texMathZoneKS',
-	    		\ 'texMathZoneL', 	'texMathZoneLS' ]
+	    		\ 'texMathZoneL', 	'texMathZoneLS',
+			\ 'texMathZoneT' ]
 < 	the default value in plaintex files is >
 	g:atp_MathZones	= [ 'plaintexMath' ] 
 <				These are zones recongized by tab completion
@@ -2861,15 +2935,23 @@ some other key that it is not used in Vim (there are not many of them though).
 The most commonly used latex-suite plugin uses similar set of mappings (but
 there might be some differences). The easy way to change imap leaders is by
 using the variables:
+							*g:atp_imap_first_leader*
 >
 	    g:atp_imap_first_leader == "#"
-<	    	for Greak letters, >
+<	    	for Greak letters, 
+							*g:atp_imap_second_leader*
+>
 	    g:atp_imap_second_leader == "##"
-<	    	for font commands, >
+<	    	for font commands, 
+							*g:atp_imap_third_leader*
+>
 	    g:atp_imap_third_leader == "]"
-<	    	for environments, >
+<	    	for environments, 
+							*g:atp_imap_fourth_leader*
+>
 	    g:atp_imap_fourth_leader == "["
 <	    	for extra environments in the old layout.
+
 You can list imaps with |atp-:HelpMathIMaps| and |atp-:HelpEnvIMaps|.
 
 All other mappings (map, vmap, nmap, ...) are using <LocalLeader> which can be

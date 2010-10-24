@@ -40,6 +40,10 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
+if !exists("g:atp_debugSCP") || g:atp_reload
+    " debug s:SelectCurrentParapgrahp (LatexBox_motion.vim)
+    let g:atp_debugSCP	= 0
+endif
 if !exists("g:atp_debugSIT") || g:atp_reload
     " debug <SID>SearchInTree (search.vim)
     let g:atp_debugSIT		= 0
@@ -234,7 +238,7 @@ function! s:SetOptions()
     if string(get(s:optionsinuseDict,"atp_autex", 'optionnotset')) == string('optionnotset')
 	let atp_texinputs=split(substitute(substitute(system("kpsewhich -show-path tex"),'\/\/\+','\/','g'),'!\|\n','','g'),':')
 	call remove(atp_texinputs, '.')
-	call filter(atp_texinputs, 'v:val =~ b:atp_OutDir')
+	call filter(atp_texinputs, 'v:val =~# b:atp_OutDir')
 	if len(l:atp_texinputs) == 0
 	    let b:atp_autex	= 1
 	else
@@ -258,6 +262,25 @@ call s:SetOptions()
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_bibrefRegister")
+    " A register to which bibref obtained from AMS will be copied
+    let g:atp_bibrefRegister = "0"
+endif
+if !exists("g:atpbib_pathseparator")
+    if has("win16") || has("win32") || has("win64") || has("win95")
+	let g:atpbib_pathseparator = "\\"
+    else
+	let g:atpbib_pathseparator = "/"
+    endif 
+endif
+if !exists("g:atpbib_WgetOutputFile")
+    let tmpname = tempname()
+    let g:atpbib_WgetOutputFile = tmpname . g:atpbib_pathseparator . "amsref.html"
+    call mkdir(tmpname)
+endif
+if !exists("g:atpbib_wget")
+    let g:atpbib_wget="wget -O " . g:atpbib_WgetOutputFile
+endif
 if !exists("g:atp_vmap_text_font_leader") || g:atp_reload
     let g:atp_vmap_text_font_leader="<LocalLeader>"
 endif
@@ -732,7 +755,7 @@ function! <SID>Babel()
 
     let saved_loclist = getloclist(0)
     try
-	execute '1lvimgrep /\\usepackage.*{babel}/j ' . atp_MainFile
+	execute '1lvimgrep /\\usepackage.*{babel}/j ' . fnameescape(atp_MainFile)
 	" Find \usepackage[babel_options]{babel} - this is the only way that one can
 	" pass options to babel.
     catch /E480:/
@@ -1289,9 +1312,9 @@ endif
 	\ "\\dashv", "\\vdash", "\\vDash", "\\Vdash", "\\models", "\\sim", "\\simeq", 
 	\ "\\prec", "\\preceq", "\\preccurlyeq", "\\precapprox", "\\mid",
 	\ "\\succ", "\\succeq", "\\succcurlyeq", "\\succapprox", "\\approx", 
-	\ "\\thickapprox", "\\cong", "\\bullet", 
+	\ "\\ldots", "\\cdots", "\\vdots", "\\ddots", "\\circ", 
+	\ "\\thickapprox", "\\cong", "\\bullet",
 	\ "\\lhd", "\\unlhd", "\\rhd", "\\unrhd", "\\dagger", "\\ddager", "\\dag", "\\ddag", 
-	\ "\\ldots", "\\cdots", "\\vdots", "\\ddots", 
 	\ "\\vartriangleright", "\\vartriangleleft", "\\trianglerighteq", "\\trianglelefteq",
 	\ "\\copyright", "\\textregistered", "\\puonds",
 	\ "\\big", "\\Big", "\\Bigg", "\\huge", 
@@ -1605,7 +1628,8 @@ let g:atp_MathZones	= &l:filetype == "tex" ? [
 	    		\ 'texMathZoneI', 	'texMathZoneIS',
 	    		\ 'texMathZoneJ', 	'texMathZoneJS',
 	    		\ 'texMathZoneK', 	'texMathZoneKS',
-	    		\ 'texMathZoneL', 	'texMathZoneLS' 
+	    		\ 'texMathZoneL', 	'texMathZoneLS',
+			\ 'texMathZoneT'
 			\ ]
 			\ : [ 'plaintexMath' ] 
 endif
@@ -1626,9 +1650,9 @@ function! s:SetMathVimOptions(...)
 	    
 	" Change the long values to numbers 
 	let MathVimOptions = map(copy(g:atp_MathVimOptions),
-			\ " v:val[0] =~ v:key ? [ v:val[0] =~ 'no' . v:key ? 0 : 1, v:val[1] ] : v:val " )
+			\ " v:val[0] =~ v:key ? [ v:val[0] =~ '^no' . v:key ? 0 : 1, v:val[1] ] : v:val " )
 	let MathVimOptions = map(MathVimOptions,
-			\ " v:val[1] =~ v:key ? [ v:val[0], v:val[1] =~ 'no' . v:key ? 0 : 1 ] : v:val " )
+			\ " v:val[1] =~ v:key ? [ v:val[0], v:val[1] =~ '^no' . v:key ? 0 : 1 ] : v:val " )
 
 	" check if the current (and 3 steps back) cursor position is in math
 	" or use a:1

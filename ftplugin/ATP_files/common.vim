@@ -300,7 +300,7 @@ function! TreeOfFiles(main_file,...)
 	
     if run_nr == 1
 	let cwd		= getcwd()
-	exe "lcd " . b:atp_ProjectDir
+	exe "lcd " . fnameescape(b:atp_ProjectDir)
     endif
 	
 
@@ -451,7 +451,7 @@ function! TreeOfFiles(main_file,...)
 
     " restore current working directory
     if run_nr == 1
-	exe "lcd " . cwd
+	exe "lcd " . fnameescape(cwd)
     endif
 
     redir END
@@ -530,9 +530,9 @@ endfunction
 function! UpdateMainFile()
     if b:atp_MainFile =~ '^\s*\/'
 	let cwd = getcwd()
-	exe "lcd " . b:atp_ProjectDir
+	exe "lcd " . fnameescape(b:atp_ProjectDir)
 	let b:atp_MainFile	= ( g:atp_RelativePath ? fnamemodify(b:atp_MainFile, ":.") : b:atp_MainFile )
-	exe "lcd " . cwd
+	exe "lcd " . fnameescape(cwd)
     else
 	let b:atp_MainFile	= ( g:atp_RelativePath ? b:atp_MainFile : atplib#FullPath(b:atp_MainFile) )
     endif

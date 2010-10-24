@@ -277,7 +277,7 @@ function! <SID>SearchInTree(tree, branch, what)
 "     let branch	= a:tree[a:branch][0]
     if a:branch =~ '^\s*\/'
 	let cwd		= getcwd()
-	exe "lcd " . b:atp_ProjectDir
+	exe "lcd " . fnameescape(b:atp_ProjectDir)
 	let branchArg	= ( g:atp_RelativePath 	? fnamemodify(a:branch, ":.") 	: a:branch  )
 	let branchArgN	= ( !g:atp_RelativePath ? fnamemodify(a:branch, ":.") 	: a:branch  )
 	let whatArg	= ( g:atp_RelativePath 	? fnamemodify(a:what, ":.") 	: a:what  )
@@ -285,7 +285,7 @@ function! <SID>SearchInTree(tree, branch, what)
 	if g:atp_debugSIT
 	    silent! echo "*** cwd=" . getcwd() . " b:atp_ProjectDir= " . b:atp_ProjectDir . " " . fnamemodify(a:branch, ":.") . " " . a:branch
 	endif
-	exe "lcd " . cwd
+	exe "lcd " . fnameescape(cwd)
     else
 	let branchArg	= ( g:atp_RelativePath 	? a:branch 	: atplib#FullPath(a:branch) )
 	let branchArgN	= ( !g:atp_RelativePath ? a:branch 	: atplib#FullPath(a:branch) )
@@ -377,7 +377,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	else
 	    let cwd		= a:cwd
 	endif
-	exe "lcd " . b:atp_ProjectDir
+	exe "lcd " . fnameescape(b:atp_ProjectDir)
 
 	" This makes it work faster when the input files were not yet opened by vim 
 	" some of them will not be shown to the user.
@@ -754,7 +754,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 			execute "let &l:".option."=".a:vim_options[option]
 		    endfor
 		endif
-		exe "lcd " . cwd
+		exe "lcd " . fnameescape(cwd)
 " 		syntax enable
 		filetype on
 		filetype detect
@@ -773,7 +773,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	    let swapfile = globpath(fnamemodify(file, ":h"), ( has("unix") ? "." : "" ) . fnamemodify(file, ":t") . ".swp")
 
 	    if !( a:call_nr == 1 && a:wrap_nr == 1 )
-		    let open = "silent keepjumps " . open
+		let open = "silent keepjumps " . open
 	    endif
  
 	    let projectVarDict 	= SaveProjectVariables()
@@ -968,7 +968,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		    execute "let &l:".option."=".a:vim_options[option]
 		endfor
 	    endif
-	    exe "lcd " . cwd
+	    exe "lcd " . fnameescape(cwd)
 " 	    syntax enable
 	    filetype on
 	    filetype detect
@@ -987,7 +987,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		    execute "let &l:".option."=".a:vim_options[option]
 		endfor
 	    endif
-	    exe "lcd " . cwd
+	    exe "lcd " . fnameescape(cwd)
 " 	    syntax enable
 	    filetype on
 	    filetype detect

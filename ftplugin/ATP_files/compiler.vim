@@ -196,7 +196,7 @@ function! NewCompare()
     let lineNr		= line(".")
     let saved_loclist 	= getloclist(0)
     try
-	exe "lvimgrep /^". escape(line, '\^$') . "$/j " . expand("%:p")
+	exe "lvimgrep /^". escape(line, '\^$') . "$/j " . fnameescape(expand("%:p"))
     catch /E480:/ 
     endtry
 "     call setloclist(0, saved_loclist)
@@ -1117,7 +1117,7 @@ function! <SID>TeX(runs, bang, ...)
 	endif
     endfor
 
-"     echomsg "TEX_2 HANGEDTICK=" . b:changedtick . " " . b:atp_running
+"     echomsg "TEX_2 CHANGEDTICK=" . b:changedtick . " " . b:atp_running
 
     if l:mode != 'silent'
 	if a:runs > 2 && a:runs <= 5
@@ -1130,9 +1130,9 @@ function! <SID>TeX(runs, bang, ...)
 	    echomsg Compiler . " will run " . s:runlimit . " times."
 	endif
     endif
-"     echomsg "TEX_3 HANGEDTICK=" . b:changedtick . " " . b:atp_running
+"     echomsg "TEX_3 CHANGEDTICK=" . b:changedtick . " " . b:atp_running
     call s:Compiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
-"     echomsg "TEX_4 HANGEDTICK=" . b:changedtick . " " . b:atp_running
+"     echomsg "TEX_4 CHANGEDTICK=" . b:changedtick . " " . b:atp_running
 endfunction
 function! TEX_Comp(ArgLead, CmdLine, CursorPos)
     return filter(['silent', 'debug', 'verbose'], "v:val =~ '^' . a:ArgLead")
@@ -1210,9 +1210,9 @@ function! <SID>SetErrorFormat(...)
     let &l:errorformat=""
     if a:0 == 0 || a:0 > 0 && a:1 =~ 'e'
 	if &l:errorformat == ""
-	    let &l:errorformat= "%E!\ LaTeX\ %trror:\ %m,\%E!\ %m"
+	    let &l:errorformat= "%E!\ LaTeX\ %trror:\ %m,\%E!\ %m,%E!pdfTeX %trror:\ %m"
 	else
-	    let &l:errorformat= &l:errorformat . ",%E!\ LaTeX\ %trror:\ %m,\%E!\ %m"
+	    let &l:errorformat= &l:errorformat . ",%E!\ LaTeX\ %trror:\ %m,\%E!\ %m,%E!pdfTeX %trror:\ %m"
 	endif
     endif
     if a:0>0 &&  a:1 =~ 'w'

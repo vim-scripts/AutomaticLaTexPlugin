@@ -3,4 +3,5 @@
 " URL:		https://launchpad.net/automatictexplugin
 
 " b:atp_TexFlavor will be set to plaintex automatically
-source $HOME/.vim/ftplugin/tex_atp.vim
+let path=get(split(globpath(&rtp, 'ftplugin/tex_atp.vim'), "\n"), 0, "")
+execute "source " .  fnameescape(path)

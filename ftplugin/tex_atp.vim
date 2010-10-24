@@ -4,8 +4,8 @@
 " URL:			https://launchpad.net/automatictexplugin	
 " BUG Trucer:	https://bugs.launchpad.net/automatictexplugin
 " Language:		tex
-" Last Changed: 12 October 2010
-" GetLatestVimScripts: 2945 51 :AutoInstall: tex_atp.vim
+" Last Changed: 24 October 2010
+" GetLatestVimScripts: 2945 52 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.
@@ -60,13 +60,13 @@ endif
 
 		" Note: in $HOME/.atprc file the user can set all the local buffer
 		" variables without using autocommands
-		let path = fnameescape(globpath($HOME, '/.atprc.vim', 1))
-		execute 'source ' . path
+		let path = globpath($HOME, '/.atprc.vim', 1)
+		execute 'source ' . fnameescape(path)
 
 	else
 		let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), '\n'), 0, "")
 		if path != ""
-			execute 'source ' . path
+			execute 'source ' . fnameescape(path)
 		endif
 	endif
 

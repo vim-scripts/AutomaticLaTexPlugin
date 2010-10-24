@@ -852,7 +852,7 @@ try
 function! GotoFile(bang,...)
 
     let cwd	= getcwd()
-    exe "lcd " . b:atp_ProjectDir
+    exe "lcd " . fnameescape(b:atp_ProjectDir)
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     " The default value is to check line if not stending on a comment.
@@ -996,14 +996,14 @@ function! GotoFile(bang,...)
 		let space = ""
 		if g:atp_RelativePath
 		    let cwd = getcwd()
-		    exe "lcd " . b:atp_ProjectDir
+		    exe "lcd " . fnameescape(b:atp_ProjectDir)
 		    let level = get(level_d,fnamemodify(f, ':.'), get(level_d, f, 1))
-		    exe "lcd " . cwd
+		    exe "lcd " . fnameescape(cwd)
 		else
 		    let cwd = getcwd()
-		    exe "lcd " . b:atp_ProjectDir
+		    exe "lcd " . fnameescape(b:atp_ProjectDir)
 		    let level = get(level_d,f, get(level_d,fnamemodify(f, ':.'), 1))
-		    exe "lcd " . cwd
+		    exe "lcd " . fnameescape(cwd)
 		endif
 		for j in range(level)
 		    let space .= "   "
@@ -1052,7 +1052,7 @@ function! GotoFile(bang,...)
 	" char2nr("") = 0
 	" nr2char(0) = ""
 	if choice == ""
-	    exe "lcd " . cwd
+	    exe "lcd " . fnameescape(cwd)
 	    return
 	endif
 	if choice < 1 || choice > len(file_l)
@@ -1060,7 +1060,7 @@ function! GotoFile(bang,...)
 		echo "\n"
 		echoerr "Choice out of range."
 	    endif
-	    exe "lcd " . cwd
+	    exe "lcd " . fnameescape(cwd)
 	    return
 	endif
 	let file 	= file_l[choice-1]
@@ -1074,7 +1074,7 @@ function! GotoFile(bang,...)
 "     let g:choice = choice 
 
     if !exists("file")
-	exe "lcd " . cwd
+	exe "lcd " . fnameescape(cwd)
 	return
     endif
 
@@ -1094,7 +1094,7 @@ function! GotoFile(bang,...)
 	call RestoreProjectVariables(projectVarDict)
 	let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]	= deepcopy([tree_d, file_l_orig, type_d, level_d ])
 	if !&l:autochdir
-	    exe "lcd " . cwd
+	    exe "lcd " . fnameescape(cwd)
 	endif
 	return file
     else
@@ -1107,7 +1107,7 @@ function! GotoFile(bang,...)
 	endif
 	echohl None
 
-	exe "lcd " . cwd
+	exe "lcd " . fnameescape(cwd)
 	return file
     endif
 endfunction
@@ -1121,7 +1121,6 @@ function! TexSyntaxMotion(forward, how, ...)
 
     " If the function is used in imap.
     let in_imap	= ( a:0 >= 1 ? a:1 : 0 )
-    let g:imap	= in_imap
 
     let whichwrap	= split(&l:whichwrap, ',')
     if !count(whichwrap, 'l') 
@@ -1146,16 +1145,12 @@ function! TexSyntaxMotion(forward, how, ...)
     let synstack	= map(synstack(line, col), 'synIDattr( v:val, "name")')
     let synstackh	= map(synstack(line, max([1, col-1])), 'synIDattr( v:val, "name")')
     let g:isynstack	= deepcopy(synstack)
-    while count(synstack, "Delimiter")
-	execute "normal " . step 
-	let synstack	= map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
-    endwhile
     let g:pos1	= [ line(".") , col(".")]
 
     let g:synstack	= deepcopy(synstack)
 "     let g:pos		= getpos(".")
-"     let DelimiterCount	= count(synstack, 'Delimiter') 
-"     let g:DelimiterCount = DelimiterCount 
+    let DelimiterCount	= count(synstack, 'Delimiter') 
+    let g:DelimiterCount = DelimiterCount 
     let ScriptCount	= count(synstack, 'texSuperscript') + count(synstack, 'texSubscript')
     let ScriptsCount	= count(synstack, 'texSuperscripts') + count(synstack, 'texSubscripts')
     let StatementCount	= count(synstack, 'texStatement')
@@ -1191,7 +1186,9 @@ function! TexSyntaxMotion(forward, how, ...)
 "     let g:col	= col(".")
 "     let g:line	= line(".")
 
-    if StatementCount && StatementCounth && step == "h"
+    if DelimiterCount 
+	let syntax	= [ 'Delimiter' ]
+    elseif StatementCount && StatementCounth && step == "h"
 	let syntax	= [ 'texStatement' ]
     elseif StatementCount && step != "h"
 	let syntax	= [ 'texStatement' ]
@@ -1297,7 +1294,47 @@ function! TexSyntaxMotion(forward, how, ...)
 "     else
 " 	normal l
     endif
+    if step == "l" && syntax == [ 'Delimiter' ]
+	normal h
+    endif
 endfunction "}}}
+
+" New <Ctrl-j> motion
+function! JMotion(flag)
+" 	Note: pattern to match only commands which do not have any arguments:
+" 	'\(\\\w\+\>\s*{\)\@!\\\w\+\>'
+    if a:flag !~# 'b'
+	let pattern = '\%(\]\zs\|{\zs\|}\zs\|(\zs\|)\zs\|\[\zs\|\]\zs\|\$\zs\|^\zs\s*$\|\(\\\w\+\>\s*{\)\@!\\\w\+\>\zs\)'
+    else
+	let pattern = '\%(\]\|{\|}\|(\|)\|\[\|\]\|\$\|^\s*$\|\(\\\w\+\>\s*{\)\@!\\\w\+\>\)'
+    endif
+
+    "     let g:col = col(".") " sometimes this doesn't work - in normal mode go to
+    "     end of line and press 'a' - then col(".") is not working!
+"     let g:let = getline(line("."))[col(".")-1]
+"     let g:con = getline(line("."))[col(".")-1] =~ '\%(\$\|{\|}\|(\|)\|\[\|\]\)' && col(".") < len(getline(line(".")))
+    let g:pattern = pattern
+    if getline(line("."))[col(".")-1] =~ '\%(\$\|{\|}\|(\|)\|\[\|\]\)' && a:flag !~# 'b'
+	let g:debug = 1
+	if col(".") == len(getline(line(".")))
+	    execute "normal a "
+	    let g:debug .= 2
+	else
+	    call cursor(line("."), col(".")+1)
+	    let g:debug .= 3
+	endif
+	return
+    else
+	let g:debug = 4
+	call search(pattern, a:flag)
+	" In the imaps we use 'a' for the backward move and 'i' for forward move! 
+	let condition = getline(line("."))[col(".")-1] =~ '\%(\$\|{\|}\|(\|)\|\[\|\]\)'
+	if a:flag !~# 'b' && col(".") == len(getline(line("."))) && condition
+" 	    Add a space at the end of line and move there
+		execute "normal a "
+	endif
+    endif
+endfunction
 endif "}}}
 
 " Commands And Maps:
@@ -1306,6 +1343,11 @@ imap <Plug>TexSyntaxMotionForward	<Esc>:call TexSyntaxMotion(1,1,1)<CR>a
 imap <Plug>TexSyntaxMotionBackward	<Esc>:call TexSyntaxMotion(0,1,1)<CR>a
 nmap <Plug>TexSyntaxMotionForward	:call TexSyntaxMotion(1,1)<CR>
 nmap <Plug>TexSyntaxMotionBackward	:call TexSyntaxMotion(0,1)<CR>
+
+imap <Plug>TexJMotionForward	<Esc><Right>:call JMotion('')<CR>i
+imap <Plug>TexJMotionBackward	<Esc>:call JMotion('b')<CR>a
+nmap <Plug>TexJMotionForward	:call JMotion('')<CR>
+nmap <Plug>TexJMotionBackward	:call JMotion('b')<CR>
 
 command! -buffer -nargs=1 -complete=buffer MakeToc	:echo s:maketoc(fnamemodify(<f-args>, ":p"))[fnamemodify(<f-args>, ":p")] 
 command! -buffer -bang -nargs=? TOC	:call <SID>TOC(<q-bang>)

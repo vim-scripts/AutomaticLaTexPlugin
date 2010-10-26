@@ -5,7 +5,7 @@
 " BUG Trucer:	https://bugs.launchpad.net/automatictexplugin
 " Language:		tex
 " Last Changed: 24 October 2010
-" GetLatestVimScripts: 2945 52 :AutoInstall: tex_atp.vim
+" GetLatestVimScripts: 2945 53 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.
@@ -76,8 +76,7 @@ endif
 		endif
 
 	" Source Project Script
-	let s:project_src	= findfile("ftplugin/ATP_files/project.vim", rtp) 
-	execute 'source ' 	. fnameescape(s:project_src)
+	runtime ftplugin/ATP_files/project.vim
 
 		if g:atp_debugMainScript
 			let g:atphist_loadtime=str2float(reltimestr(reltime(time)))-g:atprc_loadtime
@@ -85,8 +84,7 @@ endif
 		endif
 
 	" Functions needed before setting options.
-	let s:common_src	= findfile("ftplugin/ATP_files/common.vim", rtp) 
-	execute 'source ' 	. fnameescape(s:common_src)
+	runtime ftplugin/ATP_files/common.vim
 
 		if g:atp_debugMainScript
 			let g:atpcom_loadtime=str2float(reltimestr(reltime(time)))-g:atprc_loadtime
@@ -94,8 +92,7 @@ endif
 		endif
 
 	" Options, global and local variables, autocommands.
-	let s:options_src	= findfile("ftplugin/ATP_files/options.vim", rtp) 
-	execute 'source '  	. fnameescape(s:options_src)
+	runtime ftplugin/ATP_files/options.vim
 
 		if g:atp_debugMainScript
 			let g:atpopt_loadtime=str2float(reltimestr(reltime(time)))-g:atpcom_loadtime
@@ -104,8 +101,7 @@ endif
 
 
 	" Compilation related stuff.
-	let s:compiler_src	= findfile("ftplugin/ATP_files/compiler.vim", rtp) 
-	execute 'source ' 	. fnameescape(s:compiler_src)
+	runtime ftplugin/ATP_files/compiler.vim
 
 		if g:atp_debugMainScript
 			let g:atpcomp_loadtime=str2float(reltimestr(reltime(time)))-g:atpopt_loadtime
@@ -120,17 +116,11 @@ endif
 	" LatexBox addons (by D.Munger, with some modifications).
 	if g:atp_LatexBox
 
-		let s:LatexBox_common_src		= findfile("ftplugin/ATP_files/LatexBox_common.vim", rtp) 
-		execute 'source ' . fnameescape(s:LatexBox_common_src)
+		runtime ftplugin/ATP_files/LatexBox_common.vim
+		runtime ftplugin/ATP_files/LatexBox_complete.vim
+		runtime ftplugin/ATP_files/LatexBox_motion.vim
+		runtime ftplugin/ATP_files/LatexBox_latexmk.vim
 
-		let s:LatexBox_complete_src	= findfile("ftplugin/ATP_files/LatexBox_complete.vim", rtp) 
-		execute 'source ' . fnameescape(s:LatexBox_complete_src)
-
-		let s:LatexBox_motion_src		= findfile("ftplugin/ATP_files/LatexBox_motion.vim", rtp) 
-		execute 'source ' . fnameescape(s:LatexBox_motion_src)
-
-		let s:LatexBox_latexmk_src		= findfile("ftplugin/ATP_files/LatexBox_latexmk.vim", rtp) 
-		execute 'source ' . fnameescape(s:LatexBox_latexmk_src)
 	endif
 
 		if g:atp_debugMainScript
@@ -138,25 +128,21 @@ endif
 			silent echo "LB loadtime:        " . string(g:atpLB_loadtime)
 		endif
 
-
-	let s:motion_src	= findfile("ftplugin/ATP_files/motion.vim", rtp) 
-	execute 'source ' . fnameescape(s:motion_src)
+	runtime ftplugin/ATP_files/motion.vim
 
 		if g:atp_debugMainScript
 			let g:atpmot_loadtime=str2float(reltimestr(reltime(time)))-g:atpLB_loadtime
 			silent echo "mot loadtime:       " . string(g:atpmot_loadtime)
 		endif
 
-	let s:search_src	= findfile("ftplugin/ATP_files/search.vim", rtp) 
-	execute 'source ' . fnameescape(s:search_src)
+	runtime ftplugin/ATP_files/search.vim
 
 		if g:atp_debugMainScript
 			let g:atpsea_loadtime=str2float(reltimestr(reltime(time)))-g:atpmot_loadtime
 			silent echo "sea loadtime:       " . string(g:atpsea_loadtime)
 		endif
 
-	let s:various_src	= findfile("ftplugin/ATP_files/various.vim", rtp) 
-	execute 'source ' . fnameescape(s:various_src)
+	runtime ftplugin/ATP_files/various.vim
 
 		if g:atp_debugMainScript
 			let g:atpvar_loadtime=str2float(reltimestr(reltime(time)))-g:atpsea_loadtime
@@ -165,14 +151,12 @@ endif
 
 
 	" Source maps and menu files.
-	let s:mappings_src	= findfile("ftplugin/ATP_files/mappings.vim", rtp) 
-	execute 'source ' . fnameescape(s:mappings_src)
+	runtime ftplugin/ATP_files/mappings.vim
 
 	if g:atp_LatexBox
 
 		" LatexBox mappings.
-		let s:LatexBox_mappings_src		= findfile("ftplugin/ATP_files/LatexBox_mappings.vim", rtp) 
-		execute 'source ' . fnameescape(s:LatexBox_mappings_src)
+		runtime ftplugin/ATP_files/LatexBox_mappings.vim
 			
 	endif
 
@@ -182,8 +166,7 @@ endif
 		endif
 
 	" The menu.
-	let s:menu_src	= findfile("ftplugin/ATP_files/menu.vim", rtp) 
-	execute 'source ' . fnameescape(s:menu_src)
+	runtime ftplugin/ATP_files/menu.vim
 
 		if g:atp_debugMainScript
 			let g:atpmenu_loadtime=str2float(reltimestr(reltime(time)))-g:atpmap_loadtime
@@ -191,8 +174,7 @@ endif
 		endif
 
 	" Help functions.
-	let s:help_src	= findfile("ftplugin/ATP_files/helpfunctions.vim", rtp) 
-	execute 'source ' . fnameescape(s:help_src)
+	runtime ftplugin/ATP_files/helpfunctions.vim
 
 		if g:atp_debugMainScript
 			let g:atphelp_loadtime=str2float(reltimestr(reltime(time)))-g:atpmenu_loadtime

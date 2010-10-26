@@ -537,6 +537,7 @@ function! s:InnerSearchPos(begin, line, col, run)
 	call cursor(cline, ccol)
 	return [ line, column ] 
 endfunction
+
 function! s:SelectCurrentParagraph(seltype) 
     if a:seltype == "inner"
 	" inner type ends and start with \[:\] if \[ is at the begining of

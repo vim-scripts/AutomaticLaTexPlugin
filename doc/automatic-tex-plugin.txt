@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 24 October 2010
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 26 October 2010
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -81,6 +81,15 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 
 ================================================================================
 NEWS							*atp-news*
+>
+  Changes in version 8.1
+<
+  - |atp-:GotoFile|, |atp-:EditInputFile| commands have completion.
+  - Some fixes in |atp-:AMSRef| command. Among them: echo the message: 'No
+    Unique Match Found' if the amsref interface returns it.
+>
+  Changes in version 8
+<
   - bib_atp.vim (the ftplugin for bib files) has motions: 
     ]], }	go to next field (and use zz to redraw the screen)
     [[, {	go to previous field (and use zz to redraw the screen)
@@ -88,10 +97,7 @@ NEWS							*atp-news*
     []		go to end of the previous bib field
     <C-j>	(both map and imap) go to next bib entry (after { or ( or " or ').
     <C-k>	(both map and imap) go to previous bib entry (after { or ( or " or ').
-    
->
-  Changes in version 8
-<
+  								*atp-:AMSRef*
   - :AMSRef[!] {bib_data}  - a command to get bib data from amsref:
     'http://www.ams.org/mathscinet-mref'. The bib data will be appended to
     bibliography of the current document. If there are many bib files will get

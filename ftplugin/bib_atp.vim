@@ -23,6 +23,8 @@
 "
 "     This licence applies to all files shipped with Automatic Tex Plugin.
 
+" Variables:
+" {{{ bib fields
 if !exists("g:atpbib_pathseparator")
     if has("win16") || has("win32") || has("win64") || has("win95")
 	let g:atpbib_pathseparator = "\\"
@@ -143,46 +145,75 @@ if !exists("g:atpbib_Unpublished")
 		\ '	Note       	= {},',
 		\ '}' ]
 endif
+" }}}
 
 " AMSRef:
 " {{{ <SID>AMSRef
 try
-function! <SID>GetAMSRef(what, bibfile)
-    let what = substitute(a:what," ", "+", "g")
-    let g:what=what 
+function! <SID>GetAMSRef(what)
+    let what = substitute(a:what, '\s\+', ' ',	'g') 
+    let what = substitute(what, '%',	'%25',	'g')
+    let what = substitute(what, ',',	'%2C',	'g') 
+    let what = substitute(what, ':',	'%3A',	'g')
+    let what = substitute(what, ';',	'%3B',	'g')
+    let what = substitute(what, '/',	'%2F',	'g')
+    let what = substitute(what, '?',	'%3F',	'g')
+    let what = substitute(what, '+',	'%2B',	'g')
+    let what = substitute(what, '=',	'%3D',	'g')
+    let what = substitute(what, '#',	'%23',	'g')
+    let what = substitute(what, '\$',	'%24',	'g')
+    let what = substitute(what, '&',	'%26',	'g')
+    let what = substitute(what, '@',	'%40',	'g')
+    let what = substitute(what, ' ',	'+',	'g')
+    " Note: Quoting a:what works not as good.
+"     let g:what	= what
     let cmd = g:atpbib_wget . " " . '"http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=bibtex"'
-    let g:cmd=cmd
+"     let g:cmd=cmd
     call system(cmd)
     let loclist = getloclist(0)
 
+    try
+	exe '1lvimgrep /\CNo Unique Match Found/j ' . fnameescape(g:atpbib_WgetOutputFile)
+    catch /E480/
+    endtry
+    if len(getloclist(0))
+	echohl WarningMsg
+	echomsg "No Unique Match Found"
+	echohl None
+	return
+    endif
     let pattern = '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\s*{\|^\s*\%(ADDRESS\|ANNOTE\|AUTHOR\|BOOKTITLE\|CHAPTER\|CROSSREF\|EDITION\|EDITOR\|HOWPUBLISHED\|INSTITUTION\|JOURNAL\|KEY\|MONTH\|NOTE\|NUMBER\|ORGANIZATION\|PAGES\|PUBLISHER\|SCHOOL\|SERIES\|TITLE\|TYPE\|VOLUME\|YEAR\|MRCLASS\|MRNUMBER\|MRREVIEWER\)\s*=\s*.*$'
     try 
-	exe 'lvimgrep /'.pattern.'/j ' . g:atpbib_WgetOutputFile 
+	exe 'lvimgrep /'.pattern.'/j ' . fnameescape(g:atpbib_WgetOutputFile)
     catch /E480:/
     endtry
     let data = getloclist(0)
-    let g:data = copy(data)
+    call setloclist(0, loclist)
+"     let g:data = copy(data)
     if !len(data) 
 	echohl WarningMsg
 	echomsg "Nothing found."
 	echohl None
 	return
     endif
-    call setloclist(0, loclist)
 
-    let linenumbers = map(copy(data), 'v:val["lnum"]')
-    let begin	= min(linenumbers)
+    let type_pattern= '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\>'
+    let bdata		= filter(copy(data), "v:val['text'] =~ type_pattern")
+"     let g:bdata		= copy(bdata)
+    let blinenumbers	= map(copy(bdata), 'v:val["lnum"]')
+    let begin		= max(blinenumbers)
 "     let g:begin = begin
-    let end	= max(linenumbers)
+    let linenumbers	= map(copy(data), 'v:val["lnum"]')
+    let end		= max(linenumbers)
 "     let g:end	= end
 
     let bufnr = bufnr(g:atpbib_WgetOutputFile)
-    let g:bufnr = bufnr
+"     let g:bufnr = bufnr
     " To use getbufline() buffer must be loaded. It is enough to use :buffer
     " command because vimgrep loads buffer and then unloads it. 
     execute "buffer " . bufnr
     let bibdata	= getbufline(bufnr, begin, end)
-    let g:bibdata = bibdata
+"     let g:bibdata = bibdata
     execute "bdelete " . bufnr 
     let type = matchstr(bibdata[0], '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\ze\s*\%("\|{\|(\)')
 "     let g:type = type
@@ -200,47 +231,48 @@ function! <SID>GetAMSRef(what, bibfile)
     endif
     call add(bibdata, "}")
 
-    " Open bibfile and append the bibdata:
-    execute "edit " . a:bibfile
+    "Append the bibdata:
 "     let g:eline = getline(line('$')) !~ '^\s*$'
     if getline(line('$')) !~ '^\s*$' 
 	let bibdata = extend([''], bibdata)
     endif
 "     echomsg string(bibdata)
-    call append(line('$'), bibdata)
-    normal GG
+    call append(line('.'), bibdata)
+    let g:atp_bibdata = bibdata
     return bibdata
 endfunction
 catch /E127/
 endtry
 
-command! -buffer -nargs=1 AMSRef    call <SID>GetAMSRef(<q-args>, expand("%:p"))
+command! -buffer -nargs=1 AMSRef    call <SID>GetAMSRef(<q-args>)
 "}}}
 
 " JMotion:
-function JMotion(flag)
+function! <SID>JMotion(flag) " {{{
     let pattern = '\%(\%(address\|annote\|author\|booktitle\|chapter\|crossref\|edition\|editor\|howpublished\|institution\|journal\|key\|month\|note\|number\|organization\|pages\|publisher\|school\|series\|title\|type\|volume\|year\|mrclass\|mrnumber\|mrreviewer\)\s*=\s.\zs\|@\w*\%({\|"\|(\|''\)\zs\)'
     call search(pattern, a:flag)
-endfunction
+endfunction "}}}
 
-" NEntry
-function! NEntry(flag,...)
+" NEntry:
+function! NEntry(flag,...) "{{{
     let keepjumps = ( a:0 >= 1 ? a:1 : "" )
     let pattern = '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)'
-    let g:cmd = keepjumps . " call search(".pattern.",".a:flag.")" 
+"     let g:cmd = keepjumps . " call search(".pattern.",".a:flag.")" 
     execute keepjumps . " call search(pattern, a:flag)"
-endfunction
+endfunction "}}}
  
-" EntryEnd
-function! EntryEnd(flag)
+" EntryEnd:
+function! EntryEnd(flag) "{{{
     call NEntry("bc", "keepjumps")
     if a:flag =~# 'b'
 	call NEntry("b", "keepjumps")
     endif
     keepjumps call search('\%({\|(\|"\|''\)')
     normal %
-endfunction
+endfunction "}}}
 
+" Maps:
+" {{{
 nmap <buffer> <silent> ]]	:call NEntry("")<CR>
 nmap <buffer> <silent> }	:call NEntry("")<CR>zz
 nmap <buffer> <silent> [[	:call NEntry("b")<CR>
@@ -249,24 +281,25 @@ nmap <buffer> <silent> {	:call NEntry("b")<CR>zz
 nmap <buffer> <silent> ][	:call EntryEnd("")<CR>
 nmap <buffer> <silent> []	:call EntryEnd("b")<CR>
 
-nmap <buffer> <c-j> 	:call JMotion("")<CR>
-nmap <buffer> <c-k>	:call JMotion("b")<CR>	
-imap <buffer> <c-j>	<Esc>l:call JMotion("")<CR>i
-imap <buffer> <c-k>	<Esc>l:call JMotion("b")<CR>i
+nmap <buffer> <c-j> 	:call <SID>JMotion("")<CR>
+nmap <buffer> <c-k>	:call <SID>JMotion("b")<CR>	
+imap <buffer> <c-j>	<Esc>l:call <SID>JMotion("")<CR>i
+imap <buffer> <c-k>	<Esc>l:call <SID>JMotion("b")<CR>i
 
 nnoremap <buffer> <silent> <F1>		:call system("texdoc bibtex")<CR>
 
-nnoremap <buffer> <LocalLeader>a	:call append(line("."), g:atpbib_Article)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>b	:call append(line("."), g:atpbib_Book)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>bo	:call append(line("."), g:atpbib_Book)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>c	:call append(line("."), g:atpbib_InProceedings)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>bl	:call append(line("."), g:atpbib_Booklet)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>ib	:call append(line("."), g:atpbib_InBook)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>ic	:call append(line("."), g:atpbib_InCollection)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>ma	:call append(line("."), g:atpbib_Manual)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>mt	:call append(line("."), g:atpbib_MasterThesis)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>mi	:call append(line("."), g:atpbib_Misc)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>phd	:call append(line("."), g:atpbib_PhDThesis)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>pr	:call append(line("."), g:atpbib_Proceedings)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>tr	:call append(line("."), g:atpbib_TechReport)<CR>:call JMotion("")<CR>
-nnoremap <buffer> <LocalLeader>un	:call append(line("."), g:atpbib_Unpublished)<CR>:call JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>a	:call append(line("."), g:atpbib_Article)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>b	:call append(line("."), g:atpbib_Book)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>bo	:call append(line("."), g:atpbib_Book)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>c	:call append(line("."), g:atpbib_InProceedings)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>bl	:call append(line("."), g:atpbib_Booklet)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>ib	:call append(line("."), g:atpbib_InBook)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>ic	:call append(line("."), g:atpbib_InCollection)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>ma	:call append(line("."), g:atpbib_Manual)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>mt	:call append(line("."), g:atpbib_MasterThesis)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>mi	:call append(line("."), g:atpbib_Misc)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>phd	:call append(line("."), g:atpbib_PhDThesis)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>pr	:call append(line("."), g:atpbib_Proceedings)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>tr	:call append(line("."), g:atpbib_TechReport)<CR>:call <SID>JMotion("")<CR>
+nnoremap <buffer> <LocalLeader>un	:call append(line("."), g:atpbib_Unpublished)<CR>:call <SID>JMotion("")<CR>
+" }}}

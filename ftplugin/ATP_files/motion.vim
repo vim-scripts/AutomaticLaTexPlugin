@@ -849,14 +849,14 @@ try
 
     " It correctly sets b:atp_MainFile, and TreeOfFiles, ... variables in the new
     " buffer.
-function! GotoFile(bang,...)
+function! GotoFile(bang,file,...)
 
     let cwd	= getcwd()
     exe "lcd " . fnameescape(b:atp_ProjectDir)
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     " The default value is to check line if not stending on a comment.
-    let check_line	= a:0 >= 1 ? a:1 : strpart(getline("."), 0, col(".")) !~ '\(\\\@<!\\\)\@<!%'
+    let check_line	= ( a:0 >= 1 ? a:1 : strpart(getline("."), 0, col(".")) !~ '\(\\\@<!\\\)\@<!%' )
 
     if !has("path_extra")
 	echoerr "Needs +path_extra vim feature."
@@ -878,11 +878,11 @@ function! GotoFile(bang,...)
     let file_l_orig = deepcopy(file_l)
 
     " Note: line is set to "" if check_line == 0 => method = "all" is used. 
-    let line		= check_line ? getline(".") : ""
+    let line		= ( check_line ? getline(".") : "" )
     if check_line
 	let beg_line	= strpart(line, 0,col(".")-1)
 	" Find the begining columnt of the file name:
-	let bcol		= searchpos('\%({\|,\)', 'bn',  line("."))[1]
+	let bcol	= searchpos('\%({\|,\)', 'bn',  line("."))[1]
 	if bcol == 0
 	    let bcol 	= searchpos('{', 'n', line("."))[1]
 	endif
@@ -894,10 +894,11 @@ function! GotoFile(bang,...)
     endif
 
 "     DEBUG
-"     let g:bcol	= bcol
-"     let g:col	= col
 "     let g:line	= line
+"     let g:file	= a:file 
+"     let g:check_line	= check_line
 
+    " This part will be omitted if check_line is 0 (see note above).
     " \usepackege{...,<package_name>,...}
     if line =~ '\\usepackage' && g:atp_developer
 	let method = "usepackage"
@@ -968,18 +969,10 @@ function! GotoFile(bang,...)
     endif
 
 "     DEBUG
-    let g:method = method
-    let g:file_l = file_l
+"     let g:method 	= method
+"     let g:file_l 	= file_l
 
-"     " Set location list
-"     let loclist	= []
-"     let i	= 1
-"     for file in file_l
-" 	call add(loclist, {"bufnr" : bufnr(file), "filename" : file, "lnum" : 1, "pattern" : "", "col" : 1, "vcol" : 1, "nr" : i, "text" : file, "type" : " "})
-" 	let i += 1
-"     endfor
-"     call setloclist(bufnr("%"), loclist)
-    if len(file_l) > 1 
+    if len(file_l) > 1 && a:file =~ '^\s*$'
 	if method == "all"
 	    let msg = "Which file to edit?"
 	else
@@ -1033,7 +1026,7 @@ function! GotoFile(bang,...)
 	    if choice != "" 
 		let choice	+= 1
 	    endif
-	else
+	elseif 
 	    for line in [ msg ] + input_l
 		if line == msg
 		    echohl Title	
@@ -1065,12 +1058,16 @@ function! GotoFile(bang,...)
 	endif
 	let file 	= file_l[choice-1]
 	let fname 	= file
-   endif
+    elseif a:file !~ '^\s*$'
+	let g:method 	= "single"
+	let file 	= atplib#FullPath(a:file)
+	let fname	= file
+    endif
 
 "     DEBUG
-"     let g:fname 	= fname
-"     let g:file		= file 
-"     let g:file_l 	= file_l
+"     let g:fname  = fname
+"     let g:file   = file 
+"     let g:file_l = file_l
 "     let g:choice = choice 
 
     if !exists("file")
@@ -1113,6 +1110,16 @@ function! GotoFile(bang,...)
 endfunction
 catch /E127:/
 endtry "}}}
+function! <SID>GotoFileComplete(ArgLead, CmdLine, CursorPos)
+    let bang = ( a:CmdLine =~ '^\w*!' ? '!' : '')
+    if bang == "!" || !exists("b:TreeOfFiles") || !exists("b:ListOfFiles") || !exists("b:TypeDict") || !exists("b:LevelDict") 
+	let [tree_d, file_l, type_d, level_d ] 	= TreeOfFiles(atp_MainFile)
+    else
+	let [tree_d, file_l, type_d, level_d ] 	= deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ])
+    endif
+    call add(file_l, b:atp_MainFile) 
+    return  filter(file_l, "v:val =~ a:ArgLead")
+endfunction
 "}}}
 
 " Syntax motion
@@ -1411,7 +1418,8 @@ command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PChap		:
 command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call <SID>GotoSection(<q-bang>, 'b', '\\part\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
 command! -buffer NInput				:call <SID>Input("w") 	| let v:searchforward = 1
 command! -buffer PInput 			:call <SID>Input("bw")	| let v:searchforward = 0
-command! -buffer -bang GotoFile		:call GotoFile(<q-bang>, 0)
-command! -buffer -bang EditInputFile	:call GotoFile(<q-bang>, 0)
+command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete GotoFile	:call GotoFile(<q-bang>,<q-args>, 0)
+command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete EditInputFile :call GotoFile(<q-bang>,<q-args>, 0)
 " }}}
-" vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1
+" vimeif data[0]['text'] =~ 'No Unique Match Found'	    echohl WarningMsg
+" echomsg "No Unique Match Found"	    echohl None	    returnfdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

@@ -245,6 +245,9 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
 "     nmap  <buffer> <LocalLeader>pr 		<Plug>SshPrint
 
     " FONT MAPPINGS
+    if g:atp_imap_first_leader == "]" || g:atp_imap_second_leader == "]" || g:atp_imap_third_leader == "]" || g:atp_imap_fourth_leader == "]" 
+	inoremap <buffer> ]] ]
+    endif
 "     execute 'imap <buffer> '.g:atp_imap_second_leader.'rm \textrm{}<Left>'
     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'rm <Esc>:call Insert("\\textrm{", "\\mathrm{")<Cr>a'
     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'up \textup{}<Left>'

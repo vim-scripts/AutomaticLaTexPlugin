@@ -1439,6 +1439,7 @@ endif
 " {{{ Preambule
 function! Preambule()
     let loclist = getloclist(0)
+    let winview = winsaveview()
     exe '1lvimgrep /^[^%]*\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
     let linenr = get(get(getloclist(0), 0, {}), 'lnum', 'nomatch')
     if linenr != 'nomatch'
@@ -1451,6 +1452,7 @@ function! Preambule()
 	if exists("cfile")
 	    exe "keepalt edit " . cfile
 	endif
+	call winrestview(winview)
     else	
 	echomsg " Not found \begin{document}."
     endif
@@ -1462,14 +1464,40 @@ endfunction
 " {{{ AMSGet
 try
 function! <SID>GetAMSRef(what, bibfile)
-    let what = substitute(a:what," ", "+", "g")
-    if a:bibfile != "nobibfile" 
+    let what = substitute(a:what, '\s\+', ' ',	'g') 
+    let what = substitute(what, '%',	'%25',	'g')
+    let what = substitute(what, ',',	'%2C',	'g') 
+    let what = substitute(what, ':',	'%3A',	'g')
+    let what = substitute(what, ';',	'%3B',	'g')
+    let what = substitute(what, '/',	'%2F',	'g')
+    let what = substitute(what, '?',	'%3F',	'g')
+    let what = substitute(what, '+',	'%2B',	'g')
+    let what = substitute(what, '=',	'%3D',	'g')
+    let what = substitute(what, '#',	'%23',	'g')
+    let what = substitute(what, '\$',	'%24',	'g')
+    let what = substitute(what, '&',	'%26',	'g')
+    let what = substitute(what, '@',	'%40',	'g')
+    let what = substitute(what, ' ',	'+',	'g')
+"     let g:what = what
+    if a:bibfile != "nobibfile"
 	let cmd = g:atpbib_wget . " " . '"http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=bibtex"'
     else
 	let cmd = g:atpbib_wget . " " . '"http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=tex"'
     endif
+"     let g:cmd=cmd
     call system(cmd)
     let loclist = getloclist(0)
+
+    try
+	exe '1lvimgrep /\CNo Unique Match Found/j ' . fnameescape(g:atpbib_WgetOutputFile)
+    catch /E480/
+    endtry
+    if len(getloclist(0))
+	echohl WarningMsg
+	echomsg "No Unique Match Found"
+	echohl None
+	return
+    endif
 
     if len(b:AllBibFiles) > 0
 	let pattern = '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\s*{\|^\s*\%(ADDRESS\|ANNOTE\|AUTHOR\|BOOKTITLE\|CHAPTER\|CROSSREF\|EDITION\|EDITOR\|HOWPUBLISHED\|INSTITUTION\|JOURNAL\|KEY\|MONTH\|NOTE\|NUMBER\|ORGANIZATION\|PAGES\|PUBLISHER\|SCHOOL\|SERIES\|TITLE\|TYPE\|VOLUME\|YEAR\|MRCLASS\|MRNUMBER\|MRREVIEWER\)\s*=\s*.*$'
@@ -1478,14 +1506,15 @@ function! <SID>GetAMSRef(what, bibfile)
 	catch /E480:/
 	endtry
 	let data = getloclist(0)
+	call setloclist(0, loclist)
 "         let g:data = copy(data)
+
 	if !len(data) 
 	    echohl WarningMsg
 	    echomsg "Nothing found."
 	    echohl None
 	    return
 	endif
-	call setloclist(0, loclist)
 
 	let linenumbers = map(copy(data), 'v:val["lnum"]')
 	let begin	= min(linenumbers)
@@ -1494,7 +1523,7 @@ function! <SID>GetAMSRef(what, bibfile)
 "         let g:end	= end
 
 	let bufnr = bufnr(g:atpbib_WgetOutputFile)
-	let g:bufnr = bufnr
+" 	let g:bufnr = bufnr
 	" To use getbufline() buffer must be loaded. It is enough to use :buffer
 	" command because vimgrep loads buffer and then unloads it. 
 	execute "buffer " . bufnr
@@ -1502,7 +1531,7 @@ function! <SID>GetAMSRef(what, bibfile)
 "         let g:bibdata = bibdata
 	execute "bdelete " . bufnr 
 	let type = matchstr(bibdata[0], '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\ze\s*\%("\|{\|(\)')
-        let g:type = type
+"         let g:type = type
         " Suggest Key:
 "         let author = substitute(matchstr(get(filter(copy(bibdata), "v:val =~ '\\<author\\>'"),0, ""), 'author\s*=\s*\("\|{\|''\|(\)\zs.*\ze'), '{\|}\|(\|)\|''\|"\|,', '', 'g')
 "         let firstauthor = split(author, "and")[0]
@@ -1553,6 +1582,7 @@ function! <SID>GetAMSRef(what, bibfile)
 	exe "let @" . g:atp_bibrefRegister . " = '" . bibref . "'"
 	let bibdata = [ bibref ]
     endif
+    let g:atp_bibdata = bibdata
     return bibdata
 endfunction
 catch /E127/
@@ -1564,7 +1594,9 @@ function! AMSRef(bang, what)
     endif
     if len(b:AllBibFiles) > 1
 	let bibfile = inputlist(extend("Which bib file to use?", b:AllBibFiles))
-    else
+    elseif len(b:AllBibFiles) == 1
+	let bibfile = b:AllBibFiles[0]
+    elseif !len(b:AllBibFiles)
 	let bibfile = "nobibfile"
 " 	let bibfile = get(b:AllBibFiles, 0, "")
 " 	if empty(bibfile)
@@ -1620,4 +1652,5 @@ command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\c\<to\s*do\>','\s
 command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
 command! -buffer -bang ReloadATP				:call <SID>ReloadATP(<q-bang>)
 command! -bang -buffer -nargs=1 AMSRef				:call AMSRef(<q-bang>, <q-args>)
+command! -buffer	Preambule				:call Preambule()
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

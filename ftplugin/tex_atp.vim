@@ -4,8 +4,8 @@
 " URL:			https://launchpad.net/automatictexplugin	
 " BUG Trucer:	https://bugs.launchpad.net/automatictexplugin
 " Language:		tex
-" Last Changed: 24 October 2010
-" GetLatestVimScripts: 2945 53 :AutoInstall: tex_atp.vim
+" Last Changed: 4 November 2010
+" GetLatestVimScripts: 2945 54 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.

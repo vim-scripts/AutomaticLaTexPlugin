@@ -142,7 +142,9 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
     let cond_A	= get(s:project_Load, expand("%:p"), 0)
     let cond_B	= get(get(s:project_Load, expand("%:p"), []), a:type, 0)
     if empty(expand("%:p"))
-	echoerr "ATP Error : File name is empty. Not loading project script."
+	echohl ErrorMsg
+	echomsg "ATP Error : File name is empty. Not loading project script."
+	echohl Normal
 	if g:atp_debugProject
 	    redir END
 	endif
@@ -575,7 +577,9 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 	setl noundofile
     catch /.*/
 	echoerr v:errmsg
+	let errmsg	= v:errmsg
 	echoerr "WriteProjectScript catched error while opening " . a:project_script . ". Project script not written."
+	let v:errmsg	= errmsg
 	let &l:hidden		= hidden
 	let &l:lazyredraw	= lazyredraw
 	if g:atp_debugProject

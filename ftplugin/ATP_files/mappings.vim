@@ -195,7 +195,7 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
     vnoremap <silent><buffer> [% :<C-U>exe "normal! gv"<Bar>call search('\%(^\s*%.*\n\)\%(^\s*%\)\@!', "bW")<CR>
 
     " Select comment
-    vmap <silent><buffer> c	<Plug>vSelectComment
+    vmap <silent><buffer> <LocalLeader>sc	<Plug>vSelectComment
 
     " Normal mode maps (mostly)
     nmap  <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput

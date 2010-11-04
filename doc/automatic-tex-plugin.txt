@@ -1,4 +1,4 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 26 October 2010
+automatic-tex-plugin.txt 	For Vim version 7	Last change: 4 November 2010
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN
 				by Marcin Szamotulski
@@ -82,6 +82,17 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 ================================================================================
 NEWS							*atp-news*
 >
+  Changes in version 8.2
+<
+  - vip fixed (|atp-vip|).
+  - The default value of g:atp_vmap_environment_leader is <LocalLeader> (it
+    used to be an empty string). Thus now there are visual maps:
+    <LocalLeader>C, <LocalLeader>R, <LocalLeader>L, <LocalLeader>A,
+    <LocalLeader>E to wrap with environemnts: center, flushright, flushleft,
+    align and equation respectively.
+  - vMap <LocalLeader>sc  (see |atp-vc|) select comment lines which begin with '^\s*%'. 
+  - {m, }m motions to next math environment fixed. See |atp-}m| and |atp-{m|. 
+>
   Changes in version 8.1
 <
   - |atp-:GotoFile|, |atp-:EditInputFile| commands have completion.
@@ -128,7 +139,7 @@ NEWS							*atp-news*
 		<LocalLeader>tr		techreport
 		<LocalLeader>un		unpublished
   - <F1> in bib filetype is mapped to texdoc bibtex
-  - vmaps A,E (using |g:atp_vmap_environment_leader| with default value "")
+  - vmaps A,E (using g:atp_vmap_environment_leader with default value "")
     which wraps selection into \begin{align}:\end{align} and
     \begin{equation}:\end{equation}
   - if one of the imap leaders
@@ -232,8 +243,6 @@ NEWS							*atp-news*
     which are commented with bang it doesn't skip them. The 'wrapscan' option
     applies to these commands (and corresponding maps).
     
-
-    vMap c  (see |atp-vc|) 	select comment lines which begin with '^\s*%'. 
     vMap ip (see |atp-vip|)	also \newline starts/ends inner paragraph.  
 
     :BibSearch /{pattern}/ [flag]
@@ -1076,6 +1085,10 @@ map }e
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
 
+							*atp-}m* *atp-{M*
+	{environment} can be also math or displayedmath. For convienience
+	there are maps: }m and }M respectively.
+
 	If g:atp_mapNn is set to one (see |atp-:ToggleNn|) then this command
 	is using |atp-:S|.
 
@@ -1085,6 +1098,10 @@ map {e
 	Move to previous environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
+
+							*atp-{m* *atp-{M*
+	{environment} can be also math or displayedmath. For convienience
+	there are maps: {m and {M respectively.
 
 	If g:atp_mapNn is set to one (see |atp-:ToggleNn|) then this command
 	is using |atp-:S|.
@@ -3255,7 +3272,8 @@ visual mode: ie, iE, ae, im, am, ip, ap, iS, aS, c
 		filtered out (like 'texDocZone') which not always are
 		synchronised.
 								*atp-vc*
-	c	select comment lines which begin with '^\s*%'. If not in
+	<LocalLeader>sc	
+		select comment lines which begin with '^\s*%'. If not in
 		comment line, end visual mode.
 
 								*atp-gw*	

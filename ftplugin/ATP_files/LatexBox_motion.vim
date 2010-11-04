@@ -528,15 +528,70 @@ function! s:InnerSearchPos(begin, line, col, run)
 	if a:begin == 1
 " 	    echomsg a:begin
 	    let flag = 'bnW' . (a:run == 1 ? 'c' : '')
-	    let [ line, column ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', flag)
+" Note: sometimes it is better is it stops before \\begin some times not,
+" maybe it is better to decide for which environment names to stop
+" (theorem, ... but not align [mathematical ones]). The same about end few
+" lines ahead.
+" 			\ '\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=' .
+" 	    let pattern1 = '\%(^\s*$\|\\\@<!\\\[\|^[^%]*\%(\ze\\par\>\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)'
+" 	    let pattern11 = '\%(^\s*$\|\\\@<!\\\[\|\%(\ze\\par\>\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\)'
+" 
+" 	    let pattern2 = '\%(^\s*$\|\\\@<!\\\[\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\|\\item\%(\s*\[[^\]]*\]\)\=\)'
+" 	    let pattern21 = '\%(^\s*$\|\\\@<!\\\[\|\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\|\\item\%(\s*\[[^\]]*\]\)\=\)'
+" 	    let pattern3 = '\%(^\s*$\|\\\@<!\\\[\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\)'
+" 	    let pattern4 = '\%(^\s*$\|\\\@<!\\\[\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\)\)'
+	    let pattern = '\%(^\s*$' . 
+			\ '\|\\begin\>\s*{' .
+			\ '\|\\\@<!\\\[' . 
+			\ '\|\\\@<!\\\]\s*$' . 
+			\ '\|^[^%]*\%(\ze\\par\>' . 
+				\ '\|\ze\\newline\>' . 
+				\ '\|\\end\s*{[^}]*}\s*\zs' . 
+				\ '\)' . 
+			\ '\|\\item\%(\s*\[[^\]]*\]\)\=' . 
+			\ '\|\\\%(part\*\=' . 
+				\ '\|chapter\*\=' .
+				\ '\|section\*\=' . 
+				\ '\|subsection\*\=' . 
+				\ '\|subsubsection\*\=' . 
+				\ '\|paragraph\*\=' . 
+				\ '\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=' . 
+			\ '\|\\\@<!\$\$\s*$' . 
+			\ '\|\\\\\*\=\)'
+	    let [ line, column ] = searchpos(pattern, flag)
 	else
 " 	    echomsg a:begin
-	    let [ line, column ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\zs\\newline\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|\<subsubsection\*\=\|\<paragraph\*\=\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=\|^\s*\\\@<!\\\[\|^\s*\\\@<!\$\$\|\\\\\*\=\)', 'nW')
+" 			\ '\|\\end\s*{' . 
+	    let pattern = '\%(^\s*$' . 
+			\ '\|\\\@<!\\\]\zs' .
+			\ '\|\\end\>\s*{' .
+			\ '\|^[^%]*\%(' . 
+				\ '\zs\\par\>' .
+				\ '\|\zs\\newline\>' . 
+				\ '\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)' . 
+			\ '\|\\item' . 
+			\ '\|\\\%(part\*\=' . 
+				\ '\|chapter\*\=' . 
+				\ '\|section\*\=' . 
+				\ '\|subsection\*\=' . 
+				\ '\|\<subsubsection\*\=' . 
+				\ '\|\<paragraph\*\=' . 
+				\ '\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=' . 
+			\ '\|^\s*\\\@<!\\\[' . 
+			\ '\|^\s*\\\@<!\$\$' . 
+			\ '\|\\\\\*\=\)'
+	    let [ line, column ] = searchpos(pattern, 'nW')
 	endif
+	let g:pattern = pattern
 " 	echomsg "IS: " . string([line, column])
 	call cursor(cline, ccol)
 	return [ line, column ] 
 endfunction
+if g:atp_debugSCP
+    command! EchoInnerBegin :echo s:InnerSearchPos(1, line("."), col("."), 1)
+    command! EchoInnerEnd :echo s:InnerSearchPos(0, line("."), col("."), 1)
+endif
+
 
 function! s:SelectCurrentParagraph(seltype) 
     if a:seltype == "inner"
@@ -557,25 +612,68 @@ function! s:SelectCurrentParagraph(seltype)
 	endif
 	while true
 	    let [ bline, bcol ] = s:InnerSearchPos(1, bline, bcol, i)
-	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, bline, bcol)
+	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, bline, bcol) && strpart(getline(bline), bcol-1) !~ '^\\\['
 	    if g:atp_debugSCP
 		echomsg i . ") " . string([bline, bcol]) . " pos:" . string([line("."), col(".")]) . " true: " . true 
 	    endif
 	    let i+=1
 	endwhile
+	if g:atp_debugSCP
+	    let [ g:bline0, g:bcol0]	= deepcopy([ bline, bcol])
+	endif
 	" Move to the end of match
 	let [ cline, ccolumn ] = [ line("."), col(".") ]
 	call cursor(bline, bcol)
-	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', 'ecnW')
+	let bline_str = strpart(getline(bline), bcol-1)
+	if getline(bline) !~ '^\s*$' && bline_str !~ '^\%(\\\[\|\\item\>\)'
+	    let pattern = '\%(^\s*$' . 
+			\ '\|^[^%]*\%(\\\zepar\>' . 
+			    \ '\|\\\zenewline\>' . 
+			    \ '\|\\end\s*{[^}]*}\s*' . 
+			    \ '\|\\begin\s*{[^}]*}\s*\%(\%({' . 
+				\ '\|\[\)[^]}]*\%(\]' . 
+				\ '\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n' . 
+					\ '\|[^}]\)*}\)\=' . 
+				    \ '\|\s*\%(\\footnote\s*\%(\n' . 
+				\ '\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)' . 
+			\ '\|\\item\%(\s*\[[^\]]*\]\)\=' . 
+			\ '\|\\\%(part\*\=' . 
+			\ '\|chapter\*\=' . 
+			\ '\|section\*\=' . 
+			\ '\|subsection\*\=' . 
+			\ '\|subsubsection\*\=' . 
+			\ '\|paragraph\*\=' . 
+			\ '\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=' . 
+			\ '\|\\\@<!\\\]\s*$' . 
+			\ '\|\\\@<!\$\$\s*$' . 
+			\ '\|\\\\\*\=\)'
+	    let [ bline, bcol ] = searchpos(pattern, 'ecnW')
+	elseif bline_str =~ '^\\item\>' && bcol > 1
+	    let bcol -= 1 
+	endif
+	if g:atp_debugSCP
+	    echomsg 'B End of Match: ' . string([bline, bcol])
+	endif
 	call cursor(cline, ccolumn)
 
 	" Find end position (iterate over math zones).
-	let true = 1
-	let i = 1
+	let [ eline, ecol ] = s:InnerSearchPos(0, line("."), col("."), 1)
+	let line = strpart(getline(eline), ecol-1)
+	let g:line = line
+	let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\\\['
+	let i = 2
 	if g:atp_debugSCP
-	    echomsg " E pos:" . string([line("."), col(".")]) . " e-pos:" . string([eline, ecol]) 
+	    echomsg " E pos:" . string([line("."), col(".")]) . " e-pos:" . string([eline, ecol]) . " true: " . true
 	endif
 	while true
+	    let line	= strpart(getline(eline), ecol-1)
+	    if line =~ '^\\\@<!\%(\\end\|\\)\|\\\]\|\\[\)'
+		if g:atp_debugSCP
+		    echomsg i . ") E line break " . eline . " line=" . line
+		    let g:line = line
+		endif
+		break
+	    endif
 	    let [ eline, ecol ] = s:InnerSearchPos(0, eline, ecol, i)
 	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol)
 	    if g:atp_debugSCP
@@ -590,9 +688,23 @@ function! s:SelectCurrentParagraph(seltype)
 	let [ bline, bcol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'bcnW')
 	let [ eline, ecol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'nW')
     endif
-    let [ g:bline, g:bcol]	= deepcopy([ bline, bcol])
-    let [ g:eline, g:ecol]	= deepcopy([ eline, ecol])
-    if getline(bline) =~ '\\par\|\\newline' 
+    
+    if g:atp_debugSCP
+	let [ g:bline, g:bcol]	= deepcopy([ bline, bcol])
+	let [ g:eline, g:ecol]	= deepcopy([ eline, ecol])
+    endif
+
+    let bline_str = strpart(getline(bline), bcol-1)
+    let eline_str = strpart(getline(eline), 0, ecol)
+    let eeline_str  = strpart(getline(eline), ecol-1)
+
+    if g:atp_debugSCP
+	let g:bline_str = bline_str
+	let g:eline_str = eline_str
+	let g:eeline_str = eeline_str
+    endif
+
+    if getline(bline) =~ '\\par\|\\newline' || bline_str =~ '^\%(\\\[\|\\item\>\)'
 	" move to the beginning of \par
 	let bmove	= ''
     else
@@ -600,14 +712,26 @@ function! s:SelectCurrentParagraph(seltype)
 	let bmove 	=  "w"
     endif
 
+
     if getline(eline) =~ '\\par'
 	let emove	= 'gE'
+    elseif eline_str  =~ '\\@<!\\\]'
+	let emove	= ''
+    elseif eeline_str =~ '^\\end\s*{\s*\%(align\%(at\)\=\|equation\|display\%(ed\)\=math\|array\|eqnarray\|inlinemath\|math\)\*\=\s*}'
+	let emove	= 'E'
+    elseif eline_str  =~ '\\$'
+	let emove	= 'h'
     else
 	let emove	= 'ge'
     endif
 
+    if g:atp_debugSCP
+	let g:bmove = bmove
+	let g:emove = emove
+    endif
+
     call cursor(bline, bcol)
-    if bmove != ''
+    if !empty(bmove)
 	execute "normal " . bmove
     endif
 
@@ -620,7 +744,9 @@ function! s:SelectCurrentParagraph(seltype)
     endif
 
     call cursor(eline, ecol)
-    execute "normal " . emove
+    if !empty(emove)
+	execute "normal " . emove
+    endif
 endfunction
 " }}}
 
@@ -729,3 +855,5 @@ vnoremap <silent> <Plug>LatexBox_SelectCurrentEnvOuter 	:<C-U>call <SID>SelectCu
 vnoremap <silent> <Plug>ATP_SelectCurrentParagraphInner :<C-U>call <SID>SelectCurrentParagraph('inner')<CR>
 vnoremap <silent> <Plug>ATP_SelectCurrentParagraphOuter :<C-U>call <SID>SelectCurrentParagraph('outer')<CR>
 vmap <silent><buffer> <Plug>vSelectComment 		:<C-U>call SelectComment()<CR>
+"}}}
+

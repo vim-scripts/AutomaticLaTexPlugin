@@ -285,7 +285,7 @@ if !exists("g:atp_vmap_text_font_leader") || g:atp_reload
     let g:atp_vmap_text_font_leader="<LocalLeader>"
 endif
 if !exists("g:atp_vmap_environment_leader") || g:atp_reload
-    let g:atp_vmap_environment_leader=""
+    let g:atp_vmap_environment_leader="<LocalLeader>"
 endif
 if !exists("g:atp_vmap_bracket_leader") || g:atp_reload
     let g:atp_vmap_bracket_leader="<LocalLeader>"

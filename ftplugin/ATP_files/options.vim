@@ -262,8 +262,12 @@ call s:SetOptions()
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_iabbrev_leader")
+    " Used for abbreviations: =theorem= (from both sides).
+    let g:atp_iabbrev_leader = "="
+endif 
 if !exists("g:atp_bibrefRegister")
-    " A register to which bibref obtained from AMS will be copied
+    " A register to which bibref obtained from AMS will be copied.
     let g:atp_bibrefRegister = "0"
 endif
 if !exists("g:atpbib_pathseparator")

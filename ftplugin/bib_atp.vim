@@ -231,11 +231,20 @@ function! <SID>GetAMSRef(what)
     endif
     call add(bibdata, "}")
 
+    "Go to begin of next entry or end of last entry
+    let line = NEntry('nW')
+    if line == line(".")
+	call EntryEnd("")
+    else
+	call cursor(line(".")-1,1)
+    endif
+
     "Append the bibdata:
 "     let g:eline = getline(line('$')) !~ '^\s*$'
     if getline(line('$')) !~ '^\s*$' 
 	let bibdata = extend([''], bibdata)
     endif
+    let bibdata = extend(bibdata, [''])
 "     echomsg string(bibdata)
     call append(line('.'), bibdata)
     let g:atp_bibdata = bibdata
@@ -258,7 +267,8 @@ function! NEntry(flag,...) "{{{
     let keepjumps = ( a:0 >= 1 ? a:1 : "" )
     let pattern = '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)'
 "     let g:cmd = keepjumps . " call search(".pattern.",".a:flag.")" 
-    execute keepjumps . " call search(pattern, a:flag)"
+    keepjumps call search(pattern, a:flag)
+    return line(".")
 endfunction "}}}
  
 " EntryEnd:
@@ -269,6 +279,7 @@ function! EntryEnd(flag) "{{{
     endif
     keepjumps call search('\%({\|(\|"\|''\)')
     normal %
+    return line(".")
 endfunction "}}}
 
 " Maps:

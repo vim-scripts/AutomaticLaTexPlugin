@@ -2788,8 +2788,12 @@ function! atplib#TabCompletion(expert_mode,...)
     let o		= strridx(l,'\')
     let s		= strridx(l,' ')
     let p		= strridx(l,'[')
+    let a		= len(l) - stridx(join(reverse(split(l, '\zs')), ''), "=")
      
     let nr=max([n,m,o,s,p])
+
+    " this matches for =...
+    let abegin		= strpart(l, a-1)
 
     " this matches for \...
     let begin		= strpart(l,nr+1)
@@ -2814,9 +2818,11 @@ function! atplib#TabCompletion(expert_mode,...)
 	let g:o		= o
 	let g:s		= s
 	let g:p		= p
+	let g:a		= a
 	let g:nr	= nr
 
 	let g:line	= line    
+	let g:abegin	= abegin
 	let g:tbegin	= tbegin
 	let g:cbegin	= cbegin
 	let g:obegin	= obegin
@@ -3023,37 +3029,64 @@ function! atplib#TabCompletion(expert_mode,...)
 	    return ''
 	endif
     "{{{3 --------- brackets
-    elseif atplib#CheckBracket(g:atp_bracket_dict)[1] != 0
-	if (!normal_mode &&  index(g:atp_completion_active_modes, 'brackets') != -1 ) ||
-		\ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'brackets') != -1 )
-	    let b:comp_method='brackets'
-	    call atplib#CloseLastBracket(g:atp_bracket_dict, 0, 1)
-	    return '' 
-	else
-	    let b:comp_method='brackets fast return'
-	    return ''
-	endif
-    "{{{3 --------- algorithmic
-    elseif atplib#CheckBracket(g:atp_algorithmic_dict)[1] != 0
-	    if (!normal_mode && index(g:atp_completion_active_modes, 'algorithmic' ) != -1 ) ||
-		\ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'algorithmic') != -1 )
-		let b:comp_method='algorithmic'
-		call atplib#CloseLastBracket(g:atp_algorithmic_dict, 0, 1)
+    else
+	let begParen = atplib#CheckBracket(g:atp_bracket_dict)
+	if begParen[1] != 0
+	    if (!normal_mode &&  index(g:atp_completion_active_modes, 'brackets') != -1 ) ||
+		    \ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'brackets') != -1 )
+		let b:comp_method='brackets'
+		if atplib#CheckSyntaxGroups(['texMathZoneV'])
+		    let pattern = '\\\@!\\('
+		elseif atplib#CheckSyntaxGroups(['texMathZoneW'])
+		    let pattern = '\\\@<!\\\['
+		elseif atplib#CheckSyntaxGroups(['texMathZoneX'])
+		    let pattern = '\%(\\\|\$\)\@<!\$\$\@!'
+		elseif atplib#CheckSyntaxGroups(['texMathZoneY'])
+		    let pattern = '\\\@<!\$\$'
+		else
+		    let pattern = ''
+		endif
+		if !empty(pattern)
+		    let begMathZone = searchpos(pattern, 'bcnW')
+		    if atplib#CompareCoordinates([ begParen[0], begParen[1] ], begMathZone)
+			call atplib#CloseLastEnvironment(append, 'math')
+		    else
+			call atplib#CloseLastBracket(g:atp_bracket_dict, 0, 1)
+		    endif
+		else
+		    call atplib#CloseLastBracket(g:atp_bracket_dict, 0, 1)
+		endif
 		return '' 
 	    else
-		let b:comp_method='algorithmic fast return'
+		let b:comp_method='brackets fast return'
 		return ''
 	    endif
+    "{{{3 --------- algorithmic
+	elseif atplib#CheckBracket(g:atp_algorithmic_dict)[1] != 0
+		if (!normal_mode && index(g:atp_completion_active_modes, 'algorithmic' ) != -1 ) ||
+		    \ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'algorithmic') != -1 )
+		    let b:comp_method='algorithmic'
+		    call atplib#CloseLastBracket(g:atp_algorithmic_dict, 0, 1)
+		    return '' 
+		else
+		    let b:comp_method='algorithmic fast return'
+		    return ''
+		endif
+    "{{{3 --------- abbreviations
+    elseif l =~ '=\w\+\*\=$'
+	let completion_method='abbreviations' 
+	let b:comp_method='abbreviations'
     "{{{3 --------- close environments
-    else
-	if (!normal_mode &&  index(g:atp_completion_active_modes, 'close environments') != '-1' ) ||
-		    \ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'close environments') != '-1' )
-	    let completion_method='close_env'
-	    " DEBUG:
-	    let b:comp_method='close_env a' 
 	else
-	    let b:comp_method='close_env a fast return' 
-	    return ''
+	    if (!normal_mode &&  index(g:atp_completion_active_modes, 'close environments') != '-1' ) ||
+			\ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'close environments') != '-1' )
+		let completion_method='close_env'
+		" DEBUG:
+		let b:comp_method='close_env a' 
+	    else
+		let b:comp_method='close_env a fast return' 
+		return ''
+	    endif
 	endif
     endif
 " if the \[ is not closed, first close it and then complete the commands, it
@@ -3365,6 +3398,14 @@ function! atplib#TabCompletion(expert_mode,...)
 	endif
 
 	call extend(completion_list, [ '\label{' . short_env_name ],0)
+    " {{{3 ------------ ABBREVIATIONS
+    elseif completion_method == 'abbreviations'
+	let completion_list = [ "=document=","=description=","=letter=","=picture=","=list=","=minipage=","=titlepage=","=thebibliography=","=bibliography=","=center=","=flushright=","=flushleft=","=tikzpicture=","=frame=","=itemize=","=enumerate=","=quote=","=quotation=","=verse=","=abstract=","=verbatim=","=figure=","=array=","=table=","=tabular=","=equation=","=equation*=","=align=","=align*=","=alignat=","=alignat*=","=gather=","=gather*=","=multline=","=multline*=","=split=","=flalign=","=flalign*=","=corollary=","=theorem=","=proposition=","=lemma=","=definition=","=proof=","=remark=","=example=","=exercise=","=note=","=question=","=notation="]
+	for env in reverse(b:atp_LocalEnvironments)
+	    if index(completion_list, "=".env."=") == -1
+		call extend(completion_list, ['='.env.'='],0)
+	    endif
+	endfor
     " {{{3 ------------ LABELS /are done later only the completions variable /
     elseif completion_method ==  'labels'
 	let completion_list = []
@@ -3608,6 +3649,9 @@ function! atplib#TabCompletion(expert_mode,...)
 			elseif a:expert_mode != 1 
 			    let completions	= filter(copy(completion_list),'v:val =~? tbegin')
 			endif
+	    " {{{4 --------- Abbreviations
+	    elseif completion_method == 'abbreviations'
+		let completions		= filter(copy(completion_list), 'v:val =~# "^" . abegin')
 	    " {{{4 --------- Tikzpicture Keywords
 	    elseif completion_method == 'tikzpicture keywords'
 		if a:expert_mode == 1 
@@ -3670,6 +3714,7 @@ function! atplib#TabCompletion(expert_mode,...)
 		\ completion_method == 'package' 	|| 
 		\ completion_method == 'tikz libraries'    || 
 		\ completion_method == 'environment_names' ||
+		\ completion_method == 'abbreviations' ||
 		\ completion_method == 'colors'	||
 		\ completion_method == 'bibfiles' 	|| 
 		\ completion_method == 'bibstyles' 	|| 

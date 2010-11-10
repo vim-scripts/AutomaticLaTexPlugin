@@ -1016,13 +1016,14 @@ augroup END
 
 function! <SID>auTeX()
 
-    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     " Using vcscommand plugin the diff window ends with .tex thus the autocommand
     " applies but the filetype is 'diff' thus we can switch tex processing by:
     if &l:filetype !~ "tex$"
 	return "wrong file type"
     endif
+
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     let mode 	= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
 

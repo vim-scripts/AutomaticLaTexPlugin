@@ -564,13 +564,13 @@ function! s:InnerSearchPos(begin, line, col, run)
 " 			\ '\|\\end\s*{' . 
 	    let pattern = '\%(^\s*$' . 
 			\ '\|\\\@<!\\\]\zs' .
-			\ '\|\\end\>\s*{' .
+			\ '\|\%(^\s\+\)\=\\end\>\s*{' .
 			\ '\|^[^%]*\%(' . 
-				\ '\zs\\par\>' .
-				\ '\|\zs\\newline\>' . 
-				\ '\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)' . 
-			\ '\|\\item' . 
-			\ '\|\\\%(part\*\=' . 
+				\ '\zs\%(^\s\+\)\=\\par\>' .
+				\ '\|\zs\(^\s\+\)\=\\newline\>' . 
+				\ '\|\%(^\s\+\)\=\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)' . 
+			\ '\|\%(^\%(\s\|%\)\+\)\=\\item' . 
+			\ '\|\%(^\s\+\)\=\\\%(part\*\=' . 
 				\ '\|chapter\*\=' . 
 				\ '\|section\*\=' . 
 				\ '\|subsection\*\=' . 
@@ -667,10 +667,12 @@ function! s:SelectCurrentParagraph(seltype)
 	endif
 	while true
 	    let line	= strpart(getline(eline), ecol-1)
-	    if line =~ '^\\\@<!\%(\\end\|\\)\|\\\]\|\\[\)'
+	    if line =~ '^\\\@<!\%(\\)\|\\\]\|\\\[\|\\\@<!\$\$\)'
+" 	    if line =~ '^\\\@<!\%(\\end\|\\)\|\\\]\|\\\[\)'
 		if g:atp_debugSCP
 		    echomsg i . ") E line break " . eline . " line=" . line
-		    let g:line = line
+		    let g:line 	= line
+		    let g:pat	= '^\\\@<!\%(\\)\|\\\]\|\\\[\)'
 		endif
 		break
 	    endif

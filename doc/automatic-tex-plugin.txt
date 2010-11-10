@@ -1,6 +1,6 @@
-automatic-tex-plugin.txt 	For Vim version 7	Last change: 4 November 2010
+*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 7 November 2010
 
-			An Introduction to AUTOMATIC (La)TeX PLUGIN
+			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.3)
 				by Marcin Szamotulski
 			    mszamot [AT] gmail [DOT] com
 			----------------------------------------
@@ -40,6 +40,8 @@ FEATURES INCLUDE:
 	See |atp-:TOC|, |atp-toc-window|,
 * list of labels which allows to see the context of a label:
 	See |atp-:Labels|,
+* a command to get bib data from the AMSRef web page http://www.ams.org/mathscinet-mref:
+	See |atp-:AMSRef|,
 * a powerful function to search in bibliographic files (bib files):
 	See |atp-bibsearch|,
 * a command to list ToDo lines:
@@ -58,6 +60,7 @@ FEATURES INCLUDE:
 	|atp-commands| 			Functions and commands
 	|atp-toc-window|		Commands/maps defined in Table of Contents window
 					  and Labels window. 
+	|atp-bibtex|			File type plugin for bibtex 		  
 	|atp-bibsearch|			Searching in bib files
 	|atp-completion|       		How to use and configure completion
 	|atp-omnicompletion|		    and omnicompletion
@@ -81,6 +84,52 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 
 ================================================================================
 NEWS							*atp-news*
+>
+  Changes in version 8.4
+<
+  - Help file for bibtex filetype plugin: |atp_bibtex|
+  - Abbreviations:
+    +- for \pm
+    +| for \dagger
+    ++ for \ddager
+    =<env_name>= for environments. 
+    Locally defined environments are also supported (the one defined in
+    |b:atp_LocalEnvironments|). If you need something different than
+    abbreviation for
+	\begin{theorem}
+	     <Cursor placed here>
+	\end{theorem}
+    for example:
+	\begin{corollary}<Cursor placed here>
+	\end{corollary}
+    You can set the variable g:atp_abbreviation_{environment_name}. It is list
+    with two values. First is used after \begin{...} and the second after
+    \end{...}. For the above examples:
+    let g:atp_abbreviation_theorem	= [ '<CR>', '<ESC>O' ]
+    let g:atp_abbreviation_corollary	= [ '<CR>', '<ESC><UP>A' ]
+    The first one is the default so you do not need to set it. In the second
+    example the abbreviation command will look like: >
+	abbreviate =corollary= \begin{corollary}<CR>\end{corollary}<ESC><UP>A
+<   This will only work for b:atp_LocalEnvironments, LaTeX and AMS
+    environments are set reasonably.
+    Envrionment name abbreviations are defined only if there were not defined.
+    So you can override the settings using |atprc| file (or |vimrc| file).
+
+    Furthermore you can change the "=":	    
+    							*g:atp_iabbrev_leader*
+let g:atp_iabbrev_leader = "="
+    It is used  in insert modde abbreviations like: =theorem=. 
+
+							*atp-completion-abbreviations*
+    There is tab completion for insert mode abbreviation names (use <ctrl-y>
+    to choose one from the list and then type <space>, just typing <space>
+    should also work).
+
+>
+  Changes in version 8.3
+<
+  - If g:atp_map_forawrd_motion_leader = "}" then there noremap }} }.
+    Similarly, for backward motion leader.
 >
   Changes in version 8.2
 <
@@ -109,17 +158,18 @@ NEWS							*atp-news*
     <C-j>	(both map and imap) go to next bib entry (after { or ( or " or ').
     <C-k>	(both map and imap) go to previous bib entry (after { or ( or " or ').
   								*atp-:AMSRef*
-  - :AMSRef[!] {bib_data}  - a command to get bib data from amsref:
-    'http://www.ams.org/mathscinet-mref'. The bib data will be appended to
-    bibliography of the current document. If there are many bib files will get
-    a choice which one to use. This command is also available in bib files.
-    With bang "!" it writes and closes the bib buffer. You will be also asked
-    for the bib key, the default choice is to use the AMS bib key.  This
-    command also works when you use \begin{bibliography} environment. But the
-    default is to use a bib file (which might be changed in the future).  The
-    obtained bibliographic reference is copied to the register
-    g:atp_bibrefRegister (the default is "0" so you can paste it using vim
-    command 'p') and also is stored in the variable g:atp_bibref.
+  - :AMSRef[!] {bib_data}  - a command to get bib data from AMSRef:
+		    http://www.ams.org/mathscinet-mref 
+    The bib data will be appended to bibliography of the current document. If
+    there are many bib files will get a choice which one to use. This command
+    is also available in bib files.  With bang "!" it writes and closes the
+    bib buffer. You will be also asked for the bib key, the default choice is
+    to use the AMS bib key.  This command also works when you use
+    \begin{bibliography} environment. But the default is to use a bib file
+    (which might be changed in the future).  The obtained bibliographic
+    reference is copied to the register g:atp_bibrefRegister (the default is
+    "0" so you can paste it using vim command 'p') and also is stored in the
+    variable g:atp_bibref.
 	
   - There is a new ftplugin for bib files. It only defines a small set of
     useful maps and the AMSRef command. The defined maps are listead below: 
@@ -1085,7 +1135,7 @@ map }e
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
 
-							*atp-}m* *atp-{M*
+							*atp-}m* *atp-}M*
 	{environment} can be also math or displayedmath. For convienience
 	there are maps: }m and }M respectively.
 
@@ -1897,37 +1947,33 @@ COMPLETION MODES		                       	*atp-completion-modes*
 
 
 							*atp-variables-local_completion*
+							*b:atp_LocalColors*
 							*b:atp_LocalCommands*
-							*g:atp_LocalCommands*
 							*b:atp_LocalEnvironments*
-							*g:atp_LocalEnvironments*
 		By default the first time you are completing an environment
 		name or a command a list of locally defined environments and
 		commands is made (it takes a few seconds). If you do not want
 		to completions for them define "let g:atp_local_completion=0",
 		if g:atp_local_completion=2" then the search for local
-		definitions and commands will be done on startup. If you
-		added a command or an environment the command
+		definitions and commands will be done on startup (after
+		version 8.4 for this you have to switch off abbreviations by
+		setting g:atp_noabbreviations to 1 - but anyway it is not time
+		consuming because these variables are loaded from
+		|atp-ProjectScript|).
+							*atp-:LocalCommands*	
+:LocalCommands[!]							
+		If you added a command or an environment the command
 		:LocalCommands! will update the list of local definitions, but
 		also the list of packages used by your latex source file
-		( completion lists are only used by Tab Completion function if
+		(Without bang "!" it doesn't update the list of packages.)
+		(some completion lists are only used by Tab Completion function if
 		the package was given, thus it is necessary to run this
-		command if the preambule has changed)
-		The output is stored in two variables: >
-				b:atp_local_commands
-				b:atp_local_environments
+		command if the preambule has changed). The output is stored in
+		three variables: >
+				b:atp_LocalColors
+				b:atp_LocalCommands
+				b:atp_LocalEnvironments
 <
-		If you use the same set of definitions in every tex file
-		you can set >
-				g:atp_local_commands 
-				g:atp_local_environments
-<
-		which if defined are used instead of b:atp_local_commands and
-		b:atp_local_environments (use the command :LocalCommands
-		to generate the list and then use the command: 
-		    :let @a= b:atp_local_commands 
-		i.e. copy the variable to register a and paste it in your Vimrc file.)
-
 		There is an extended support for tikz picture environment both
 		inline \tikz{:} and displayed
 		\begin{tikzpicture}:\end{tikzpicture}. The completion works
@@ -2906,7 +2952,17 @@ PROJECT SCRIPT						*atp-ProjectScript*
 		:TEX!
 		:echo g:texcommand
 <	It is readonly variable.	
-		
+							*g:atp_CompilersDict*
+>
+ let g:atp_CompilersDict 	= { 
+		\ "pdflatex": ".pdf", 	"pdftex" 	: ".pdf", 
+		\ "xetex" 	: ".pdf", 	"latex" 	: ".dvi", 
+		\ "tex" 	: ".dvi",	"elatex"	: ".dvi",
+		\ "etex"	: ".dvi", 	"luatex"	: ".pdf"}
+<	This variable is used to associate an extension to the compiler that
+	is used.
+
+
 g:defaultbibflags		see |atp-bibflags:default|
 g:defaultallbibflags		see |atp-bibflags:all|
 b:atp_LastBibFlags		see |atp-bibflags:last|
@@ -2950,7 +3006,8 @@ s:notreadablebibfiles
 	functions.
 
 ================================================================================
-MAPS 		                     			*atp-maps*
+MAPS 		                     			*atp-mappings* 
+							*atp-maps*
 
 Lots of mappings which are given here uses #. This is a convenient map on
 British keyboards, but not in the US layout, you can change them for '`' or

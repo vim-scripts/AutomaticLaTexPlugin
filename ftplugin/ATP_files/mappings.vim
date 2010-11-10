@@ -38,6 +38,13 @@ nmap <C-k> <Plug>TexJMotionBackward
 if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_maps == 0 ) && 
 	    \ ( !exists("g:no_atp_maps") || exists("g:no_plugin_maps") && g:no_atp_maps == 0 ) 
 
+    if g:atp_map_forward_motion_leader == "}"
+	noremap <buffer> }} }
+    endif
+    if g:atp_map_backward_motion_leader == "{"
+	noremap <buffer> {{ {
+    endif
+
     " ToDo to doc. + vmaps!
     execute "nmap <buffer> ".g:atp_map_forward_motion_leader."S 	<Plug>GotoNextSubSection"
     execute "vmap <buffer> ".g:atp_map_forward_motion_leader."S		<Plug>vGotoNextSubSection"

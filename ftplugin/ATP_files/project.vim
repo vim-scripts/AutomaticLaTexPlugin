@@ -618,8 +618,10 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     endfor
     " Save project script file:
     silent w
-    silent keepalt bd
+    let projectscript_bufnr	= bufnr("%")
     exe "silent keepalt b " . bufnr
+    exe "bdelete " . projectscript_bufnr
+
 
     let &l:lazyredraw = lazyredraw
     call winrestview(winsaveview)

@@ -27,7 +27,7 @@ Editing Features:
 
 Completions:
              * completion for commands (also user defined in associate files), 
-                environments, citations, references, tikz commands and keywords, and much more
+                environments, citations, references, tikz commands, keywords, provided abbreviations, and much more
                         / there are two completion modes: when you know what you want with <Tab> 
                          and when you search for a command with <S-Tab> /
                                           Some completion features:
@@ -41,7 +41,9 @@ Completions:
                                                             + completion for \cite{ supports regular expression which are
                                                                passed to the searching tool in bibliography files
              * closing brackets and environments (preserves nested environments in  100%)
-                         / which is included into completion with <Tab> key) /
+                         / which is included into completion with <Tab> key)
+             * many usefull maps
+             * abbreviations for environments (with tab completion)
             
 Moving Tools:
              * table of contents
@@ -51,7 +53,7 @@ Moving Tools:
              * moving commands to next environment
                          / configured with vim commands: 'n' and 'N' for repeating / the vim commands: 'n' and 'N' for repeating /
                          / also to next [inline/displayed] math environment /
-			 / support of project files /
+                         / support of project files /
              * % operates on $:$ (in plain tex also on $$:$$), brackets and 
                 \begin:\end pairs /which also get highlighted/
              * (TeX/LaTeX) oriented normal gf map
@@ -82,6 +84,5 @@ Support for Projects
 
 This plugin includes: vimscript#3109  (LatexBox by David Munger).
 
-Project Web Page: 	https://launchpad.net/automatictexplugin 	    
-BUG tracker: 		https://bugs.launchpad.net/automatictexplugin
-
+Project Web Page:  https://launchpad.net/automatictexplugin
+BUG tracker:       https://bugs.launchpad.net/automatictexplugin

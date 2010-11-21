@@ -599,14 +599,27 @@ function! atplib#searchbib(pattern, ...)
     " Caching bibfiles saves 0.27sec.
     if !exists("b:ListOfFiles") || !exists("b:TypeDict") || bang == "!"
 	let [ TreeOfFiles, ListOfFiles, TypeDict, LevelDict ] = TreeOfFiles(atp_MainFile, '^[^%]*\\bibliography\s*{', flat)
+	let updated	= 1
     else
 	let [ ListOfFiles, TypeDict ] = deepcopy([ b:ListOfFiles, b:TypeDict ])
+	let updated	= 0
     endif
     let s:bibfiles = []
     for f in ListOfFiles
 " 	let f	= atplib#FullPath(f)
-	if TypeDict[f] == 'bib' 
+	if get(TypeDict, f) == 'bib' 
 	    call add(s:bibfiles, f)
+	elseif !updated
+	    let [ TreeOfFiles, ListOfFiles, TypeDict, LevelDict ] = TreeOfFiles(atp_MainFile, '^[^%]*\\bibliography\s*{', flat)
+	    if get(TypeDict, f) == 'bib' 
+		call add(s:bibfiles, f)
+	    elseif
+		echoerr "ATP Error: list of files mismatch (1)."
+		return
+	    endif
+	else
+	    echoerr "ATP Error: list of files mismatch (2)."
+	    return
 	endif
     endfor
     let b:atp_BibFiles	= deepcopy(s:bibfiles)

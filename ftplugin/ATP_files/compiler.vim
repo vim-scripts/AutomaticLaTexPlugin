@@ -548,7 +548,13 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	    " Do not write project script file while saving the file.
 	    let atp_ProjectScript	= ( exists("g:atp_ProjectScript") ? g:atp_ProjectScript : -1 )
 	    let g:atp_ProjectScript	= 0
+
+	    " disable WriteProjectScript
+	    let eventignore = &l:eventignore
+	    setl eventignore+=BufWrite
 	    w
+	    let &l:eventignore = eventignore
+
 	    if atp_ProjectScript == -1
 		unlet g:atp_ProjectScript
 	    else
@@ -974,11 +980,17 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
     if g:atp_debugCompiler
 	silent echomsg "BEFORE WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
     endif
-	silent! w
+
+	" disable WriteProjectScript
+	let eventignore = &l:eventignore
+	setl eventignore+=BufWrite
+	w
+	let &l:eventignore = eventignore
 " 	let b:atp_changedtick += 1
     if g:atp_debugCompiler
 	silent echomsg "AFTER WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
     endif
+
 	if a:command == "AU"  
 	    let &l:backup=s:backup 
 	    let &l:writebackup=s:writebackup 

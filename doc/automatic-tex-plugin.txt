@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 7 November 2010
+*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 21 November 2010
 
-			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.3)
+			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.4)
 				by Marcin Szamotulski
 			    mszamot [AT] gmail [DOT] com
 			----------------------------------------
@@ -815,7 +815,11 @@ nmap gf
 
 	The current file is now shown with highlight group: |hl-WarningMsg|. 
 
-						*atp-:Open*
+							*atp-:InputFiles*
+:InputFiles				
+	List input files of the current projetc. It also updates the
+	|b:ListOfFiles| and |b:TreeOfFiles| variables to the current values.
+							*atp-:Open*
 :Open[!] [pattern] 
 	If you configure g:atp_LibraryPath, this function will find files
 	matching [pattern] under g:atp_LibraryPath and let them open with
@@ -2710,7 +2714,7 @@ PROJECT SCRIPT						*atp-ProjectScript*
 	b:atp_LocalCommands, b:atp_LocalColors, b:atp_LocalEnvironments and
 	b:TreeOfFiles, b:ListOfFiles, b:TypeDict and b:LevelDict. Then use
 	these commands |atp-:LocalCommands| (with bang "!"), and
-	|:InputFiles|. The second set of variables is also updated by |atp-:S|
+	|atp-:InputFiles|. The second set of variables is also updated by |atp-:S|
 	(also with "!") and and |atp-:GotoFile| (with "!" as well).
 
 	Note: Also when you add a package to tex you should remove the common
@@ -3681,14 +3685,26 @@ FINAL REMARKS                               			*atp-remarks*
 COPY RIGHTS							*atp-copy-rights*
 
 
-" Copyright:    Copyright (C) 2010 Marcin Szamotulski Permission is hereby
-"		granted to use and distribute this code, with or without
-"		modifications, provided that this copyright notice is copied
-"		with it. Like anything else that's free, Automatic TeX Plugin
-"		is provided *as is* and comes with no warranty of any kind,
-"		either expressed or implied. By using this plugin, you agree
-"		that in no event will the copyright holder be liable for any
-"		damages resulting from the use of this software.
+    Copyright (C) 2010 Marcin Szamotulski Permission is hereby granted to use
+    and distribute this code, with or without modifications, provided that
+    this copyright notice is copied with it. 
+
+    Automatic Tex Plugin for Vim is free software: you can redistribute it
+    and/or modify it under the terms of the GNU General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+ 
+    Automatic Tex Plugin for Vim is distributed in the hope that it will be
+    useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+    Public License for more details.
+ 
+    You should have received a copy of the GNU General Public License along
+    with Automatic Tex Plugin for Vim.  If not, see <http://www.gnu.org/licenses/>.
+
+    This licence applies to all files shipped with Automatic Tex Plugin.
 
 
-im:tw=75:ts=8:ft=help:norl:
+
+
+" vim:tw=75:ts=8:ft=help:norl:

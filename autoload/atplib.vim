@@ -2082,7 +2082,6 @@ function! atplib#CloseLastEnvironment(...)
 	if g:atp_debugCLE
 	    let g:math 	= []
 	    let g:bound = []
-	    let g:math_mode = math_mode
 	    for i in [1,2,3,4]
 		let g:begin_line = ( exists("begin_line") ? begin_line : 0 )
 		let g:bound_{i} = bound_{i}
@@ -2801,6 +2800,7 @@ function! atplib#TabCompletion(expert_mode,...)
     let o		= strridx(l,'\')
     let s		= strridx(l,' ')
     let p		= strridx(l,'[')
+    let c		= match(l, '\\cite\>\(.*\\cite\>\)\@!') 
     let a		= len(l) - stridx(join(reverse(split(l, '\zs')), ''), "=")
      
     let nr=max([n,m,o,s,p])
@@ -2819,8 +2819,8 @@ function! atplib#TabCompletion(expert_mode,...)
     " what we are trying to complete: usepackage, environment.
     let pline		= strpart(l, 0, nr)
     	" \cite[Theorem~1]{Abcd -> \cite[Theorem~] 
-    let ppline		= strpart(l, 0, nr+1)
-    	" \cite[Theorem~1]{Abcd -> \cite[Theorem~]{ 
+    let ppline		= strpart(l, c)
+    	" \cite[Theorem~1]{Abcd -> \cite[Theorem~1]{ 
 
     let limit_line=max([1,(pos[1]-g:atp_completion_limits[1])])
 
@@ -2883,7 +2883,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    return ''
 	endif
     "{{{3 --------- colors
-    elseif l =~ '\\textcolor{[^}]*$'
+    elseif l =~ '\\\%(textcolor\|pagecolor\){[^}]*$'
 	let completion_method='colors'
 	" DEBUG:
 	let b:comp_method='colors'
@@ -2898,7 +2898,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    return ''
 	endif
     "{{{3 --------- bibitems
-    elseif ppline =~ '\\\%(no\)\?cite\(\s*\[[^]]*\]\s*\)\={' && cbegin !~ '\\cite\s*{[^}]*}' && !normal_mode
+    elseif ppline =~ '\\\%(no\)\?cite\(\s*\[[^]]*\]\s*\)\={[^}]*$' && !normal_mode
 	if index(g:atp_completion_active_modes, 'bibitems') != -1
 	    let completion_method='bibitems'
 	    " DEBUG:
@@ -3044,6 +3044,7 @@ function! atplib#TabCompletion(expert_mode,...)
     "{{{3 --------- brackets
     else
 	let begParen = atplib#CheckBracket(g:atp_bracket_dict)
+" 	let g:begParen = copy(begParen)
 	if begParen[1] != 0
 	    if (!normal_mode &&  index(g:atp_completion_active_modes, 'brackets') != -1 ) ||
 		    \ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'brackets') != -1 )
@@ -3059,18 +3060,24 @@ function! atplib#TabCompletion(expert_mode,...)
 		else
 		    let pattern = ''
 		endif
+" 		let g:pattern = pattern
 		if !empty(pattern)
-		    let begMathZone = searchpos(pattern, 'bcnW')
+		    let begMathZone = searchpos(pattern, 'bnW')
+" 		    let g:begMathZone = copy(begMathZone)
 		    if atplib#CompareCoordinates([ begParen[0], begParen[1] ], begMathZone)
+" 			let g:debug = 1
 			call atplib#CloseLastEnvironment(append, 'math')
 		    else
+" 			let g:debug = 2
 			call atplib#CloseLastBracket(g:atp_bracket_dict, 0, 1)
 		    endif
 		else
+" 		    let g:debug = 3
 		    call atplib#CloseLastBracket(g:atp_bracket_dict, 0, 1)
 		endif
 		return '' 
 	    else
+" 		let g:debug = 4
 		let b:comp_method='brackets fast return'
 		return ''
 	    endif
@@ -3213,13 +3220,14 @@ function! atplib#TabCompletion(expert_mode,...)
 	" To Do: make a predefined lists of colors depending on package
 	" options! 
 	" Make a list of local envs and commands
-	if !exists("s:atp_LocalColors") 
-	    let s:atp_LocalColors=LocalCommands()[2]
-	    endif
-	let completion_list=s:atp_LocalColors
+	if !exists("b:atp_LocalColors") 
+	    call LocalCommands()
+	endif
+	let completion_list=copy(b:atp_LocalColors)
     " {{{3 ------------ TIKZ LIBRARIES
     elseif completion_method == 'tikz libraries'
 	let completion_list=deepcopy(g:atp_tikz_libraries)
+
     " {{{3 ------------ TIKZ KEYWORDS
     elseif completion_method == 'tikzpicture keywords'
 
@@ -3321,18 +3329,13 @@ function! atplib#TabCompletion(expert_mode,...)
 	endif
 	" -------------------- LOCAL commands {{{4
 	if g:atp_local_completion
+	    let g:compp=0
 
 	    " make a list of local envs and commands:
-	    if !exists("s:atp_LocalCommands") 
-		if exists("b:atp_LocalCommands")
-		    let s:atp_LocalCommands=b:atp_LocalCommands
-		elseif exists("g:atp_local_commands")
-		    let s:atp_LocalCommands=g:atp_local_commands
-		else
-		    let s:atp_LocalCommands=LocalCommands()[1]
-		endif
+	    if !exists("b:atp_LocalCommands") 
+		call LocalCommands()
 	    endif
-	    call extend(completion_list,s:atp_LocalCommands)
+	    call extend(completion_list,b:atp_LocalCommands)
 	endif
 	" {{{4 -------------------- TIKZ commands
 	" if tikz is declared and we are in tikz environment.
@@ -3459,10 +3462,11 @@ function! atplib#TabCompletion(expert_mode,...)
 	if encoding == ""
 	    let encoding=g:atp_font_encoding
 	endif
-" 	let b:encoding=encoding
+" 	    let g:encoding=encoding
 	let completion_list=[]
 	let fd_list=atplib#FdSearch('^'.encoding.begin)
-" 	let b:fd_list=fd_list
+" 	    let g:fd_list=copy(fd_list)
+" 	    let g:begin = begin
 	for file in fd_list
 	    call extend(completion_list,map(atplib#ShowFonts(file),'matchstr(v:val,"usefont\\s*{[^}]*}\\s*{\\zs[^}]*\\ze}")'))
 	endfor
@@ -3475,15 +3479,17 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let epos=len(line)
 	endif
 	let fline=strpart(line,bpos,epos-bpos)
-" 	let b:fline=fline
+" 	    let g:fline=fline
 	let encoding=matchstr(fline,'\\\%(usefont\|DeclareFixedFont\s*{[^}]*}\|fontencoding\)\s*{\zs[^}]*\ze}')
 	if encoding == ""
 	    let encoding=g:atp_font_encoding
 	endif
+" 	    let g:encoding = encoding 
 	let font_family=matchstr(fline,'\\\%(usefont\s*{[^}]*}\|DeclareFixedFont\s*{[^}]*}\s*{[^}]*}\|fontfamily\)\s*{\zs[^}]*\ze}')
-" 	let b:font_family=font_family
+" 	    let g:font_family=font_family
 	let completion_list=[]
-	let fd_list=atplib#FdSearch('^'.encoding.font_family)
+	let fd_list=atplib#FdSearch(encoding.font_family)
+" 	    let g:fd_list = fd_list 
 	for file in fd_list
 	    call extend(completion_list,map(atplib#ShowFonts(file),'matchstr(v:val,"usefont{[^}]*}{[^}]*}{\\zs[^}]*\\ze}")'))
 	endfor
@@ -3844,6 +3850,9 @@ endtry
 " fd_atp.vim ftplugin. Distributed with atp.
 "{{{2 atplib#FdSearch
 "([<pattern>,<method>])
+" There are two methods: 
+" 	0 - match fd file names ( ":t" filename modifier)        <- the default one
+" 	1 - match fd file path 
 function! atplib#FdSearch(...)
 
     if a:0 == 0
@@ -3851,13 +3860,18 @@ function! atplib#FdSearch(...)
 	let method	= 0
     else
 	let pattern	= ( a:0 >= 1 ? a:1 : "" )
-	let method	= ( a:0 >= 2 && a:2 != 1 ? 0 : 1 )
+	let method	= ( a:0 >= 2 ? a:2 : 0 )
     endif
+
+"     let g:method = method
+"     let g:pattern = pattern
 
     " Find fd file
     let path	= substitute(substitute(system("kpsewhich -show-path tex"),'!!','','g'),'\/\/\+','\/','g')
     let path	= substitute(path,':\|\n',',','g')
     let fd 	= split(globpath(path,"**/*.fd"),'\n') 
+
+"     let g:fd	= copy(fd)
 
     " Match for l:pattern
     let fd_matches=[]

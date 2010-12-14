@@ -1,8 +1,9 @@
-" Author:	Marcin Szamotulski	
+" Author:      Marcin Szamotulski	
 " Descriptiion:	These are various editting tools used in ATP.
-" Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
-" Language:	tex
+" Note:	       This file is a part of Automatic Tex Plugin for Vim.
+" URL:	       https://launchpad.net/automatictexplugin
+" Language:    tex
+" Last Change: Mon Dec 06 08:00  2010 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -1540,7 +1541,7 @@ function! <SID>GetAMSRef(what, bibfile)
 "         let g:suggested_key = suggested_key
 	let bibkey = input("Provide a key (Enter for the AMS bibkey): ")
 	if !empty(bibkey)
-	    let bibdata[0] 	= type . '{' . bibkey
+	    let bibdata[0] 	= type . '{' . bibkey . ','
 	else
 	    let bibdata[0] 	= substitute(matchstr(bibdata[0], '@\w*.*$'), '\(@\w*\)\(\s*\)', '\1', '')
 	    " This will be only used to echomsg:
@@ -1608,7 +1609,7 @@ function! AMSRef(bang, what)
     endif
 
     call <SID>GetAMSRef(a:what, bibfile)
-    if a:bang == "!"
+    if a:bang == ""
 	silent! w
 	silent! bd
     endif

@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 21 November 2010
+*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 14 December 2010
 
-			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.4)
+			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.5)
 				by Marcin Szamotulski
 			    mszamot [AT] gmail [DOT] com
 			----------------------------------------
@@ -85,6 +85,11 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 ================================================================================
 NEWS							*atp-news*
 >
+  Changes in version 8.5
+<
+  - AMSRef[!] without bang it writes and closes the bib buffer, without it
+    leave in bib file (which is not saved).
+>
   Changes in version 8.4
 <
   - Help file for bibtex filetype plugin: |atp_bibtex|
@@ -157,14 +162,15 @@ let g:atp_iabbrev_leader = "="
     []		go to end of the previous bib field
     <C-j>	(both map and imap) go to next bib entry (after { or ( or " or ').
     <C-k>	(both map and imap) go to previous bib entry (after { or ( or " or ').
+
   								*atp-:AMSRef*
   - :AMSRef[!] {bib_data}  - a command to get bib data from AMSRef:
 		    http://www.ams.org/mathscinet-mref 
     The bib data will be appended to bibliography of the current document. If
     there are many bib files will get a choice which one to use. This command
-    is also available in bib files.  With bang "!" it writes and closes the
-    bib buffer. You will be also asked for the bib key, the default choice is
-    to use the AMS bib key.  This command also works when you use
+    is also available in bib files.  Without bang, i.e. "!", it writes and
+    closes the bib buffer. You will be also asked for the bib key, the default
+    choice is to use the AMS bib key.  This command also works when you use
     \begin{bibliography} environment. But the default is to use a bib file
     (which might be changed in the future).  The obtained bibliographic
     reference is copied to the register g:atp_bibrefRegister (the default is
@@ -477,12 +483,12 @@ COMMANDS	                               		*atp-commands* *atp-:*
 The main function is not seen by the user (it is called s:compiler, for those
 who want to read the plugin). It executes tex compiler specified by the
 variable b:atp_TexCompiler. It is executed
-as an autocommand by the line:
+as an autocommand by the line: >
 	au! CursorHold $HOME*.tex silent call 's:auTeX()'
-where s:auTeX() is a simple function which calls s:compiler if the file written
-on the disk and the buffer differ. There are two comparing mechanism, the
-default one is using |b:changedtick-variable| , the seconds compares the buffer
-with the on-disk version:
+< where s:auTeX() is a simple function which calls s:compiler if the file
+written on the disk and the buffer differ. There are two comparing mechanism,
+the default one is using |b:changedtick-variable| , the seconds compares the
+buffer with the on-disk version:
 							*g:atp_Compare*
 							*g:atp_compare_double_empty_lines*
 							*g:atp_compare_embedded_comments*
@@ -1087,7 +1093,7 @@ nmap \t
 	The optional argument bang controls if the table of contents data base
 	must be generated: by default map \t doesn't regenerate the toc data
 	base (unless if it doesn't exist), :TOC command regenerate the
-	data base, :TOC! ]ot.
+	data base, :TOC! not.
 
 	See |atp-toc-window| for commands and maps defined in the toc window.
 
@@ -3504,6 +3510,9 @@ map \rs, :RevSearch
      command! -buffer	Xdvi	:call SetXdvi()
      command! -buffer	Xpdf	:call SetXpdf()
 <    
+
+zathura							
+	Perfectly works.
 
 ================================================================================
 TIPS                               				*atp-tips*

@@ -4,6 +4,7 @@
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
+" Last Change:
 
 if exists("b:did_indent")
 	finish

@@ -3,7 +3,7 @@
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
-"
+" Last Change:
 
 if exists("g:atp_noabbreviations") && g:atp_noabbreviations == 1
     finish
@@ -137,13 +137,11 @@ if !exists("g:atp_LocalEnvironments")
 endif
 for env in b:atp_LocalEnvironments
     if !empty(maparg(g:atp_iabbrev_leader.env.g:atp_iabbrev_leader, "i", 1))
-	echohl WarningMsg
-	echomsg "abbreviation " . g:atp_iabbrev_leader.env.g:atp_iabbrev_leader . " exists."
-	echohl None
+" 	silent echomsg "abbreviation " . g:atp_iabbrev_leader.env.g:atp_iabbrev_leader . " exists."
 	continue
     endif
     if exists("g:atp_abbreviate_".env)
-	    execute "iabbrev <buffer> ".g:atp_iabbrev_leader.env.g:atp_iabbrev_leader." \\begin{".env."}".get(g:atp_abbreviate_{env}, 0, "<CR>")."\\end{".env."}".get(g:atp_abbreviate_{env}, 1, "<Esc>O")
+	execute "iabbrev <buffer> ".g:atp_iabbrev_leader.env.g:atp_iabbrev_leader." \\begin{".env."}".get(g:atp_abbreviate_{env}, 0, "<CR>")."\\end{".env."}".get(g:atp_abbreviate_{env}, 1, "<Esc>O")
     else
 	execute "iabbrev <buffer> ".g:atp_iabbrev_leader.env.g:atp_iabbrev_leader." \\begin{".env."}<CR>\\end{".env."}<Esc>O"
     endif
@@ -174,4 +172,3 @@ endif
 if empty(maparg(g:atp_iabbrev_leader . "example" . g:atp_iabbrev_leader, "i", 1))
     execute 'iabbrev <buffer> '.g:atp_iabbrev_leader.'example'.g:atp_iabbrev_leader.'	\begin{example}<CR>\end{example}<Esc>O'
 endif
-

@@ -4,6 +4,7 @@
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
+" Last Change:
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -595,7 +596,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     for var in deleted_variables
 	try 
 	    exe 'silent! %g/^\s*let\s\+' . var . '\>/d'
-	catch /E486:/
+	catch /E48\%(6\|0\):/
 	endtry
     endfor
 

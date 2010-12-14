@@ -4,6 +4,7 @@
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
+" Last Change:
 
 " Some things is enough to source once
 let s:sourced = exists("s:sourced") ? 1 : 0
@@ -83,9 +84,12 @@ function! s:JumpToMatch(mode, ...)
 	call search('\A', 'cbW', line('.'))
 
 	" go to next opening/closing pattern on same line
-	if !s:SearchAndSkipComments(
+	let g:pos = !s:SearchAndSkipComments(
 				\	'\m\C\%(' . join(open_pats + close_pats + [dollar_pat], '\|') . '\)',
 				\	sflags, line('.'))
+	" THE line('.') above blocks it from workin not just in one line
+	" (especially with \begin:\end which might be in different lines).
+	if g:pos
 		" abort if no match or if match is inside a comment
 		call setpos('.', saved_pos)
 		return

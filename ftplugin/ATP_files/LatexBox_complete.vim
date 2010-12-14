@@ -4,6 +4,7 @@
 " URL:		https://launchpad.net/automatictexplugin
 " Email:	mszamot [AT] gmail [DOT] com
 " Language:	tex
+" Last Change:
 
 let s:sourced = exists("s:sourced") ? 1 : 0
 if s:sourced

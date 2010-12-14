@@ -3,6 +3,7 @@
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
+" Last Change:
 
 " Commands to library functions (autoload/atplib.vim)
 command! -buffer -bang -nargs=* FontSearch	:call atplib#FontSearch(<q-bang>, <f-args>)
@@ -81,7 +82,7 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
 
     " Goto File Map:
     if has("path_extra")
-	nnoremap <buffer> <silent> gf		:call GotoFile("")<CR>
+	nnoremap <buffer> <silent> gf		:call GotoFile("", "")<CR>
     endif
 
     if exists("g:atp_no_tab_map") && g:atp_no_tab_map == 1

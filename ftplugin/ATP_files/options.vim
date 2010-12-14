@@ -3,6 +3,7 @@
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
+" Last Change:
 
 " NOTE: you can add your local settings to ~/.atprc.vim or
 " ftplugin/ATP_files/atprc.vim file
@@ -1758,7 +1759,7 @@ function! s:Viewer(viewer)
 endfunction
 command! -buffer -nargs=1 -complete=customlist,ViewerComp Viewer	:call <SID>Viewer(<q-args>)
 function! ViewerComp(A,L,P)
-    let view = [ 'okular', 'xpdf', 'xdvi', 'evince', 'epdfview', 'kpdf', 'acroread' ]
+    let view = [ 'okular', 'xpdf', 'xdvi', 'evince', 'epdfview', 'kpdf', 'acroread', 'zathura' ]
     call filter(view, "v:val =~ '^' . a:A")
     call filter(view, 'executable(v:val)')
     return view

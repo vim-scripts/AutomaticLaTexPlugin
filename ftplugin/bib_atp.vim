@@ -1,10 +1,10 @@
-" Title:		Vim filetype plugin file
-" Author:		Marcin Szamotulski
-" Email:		mszamot [AT] gmail [DOT] com
-" URL:			https://launchpad.net/automatictexplugin	
-" BUG Trucer:		https://bugs.launchpad.net/automatictexplugin
-" Language:		bib
-" Last Changed: 22 October 2010
+" Title:       Vim filetype plugin file
+" Author:      Marcin Szamotulski
+" Email:       mszamot [AT] gmail [DOT] com
+" URL:	       https://launchpad.net/automatictexplugin	
+" BUG Trucer:  https://bugs.launchpad.net/automatictexplugin
+" Language:    bib
+" Last Change: Mon Dec 06 08:00  2010 W
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.
 "
@@ -225,7 +225,7 @@ function! <SID>GetAMSRef(what)
 "     let g:suggested_key = suggested_key
     let bibkey = input("Provide a key (Enter for the AMS bibkey): ")
     if !empty(bibkey)
-	let bibdata[0] = type . '{' . bibkey
+	let bibdata[0] = type . '{' . bibkey . ','
     else
 	let bibdata[0] = substitute(matchstr(bibdata[0], '@\w*.*$'), '\(@\w*\)\(\s*\)', '\1', '')
     endif

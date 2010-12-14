@@ -1,9 +1,9 @@
 " Vim filetype plugin file
-" Language:	tex
-" Maintainer:	Marcin Szamotulski
-" Last Changed: 2010 July 9
-" Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
+" Language:    tex
+" Maintainer:  Marcin Szamotulski
+" Last Change: 2010 July 9
+" Note:	       This file is a part of Automatic Tex Plugin for Vim.
+" URL:	       https://launchpad.net/automatictexplugin
 "{{{ Load Once
 if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1

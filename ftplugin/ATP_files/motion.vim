@@ -3,6 +3,7 @@
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
+" Last Change:
 
 let s:sourced = ( !exists("s:sourced") ? 0 : 1 )
 
@@ -706,8 +707,6 @@ function! <SID>GotoEnvironment(flag,...)
 
     " Options :
     let env_name 	= ( a:0 >= 1 && a:1 != ""  ? a:1 : '[^}]*' )
-    let g:flag		= a:flag
-    let g:env_name 	= env_name
 
     " Set the search tool :
     if g:atp_mapNn
@@ -719,13 +718,13 @@ function! <SID>GotoEnvironment(flag,...)
     endif
     " Set the pattern : 
     if env_name == 'math'
-	let pattern = '\m\%(\(\\\@<!\\\)\@<!%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(displayed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*}\)\|\\\@<!\\\[\|\\\@<!\\(\|\\\@<!\$\$\=\)'
+	let pattern = '\m\%(\(\\\@<!\\\)\@<!%.*\)\@<!\%(\%(\\begin\s*{\s*\%(\(displayed\)\?math\|\%(fl\)\?align\|eqnarray\|equation\|gather\|multline\|subequations\|xalignat\|xxalignat\)\s*\*\=\s*}\)\|\\\@<!\\\[\|\\\@<!\\(\|\\\@<!\$\$\=\)'
     elseif env_name == 'displayedmath'
 	let pattern = '\m\%(\(\\\@<!\\\)\@<!%.*\)\@<!\%(\%(\\begin\s*{\s*\%(displayedmath\|\%(fl\)\?align\*\=\|eqnarray\*\=\|equation\*\=\|gather\*\=\|multline\*\=\|xalignat\*\=\|xxalignat\*\=\)\s*}\)\|\\\@<!\\\[\|\\\@!\$\$\)'
     elseif env_name == 'inlinemath'
 	let pattern = '\m\%(\(\\\@<!\\\)\@<!%.*\)\@<!\%(\\begin\s*{\s*math\s*}\|\\\@<!\\(\|\$\@<!\\\@<!\$\$\@!\)'
     else
-	let pattern = '\m\%(\(\\\@<!\\\)\@<!%.*\)\@<!\\begin\s*{\s*' . env_name . '\s*}'
+	let pattern = '\m\%(\(\\\@<!\\\)\@<!%.*\)\@<!\\begin\s*{\s*' . env_name 
     endif
 
     " Search (twise if needed)
@@ -758,7 +757,6 @@ function! <SID>GotoEnvironment(flag,...)
 	endif
     endif
 
-	let g:cmd=search_cmd . pattern . search_cmd_e
     call histadd("search", pattern)
     let @/ 	 = pattern
 "     if env_name == "math" && getline(".")[col(".")-1] == '$' && col(".") > 1 && 
@@ -807,7 +805,7 @@ endfunction
 function! Env_compl(A,P,L) 
     let envlist=sort(['algorithm', 'algorithmic', 'abstract', 'definition', 'equation', 'proposition', 
 		\ 'theorem', 'lemma', 'array', 'tikzpicture', 
-		\ 'tabular', 'table', 'align\*\?', 'alignat\*\?', 'proof', 
+		\ 'tabular', 'table', 'align', 'alignat', 'proof', 
 		\ 'corollary', 'enumerate', 'examples\=', 'itemize', 'remark', 
 		\ 'notation', 'center', 'quotation', 'quote', 'tabbing', 
 		\ 'picture', 'math', 'displaymath', 'minipage', 'list', 'flushright', 'flushleft', 
@@ -1314,6 +1312,9 @@ function! JMotion(flag)
 	let pattern = '\%(\]\zs\|{\zs\|}\zs\|(\zs\|)\zs\|\[\zs\|\]\zs\|\$\zs\|^\zs\s*$\|\(\\\w\+\>\s*{\)\@!\\\w\+\>\zs\)'
     else
 	let pattern = '\%(\]\|{\|}\|(\|)\|\[\|\]\|\$\|^\s*$\|\(\\\w\+\>\s*{\)\@!\\\w\+\>\)'
+    endif
+    if getline(line(".")) =~ '&'
+	let pattern = '\%(&\s*\zs\|^\s*\zs\)\|' . pattern
     endif
 
     "     let g:col = col(".") " sometimes this doesn't work - in normal mode go to

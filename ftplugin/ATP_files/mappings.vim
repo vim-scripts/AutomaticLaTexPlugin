@@ -106,6 +106,7 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
     execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."f		:WrapSelection '{\\usefont{".g:atp_font_encoding."}{}{}{}\\selectfont ', '}', '".(len(g:atp_font_encoding)+11)."'<CR>"
 
 
+    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."tx	:<C-U>InteligentWrapSelection ['\\textrm{'],['\\text{']<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."rm	:<C-U>InteligentWrapSelection ['\\textrm{'],['\\mathrm{']<CR>"
     execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."em	:<C-U>InteligentWrapSelection ['\\emph{'],['\\mathit{']<CR>"
 "   Suggested Maps:
@@ -187,14 +188,14 @@ if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_ma
 
     " From vim.vim plugin (by Bram Mooleaner)
     " Move around functions.
-    nnoremap <silent><buffer> [[ m':call search('\\begin\s*{', "bW")<CR>
-    vnoremap <silent><buffer> [[ m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{', "bW")<CR>
-    nnoremap <silent><buffer> ]] m':call search('\\begin\s*{', "W")<CR>
-    vnoremap <silent><buffer> ]] m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{', "W")<CR>
-    nnoremap <silent><buffer> [] m':call search('\\end\s*{', "bW")<CR>
-    vnoremap <silent><buffer> [] m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{', "bW")<CR>
-    nnoremap <silent><buffer> ][ m':call search('\\end\s*{', "W")<CR>
-    vnoremap <silent><buffer> ][ m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{', "W")<CR>
+    nnoremap <silent><buffer> [[ m':call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "bW")<CR>
+    vnoremap <silent><buffer> [[ m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "bW")<CR>
+    nnoremap <silent><buffer> ]] m':call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "W")<CR>
+    vnoremap <silent><buffer> ]] m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "W")<CR>
+    nnoremap <silent><buffer> [] m':call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "bW")<CR>
+    vnoremap <silent><buffer> [] m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "bW")<CR>
+    nnoremap <silent><buffer> ][ m':call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "W")<CR>
+    vnoremap <silent><buffer> ][ m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "W")<CR>
 
     " Move around comments
     nnoremap <silent><buffer> ]% :call search('^\(\s*%.*\n\)\@<!\(\s*%\)', "W")<CR>

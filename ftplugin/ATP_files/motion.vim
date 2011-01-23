@@ -237,23 +237,20 @@ function! s:buflist()
     endif
     return t:buflist
 endfunction
-call s:buflist()
 " {{{2 RemoveFromBufList
-function! RemoveFromBufList()
-    let i=1
-    for f in t:buflist
-	echo "(" . i . ") " . f
-	let i+=1
-    endfor
-    let which=input("Which file to remove (press <Enter> for none)")
-    if which != "" && which =~ '\d\+'
-	call remove(t:buflist,f-1)
-    endif
-endfunction
+" function! RemoveFromBufList()
+"     let i=1
+"     for f in t:buflist
+" 	echo "(" . i . ") " . f
+" 	let i+=1
+"     endfor
+"     let which=input("Which file to remove (press <Enter> for none)")
+"     if which != "" && which =~ '\d\+'
+" 	call remove(t:buflist,f-1)
+"     endif
+" endfunction
 " {{{2 s:showtoc
 function! s:showtoc(toc)
-
-"     let new 	= a:0 >= 1 ? a:1 : 0
 
     " this is a dictionary of line numbers where a new file begins.
     let cline=line(".")
@@ -1344,6 +1341,8 @@ function! JMotion(flag)
     endif
 endfunction
 endif "}}}
+" Add newly opened files to t:buflist.
+call s:buflist()
 
 " Commands And Maps:
 " {{{

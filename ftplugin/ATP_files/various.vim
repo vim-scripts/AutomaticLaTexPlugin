@@ -3,7 +3,7 @@
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Mon Dec 06 08:00  2010 W
+" Last Change: Thu Dec 16 11:00  2010 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -681,7 +681,7 @@ function! s:TexDoc(...)
 	let texdoc_arg.=" " . a:{i}
     endfor
     if texdoc_arg == ""
-	let texdoc_arg 	= "-m " . g:atp_TeXdocDefault
+	let texdoc_arg 	= g:atp_TeXdocDefault
     endif
     " If the file is a text file texdoc is 'cat'-ing it into the terminal,
     " we use echo to capture the output. 

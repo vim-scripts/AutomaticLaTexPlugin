@@ -77,7 +77,7 @@ let g:atp_cached_common_variables = ['g:atp_latexpackages', 'g:atp_latexclasses'
 " Autocommands:
 augroup ATP_ProjectFile
     au!
-    au BufWritePre *.tex.project.vim setlocal noundofile
+    au BufWritePre *.tex.project.vim if has("persistent_undo") | setlocal noundofile | endif
 augroup END
 
 " Functions: (soure once)
@@ -575,7 +575,6 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     let bufnr	= bufnr("%")
     try
 	silent! exe "keepalt edit +setl\\ noswapfile " . fnameescape(a:project_script)
-	setl noundofile
     catch /.*/
 	echoerr v:errmsg
 	let errmsg	= v:errmsg
@@ -591,6 +590,9 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 	endif
 	return 
     endtry
+    if has("persistent_undo")
+	setl noundofile
+    endif
 
     " Delete the variables which where unlet:
     for var in deleted_variables

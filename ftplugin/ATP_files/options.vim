@@ -299,10 +299,10 @@ if !exists("g:atp_vmap_big_bracket_leader") || g:atp_reload
     let g:atp_vmap_big_bracket_leader='<LocalLeader>b'
 endif
 if !exists("g:atp_map_forward_motion_leader") || g:atp_reload
-    let g:atp_map_forward_motion_leader='}'
+    let g:atp_map_forward_motion_leader='>'
 endif
 if !exists("g:atp_map_backward_motion_leader") || g:atp_reload
-    let g:atp_map_backward_motion_leader='{'
+    let g:atp_map_backward_motion_leader='<'
 endif
 if !exists("g:atp_RelativePath") || g:atp_reload
     " This is here only for completness, the default value is set in project.vim
@@ -379,7 +379,7 @@ endif  				    " user cannot change the value set by :LoadHistory on startup in 
 " 				    better to start with atp_mapNn = 0 and let the
 " 				    user change it. 
 if !exists("g:atp_TeXdocDefault") || g:atp_reload
-    let g:atp_TeXdocDefault	= '-a lshort'
+    let g:atp_TeXdocDefault	= '-a -I lshort'
 endif
 "ToDo: to doc.
 "ToDo: luatex! (can produce both!)
@@ -1266,7 +1266,8 @@ endif
 	\ "\\author{", "\\date{", "\\thanks{", "\\title{",
 	\ "\\maketitle", "\\overline", "\\underline",
 	\ "\\marginpar", "\\indent", "\\par", "\\sloppy", "\\pagebreak", "\\nopagebreak",
-	\ "\\newpage", "\\newline", "\\newtheorem{", "\\linebreak", "\\line", "\\hyphenation{", "\\fussy",
+	\ "\\newpage", "\\newline", "\\newtheorem{", "\\linebreak", "\\line", "\\linespread{",
+	\ "\\hyphenation{", "\\fussy",
 	\ "\\enlagrethispage{", "\\clearpage", "\\cleardoublepage",
 	\ "\\caption{",
 	\ "\\opening{", "\\name{", "\\makelabels{", "\\location{", "\\closing{", "\\address{", 
@@ -1278,7 +1279,7 @@ endif
 	\ "\\settoheight{", "\\settowidth{", "\\stretch{",
 	\ "\\width", "\\height", "\\depth", "\\totalheight",
 	\ "\\footnote{", "\\footnotemark", "\\footnotetetext", 
-	\ "\\bibliography{", "\\bibliographystyle{", 
+	\ "\\bibliography{", "\\bibliographystyle{", "\\baselineskip",
 	\ "\\flushbottom", "\\onecolumn", "\\raggedbottom", "\\twocolumn",  
 	\ "\\alph{", "\\Alph{", "\\arabic{", "\\fnsymbol{", "\\reversemarginpar",
 	\ "\\exhyphenpenalty",

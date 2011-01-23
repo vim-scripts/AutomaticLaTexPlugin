@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 14 December 2010
+*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 23 January 2011
 
-			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.5)
+			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.6)
 				by Marcin Szamotulski
 			    mszamot [AT] gmail [DOT] com
 			----------------------------------------
@@ -84,6 +84,20 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 
 ================================================================================
 NEWS							*atp-news*
+
+>
+  Changes in version 8.6
+<
+  - <LocalLeader>tx vmap to wrap with \textrm{}:\text{} in normal:math modes.
+    (The leader which is used is defined by g:atp_vmap_text_font_leader, which
+    by default is <LocalLeader>).
+  - a fix in project file writting function (thanks to a user bug report).
+  - motion maps ]], [[, ][ and [] work with \[:\] and $$:$$.
+  - New default values for: >
+	g:atp_map_forward_motion_leader 	= ">"
+	g:atp_map_backward_motion_leader 	= "<"
+<   The old values were "{" and "}" (they were interfering with vim maps).
+
 >
   Changes in version 8.5
 <

@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Change: 2010 July 3
+" Last Change: Mon Jan 03 01:00  2011 C
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " URL:		https://launchpad.net/automatictexplugin
 
@@ -13,7 +13,7 @@ let b:did_ftplugin = 1
 
 " Status Line:
 function! ATPBibStatus() "{{{
-    return "Bibsearch: " . substitute(expand("%"),"___","","g")
+    return substitute(expand("%"),"___","","g")
 endfunction
 setlocal statusline=%{ATPBibStatus()}
 " }}}

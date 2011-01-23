@@ -1122,13 +1122,13 @@ function! atplib#showresults(bibresults, flags, pattern)
 	endif
 
 "   Open a new window.
-    let l:bufnr=bufnr("___" . a:pattern . "___"  )
+    let l:bufnr=bufnr("___Bibsearch: " . a:pattern . "___"  )
     if l:bufnr != -1
 	let l:bdelete=l:bufnr . "bwipeout"
 	exe l:bdelete
     endif
     unlet l:bufnr
-    let l:openbuffer=" +setl\\ buftype=nofile\\ filetype=bibsearch_atp " . fnameescape("___" . a:pattern . "___")
+    let l:openbuffer=" +setl\\ buftype=nofile\\ filetype=bibsearch_atp " . fnameescape("___Bibsearch: " . a:pattern . "___")
     if g:vertical ==1
 	let l:openbuffer="vsplit " . l:openbuffer 
 	let l:skip=""

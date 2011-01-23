@@ -3,7 +3,7 @@ This is a mirror of http://www.vim.org/scripts/script.php?script_id=2945
 If you have any question, ideas, or suggestion please do not hesitate to write, it is always nice to get some feedback ...
 and many THANKS for RATES, :).
 
-The plugin is known to not work on MS Windows, a help with porting it is welcome.
+The plugin is known to not work on MS Windows, a help with porting is welcome.
 
 This is a file type plugin for vim to comfortably write LaTeX (TeX) documents, which provides functionality not met in other such file type plugins.  It makes you FREE from compiling procedure, making this process automatic using autocommands. Features include (this is not a complete list):
 

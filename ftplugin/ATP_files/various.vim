@@ -3,7 +3,7 @@
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Thu Dec 16 11:00  2010 W
+" Last Change: Sat Mar 05 12:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -704,6 +704,9 @@ function! s:TeXdoc_complete(ArgLead, CmdLine, CursorPos)
 
     call filter(aliases, "v:val =~ 'alias'")
     call filter(map(aliases, "matchstr(v:val, '^\\s*alias\\s*\\zs\\S*\\ze\\s*=')"),"v:val !~ '^\\s*$'")
+    if exists("g:atp_latexpackages")
+	call extend(aliases, g:atp_latexpackages)
+    endif
 
     return filter(copy(aliases), "v:val =~ '^' . a:ArgLead")
 endfunction
@@ -1135,11 +1138,8 @@ endfunction
 "{{{ Print, Lpstat, ListPrinters
 " This function can send the output file to local or remote printer.
 " a:1   = file to print		(if not given printing the output file)
-" a:2	= printer name		(if g:atp_ssh is non empty or different from
-" 				'localhost' printer on remote server)
 " a:3	= printing options	(give printing optinos or 'default' then use
 " 				the variable g:printingoptions)
-" a:4 	= printing command 	(default lpr)
  function! s:SshPrint(...)
 
     call atplib#outdir()
@@ -1147,8 +1147,8 @@ endfunction
     " set the extension of the file to print
     " if prining the tex output file.
     if a:0 == 0 || a:0 >= 1 && a:1 == ""
-	let l:ext = get(g:atp_CompilersDict, b:atp_TexCompiler, "not present")
-	if l:ext == "not present"
+	let ext = get(g:atp_CompilersDict, b:atp_TexCompiler, "not present")
+	if ext == "not present"
 	    echohl WarningMsg
 	    echomsg b:atp_TexCompiler . " is not present in g:atp_CompilersDict"
 	    echohl Normal
@@ -1156,71 +1156,95 @@ endfunction
 	endif
 	if b:atp_TexCompiler =~ "lua"
 	    if b:atp_TexOptions == "" || b:atp_TexOptions =~ "output-format=\s*pdf"
-		let l:ext = ".pdf"
+		let ext = ".pdf"
 	    else
-		let l:ext = ".dvi"
+		let ext = ".dvi"
 	    endif
 	endif
     endif
 
     " set the file to print
-    let l:pfile		= ( a:0 == 0 || (a:0 >= 1 && a:1 == "" ) ? b:atp_OutDir . fnamemodify(expand("%"),":t:r") . l:ext : a:1 )
+    let pfile		= ( a:0 == 0 || (a:0 >= 1 && a:1 == "" ) ? b:atp_OutDir . fnamemodify(expand("%"),":t:r") . ext : a:1 )
 
     " set the printing command
-    let l:lprcommand	= ( a:0 >= 4 ? a:4 : "lpr" )
-    let l:print_options	= ( a:0 >= 3 ? a:3 : g:printingoptions )
+    let lprcommand	= g:atp_lprcommand
+    if a:0 >= 2
+	let arg_list	= copy(a:000)
+	call remove(arg_list,0)
+	let print_options	= join(arg_list, " ")
+    endif
 
     " print locally or remotely
     " the default is to print locally (g:atp_ssh=`whoami`@localhost)
-    let l:server	= ( exists("g:atp_ssh") ? strpart(g:atp_ssh,stridx(g:atp_ssh,"@")+1) : "localhost" )
-    " To which printer send the file:
-    let l:printer	= ( a:0 >= 2 ? "-P " . a:2 : "" )
-    " Set Printing Options
-    let l:print_options .= " " . l:printer
+    let server	= ( exists("g:atp_ssh") ? strpart(g:atp_ssh,stridx(g:atp_ssh,"@")+1) : "localhost" )
 
-    echomsg "Server " . l:server
-    echomsg "File   " . l:pfile
+    echomsg "Server " . server
+    echomsg "File   " . pfile
 
-    if l:server =~ 'localhost'
-	let l:ok 		= confirm("Are the printing options set right?\n".l:print_options,"&Yes\n&No\n&Cancel")
-	if l:ok == "2"
-	    let l:print_options	= input("Give new printing options ")
-	elseif l:ok == "3"
-	    return "abandoned"
-	endif
-
-	let l:com	= l:lprcommand . " " . l:print_options . " " .  fnameescape(l:pfile)
+    if server =~ 'localhost'
+	let com	= lprcommand . " " . print_options . " " .  fnameescape(pfile)
 
 	redraw!
-	echomsg "Printing ...  " . l:com
-" 	let b:com=l:com " DEBUG
-	call system(l:com)
+	echomsg "Printing ...  " . com
+	let b:com=com " DEBUG
+" 	call system(com)
     " print over ssh on the server g:atp_ssh with the printer a:1 (or the
     " default system printer if a:0 == 0
     else 
-	" TODO: write completion :).
-	let l:ok = confirm("Are the printing options set right?\n".l:print_options,"&Yes\n&No\n&Cancel")
-	if l:ok == "2"
-	    let l:print_options=input("Give new printing options ")
-	elseif l:ok == "3"
-	    return "abandoned"
-	endif
-	redraw!
-	let l:com="cat " . fnameescape(l:pfile) . " | ssh " . g:atp_ssh . " " . l:lprcommand . " " . l:print_options
-	echomsg "Printing ...  " . l:com
-" 	let b:com=l:com " DEBUG
-	call system(l:com)
+	let com="cat " . fnameescape(pfile) . " | ssh " . g:atp_ssh . " " . lprcommand . " " . print_options
+	echomsg "Printing ...  " . com
+	let b:com=com " DEBUG
+" 	call system(com)
     endif
 endfunction
-" The command only prints the output file.
 
+function! <SID>Lpr(...)
+    call atplib#outdir()
+
+    " set the extension of the file to print
+    " if prining the tex output file.
+    if a:0 == 0 || a:0 >= 1 && a:1 == ""
+	let ext = get(g:atp_CompilersDict, b:atp_TexCompiler, "not present")
+	if ext == "not present"
+	    echohl WarningMsg
+	    echomsg b:atp_TexCompiler . " is not present in g:atp_CompilersDict"
+	    echohl Normal
+	    return "extension not found"
+	endif
+	if b:atp_TexCompiler =~ "lua"
+	    if b:atp_TexOptions == "" || b:atp_TexOptions =~ "output-format=\s*pdf"
+		let ext = ".pdf"
+	    else
+		let ext = ".dvi"
+	    endif
+	endif
+    endif
+
+    " set the file to print
+    let pfile		= ( a:0 == 0 || (a:0 >= 1 && a:1 == "" ) ? b:atp_OutDir . fnamemodify(expand("%"),":t:r") . ext : a:1 )
+    
+    " set the printing command
+    let lprcommand	= g:atp_lprcommand
+    if a:0 >= 1
+	let arg_list	= copy(a:000)
+	let print_options	= join(arg_list, " ")
+    endif
+
+	let com	= lprcommand . " " . print_options . " " .  fnameescape(pfile)
+
+	redraw!
+	echomsg "Printing ...  " . com
+	let b:com=com " DEBUG
+" 	call system(com)
+endfunction
+" The command only prints the output file.
 fun! s:Lpstat()
     if exists("g:apt_ssh") 
-	let l:server=strpart(g:atp_ssh,stridx(g:atp_ssh,"@")+1)
+	let server=strpart(g:atp_ssh,stridx(g:atp_ssh,"@")+1)
     else
-	let l:server='locahost'
+	let server='locahost'
     endif
-    if l:server == 'localhost'
+    if server == 'localhost'
 	echo system("lpstat -l")
     else
 	echo system("ssh " . g:atp_ssh . " lpstat -l ")
@@ -1230,11 +1254,73 @@ endfunction
 " This function is used for completetion of the command SshPrint
 function! s:ListPrinters(A,L,P)
     if exists("g:atp_ssh") && g:atp_ssh !~ '@localhost' && g:atp_ssh != ""
-	let l:com="ssh -q " . g:atp_ssh . " lpstat -a | awk '{print $1}'"
+	let com="ssh -q " . g:atp_ssh . " lpstat -a | awk '{print $1}'"
     else
-	let l:com="lpstat -a | awk '{print $1}'"
+	let com="lpstat -a | awk '{print $1}'"
     endif
-    return system(l:com)
+    return system(com)
+endfunction
+
+function! s:ListLocalPrinters(A,L,P)
+    let com="lpstat -a | awk '{print $1}'"
+    return system(com)
+endfunction
+
+" custom style completion
+function! s:Complete_lpr(ArgLead, CmdLine, CPos)
+    if a:CmdLine =~ '-[Pd]\s\+\w*$'
+	" complete printers
+	return s:ListPrinters(a:ArgLead, "", "")
+    elseif a:CmdLine =~ '-o\s\+[^=]*$'
+	" complete option
+	return join(g:atp_CupsOptions, "\n")
+    elseif a:CmdLine =~ '-o\s\+Collate=\%(\w\|-\)*$'
+	return join(['Collate=True', 'Collate=False'], "\n")
+    elseif a:CmdLine =~ '-o\s\+page-set=\%(\w\|-\)*$'
+	return join(['opage-set=odd', 'page-set=even'], "\n")
+    elseif a:CmdLine =~ '-o\s\+sides=\%(\w\|-\)*$'
+	return join(['sides=two-sided-long-edge', 'sides=two-sided-short-edge', 'sides=one-sided'], "\n")
+    elseif a:CmdLine =~ '-o\s\+outputorder=\%(\w\|-\)*$'
+	return join(['outputorder=reverse', 'outputorder=normal'], "\n")
+    elseif a:CmdLine =~ '-o\s\+page-border=\%(\w\|-\)*$'
+	return join(['page-border=double', 'page-border=none', 'page-border=double-thick', 'page-border=single', 'page-border=single-thick'], "\n")
+    elseif a:CmdLine =~ '-o\s\+job-sheets=\%(\w\|-\)*$'
+	return join(['job-sheets=none', 'job-sheets=classified', 'job-sheets=confidential', 'job-sheets=secret', 'job-sheets=standard', 'job-sheets=topsecret', 'job-sheets=unclassified'], "\n")
+    elseif a:CmdLine =~ '-o\s\+number-up-layout=\%(\w\|-\)*$'
+	return join(['number-up-layout=btlr', 'number-up-layout=btrl', 'number-up-layout=lrbt', 'number-up-layout=lrtb', 'number-up-layout=rlbt', 'number-up-layout=rltb', 'number-up-layout=tblr', 'number-up-layout=tbrl'], "\n")
+    elseif a:CmdLine =~ '-o\s\+position=\%(\w\|-\)*$'
+	return join(['position=center', 'position=top', 'position=left', 'position=right', 'position=top-left', 'position=top-right', 
+		    \ 'position=bottom', 'position=bottom-left', 'position=bottom-right'], "\n")
+    endif
+    return ""
+endfunction
+
+function! s:CompleteLocal_lpr(ArgLead, CmdLine, CPos)
+    if a:CmdLine =~ '-[Pd]\s\+\w*$'
+	" complete printers
+	return s:ListLocalPrinters(a:ArgLead, "", "")
+    elseif a:CmdLine =~ '-o\s\+[^=]*$'
+	" complete option
+	return join(g:atp_CupsOptions, "\n")
+    elseif a:CmdLine =~ '-o\s\+Collate=\%(\w\|-\)*$'
+	return join(['Collate=True', 'Collate=False'], "\n")
+    elseif a:CmdLine =~ '-o\s\+page-set=\%(\w\|-\)*$'
+	return join(['opage-set=odd', 'page-set=even'], "\n")
+    elseif a:CmdLine =~ '-o\s\+sides=\%(\w\|-\)*$'
+	return join(['sides=two-sided-long-edge', 'sides=two-sided-short-edge', 'sides=one-sided'], "\n")
+    elseif a:CmdLine =~ '-o\s\+outputorder=\%(\w\|-\)*$'
+	return join(['outputorder=reverse', 'outputorder=normal'], "\n")
+    elseif a:CmdLine =~ '-o\s\+page-border=\%(\w\|-\)*$'
+	return join(['page-border=double', 'page-border=none', 'page-border=double-thick', 'page-border=single', 'page-border=single-thick'], "\n")
+    elseif a:CmdLine =~ '-o\s\+job-sheets=\%(\w\|-\)*$'
+	return join(['job-sheets=none', 'job-sheets=classified', 'job-sheets=confidential', 'job-sheets=secret', 'job-sheets=standard', 'job-sheets=topsecret', 'job-sheets=unclassified'], "\n")
+    elseif a:CmdLine =~ '-o\s\+number-up-layout=\%(\w\|-\)*$'
+	return join(['number-up-layout=btlr', 'number-up-layout=btrl', 'number-up-layout=lrbt', 'number-up-layout=lrtb', 'number-up-layout=rlbt', 'number-up-layout=rltb', 'number-up-layout=tblr', 'number-up-layout=tbrl'], "\n")
+    elseif a:CmdLine =~ '-o\s\+position=\%(\w\|-\)*$'
+	return join(['position=center', 'position=top', 'position=left', 'position=right', 'position=top-left', 'position=top-right', 
+		    \ 'position=bottom', 'position=bottom-left', 'position=bottom-right'], "\n")
+    endif
+    return ""
 endfunction
 " }}}
 
@@ -1319,46 +1405,46 @@ if g:debug_atp_plugin==1 && !exists("*Reload")
 " Reload() - reload all the tex_apt functions
 " Reload(func1,func2,...) reload list of functions func1 and func2
 " function! Reload(...)
-"     let l:pos_saved=getpos(".")
-"     let l:bufname=fnamemodify(expand("%"),":p")
+"     let pos_saved=getpos(".")
+"     let bufname=fnamemodify(expand("%"),":p")
 " 
 "     if a:0 == 0
-" 	let l:runtime_path=split(&runtimepath,',')
+" 	let runtime_path=split(&runtimepath,',')
 " 	echo "Searching for atp plugin files"
-" 	let l:file_list=['ftplugin/tex_atp.vim', 'ftplugin/fd_atp.vim', 
+" 	let file_list=['ftplugin/tex_atp.vim', 'ftplugin/fd_atp.vim', 
 " 		    \ 'ftplugin/bibsearch_atp.vim', 'ftplugin/toc_atp.vim', 
 " 		    \ 'autoload/atplib.vim', 'ftplugin/atp_LatexBox.vim',
 " 		    \ 'indent/tex_atp.vim' ]
-" 	let l:file_path=[]
-" 	for l:file in l:file_list
-" 		call add(l:file_path,globpath(&rtp,l:file))
+" 	let file_path=[]
+" 	for file in file_list
+" 		call add(file_path,globpath(&rtp,file))
 " 	endfor
 " " 	if exists("b:atp_debug")
 " " 	    if b:atp_debug == "v" || b:atp_debug == "verbose"
-" " 		echomsg string(l:file_path)
+" " 		echomsg string(file_path)
 " " 	    endif
 " " 	endif
-" 	for l:file in l:file_path
-" 	    echomsg "deleting FUNCTIONS and VARIABLES from " . l:file
-" 	    let l:atp=readfile(l:file)
-" 	    for l:line in l:atp
-" 		let l:function_name=matchstr(l:line,'^\s*fun\%(ction\)\?!\?\s\+\zs\<[^(]*\>\ze(')
-" 		if l:function_name != "" && l:function_name != "Reload"
-" 		    if exists("*" . l:function_name)
+" 	for file in file_path
+" 	    echomsg "deleting FUNCTIONS and VARIABLES from " . file
+" 	    let atp=readfile(file)
+" 	    for line in atp
+" 		let function_name=matchstr(line,'^\s*fun\%(ction\)\?!\?\s\+\zs\<[^(]*\>\ze(')
+" 		if function_name != "" && function_name != "Reload"
+" 		    if exists("*" . function_name)
 " 			if exists("b:atp_debug")
 " 			    if b:atp_debug == "v" || b:atp_debug == "verbose"
-" 				echomsg "deleting function " . l:function_name
+" 				echomsg "deleting function " . function_name
 " 			    endif
 " 			endif
-" 			execute "delfunction " . l:function_name
+" 			execute "delfunction " . function_name
 " 		    endif
 " 		endif
-" 		let l:variable_name=matchstr(l:line,'^\s*let\s\+\zsg:[a-zA-Z_^{}]*\ze\>')
-" 		if exists(l:variable_name)
-" 		    execute "unlet ".l:variable_name
+" 		let variable_name=matchstr(line,'^\s*let\s\+\zsg:[a-zA-Z_^{}]*\ze\>')
+" 		if exists(variable_name)
+" 		    execute "unlet ".variable_name
 " 		    if exists("b:atp_debug")
 " 			if b:atp_debug == "v" || b:atp_debug == "verbose"
-" 			    echomsg "unlet ".l:variable_name
+" 			    echomsg "unlet ".variable_name
 " 			endif
 " 		    endif
 " 		endif
@@ -1366,13 +1452,13 @@ if g:debug_atp_plugin==1 && !exists("*Reload")
 " 	endfor
 "     else
 " 	if a:1 != "maps" && a:1 != "reload"
-" 	    let l:f_list=split(a:1,',')
-" 	    let g:f_list=l:f_list
-" 	    for l:function in l:f_list
-" 		execute "delfunction " . l:function
+" 	    let f_list=split(a:1,',')
+" 	    let g:f_list=f_list
+" 	    for function in f_list
+" 		execute "delfunction " . function
 " 		if exists("b:atp_debug")
 " 		    if b:atp_debug == "v" || b:atp_debug == "verbose"
-" 			echomsg "delfunction " . l:function
+" 			echomsg "delfunction " . function
 " 		    endif
 " 		endif
 " 	    endfor
@@ -1390,10 +1476,10 @@ if g:debug_atp_plugin==1 && !exists("*Reload")
 "     endif
 " "   THIS IS THE SLOW WAY:
 "     bd!
-"     execute "edit " . fnameescape(l:bufname)
-"     keepjumps call setpos(".",l:pos_saved)
+"     execute "edit " . fnameescape(bufname)
+"     keepjumps call setpos(".",pos_saved)
 " "   This could be faster: but aparently doesn't work.
-" "     execute "source " . l:file_path[0]
+" "     execute "source " . file_path[0]
 " endfunction
 
 " Source options.vim
@@ -1459,7 +1545,6 @@ function! Preambule()
     endif
 endfunction
 " }}}
-
 
 " Get bibdata from ams
 " {{{ AMSGet
@@ -1615,6 +1700,46 @@ function! AMSRef(bang, what)
     endif
 endfunction
 "}}}
+
+" Count Words
+" {{{ WordCount() ShowWordCount()
+function! <SID>WordCount(bang)
+
+    let g:atp_WordCount = {}
+    for file in keys(filter(copy(b:TypeDict), 'v:val == ''input''')) + [ b:atp_MainFile ]
+	let wcount = substitute(system("detex -n " . fnameescape(file) . " | wc -w "), '\D', '', 'g')
+	call extend(g:atp_WordCount, { file : wcount })
+    endfor
+
+    " sum values
+    let val = values(g:atp_WordCount)
+    let wc_sum = 0
+    for i in val
+	let wc_sum += i
+    endfor
+
+    return wc_sum
+endfunction
+
+function! <SID>ShowWordCount(bang)
+
+    let wc = <SID>WordCount(a:bang)
+    let c = 0
+    if a:bang == "!"
+	echo g:atp_WordCount[b:atp_MainFile] . "\t" . b:atp_MainFile
+	for file in b:ListOfFiles
+	    if get(g:atp_WordCount, file, "NOFILE") != "NOFILE"
+		let c=1
+		echo g:atp_WordCount[file] . "\t" . file 
+	    endif
+	endfor
+	if c
+	    echomsg wc
+	endif
+    else
+	echomsg wc . "  " . b:atp_MainFile
+    endif
+endfunction "}}}
 endif "}}}
 
 " COMMANDS AND MAPS:
@@ -1642,7 +1767,8 @@ command! -buffer 	TexLog					:call <SID>TexLog()
 nnoremap <silent> <buffer> <Plug>TexLog				:call <SID>TexLog()<CR>
 command! -buffer 	PdfFonts				:call <SID>PdfFonts()
 nnoremap <silent> <buffer> <Plug>PdfFonts			:call <SID>PdfFonts()<CR>
-command! -complete=custom,<SID>ListPrinters  -buffer -nargs=* SshPrint 	:call <SID>SshPrint("", <f-args>)
+command! -complete=custom,s:Complete_lpr  -buffer -nargs=* SshPrint 	:call <SID>SshPrint("", <f-args>)
+command! -complete=custom,s:CompleteLocal_lpr  -buffer -nargs=* Lpr		:call <SID>Lpr(<f-args>)
 nnoremap <buffer> 	<Plug>SshPrint				:SshPrint 
 command! -buffer 	Lpstat					:call <SID>Lpstat()
 nnoremap <silent> <buffer> <Plug>Lpstat				:call <SID>Lpstat()<CR>
@@ -1654,4 +1780,5 @@ command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\c\<note\>','\s*%\
 command! -buffer -bang ReloadATP				:call <SID>ReloadATP(<q-bang>)
 command! -bang -buffer -nargs=1 AMSRef				:call AMSRef(<q-bang>, <q-args>)
 command! -buffer	Preambule				:call Preambule()
+command! -bang		WordCount				:call <SID>ShowWordCount(<q-bang>)
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

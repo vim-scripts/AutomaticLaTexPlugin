@@ -224,6 +224,7 @@ reader to them, as in "See Figure 3 for more details."
 |\newenvironment| 	Define a new environment
 |\newtheorem| 		Define a new theorem-like environment
 |\newfont| 		Define a new font name
+\DeclareFixedFont     Define a new font switch	
 
 
 \newcommand{cmd}[args]{definition}		*\newcommand* *\renewcommand*
@@ -300,6 +301,12 @@ The |\newtheorem| command may have at most one optional argument.
 		Defines the command name {cmd}, which must not be currently
 		defined, to be a declaration that selects the font named
 		{fontname} to be the current font.
+
+\DeclareFixedFont{cmd}{encoding}{family}{series}{shape}{size}		
+		Defines new command {cmd} which will switch to the declared
+		font. Other attributes of this command are the same os
+		for the \usefont command. Example
+		    \DeclareFixedFont{\bold}{T1}{qbk}{b}{it}{11}
 
 ==============================================================================
 5. Document Classes				*latex-classes*

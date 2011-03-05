@@ -1076,7 +1076,7 @@ function! GotoFile(bang,file,...)
 	" So that bib, cls, sty files will have their file type (bib/plaintex).
 	let filetype	= &l:filetype
 	let old_file	= expand("%:p")
-	execute "edit " . file
+	execute "edit " . fnameescape(file)
 	if &l:filetype =~ 'tex$' && file =~ '\.tex$' && &l:filetype != filetype  
 	    let &l:filetype	= filetype
 	endif

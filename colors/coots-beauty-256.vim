@@ -14,7 +14,7 @@ endif
 
 let g:colors_name="coots_beauty_256"
 
-highlight Normal         cterm=none           ctermfg=250 ctermbg=233	guifg=white	guibg=#1c1c1c
+highlight Normal         cterm=none           ctermfg=252 ctermbg=233	guifg=white	guibg=#1c1c1c
 highlight NonText        cterm=none           ctermfg=105 ctermbg=233	guifg=#1c1c1c	guibg=#1c1c1c 
 
 highlight Visual         		      ctermbg=238				guibg=gray35
@@ -45,7 +45,7 @@ highlight FoldColumn     cterm=none           	ctermfg=green ctermbg=233 guifg=#
 
 highlight Search         cterm=bold           	ctermfg=black  	ctermbg=226	guifg=black guibg=yellow
 highlight IncSearch      cterm=bold        	ctermfg=black  	ctermbg=red	guifg=gold guibg=#1c1c1c
-highlight MatchParen     			ctermfg=233	ctermbg=226	guifg=#1c1c1c guibg=gold
+highlight MatchParen     			cterm=none    ctermfg=230        ctermbg=54	guifg=#1c1c1c guibg=gold
 
 highlight PMenu          ctermbg=18 ctermfg=39  
 highlight PMenuSel       ctermbg=39 ctermfg=18
@@ -138,8 +138,8 @@ highlight texSection	cterm=bold	ctermfg=242	ctermbg=233	guifg=FireBrick2	gui=bol
 " highlight texSectionName						guifg=FireBrick
 highlight texDocType			ctermfg=90	ctermbg=233	guifg=DeepPink4
 highlight texInputFile			ctermfg=90	ctermbg=233	guifg=DeepPink4
-highlight texDocTypeArgs		ctermfg=204	ctermbg=233	guifg=DeepPink2
-highlight texInputFileopt		ctermfg=204	ctermbg=233	guifg=DeepPink2
+highlight texDocTypeArgs		ctermfg=161	ctermbg=233	guifg=DeepPink2
+highlight texInputFileopt		ctermfg=161	ctermbg=233	guifg=DeepPink2
 highlight texType			ctermfg=40	ctermbg=233	guifg=green3
 highlight texTypeStyle			ctermfg=40	ctermbg=233	guifg=green3
 highlight texMath			ctermfg=245	ctermbg=233	guifg=DarkKhaki
@@ -149,6 +149,8 @@ highlight texSpecialChar		ctermfg=39	ctermbg=233	guifg=DodgerBlue
 highlight texRefZone							guifg=DeepPink2		gui=bold
 highlight texCite							guifg=DeepPink4
 highlight texRefOption							guifg=HotPink4
+highlight texComment			ctermfg=125
+highlight texStatement			ctermfg=54
 
 " texlog /syntax file available in Automatic Tex Package/
 hi texlogKeyword		ctermfg=90 cterm=bold		guifg=magenta4	gui=bold

@@ -340,7 +340,7 @@ function! TreeOfFiles(main_file,...)
 
 	    let [ line, lnum, cnum ] = entry
 	    " input name (iname) as appeared in the source file
-	    let iname	= substitute(matchstr(line, pattern . '\zs\f*\ze'), '\s*$', '', '') 
+	    let iname	= substitute(matchstr(line, pattern . '\(''\|"\)\=\zs\f\%(\f\|\s\)*\ze\1\='), '\s*$', '', '') 
 	    if g:atp_debugToF
 		silent echo run_nr . ") iname=".iname
 	    endif
@@ -455,8 +455,8 @@ function! TreeOfFiles(main_file,...)
     endif
 
     redir END
-    if g:atp_debugTOF && run_nr == 1
-	redir! >> /tmp/ATP_log 
+    if g:atp_debugToF && run_nr == 1
+	redir! >> /tmp/tof_log
 	silent! echo "========TreeOfFiles========================"
 	silent! echo "TreeOfFiles b:ListOfFiles=" . string(b:ListOfFiles)
 	redir END

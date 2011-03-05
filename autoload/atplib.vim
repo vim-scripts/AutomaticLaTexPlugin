@@ -168,7 +168,7 @@ endfunction
 " resove(fnamemodify(bufname("%"),":p"))
 
 " {{{2 --------------- atplib#GrepAuxFile
-function! atplib#GrepAuxFile(...)
+silent! function! atplib#GrepAuxFile(...)
     " Aux file to read:
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let aux_filename	= a:0 == 0 ? fnamemodify(atp_MainFile, ":r") . ".aux" : a:1 
@@ -203,6 +203,14 @@ function! atplib#GrepAuxFile(...)
     call map(loc_list, ' v:val["text"]')
 
     let labels		= []
+    if g:atp_debugGAF
+	let g:gaf_debug	= {}
+    endif
+
+    " Equation counter depedns on the option \numberwithin{equation}{section}
+    " /now this only supports article class.
+    let equation = len(atplib#GrepPreambule('^\s*\\numberwithin{\s*equation\s*}{\s*section\s*}'))
+    let g:equation = equation
 "     for line in aux_file
     for line in loc_list
 " 	if line =~ '^\\newlabel' 
@@ -218,6 +226,7 @@ function! atplib#GrepAuxFile(...)
 	    "This is in the case that the author put in the title a command,
 	    "for example \mbox{...}, but not something more difficult :)
 	    if line =~ '^\\newlabel{[^}]*}{{[^}]*}{[^}]*}{\%({[^}]*}\|[^}]\)*}{[^}]*}'
+		let debug	= 1
 		let label	= matchstr(line, '^\\newlabel\s*{\zs[^}]*\ze}')
 		let rest	= matchstr(line, '^\\newlabel\s*{[^}]*}\s*{\s*{\zs.*\ze}\s*$')
 		let l:count = 1
@@ -241,6 +250,7 @@ function! atplib#GrepAuxFile(...)
 	    " Document classes: article, book, amsart, amsbook, review
 	    " (sometimes the format is a little bit different)
 	    elseif line =~ '\\newlabel{[^}]*}{{\d\%(\d\|\.\)*{\d\%(\d\|\.\)*}}{\d*}{\%({[^}]*}\|[^}]\)*}{[^}]*}'
+		let debug	= 2
 		let list = matchlist(line, 
 		    \ '\\newlabel{\([^}]*\)}{{\(\d\%(\d\|\.\)*{\d\%(\d\|\.\)*\)}}{\d*}{\%({[^}]*}\|[^}]\)*}{\([^}]*\)}')
 	    	let [ label, number, counter ] = [ list[1], list[2], list[3] ]
@@ -249,18 +259,32 @@ function! atplib#GrepAuxFile(...)
 
 	    " Document class: article
 	    elseif line =~ '\\newlabel{[^}]*}{{\d\%(\d\|\.\)*}{\d\+}}'
+		let debug	= 3
 		let list = matchlist(line, '\\newlabel{\([^}]*\)}{{\(\d\%(\d\|\.\)*\)}{\d\+}}')
 	    	let [ label, number, counter ] = [ list[1], list[2], "" ]
 
 	    " Memoir document class uses '\M@TitleReference' command
 	    " which doesn't specify the counter number.
 	    elseif line =~ '\\M@TitleReference' 
+		let debug	= 4
 		let label	= matchstr(line, '^\\newlabel\s*{\zs[^}]*\ze}')
 		let number	= matchstr(line, '\\M@TitleReference\s*{\zs[^}]*\ze}') 
 		let counter	= ""
 
+	    elseif line =~ '\\newlabel{[^}]*}{.*\\relax\s}{[^}]*}{[^}]*}}'
+		" THIS METHOD MIGHT NOT WORK WELL WITH: book document class.
+		let debug	= 5.0
+		let label 	= matchstr(line, '\\newlabel{\zs[^}]*\ze}{.*\\relax\s}{[^}]*}{[^}]*}}')
+		let nc 		= matchstr(line, '\\newlabel{[^}]*}{.*\\relax\s}{\zs[^}]*\ze}{[^}]*}}')
+		let counter	= matchstr(nc, '\zs\a*\ze\(\.\d\+\)\+')
+		let number	= matchstr(nc, '.*\a\.\zs\d\+\(\.\d\+\)\+') 
+		if counter == 'equation' && !equation
+		    let number = matchstr(number, '\d\+\.\zs.*')
+		endif
+
 	    " aamas2010 class
-	    elseif line =~ '\\newlabel{[^}]*}{{\d\%(\d\|.\)*{\d\%(\d\|.\)*}{[^}]*}}'
+	    elseif line =~ '\\newlabel{[^}]*}{{\d\%(\d\|.\)*{\d\%(\d\|.\)*}{[^}]*}}' && atplib#DocumentClass(b:atp_MainFile) =~? 'aamas20\d\d'
+		let debug	= 5.1
 		let label 	= matchstr(line, '\\newlabel{\zs[^}]*\ze}{{\d\%(\d\|.\)*{\d\%(\d\|.\)*}{[^}]*}}')
 		let number 	= matchstr(line, '\\newlabel{\zs[^}]*\ze}{{\zs\d\%(\d\|.\)*{\d\%(\d\|.\)*\ze}{[^}]*}}')
 		let number	= substitute(number, '{\|}', '', 'g')
@@ -268,6 +292,7 @@ function! atplib#GrepAuxFile(...)
 
 	    " subeqautions
 	    elseif line =~ '\\newlabel{[^}]*}{{[^}]*}{[^}]*}}'
+		let debug	= 6
 		let list = matchlist(line, '\\newlabel{\([^}]*\)}{{\([^}]*\)}{\([^}]*\)}}')
 		let [ label, number ] = [ list[1], list[2] ]
 		let counter	= ""
@@ -275,10 +300,14 @@ function! atplib#GrepAuxFile(...)
 	    " AMSBook uses \newlabel for tocindent
 	    " which we filter out here.
 	    else
-		let label	= "nolabel"
+		let debug	= 7
+		let label	= "nolabel: " . line
 	    endif
-	    if label != 'nolabel'
-		call add(labels, [ label, number, counter])
+	    if label !~ '^nolabel:\>'
+		call add(labels, [ label, number, counter, debug])
+	    endif
+	    if g:atp_debugGAF
+		call extend(g:gaf_debug, { label : [ number, counter, debug ] })
 	    endif
 " 	endif
     endfor
@@ -1721,7 +1750,7 @@ function! atplib#SearchPackage(name,...)
 
 endfunction
 " }}}1
-"{{{1 atplib#GrepPackageList()
+"{{{1 atplib#GrepPackageList
 " This function returns list of packages declared in the b:atp_MainFile (or
 " a:2). If the filetype is plaintex it returns list of all \input{} files in
 " the b:atp_MainFile. 
@@ -1775,6 +1804,22 @@ function! atplib#GrepPackageList(...)
 "      echo reltimestr(reltime(time))
     return pre_list
 endfunction
+"{{{1 atplib#GrepPreambule
+function! atplib#GrepPreambule(pattern)
+    let saved_loclist = getloclist(0)
+    let winview = winsaveview()
+    exe 'silent! 1lvimgrep /^[^%]*\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
+    let linenr = get(get(getloclist(0), 0, {}), 'lnum', 'nomatch')
+    if linenr == "nomatch"
+	call setloclist(0, saved_loclist)
+	return
+    endif
+    exe 'silent! lvimgrep /'.a:pattern.'\%<'.linenr.'l/jg ' . fnameescape(b:atp_MainFile) 
+    let matches = getloclist(0)
+    call setloclist(0, saved_loclist)
+    return matches
+endfunction
+
 " atplib#DocumentClass {{{1
 function! atplib#DocumentClass(file)
 
@@ -2892,9 +2937,9 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'labels') != -1 
 	    let completion_method='labels'
 	    " DEBUG:
-	    let b:comp_method='label'
+	    let b:comp_method='labels'
 	else
-	    let b:comp_method='label fast return'
+	    let b:comp_method='labels fast return'
 	    return ''
 	endif
     "{{{3 --------- bibitems
@@ -3003,6 +3048,51 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let b:comp_method='documentclass'
 	else
 	    let b:comp_method='documentclass fast return'
+	    return ''
+	endif
+    "{{{3 --------- Beamer Themes
+    elseif pline =~ '\\usetheme$' && !normal_mode
+	if index(g:atp_completion_active_modes, 'beamerthemes') != -1
+	    let completion_method='beamerthemes'
+	    let b:comp_method='beamerthemes'
+	else
+	    let b:comp_method='beamerthemes fast return'
+	    return ''
+	endif
+    "{{{3 --------- Beamer Inner Themes
+    elseif pline =~ '\\useinnertheme$' && !normal_mode
+	if index(g:atp_completion_active_modes, 'beamerinnerthemes') != -1
+	    let completion_method='beamerinnerthemes'
+	    let b:comp_method='beamerinnerthemes'
+	else
+	    let b:comp_method='beamerinnerthemes fast return'
+	    return ''
+	endif
+    "{{{3 --------- Beamer Outer Themes
+    elseif pline =~ '\\useoutertheme$' && !normal_mode
+	if index(g:atp_completion_active_modes, 'beamerouterthemes') != -1
+	    let completion_method='beamerouterthemes'
+	    let b:comp_method='beamerouterthemes'
+	else
+	    let b:comp_method='beamerouterthemes fast return'
+	    return ''
+	endif
+    "{{{3 --------- Beamer Color Themes
+    elseif pline =~ '\\usecolortheme$' && !normal_mode
+	if index(g:atp_completion_active_modes, 'beamercolorthemes') != -1
+	    let completion_method='beamercolorthemes'
+	    let b:comp_method='beamercolorthemes'
+	else
+	    let b:comp_method='beamercolorthemes fast return'
+	    return ''
+	endif
+    "{{{3 --------- Beamer Font Themes
+    elseif pline =~ '\\usefonttheme$' && !normal_mode
+	if index(g:atp_completion_active_modes, 'beamerfontthemes') != -1
+	    let completion_method='beamerfontthemes'
+	    let b:comp_method='beamerfontthemes'
+	else
+	    let b:comp_method='beamerfontthemes fast return'
 	    return ''
 	endif
     "{{{3 --------- font family
@@ -3168,7 +3258,11 @@ function! atplib#TabCompletion(expert_mode,...)
     if completion_method == 'environment_names'
 	let end=strpart(line,pos[2]-1)
 	if end !~ '\s*}'
-	    let completion_list=deepcopy(g:atp_Environments)
+	    let completion_list = []
+	    if atplib#DocumentClass(b:atp_MainFile) == 'beamer'
+		call extend(completion_list, g:atp_BeamerEnvironments)
+	    endif
+	    call extend(completion_list,deepcopy(g:atp_Environments))
 	    if g:atp_local_completion
 		" Make a list of local envs and commands
 		if !exists("s:atp_LocalEnvironments") 
@@ -3178,7 +3272,11 @@ function! atplib#TabCompletion(expert_mode,...)
 	    endif
 	    let completion_list=atplib#Add(completion_list,'}')
 	else
-	    let completion_list=deepcopy(g:atp_Environments)
+	    let completion_list = []
+	    if atplib#DocumentClass(b:atp_MainFile) == 'beamer'
+		call extend(completion_list, g:atp_BeamerEnvironments)
+	    endif
+	    call extend(completion_list,deepcopy(g:atp_Environments))
 	    if g:atp_local_completion
 		" Make a list of local envs and commands
 		if !exists("s:atp_LocalEnvironments") 
@@ -3205,6 +3303,14 @@ function! atplib#TabCompletion(expert_mode,...)
 		call extend(completion_list,atplib#Add(g:atp_amsmath_environments,'}'),0)
 	    else
 		call extend(completion_list,g:atp_amsmath_environments,0)
+	    endif
+	endif
+	" MathTools
+	if atplib#SearchPackage('mathtools', stop_line)
+	    if end !~ '\s*}'
+		call extend(completion_list,atplib#Add(g:atp_MathTools_environments,'}'))
+	    else
+		call extend(completion_list,g:atp_MathTools_environments)
 	    endif
 	endif
     "{{{3 ------------ PACKAGES
@@ -3265,7 +3371,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	"{{{4 
 	let tbegin=strpart(l,o+1)
 	let completion_list=[]
-	
+
 	" Find end of the preambule.
 	if expand("%:p") == atp_MainFile
 	    " if the file is the main file
@@ -3318,6 +3424,12 @@ function! atplib#TabCompletion(expert_mode,...)
 		    endif
 		endif
 	    endif
+	    " MathTools commands {{{5
+	    if atplib#SearchPackage('mathtools', stop_line)
+		call extend(completion_list, g:atp_MathTools_math_commands)
+	    endif
+	    call extend(completion_list, g:atp_math_commands_PRE, 0)
+	
 	    " nicefrac {{{5
 	    if atplib#SearchPackage('nicefrac',stop_line)
 		call add(completion_list,"\\nicefrac")
@@ -3327,9 +3439,12 @@ function! atplib#TabCompletion(expert_mode,...)
 		call extend(completion_list,g:atp_math_commands_non_expert_mode)
 	    endif
 	endif
+	" {{{4 -------------------- BEAMER commands
+	if atplib#DocumentClass(b:atp_MainFile) == 'beamer'
+	    call extend(completion_list, g:atp_BeamerCommands)
+	endif
 	" -------------------- LOCAL commands {{{4
 	if g:atp_local_completion
-	    let g:compp=0
 
 	    " make a list of local envs and commands:
 	    if !exists("b:atp_LocalCommands") 
@@ -3372,7 +3487,11 @@ function! atplib#TabCompletion(expert_mode,...)
 		call extend(completion_list, g:atp_makeidx_commands)
 	    endif
 	endif
-	"}}}4
+	" {{{4 -------------------- MathTools commands
+	if atplib#SearchPackage('mathtools', stop_line)
+	    call extend(completion_list, g:atp_MathTools_commands)
+	endif
+	"}}}4 
 	" ToDo: add layout commands and many more packages. (COMMANDS FOR
 	" PREAMBULE)
 	"{{{4 -------------------- final stuff
@@ -3450,6 +3569,21 @@ function! atplib#TabCompletion(expert_mode,...)
 	if nchar != "}"
 	    call map(completion_list,'v:val."}"')
 	endif
+    "{{{3 ------------ Beamer Themes
+    elseif completion_method == 'beamerthemes'
+	let completion_list = g:atp_BeamerThemes
+    "{{{3 ------------ Beamer Inner Themes
+    elseif completion_method == 'beamerinnerthemes'
+	let completion_list = g:atp_BeamerInnerThemes
+    "{{{3 ------------ Beamer Outer Themes
+    elseif completion_method == 'beamerouterthemes'
+	let completion_list = g:atp_BeamerOuterThemes
+    "{{{3 ------------ Beamer Color Themes
+    elseif completion_method == 'beamercolorthemes'
+	let completion_list = g:atp_BeamerColorThemes
+    "{{{3 ------------ Beamer Font Themes
+    elseif completion_method == 'beamerfontthemes'
+	let completion_list = g:atp_BeamerFontThemes
     "{{{3 ------------ FONT FAMILY
     elseif completion_method == 'font family'
 	let bpos=searchpos('\\selectfon\zst','bnW',line("."))[1]
@@ -3632,6 +3766,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    " {{{4 --------- packages, bibstyles, font (family, series, shapre, encoding), document class
 	    if (completion_method == 'package' 		||
 			\ completion_method == 'bibstyles' 	||
+			\ completion_method =~ 'beamer\%(\|inner\|outer\|color\|font\)themes' ||
 			\ completion_method == 'font family' 	||
 			\ completion_method == 'font series' 	||
 			\ completion_method == 'font shape'	||
@@ -3690,10 +3825,11 @@ function! atplib#TabCompletion(expert_mode,...)
 		" Complete label by string or number:
 		
 		let aux_data	= atplib#GrepAuxFile()
-		let completions 	= []
+		let completions = []
 		for data in aux_data
 		    " match label by string or number
-		    if data[0] =~ begin || data[1] =~ '^'. begin 
+		    if ( data[0] =~ '^' . begin || data[1] =~ '^'. begin . '$' ) && a:expert_mode || 
+				\ ( data[0] =~ begin || data[1] =~ '^'. begin ) && !a:expert_mode
 			let close = nchar == '}' ? '' : '}'
 			call add(completions, data[0] . close)
 		    endif
@@ -3738,6 +3874,7 @@ function! atplib#TabCompletion(expert_mode,...)
 		\ completion_method == 'bibfiles' 	|| 
 		\ completion_method == 'bibstyles' 	|| 
 		\ completion_method == 'documentclass'|| 
+		\ completion_method =~ 'beamer\%(\|inner\|outer\|color\|font\)themes' ||
 		\ completion_method == 'font family'  ||
 		\ completion_method == 'font series'  ||
 		\ completion_method == 'font shape'   ||
@@ -3766,8 +3903,9 @@ function! atplib#TabCompletion(expert_mode,...)
     " there was no completion, check if environments are closed.
     " {{{ 3 Final call of CloseLastEnvrionment / CloseLastBracket
     let len=len(completions)
+    let g:len=len
     if len == 0 && (!count(['package', 'bibfiles', 'bibstyles', 'inputfiles'], completion_method) || a:expert_mode == 1 )|| len == 1
-	if (completion_method == 'command' || completion_method == 'tikzpicture commands') && 
+	if count(['command', 'tikzpicture commands', 'tikzpicture keywords'], completion_method) && 
 	    \ (len == 0 || len == 1 && completions[0] == '\'. begin )
 
 	    let filter 		= 'strpart(getline("."), 0, col(".") - 1) =~ ''\\\@<!%'''

@@ -16,25 +16,16 @@ let s:atp_MainFile	= ( g:atp_RelativePath ? globpath(b:atp_ProjectDir, fnamemodi
 " latex-box/complete.vim
 " <SID> Wrap {{{
 function! s:GetSID()
-	return matchstr(expand('<sfile>'), '\m\zs<SNR>\d\+_\ze.*$')
+	return matchstr(expand('<sfile>'), '\zs<SNR>\d\+_\ze.*$')
 endfunction
 let s:SID = s:GetSID()
 call extend(g:atp_compiler_SID,{ fnamemodify(expand('<sfile>'),':t') : s:SID })
 " a:1 is the file where the function is defined. 
 function! s:SIDWrap(func,...)
-    if a:0 == 0
 	return s:SID . a:func
-    else
-	let l:sid=get(g:atp_compiler_SID, 'tex_atp.vim', 'error')
-	if l:sid == 'error'
-	    echoerr 'atp sid error'
-	    return ''
-	else
-	    return l:sid . a:func
-	endif
 endfunction
-
 " }}}
+
 
 " Omni Completion {{{
 
@@ -122,6 +113,7 @@ function! LatexBox_Complete(findstart, base)
 endfunction
 " }}}
 
+
 " BibTeX search {{{
 
 " find the \bibliography{...} commands
@@ -137,7 +129,7 @@ function! LatexBox_kpsewhich(file)
 	let out = substitute(out, '\r', '', 'g')
 	let out = glob(fnamemodify(out, ':p'), 1)
 	
-	execute 'lcd ' . fnameescape(old_dir)
+	execute 'lcd ' . old_dir
 
 	return out
 endfunction
@@ -160,15 +152,15 @@ function! s:FindBibData(...)
 
 	let bibdata_list +=
 				\ map(filter(copy(lines), 'v:val =~ ''\C\\bibliography\s*{[^}]\+}'''),
-				\ 'matchstr(v:val, ''\m\C\\bibliography\s*{\zs[^}]\+\ze}'')')
+				\ 'matchstr(v:val, ''\C\\bibliography\s*{\zs[^}]\+\ze}'')')
 
 	let bibdata_list +=
 				\ map(filter(copy(lines), 'v:val =~ ''\C\\\%(input\|include\)\s*{[^}]\+}'''),
-				\ 's:FindBibData(LatexBox_kpsewhich(matchstr(v:val, ''\m\C\\\%(input\|include\)\s*{\zs[^}]\+\ze}'')))')
+				\ 's:FindBibData(LatexBox_kpsewhich(matchstr(v:val, ''\C\\\%(input\|include\)\s*{\zs[^}]\+\ze}'')))')
 
 	let bibdata_list +=
 				\ map(filter(copy(lines), 'v:val =~ ''\C\\\%(input\|include\)\s\+\S\+'''),
-				\ 's:FindBibData(LatexBox_kpsewhich(matchstr(v:val, ''\m\C\\\%(input\|include\)\s\+\zs\S\+\ze'')))')
+				\ 's:FindBibData(LatexBox_kpsewhich(matchstr(v:val, ''\C\\\%(input\|include\)\s\+\zs\S\+\ze'')))')
 
 	let bibdata = join(bibdata_list, ',')
 
@@ -259,32 +251,11 @@ function! s:CompleteLabels(regex, ...)
 		let file = a:1
 	endif
 
-	" Fill in suggestions with the labels in the current buffer.
-	let suggestions=[]
-
-	for line in filter(getline(1,'$'),'v:val =~ ''\\label{'.a:regex.'''')
-	" Trim down the comments
-	let line=substitute(line,'\\\@<!%.*','','')
-	" Add every remaining label to the list of suggestions
-	let index=match(line,'\\label{\zs')
-	let endbracket = match(line,'}',index)
-
-	while index > -1 && endbracket>-1
-	    call add(suggestions,line[index : endbracket-1])
-	    let line=line[endbracket+1 :]
-	    let index=match(line,'\\label{\zs')
-	    let endbracket = match(line,'}',index)
-	endwhile
-	endfor
-
-	let g:test=copy(suggestions)
-
 	if empty(glob(file, 1))
-		"return []
-	    return suggestions
+		return []
 	endif
 
-	"let suggestions = []
+	let suggestions = []
 
 	" search for the target equation number
 	for line in filter(readfile(file), 'v:val =~ ''^\\newlabel{\|^\\@input{''')
@@ -297,7 +268,7 @@ function! s:CompleteLabels(regex, ...)
 		if empty(matches)
 		    " also try to match label and number
 		    let regex_split = split(a:regex)
-			if len(regex_split) > 1
+		    if len(regex_split) > 1
 			let base = regex_split[0]
 			let number = escape(join(regex_split[1:], ' '), '.')
 			let matches = matchlist(line, '^\\newlabel{\(' . base . '[^}]*\)}{{\(' . number . '\)}{\([^}]*\)}.*}')
@@ -319,16 +290,11 @@ function! s:CompleteLabels(regex, ...)
 				let entry.abbr = entry.word
 				let entry.word = entry.word . '}'
 			endif
-      let index=index(suggestions,matches[1])
-      if index > -1
-        let suggestions[index] = entry
-      else
         call add(suggestions, entry)
       endif
-		endif
 
 		" search for included files
-		let included_file = matchstr(line, '\m^\\@input{\zs[^}]*\ze}')
+		let included_file = matchstr(line, '^\\@input{\zs[^}]*\ze}')
 		if included_file != ''
 			let included_file = LatexBox_kpsewhich(included_file)
 			call extend(suggestions, s:CompleteLabels(a:regex, included_file))
@@ -412,6 +378,6 @@ endfunction
 " }}}
 
 " Mappings {{{
-nmap <Plug>LatexChangeEnv			:call <SID>ChangeEnvPrompt()<CR>
+nmap <silent> <Plug>LatexChangeEnv			:call <SID>ChangeEnvPrompt()<CR>
 " }}}
 

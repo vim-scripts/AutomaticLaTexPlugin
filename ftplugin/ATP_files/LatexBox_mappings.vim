@@ -10,7 +10,6 @@ let s:loaded = ( !exists("s:loaded") ? 1 : s:loaded+1 )
 " begin/end pairs {{{
 nmap <buffer> % <Plug>LatexBox_JumpToMatch
 xmap <buffer> % <Plug>LatexBox_JumpToMatch
-" xmap <buffer> <C-%> <Plug>LatexBox_BackJumpToMatch
 vmap <buffer> ie <Plug>LatexBox_SelectCurrentEnvInner
 vmap <buffer> iE <Plug>LatexBox_SelectCurrentEnVInner
 vmap <buffer> ae <Plug>LatexBox_SelectCurrentEnvOuter

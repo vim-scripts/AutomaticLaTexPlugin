@@ -105,7 +105,10 @@ endfunction
 " a:2 = "!" => renegenerate the input files.
 function! LocalCommands(...)
 "     let time = reltime()
-    let pattern = a:0 >= 1 && a:1 != '' ? a:1 : '\\def\>\|\\newcommand\>\|\\newenvironment\|\\newtheorem\|\\definecolor'
+    let pattern = a:0 >= 1 && a:1 != '' ? a:1 : '\\def\>\|\\newcommand\>\|\\newenvironment\|\\newtheorem\|\\definecolor\|'
+		\ . '\\Declare\%(RobustCommand\|FixedFont\|TextFontCommand\|MathVersion\|SymbolFontAlphabet'
+			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\)'
+		\ . '\|\\SetMathAlphabet\>'
     let bang	= a:0 >= 2 ? a:2 : '' 
 
     " Regenerate the package list
@@ -146,7 +149,7 @@ function! LocalCommands(...)
 	    let name=matchstr(line['text'],
 			\ '\\definecolor\s*{\s*\zs[^}]*\ze\s*}')
 	    let type="Colors"
-	elseif line['text'] =~ '\\def\|\\newcommand'
+	elseif line['text'] =~ '\\def\>\|\\newcommand'
 	    " definition name 
 	    let name= '\' . matchstr(line['text'],
 			\ '\\def\\\zs[^{#]*\ze[{#]\|\\newcommand{\?\\\zs[^\[{]*\ze}')
@@ -154,13 +157,19 @@ function! LocalCommands(...)
 	    " definition
 " 	    let def=matchstr(line['text'],
 " 			\ '^\%(\\def\\[^{]*{\zs.*\ze}\|\\newcommand\\[^{]*{\zs.*\ze}\)') 
+	elseif line['text'] =~ '\\Declare\%(RobustCommand\|FixedFont\|TextFontCommand\|MathVersion\|SymbolFontAlphabet'
+			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\)\>\|\\SetMathAlphabet'
+	    let name=matchstr(line['text'],
+			\ '\%(\\Declare\%(RobustCommand\|FixedFont\|TextFontCommand\|MathVersion\|SymbolFontAlphabet'
+			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\)\|\\SetMathAlphabet\)\s*{\s*\zs[^}]*\ze\s*}')
+	    let type="Commands"
 	elseif line['text'] =~ '\%(\\newenvironment\|\\newtheorem\)'
 	    " environment name
 	    let name=matchstr(line['text'],
 			\ '\\\%(newtheorem\*\?\|newenvironment\)\s*{\s*\zs[^}]*\ze\s*}')
 	    let type="Environments"
 	endif
-	if name != '' && name != '\'
+	if exists("name") && name != '' && name != '\'
 	    if count(atp_Local{type}, name) == 0
 		call add(atp_Local{type}, name)
 	    endif
@@ -189,9 +198,9 @@ function! DefiSearch(bang,...)
     " open new buffer
     let openbuffer=" +setl\\ buftype=nofile\\ nospell " . fnameescape("DefiSearch")
     if g:vertical ==1
-	let openbuffer="vsplit " . openbuffer 
+	let openbuffer="keepalt vsplit " . openbuffer 
     else
-	let openbuffer="split " . openbuffer 
+	let openbuffer="keepalt split " . openbuffer 
     endif
 
     if len(defi_dict) > 0
@@ -795,7 +804,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		if g:atp_debugRS >= 2
 		silent echo "Alternate (before open) " . bufname("#")
 		endif
-		silent! execute open . file
+		silent! execute open . fnameescape(file)
 	    else
 		echoerr "Recursive Search: swap file: " . swapfile . " exists. Aborting." 
 		return
@@ -882,9 +891,9 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	    let next_branch = atplib#FullPath(g:ATP_branch)
 	    let swapfile = globpath(fnamemodify(next_branch, ":h"), ( has("unix") ? "." : "" ) . fnamemodify(next_branch, ":t") . ".swp")
 	    if a:call_nr == 1 && a:wrap_nr == 1 
-		let open =  'silent keepalt edit +'.g:ATP_branch_line." ".next_branch
+		let open =  'silent keepalt edit +'.g:ATP_branch_line." ".fnameescape(next_branch)
 	    else
-		let open =  'silent keepjumps keepalt edit +'.g:ATP_branch_line." ".next_branch
+		let open =  'silent keepjumps keepalt edit +'.g:ATP_branch_line." ".fnameescape(next_branch)
 	    endif
 
 	    if g:atp_debugRS >= 2
@@ -1130,7 +1139,6 @@ function! BibSearch(bang,...)
 	
 	
     let Arg = ( a:0 >= 1 ? a:1 : "" )
-    let g:Arg = Arg
     if Arg != ""
 	let [ pattern, flag ] = s:GetSearchArgs(Arg, 'aetbjsynvpPNShouH@BcpmMtTulL')
     else

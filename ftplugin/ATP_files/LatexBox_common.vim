@@ -4,11 +4,52 @@
 " Note:		   This file is a part of Automatic Tex Plugin for Vim.
 " URL:		   https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: 
+" Last Change: Sat Feb 26 10:00  2011 W
 
 let s:sourced = exists("s:sourced") ? 1 : 0
-
 " Settings {{{
+
+" Compilation {{{
+
+" g:vim_program {{{
+if !exists('g:vim_program')
+
+	" attempt autodetection of vim executable
+	let g:vim_program = ''
+	let tmpfile = tempname()
+	silent execute '!ps -o command= -p $PPID > ' . tmpfile
+	for line in readfile(tmpfile)
+		let line = matchstr(line, '^\S\+\>')
+		if !empty(line) && executable(line)
+			let g:vim_program = line . ' -g'
+			break
+		endif
+	endfor
+	call delete(tmpfile)
+
+	if empty(g:vim_program)
+		if has('gui_macvim')
+			let g:vim_program = '/Applications/MacVim.app/Contents/MacOS/Vim -g'
+		else
+			let g:vim_program = v:progname
+		endif
+	endif
+endif
+" }}}
+
+if !exists('g:LatexBox_latexmk_options')
+	let g:LatexBox_latexmk_options = ''
+endif
+if !exists('g:LatexBox_output_type')
+	let g:LatexBox_output_type = 'pdf'
+endif
+if !exists('g:LatexBox_viewer')
+	let g:LatexBox_viewer = b:atp_Viewer
+endif
+if !exists('g:LatexBox_autojump')
+	let g:LatexBox_autojump = 0
+endif
+" }}}
 
 " Completion {{{
 if !exists('g:LatexBox_completion_close_braces')
@@ -19,7 +60,7 @@ if !exists('g:LatexBox_bibtex_wild_spaces')
 endif
 
 if !exists('g:LatexBox_cite_pattern')
-	let g:LatexBox_cite_pattern = '\C\\cite\(p\|t\)\?\*\?\_\s*{'
+	let g:LatexBox_cite_pattern = '\C\\cite\(p\|t\)\=\*\=\(\[[^\]]*\]\)*\_\s*{'
 endif
 if !exists('g:LatexBox_ref_pattern')
 	let g:LatexBox_ref_pattern = '\C\\v\?\(eq\|page\)\?ref\*\?\_\s*{'
@@ -69,53 +110,37 @@ endif
 " }}}
 " }}}
 
-if s:sourced
-    finish
-endif
-
-" Compilation {{{
-
-" g:vim_program {{{
-if !exists('g:vim_program')
-
-	" attempt autodetection of vim executable
-	let g:vim_program = ''
-	let tmpfile = tempname()
-	silent execute '!ps -o command= -p $PPID > ' . tmpfile
-	for line in readfile(tmpfile)
-		let line = matchstr(line, '^\S\+\>')
-		if !empty(line) && executable(line)
-			let g:vim_program = line . ' -g'
-			break
-		endif
-	endfor
-	call delete(tmpfile)
-
-	if empty(g:vim_program)
-		if has('gui_macvim')
-			let g:vim_program = '/Applications/MacVim.app/Contents/MacOS/Vim -g'
-		else
-			let g:vim_program = v:progname
-		endif
-	endif
-endif
-" }}}
-
-if !exists('g:LatexBox_latexmk_options')
-	let g:LatexBox_latexmk_options = ''
-endif
-if !exists('g:LatexBox_output_type')
-	let g:LatexBox_output_type = 'pdf'
-endif
-if !exists('g:LatexBox_viewer')
-	let g:LatexBox_viewer = b:atp_Viewer
-endif
-" }}}
-
 " Filename utilities {{{
 "
 function! LatexBox_GetMainTexFile()
-	return atplib#FullPath(b:atp_MainFile)
+
+	" 1. check for the b:main_tex_file variable
+	if exists('b:main_tex_file') && glob(b:main_tex_file, 1) != ''
+		return b:main_tex_file
+	endif
+
+	" 2. scan current file for "\begin{document}"
+	if &filetype == 'tex' && search('\C\\begin\_\s*{document}', 'nw') != 0
+		return expand('%:p')
+	endif
+
+	" 3. prompt for file with completion
+	let b:main_tex_file = s:PromptForMainFile()
+	return b:main_tex_file
+endfunction
+
+function! s:PromptForMainFile()
+	let saved_dir = getcwd()
+	execute 'cd ' . expand('%:p:h')
+	let l:file = ''
+	while glob(l:file, 1) == ''
+		let l:file = input('main LaTeX file: ', '', 'file')
+		if l:file !~ '\.tex$'
+			let l:file .= '.tex'
+		endif
+	endwhile
+	execute 'cd ' . saved_dir
+	return l:file
 endfunction
 
 " Return the directory of the main tex file
@@ -142,6 +167,24 @@ endfunction
 function! LatexBox_GetOutputFile()
 	return LatexBox_GetTexBasename(1) . '.' . g:LatexBox_output_type
 endfunction
+" }}}
+
+" View Output {{{
+function! LatexBox_View()
+	let outfile = LatexBox_GetOutputFile()
+	if !filereadable(outfile)
+		echomsg fnamemodify(outfile, ':.') . ' is not readable'
+		return
+	endif
+	let cmd = '!' . g:LatexBox_viewer . ' ' . shellescape(outfile) . ' &>/dev/null &'
+	if has("gui_running")
+		silent execute cmd
+	else
+		execute cmd
+	endif
+endfunction
+
+command! LatexView			call LatexBox_View()
 " }}}
 
 " In Comment {{{
@@ -193,7 +236,7 @@ function! LatexBox_GetCurrentEnvironment(...)
 		let line = strpart(getline(lnum1), cnum1 - 1)
 
 		if empty(env)
-			let env = matchstr(line, '\m^\C\\begin\_\s*{\zs[^}]*\ze}')
+			let env = matchstr(line, '^\C\\begin\_\s*{\zs[^}]*\ze}')
 		endif
 		if empty(env)
 			let env = matchstr(line, '^\\\[')
@@ -212,6 +255,7 @@ function! LatexBox_GetCurrentEnvironment(...)
 		endif
 
 		let [lnum2, cnum2] = searchpairpos(begin_pat, '', end_pat, flags, 'LatexBox_InComment()')
+		call setpos('.', saved_pos)
 		return [env, lnum1, cnum1, lnum2, cnum2]
 	else
 		call setpos('.', saved_pos)
@@ -219,6 +263,50 @@ function! LatexBox_GetCurrentEnvironment(...)
 	endif
 
 
+endfunction
+" }}}
+
+
+" Tex To Tree {{{
+" stores nested braces in a tree structure
+function! LatexBox_TexToTree(str)
+	let tree = []
+	let i1 = 0
+	let i2 = -1
+	let depth = 0
+	while i2 < len(a:str)
+		let i2 = match(a:str, '[{}]', i2 + 1)
+		if i2 < 0
+			let i2 = len(a:str)
+		endif
+		if i2 >= len(a:str) || a:str[i2] == '{'
+			if depth == 0 
+				let item = substitute(strpart(a:str, i1, i2 - i1), '^\s*\|\s*$', '', 'g')
+				if !empty(item)
+					call add(tree, item)
+				endif
+				let i1 = i2 + 1
+			endif
+			let depth += 1
+		else
+			let depth -= 1
+			if depth == 0
+				call add(tree, LatexBox_TexToTree(strpart(a:str, i1, i2 - i1)))
+				let i1 = i2 + 1
+			endif
+		endif
+	endwhile
+	return tree
+endfunction
+" }}}
+
+" Tree To Tex {{{
+function! LatexBox_TreeToTex(tree)
+	if type(a:tree) == type('')
+		return a:tree
+	else
+		return '{' . join(map(a:tree, 'LatexBox_TreeToTex(v:val)'), '') . '}'
+	endif
 endfunction
 " }}}
 

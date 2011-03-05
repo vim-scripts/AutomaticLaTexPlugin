@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: 2010 May 31
+" Last Change: Sun Feb 27 11:00  2011 W
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 
@@ -333,7 +333,7 @@ function! ShowLabelContext()
 " 	if win_nr == -1
 " 	    exe "e #" . buf_nr
 " 	endif
-    exe "split #" . buf_nr
+    exe "split! #" . buf_nr
     call setpos('.', [0, line, 1, 0])
 endfunction
 endif

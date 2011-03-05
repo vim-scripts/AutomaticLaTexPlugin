@@ -41,6 +41,10 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
+if !exists("g:atp_debugGAF") || g:atp_reload
+    " debug aptlib#GrepAuxFile
+    let g:atp_debugGAF	= 0
+endif
 if !exists("g:atp_debugSCP") || g:atp_reload
     " debug s:SelectCurrentParapgrahp (LatexBox_motion.vim)
     let g:atp_debugSCP	= 0
@@ -167,6 +171,7 @@ setl keywordprg=texdoc\ -m
 	    \ . '\|\\\(re\)\=new\(boolean\|command\|counter\|environment\|font'
 	    \ . '\|if\|length\|savebox\|theorem\(style\)\=\)\s*\*\=\s*{\='
 	    \ . '\|DeclareMathOperator\s*{\=\s*'
+	    \ . '\|DeclareFixedFont\s*{\s*'
     let g:filetype = &l:filetype
     if &l:filetype != "plaintex"
 	setlocal include=\\\\input\\(\\s*{\\)\\=\\\\|\\\\include\\s*{
@@ -202,6 +207,7 @@ let s:optionsDict= { 	"atp_TexOptions" 	: "",
 		\ "atp_XpdfServer" 		: fnamemodify(b:atp_MainFile,":t:r"), 
 		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
 		\ "atp_TexCompiler" 		: &filetype == "plaintex" ? "pdftex" : "pdflatex",	
+		\ "atp_TexCompilerVariable"	: "max_print_line=2000",
 		\ "atp_auruns"			: "1",
 		\ "atp_TruncateStatusSection"	: "40", 
 		\ "atp_LastBibPattern"		: "" }
@@ -220,11 +226,11 @@ function! s:SetOptions()
 
     "for each key in s:optionsKeys set the corresponding variable to its default
     "value unless it was already set in .vimrc file.
-    for l:key in s:optionsKeys
-	if string(get(s:optionsinuseDict,l:key, "optionnotset")) == string("optionnotset") && l:key != "atp_OutDir" && l:key != "atp_autex"
-" 	    echomsg l:key . " " . s:optionsDict[l:key]
-	    call setbufvar(bufname("%"),l:key,s:optionsDict[l:key])
-	elseif l:key == "atp_OutDir"
+    for key in s:optionsKeys
+	if string(get(s:optionsinuseDict,key, "optionnotset")) == string("optionnotset") && key != "atp_OutDir" && key != "atp_autex" || key == "atp_TexCompiler"
+" 	    echomsg key . " " . s:optionsDict[key]
+	    call setbufvar(bufname("%"),key,s:optionsDict[key])
+	elseif key == "atp_OutDir"
 
 	    " set b:atp_OutDir and the value of errorfile option
 	    if !exists("b:atp_OutDir")
@@ -263,6 +269,18 @@ call s:SetOptions()
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_CupsOptions")
+    " lpr command options for completion of SshPrint command.
+    let g:atp_CupsOptions = [ 'landscape=', 'scaling=', 'media=', 'sides=', 'Collate=', 'orientation-requested=', 
+		\ 'job-sheets=', 'job-hold-until=', 'page-ragnes=', 'page-set=', 'number-up=', 'page-border=', 
+		\ 'number-up-layout=', 'fitplot=', 'outputorder=', 'mirror=', 'raw=', 'cpi=', 'columns=',
+		\ 'page-left=', 'page-right=', 'page-top=', 'page-bottom=', 'prettyprint=', 'nowrap=', 'position=',
+		\ 'natural-scaling=', 'hue=', 'saturation=', 'blackplot=', 'penwidth=']
+endif
+if !exists("g:atp_lprcommand")
+    " Used by :SshPrint
+    let g:atp_lprcommand = "lpr"
+endif 
 if !exists("g:atp_iabbrev_leader")
     " Used for abbreviations: =theorem= (from both sides).
     let g:atp_iabbrev_leader = "="
@@ -519,9 +537,6 @@ if !exists("g:atp_delete_output") || g:atp_reload
 endif
 if !exists("g:keep") || g:atp_reload
     let g:keep=[ "log", "aux", "toc", "bbl", "ind", "pdfsync" ]
-endif
-if !exists("g:printingoptions") || g:atp_reload
-    let g:printingoptions	= ''
 endif
 if !exists("g:atp_ssh") || g:atp_reload
     let g:atp_ssh=substitute(system("whoami"),'\n','','') . "@localhost"
@@ -1141,7 +1156,10 @@ let g:atp_completion_modes=[
 	    \ 'tikzpicture',		'tikzpicture keywords',
 	    \ 'package names',		'font encoding',
 	    \ 'font family',		'font series',
-	    \ 'font shape',		'algorithmic' ]
+	    \ 'font shape',		'algorithmic',
+	    \ 'beamerthemes', 		'beamerinnerthemes',
+	    \ 'beamerouterthemes', 	'beamercolorthemes',
+	    \ 'beamerfontthemes' ]
 lockvar 2 g:atp_completion_modes
 catch /E741:/
 endtry
@@ -1177,7 +1195,7 @@ endif
 		\ 'enumerate', 'example', 'eqnarray', 
 		\ 'flushright', 'flushleft', 'figure', 'frontmatter', 
 		\ 'keywords', 
-		\ 'itemize', 'lemma', 'list', 'notation', 'minipage', 
+		\ 'itemize', 'lemma', 'list', 'letter', 'notation', 'minipage', 
 		\ 'proof', 'proposition', 'picture', 'theorem', 'tikzpicture',  
 		\ 'tabular', 'table', 'tabbing', 'thebibliography', 'titlepage',
 		\ 'quotation', 'quote',
@@ -1252,7 +1270,9 @@ endif
 	\ "\\bfseries", "\\mdseries", "\\bigskip", "\\bibitem",
 	\ "\\tiny",  "\\scriptsize", "\\footnotesize", "\\small",
 	\ "\\noindent", "\\normalfont", "\normalsize", "\\normalsize", "\\normal", 
+	\ "\\hfill", "\\hspace","\\hline",  
 	\ "\\large", "\\Large", "\\LARGE", "\\huge", "\\HUGE",
+	\ "\\overline", 
 	\ "\\usefont{", "\\fontsize{", "\\selectfont", "\\fontencoding{", "\\fontfamiliy{", "\\fontseries{", "\\fontshape{",
 	\ "\\rmdefault", "\\sfdefault", "\\ttdefault", "\\bfdefault", "\\mddefault", "\\itdefault",
 	\ "\\sldefault", "\\scdefault", "\\updefault",  "\\renewcommand{", "\\newcommand{",
@@ -1261,13 +1281,13 @@ endif
 	\ "\\savebox", "\\sbox", "\\usebox", "\\rule", "\\raisebox{", 
 	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
 	\ "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", 
-	\ "\\hspace", "\\hrulefill", "\hfil", "\\hfill", "\\dotfill",
+	\ "\\hrulefill", "\hfil", "\\dotfill",
 	\ "\\thispagestyle", "\\mathnormal", "\\markright", "\\pagestyle", "\\pagenumbering",
 	\ "\\author{", "\\date{", "\\thanks{", "\\title{",
-	\ "\\maketitle", "\\overline", "\\underline",
+	\ "\\maketitle",
 	\ "\\marginpar", "\\indent", "\\par", "\\sloppy", "\\pagebreak", "\\nopagebreak",
 	\ "\\newpage", "\\newline", "\\newtheorem{", "\\linebreak", "\\line", "\\linespread{",
-	\ "\\hyphenation{", "\\fussy",
+	\ "\\hyphenation{", "\\fussy", "\\eject",
 	\ "\\enlagrethispage{", "\\clearpage", "\\cleardoublepage",
 	\ "\\caption{",
 	\ "\\opening{", "\\name{", "\\makelabels{", "\\location{", "\\closing{", "\\address{", 
@@ -1287,8 +1307,12 @@ endif
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
 	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
 	\ "\\tableofcontents", "\\newfont{", "\\phantom",
-	\ "\\DeclareRobustCommand", "\\show", "\\CheckCommand", "\\mathnormal",
-	\ "\\pounds", "\\magstep{" ]
+	\ "\\DeclareRobustCommand", "\\DeclareFixedFont", "\\DeclareMathSymbol", 
+	\ "\\DeclareTextFontCommand", "\\DeclareMathVersion", "\\DeclareSymbolFontAlphabet",
+	\ "\\DeclareMathDelimiter", "\\DeclareMathAccent", "\\DeclareMathRadical",
+	\ "\\SetMathAlphabet", "\\show", "\\CheckCommand", "\\mathnormal",
+	\ "\\pounds", "\\magstep{", "\\hyperlink", "\\newenvironment{", 
+	\ "\\renewenvironemt{", "\\DeclareFixedFont", "\\layout" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -1299,14 +1323,14 @@ endif
 	" ToDo: MAKE COMMANDS FOR PREAMBULE.
 
 	let g:atp_math_commands=["\\forall", "\\exists", "\\emptyset", "\\aleph", "\\partial",
-	\ "\\nabla", "\\Box", "\\bot", "\\top", "\\flat", "\\sharp", "\\natural",
+	\ "\\nabla", "\\Box", "\\bot", "\\top", "\\flat", "\\natural",
 	\ "\\mathbf{", "\\mathsf{", "\\mathrm{", "\\mathit{", "\\mathtt{", "\\mathcal{", 
 	\ "\\mathop{", "\\mathversion", "\\limits", "\\text{", "\\leqslant", "\\leq", "\\geqslant", "\\geq",
 	\ "\\gtrsim", "\\lesssim", "\\gtrless", "\\left", "\\right", 
 	\ "\\rightarrow", "\\Rightarrow", "\\leftarrow", "\\Leftarrow", "\\iff", 
 	\ "\\oplus", "\\otimes", "\\odot", "\\oint",
 	\ "\\leftrightarrow", "\\Leftrightarrow", "\\downarrow", "\\Downarrow", 
-	\ "\\overbrace{", "\\underbrace{","\\Uparrow",
+	\ "\\overline", "\\underline", "\\overbrace{", "\\Uparrow",
 	\ "\\Longrightarrow", "\\longrightarrow", "\\Longleftarrow", "\\longleftarrow",
 	\ "\\overrightarrow{", "\\overleftarrow{", "\\underrightarrow{", "\\underleftarrow{",
 	\ "\\uparrow", "\\nearrow", "\\searrow", "\\swarrow", "\\nwarrow", "\\mapsto", "\\longmapsto",
@@ -1314,14 +1338,15 @@ endif
 	\ "\\sum", "\\bigsum", "\\cup", "\\bigcup", "\\cap", "\\bigcap", 
 	\ "\\prod", "\\coprod", "\\bigvee", "\\bigwedge", "\\wedge",  
 	\ "\\int", "\\bigoplus", "\\bigotimes", "\\bigodot", "\\times",  
-	\ "\\smile", "\\frown", "\\subset", "\\subseteq", "\\supset", "\\supseteq",
+	\ "\\smile", "\\frown", 
 	\ "\\dashv", "\\vdash", "\\vDash", "\\Vdash", "\\models", "\\sim", "\\simeq", 
 	\ "\\prec", "\\preceq", "\\preccurlyeq", "\\precapprox", "\\mid",
 	\ "\\succ", "\\succeq", "\\succcurlyeq", "\\succapprox", "\\approx", 
 	\ "\\ldots", "\\cdots", "\\vdots", "\\ddots", "\\circ", 
 	\ "\\thickapprox", "\\cong", "\\bullet",
 	\ "\\lhd", "\\unlhd", "\\rhd", "\\unrhd", "\\dagger", "\\ddager", "\\dag", "\\ddag", 
-	\ "\\vartriangleright", "\\vartriangleleft", "\\trianglerighteq", "\\trianglelefteq",
+	\ "\\vartriangleright", "\\vartriangleleft", 
+	\ "\\triangle", "\\triangledown", "\\trianglerighteq", "\\trianglelefteq",
 	\ "\\copyright", "\\textregistered", "\\puonds",
 	\ "\\big", "\\Big", "\\Bigg", "\\huge", 
 	\ "\\bigr", "\\Bigr", "\\biggr", "\\Biggr",
@@ -1331,8 +1356,8 @@ endif
 	\ "\\tilde", "\\widetilde" , "\\widehat", "\\ddot", 
 	\ "\\sqrt", "\\frac", "\\binom{", "\\cline", "\\vline", "\\hline", "\\multicolumn{", 
 	\ "\\nouppercase", "\\sqsubseteq", "\\sqsubset", "\\sqsupseteq", "\\sqsupset", 
-	\ "\\square", "\\blacksquare", "\\triangledown", "\\triangle", 
-	\ "\\diagdown", "\\diagup", "\\nexists", "\\varnothing", "\\Bbbk", "\\circledS", 
+	\ "\\square", "\\blacksquare",  
+	\ "\\nexists", "\\varnothing", "\\Bbbk", "\\circledS", 
 	\ "\\complement", "\\hslash", "\\hbar", 
 	\ "\\eth", "\\rightrightarrows", "\\leftleftarrows", "\\rightleftarrows", "\\leftrighrarrows", 
 	\ "\\downdownarrows", "\\upuparrows", "\\rightarrowtail", "\\leftarrowtail", 
@@ -1347,6 +1372,9 @@ endif
 	\ "\\land", "\\star", "\\uplus", "\\leadsto", "\\rbrack", "\\lbrack", "\\mho", 
 	\ "\\diamondsuit", "\\heartsuit", "\\clubsuit", "\\spadesuit", "\\top", "\\ell", 
 	\ "\\imath", "\\jmath", "\\wp", "\\Im", "\\Re", "\\prime", "\\ll", "\\gg" ]
+
+	let g:atp_math_commands_PRE=[ "\\diagdown", "\\diagup", "\\subset", "\\subseteq", "\\supset", "\\supsetneq",
+		    \ "\\sharp", "\\underline", "\\underbrace{",  ]
 
 	" commands defined by the user in input files.
 	" ToDo: to doc.
@@ -1381,11 +1409,11 @@ endif
 		    \ "\\nsupseteqq", "\\subsetneqq", "\\supsetneqq", "\\nsucceqq", "\\precneqq", "\\succneqq" ] 
 
 	" ToDo: add more amsmath commands.
-	let g:atp_amsmath_commands=[ "\\boxed", "\\intertext", "\\multiligngap", "\\shoveleft", "\\shoveright", "\\notag", "\\tag", 
+	let g:atp_amsmath_commands=[ "\\boxed", "\\intertext", "\\multiligngap", "\\shoveleft{", "\\shoveright{", "\\notag", "\\tag", 
 		    \ "\\notag", "\\raistag{", "\\displaybreak", "\\allowdisplaybreaks", "\\numberwithin{",
 		    \ "\\hdotsfor{" , "\\mspace{",
 		    \ "\\negthinspace", "\\negmedspace", "\\negthickspace", "\\thinspace", "\\medspace", "\\thickspace",
-		    \ "\\leftroot{", "\\uproot{", "\\overset{", "\\underset{", "\\sideset{", 
+		    \ "\\leftroot{", "\\uproot{", "\\overset{", "\\underset{", "\\substack{", "\\sideset{", 
 		    \ "\\dfrac", "\\tfrac", "\\cfrac", "\\dbinom{", "\\tbinom{", "\\smash",
 		    \ "\\lvert", "\\rvert", "\\lVert", "\\rVert", "\\DeclareMatchOperator{",
 		    \ "\\arccos", "\\arcsin", "\\arg", "\\cos", "\\cosh", "\\cot", "\\coth", "\\csc", "\\deg", "\\det",
@@ -1442,7 +1470,8 @@ endif
 		    \ "\\path", "\\filldraw", "\\fill", "\\clip", "\\drawclip", "\\foreach", "\\angle", "\\coordinate",
 		    \ "\\useasboundingbox", "\\tikztostart", "\\tikztotarget", "\\tikztonodes", "\\tikzlastnode",
 		    \ "\\pgfextra", "\\endpgfextra", "\\verb", "\\coordinate", 
-		    \ "\\pattern", "\\shade", "\\shadedraw", "\\colorlet", "\\definecolor" ]
+		    \ "\\pattern", "\\shade", "\\shadedraw", "\\colorlet", "\\definecolor",
+		    \ "\\pgfmatrixnextcell" ]
 	let g:atp_tikz_keywords=[ 'draw', 'node', 'matrix', 'anchor', 'top', 'bottom',  
 		    \ 'west', 'east', 'north', 'south', 'at', 'thin', 'thick', 'semithick', 'rounded', 'corners',
 		    \ 'controls', 'and', 'circle', 'step', 'grid', 'very', 'style', 'line', 'help',
@@ -1515,6 +1544,55 @@ endif
 	let g:atp_tikz_library_topath_keywords	= ['line to', 'curve to', 'out', 'in', 'relative', 'bend', 'looseness', 'min', 'max', 'control', 'loop']
 	let g:atp_tikz_library_through_keywords	= ['through']
 	let g:atp_tikz_library_trees_keywords	= ['grow', 'via', 'three', 'points', 'two', 'child', 'children', 'sibling', 'clockwise', 'counterclockwise', 'edge', 'parent', 'fork'] 
+
+	" BEAMER
+	let g:atp_BeamerEnvironments = ["frame", "beamercolorbox", "onlyenv", "altenv", 
+		    \ "visibleenv", "uncoverenv", "invisibleenv", "overlayarea", "overprint", "actionenv",
+		    \ 'description', 'structureenv', 'alertenv', 'block', 'alertblock', 'exampleblock', 'beamercolorbox',
+		    \ 'beamerboxesrounded', 'columns', 'semiverbatim' ]
+
+	let g:atp_BeamerCommands = ["\\alert{", "\\frametitle{", "\\framesubtitle", "\\titlepage", "\\setbeamercolor{", 
+		    \ "\\pauze", "\\onslide", "\\only", "\\uncover", "\\visible", "\\invisible", "\\temporal", "\\alt",
+		    \ "\\usebeamercolor{", "\\usetheme{", "\\includeonlyframes{", "\\againframe", "\\setbeamersize{",
+		    \ "\\action{", "\\inserttocsection", "\\inserttocsectionumber", "\\lecture", "\\AtBeginLecture{",
+		    \ "\\appendix", "\\hypertarget", "\\beamerbutton", "\\beamerskipbutton", "\\beamerreturnbutton", 
+		    \ "\\beamergotobutton", '\hyperlinkslideprev', '\hyperlinkslidenext', '\hyperlinkframestart', 
+		    \ '\hyperlinkframeend', '\hyperlinkframestartnext', '\hyperlinkframeendprev', 
+		    \ '\hyperlinkpresentationstart', '\hyperlinkpresentationend', '\hyperlinkappendixstart', 
+		    \  '\hyperlinkappendixend', '\hyperlinkdocumentstart',  '\hyperlinkdocumentend',
+		    \ '\framezoom', '\structure', '\insertblocktitle', '\column', '\movie', '\animate', 
+		    \ '\hyperlinksound', '\hyperlinkmute',
+		    \ '\usetheme', '\usecolortheme', '\usefonttheme', '\useinnertheme', '\useoutertheme',
+		    \ '\usefonttheme', '\note', '\AtBeginNote', '\AtEndNote', '\setbeameroption{',
+		    \ '\setbeamerfont{', '\mode' ]
+
+	let g:atp_BeamerThemes = [ "default", "boxes", "Bergen", "Boadilla", "Madrid", "AnnArbor", 
+		    \ "CambridgeUS", "Pittsburgh", "Rochester", "Antibes", "JuanLesPins", "Montpellier", 
+		    \ "Berkeley" , "PalAlto", "Gottingen", "Marburg", "Hannover", "Berlin", "Ilmenau", 
+		    \ "Dresden", "Darmstadt", "Frankfurt", "Singapore", "Szeged", "Copenhagen", "Luebeck", "Malmoe", 
+		    \ "Warsaw", ]
+	let g:atp_BeamerInnerThemes = [ "default", "circles", "rectangles", "rounded", "inmargin" ]
+	let g:atp_BeamerOuterThemes = [ "default", "infolines", "miniframes", "smoothbars", "sidebar",
+		    \ "split", "shadow", "tree", "smoothtree" ]
+	let g:atp_BeamerColorThemes = [ "default", "structure", "sidebartab", "albatross", "beetle", "crane", 
+		    \ "dove", "fly", "seagull", "wolverine", "beaver", "lily", "orchid", "rose", "whale", "seahorse", 
+		    \ "dolphin" ]
+	let g:atp_BeamerFontThemes = [ "default", "serif", "structurebold", "structureitalicserif",
+		    \ "structuresmallcapsserif" ]
+
+	let g:atp_MathTools_math_commands = [ '\cramped', '\crampedllap', '\crampedclap', '\crampedrlap', '\smashoperator',
+		    \ '\adjustlimits', '\newtagform{', '\usetagform{', '\renewtagform{', 
+		    \ '\xleftrightarrow', '\xRightarrow', '\xLeftarrow', '\xLeftrightarrow', 
+		    \ '\xhookleftarrow', '\xhookrightarrow', '\xmapsto', '\underbracket', '\overbracket',
+		    \ '\LaTeXunderbrace', '\LaTeXoverbrace', '\Aboxed', '\ArrowBetweenLines', '\ArrowBetweenLines*',
+		    \ '\shortintertext', '\lparen', '\rparen', '\vcentcolon', 
+		    \ '\ordinarycolon', '\mathtoolsset{', '\prescript',
+		    \ '\newgathered', '\renewgathered', '\splitfrac{', '\splitdfrac{' ]
+	let g:atp_MathTools_commands = [ '\DeclarePairedDelimiter{', '\DeclarePairedDelimiterX{' ]
+
+	let g:atp_MathTools_environments = [ 'matrix*', 'pmatrix*', 'bmatrix*', 'Bmatrix*', 'vmatrix*', 'Vmatrix*', 
+		    \ 'multilined', 'dcases', 'dcases*', 'rcases', 'rcases*', 'drcases*', 'cases*', 'spreadlines',
+		    \ 'lgathered', 'rgathered' ]
 
 if !exists("g:atp_MathOpened") || g:atp_reload
     let g:atp_MathOpened = 1

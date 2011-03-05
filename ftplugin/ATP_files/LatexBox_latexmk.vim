@@ -18,6 +18,7 @@ function! s:SIDWrap(func)
 endfunction
 " }}}
 
+
 " dictionary of latexmk PID's (basename: pid)
 let s:latexmk_running_pids = {}
 
@@ -36,7 +37,7 @@ function! s:LatexmkCallback(basename, status)
 		echomsg "latexmk finished"
 	endif
 	call remove(s:latexmk_running_pids, a:basename)
-	call LatexBox_LatexErrors(0, a:basename)
+	call LatexBox_LatexErrors(g:LatexBox_autojump && a:status, a:basename)
 	"call setpos('.', pos)
 endfunction
 " }}}
@@ -71,8 +72,10 @@ function! LatexBox_Latexmk(force)
 				\ shellescape(callsetpid) . '\(\"' . fnameescape(basename) . '\",$$\)'
 
 	" latexmk command
-	let cmd = 'cd ' . shellescape(LatexBox_GetTexRoot()) . ' ; latexmk ' . l:options
-				\	. ' ' . shellescape(LatexBox_GetMainTexFile())
+	" wrap width in log file
+	let max_print_line = 2000
+	let cmd = 'cd ' . shellescape(b:atp_ProjectDir) . ' ; max_print_line=' . max_print_line .
+				\ ' latexmk ' . l:options	. ' ' . shellescape(b:atp_MainFile)
 
 	" callback after latexmk is finished
 	let vimcmd = g:vim_program . ' --servername ' . v:servername . ' --remote-expr ' . 

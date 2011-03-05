@@ -84,9 +84,15 @@ function! s:JumpToMatch(mode, ...)
 	call search('\A', 'cbW', line('.'))
 
 	" go to next opening/closing pattern on same line
-	let g:pos = !s:SearchAndSkipComments(
-				\	'\m\C\%(' . join(open_pats + close_pats + [dollar_pat], '\|') . '\)',
-				\	sflags, line('.'))
+	if !s:HasSyntax('texSectionModifier', line('.'), col('.'))
+	    let g:pos = !s:SearchAndSkipComments(
+				    \	'\m\C\%(' . join(open_pats + close_pats + [dollar_pat], '\|') . '\)',
+				    \	sflags, line('.'))
+	else
+	    let g:pos = !s:SearchAndSkipComments(
+				    \	'\m\C\%(' . join(open_pats + close_pats, '\|') . '\)',
+				    \	sflags, line('.'))
+	endif
 	" THE line('.') above blocks it from workin not just in one line
 	" (especially with \begin:\end which might be in different lines).
 	if g:pos
@@ -98,7 +104,7 @@ function! s:JumpToMatch(mode, ...)
 	let rest_of_line = strpart(getline('.'), col('.') - 1)
 
 	" match for '$' pairs
-	if rest_of_line =~ '^\$'
+	if rest_of_line =~ '^\$' && !s:HasSyntax('texSectionModifier', line('.'), col('.'))
 
 		" check if next character is in inline math
 		let [lnum, cnum] = searchpos('.', 'nW')
@@ -110,7 +116,7 @@ function! s:JumpToMatch(mode, ...)
 
 		if lnum && s:HasSyntax('texMathZoneY', lnum, cnum)
 			call s:SearchAndSkipComments(two_dollar_pat, 'W')
-		else 
+		elseif !s:HasSyntax('texMathZoneX', lnum, cnum) 
 			call s:SearchAndSkipComments(two_dollar_pat, 'bW')
 		endif
 	else
@@ -120,14 +126,14 @@ function! s:JumpToMatch(mode, ...)
 		let open_pat = open_pats[i]
 		let close_pat = close_pats[i]
 
-			if rest_of_line =~ '^\C\%(' . open_pat . '\)'
-			" if on opening pattern, go to closing pattern
-			call searchpair('\C' . open_pat, '', '\C' . close_pat, 'W', 'LatexBox_InComment()')
-			break
-			elseif rest_of_line =~ '^\C\%(' . close_pat . '\)'
-			" if on closing pattern, go to opening pattern
-			call searchpair('\C' . open_pat, '', '\C' . close_pat, 'bW', 'LatexBox_InComment()')
-			break
+		if rest_of_line =~ '^\C\%(' . open_pat . '\)'
+		" if on opening pattern, go to closing pattern
+		    call searchpair('\C' . open_pat, '', '\C' . close_pat, 'W', 'LatexBox_InComment()')
+		    break
+		elseif rest_of_line =~ '^\C\%(' . close_pat . '\)'
+		    " if on closing pattern, go to opening pattern
+		    call searchpair('\C' . open_pat, '', '\C' . close_pat, 'bW', 'LatexBox_InComment()')
+		    break
 		endif
 
 	endfor
@@ -341,7 +347,6 @@ function! s:SelectCurrentEnv(seltype)
 		if env =~ '^\'
 			call search('\\.\_\s*\S', 'eW')
 		else
-" 			call search('}\%(\_\s*\[\_[^]]*\]\)\?\%(\_\s*\\label\s*{[^}]*}\)\?\_\s*\S', 'eW')
 			call search('}\%(\_\s*\[\_[^]]*\]\)\?\_\s*\S', 'eW')
 		endif
 	endif
@@ -419,7 +424,7 @@ function! s:HighlightMatchingPair()
 
 	let saved_pos = getpos('.')
 
-	if getline('.')[col('.') - 1] == '$'
+	if getline('.')[col('.') - 1] == '$' && !s:HasSyntax('texSectionModifier', line('.'), col('.'))
 
 	   if strpart(getline('.'), col('.') - 2, 1) == '\'
 		   return
@@ -561,7 +566,8 @@ function! s:InnerSearchPos(begin, line, col, run)
 				\ '\|paragraph\*\=' . 
 				\ '\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=' . 
 			\ '\|\\\@<!\$\$\s*$' . 
-			\ '\|\\\\\*\=\)'
+			\ '\|\\\\\*\=' . 
+			\ '\|\%^\|\%$\)'
 	    let [ line, column ] = searchpos(pattern, flag)
 	else
 " 	    echomsg a:begin
@@ -583,7 +589,8 @@ function! s:InnerSearchPos(begin, line, col, run)
 				\ '\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=' . 
 			\ '\|^\s*\\\@<!\\\[' . 
 			\ '\|^\s*\\\@<!\$\$' . 
-			\ '\|\\\\\*\=\)'
+			\ '\|\\\\\*\=' .
+			\ '\|\%^\|\%$\)'
 	    let [ line, column ] = searchpos(pattern, 'nW')
 	endif
 	let g:pattern = pattern

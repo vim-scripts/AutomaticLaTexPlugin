@@ -566,17 +566,17 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID . 
 		\ "MakeLatex\(\'".texfile."\', ".did_bibtex.", 0, [".time[0].",".time[1]."], ".
 		\ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
-	let cmd	= b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
+	let cmd	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
 
 	    if g:MakeLatex_debug
-	    let g:ml_debug .= "First run. (make log|aux|idx file)" . " [" . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . "]#"
+	    let g:ml_debug .= "First run. (make log|aux|idx file)" . " [" . b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . "]#"
 	    silent echo a:run . " Run First CMD=" . cmd 
 	    redir END
 	    endif
 
 	redraw
 	echomsg "[MakeLatex] Updating files [".Compiler."]."
-	call system("("  . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . " )&")
+	call system("("  . b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . " )&")
 	return "Making log file or aux file"
     endif
 
@@ -656,7 +656,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	  let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID .
 		      \ "MakeLatex\(\'".texfile."\', ".did_bibtex." , ".did_index.", [".time[0].",".time[1]."], ".
 		      \ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
-	  let cmd	.= b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
+	  let cmd	.= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
 
 	      if g:MakeLatex_debug
 	      silent echo a:run . " a:did_bibtex="a:did_bibtex . " did_bibtex=" . did_bibtex
@@ -849,8 +849,8 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	endif
 
 "	SET THE COMMAND 
-	let s:comp	= b:atp_TexCompiler . " " . b:atp_TexOptions . " -interaction " . s:texinteraction . " -output-directory " . shellescape(s:tmpdir) . " " . shellescape(a:filename)
-	let s:vcomp	= b:atp_TexCompiler . " " . b:atp_TexOptions  . " -interaction errorstopmode -output-directory " . shellescape(s:tmpdir) .  " " . shellescape(a:filename)
+	let s:comp	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . " " . b:atp_TexOptions . " -interaction " . s:texinteraction . " -output-directory " . shellescape(s:tmpdir) . " " . shellescape(a:filename)
+	let s:vcomp	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . " " . b:atp_TexOptions  . " -interaction errorstopmode -output-directory " . shellescape(s:tmpdir) .  " " . shellescape(a:filename)
 	
 	" make function:
 " 	let make	= "vim --servername " . v:servername . " --remote-expr 'MakeLatex\(\"".tmptex."\",1,0\)'"
@@ -1099,7 +1099,9 @@ endfunction
 augroup ATP_auTeX
     au!
     au CursorHold 	*.tex call s:auTeX()
-    au CursorHoldI 	*.tex if g:atp_insert_updatetime | call s:auTeX() | endif
+    if g:atp_insert_updatetime
+	au CursorHoldI 	*.tex call s:auTeX()
+    endif
 augroup END 
 "}}}
 

@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 23 January 2011
+*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 5 March 2011
 
-			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.6)
+			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.7)
 				by Marcin Szamotulski
 			    mszamot [AT] gmail [DOT] com
 			----------------------------------------
@@ -85,6 +85,27 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 ================================================================================
 NEWS							*atp-news*
 
+>
+  Changes in version 8.7
+<
+  							*atp-:WordCount*
+  - Added completion support for packeges: BEAMER, MATHTOOLS.
+  - LatexBox 0.9.5 included  
+  - :WordCount[!] - command to compute the number of words. With bang [!] it
+    will show the word count of each input file. It uses 'detex' program
+    (which is present in 'texlive') to remove the latex markups prior to word
+    counting (done by the external 'wc' program).
+  - New variable: |b:atp_TexCompilerVariable| with default value
+    "max_print_line=2000". You can use it to set an environment variables for
+    the compiler. The "max_print_line" sets the maximal length of a line in
+    the log file - the value 2000 is high enough to prevent line breaking.
+  - Highlighting of $:$ and $$:$$ and the move '%' is now switched of inside
+    'texSectionModifier' syntax group (i.e. in \begin{}[..here..]) as the
+    syntax groups of $:$ and $$:$$ are not defined inside
+    'texSectionModifier', and the functions were not working right.
+  - |atp-:SshPrint| and |atp-:Lpr| (new) commands have  syntax as lpr command
+    with a nice completion of its options and values.
+  - Some other small changes and fixes.
 >
   Changes in version 8.6
 <
@@ -666,7 +687,7 @@ map <F5>,imap <F5>
 	With one command you can make your whole document: cross references,
 	bibliography (with or without bibtex), index, table of contents, table
 	of figures, table of theorems ([ntheorem package]), table of
-	algorithms. ':MakeLatex!' should be used when an entry from
+	algorithms. ':MakeLatex!' should be used when an entry in the
 	bibliography was deleted (when 'bibtex' is involved this is when you
 	delete last citation command of a bib entry).
 
@@ -921,22 +942,26 @@ map <F6>d
 	deleted. When the command is used with bang it also deletes the
 	current output file. 
 
-:SshPrint [printer], [printer_options]			*atp-:SshPrint*
+:SshPrint [lpr_options]					*atp-:SshPrint*
 	It will run 'lpr' command and append to it the options defined in the
 	variable 'g:printeroptions' + options given in the second argument. It
 	prints the pdf or dvi depending on the value of |b:atp_TexCompiler|.
 							*g:atp_ssh*
 	If you specify the variable 'g:atp_ssh=<user>@<host>' it will print
-	via ssh on the <host> using the [printer]. The command ':SshPrint' has
-	a completion set for the printers available on your local system or in
-	the host. All the arguments of the command SshPrint are |<f-args>|. 
+	via ssh on the <host> using the [lpr_options] passed to the lpr
+	command. The command ':SshPrint' has a completion set for the printers
+	available on your local system or in the host. You do not have to
+	escape white spaces.
 	
-	Both arguments are optional (the default system printer is used, and
-	only the options 'g:printeroptions' apply).
-
 	The command has completion for the names of printers (also remote
-	printers), press <Tab> to cycle through printers, or type first
-	letters of the printers name and press <Tab> to complete it.
+	printers) and also other lpr options and its values, press <Tab> to
+	cycle through printers, or type first letters of the printers name and
+	press <Tab> to complete it.
+
+:Lpr [lpr_options]					*atp-:Lpr*
+	It prints using the lpr command on a local printer. The syntax and
+	completion are the same as for |atp-:SshPrint|.
+
 
 							*atp-:Lpstat*
 :Lpstat
@@ -2525,13 +2550,14 @@ Tip: If you want to see (almost) all the variables, type ':let g:atp-<CTRL+d>',
 and ':let b:<CTRL+d>'.
 
 All buffer variables (see |b:var|), i.e. these which name begins with "b:",
-should be set in your Vimrc file. The best way to do that is by using
-autocommand:
+should be set in your |vimrc| or |atprc| file. If you want to use your vimrc file
+then the best way to do that is by using an autocommand:
 >
 	au BufReadPre *.tex let b:atp_TexCompiler="latex"
 <
 If you put just let b:atp_TexCompiler, this will also work but not always: for
-example when you open a new buffer in existing Vim session.
+example when you open a new buffer in existing Vim session. However, if you
+put them in your |atprc| it is enough to use the standard "let b:...=".
 
 let b:atp_TexCompiler	= "pdflatex"			*b:atp_TexCompiler*
 	Used by functions: TEX() (map \l, imap \l), VTEX() (map <F5>, imap <F5>)
@@ -2541,6 +2567,12 @@ let b:atp_TexCompiler	= "pdflatex"			*b:atp_TexCompiler*
 
 	There is a command to set this variable with nice completion, see
 	|atp-:Compiler|. 
+
+let b:atp_TexCompilerVariable = "max_print_line=2000" 	*b:atp_TexCompilerVariable*	
+	You can use it to set an environment variables for the compiler. The
+	"max_print_line" sets the maximal length of a line in the log file.
+	The value 2000 is high enough to prevent line breaking.
+
 							*b:atp_TexFlavor*
 let b:atp_TexFlavor	= "tex"	
 	If you are editing a plain tex file it is automatically set to

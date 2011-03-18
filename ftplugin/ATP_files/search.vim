@@ -107,7 +107,7 @@ function! LocalCommands(...)
 "     let time = reltime()
     let pattern = a:0 >= 1 && a:1 != '' ? a:1 : '\\def\>\|\\newcommand\>\|\\newenvironment\|\\newtheorem\|\\definecolor\|'
 		\ . '\\Declare\%(RobustCommand\|FixedFont\|TextFontCommand\|MathVersion\|SymbolFontAlphabet'
-			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\)'
+			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\|MathOperator\)'
 		\ . '\|\\SetMathAlphabet\>'
     let bang	= a:0 >= 2 ? a:2 : '' 
 
@@ -158,10 +158,10 @@ function! LocalCommands(...)
 " 	    let def=matchstr(line['text'],
 " 			\ '^\%(\\def\\[^{]*{\zs.*\ze}\|\\newcommand\\[^{]*{\zs.*\ze}\)') 
 	elseif line['text'] =~ '\\Declare\%(RobustCommand\|FixedFont\|TextFontCommand\|MathVersion\|SymbolFontAlphabet'
-			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\)\>\|\\SetMathAlphabet'
+			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\|MathOperator\)\>\|\\SetMathAlphabet'
 	    let name=matchstr(line['text'],
 			\ '\%(\\Declare\%(RobustCommand\|FixedFont\|TextFontCommand\|MathVersion\|SymbolFontAlphabet'
-			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\)\|\\SetMathAlphabet\)\s*{\s*\zs[^}]*\ze\s*}')
+			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\|MathOperator\)\|\\SetMathAlphabet\)\s*{\s*\zs[^}]*\ze\s*}')
 	    let type="Commands"
 	elseif line['text'] =~ '\%(\\newenvironment\|\\newtheorem\)'
 	    " environment name

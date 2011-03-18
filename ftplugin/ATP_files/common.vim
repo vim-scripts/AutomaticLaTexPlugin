@@ -325,8 +325,8 @@ function! TreeOfFiles(main_file,...)
 	silent execute "lvimgrep /".pattern."/jg " . fnameescape(a:main_file)
     catch /E480:/
     catch /E683:/ 
-	let g:pattern = pattern
-	let g:filename = fnameescape(a:main_file)
+" 	let g:pattern = pattern
+" 	let g:filename = fnameescape(a:main_file)
     endtry
     let loclist	= getloclist(0)
     call setloclist(0, saved_llist)

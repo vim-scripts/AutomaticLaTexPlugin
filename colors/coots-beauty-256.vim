@@ -28,7 +28,7 @@ highlight CursorLine	cterm=none		ctermfg=none ctermbg=53           	guibg=#11111
 highlight Directory      			ctermfg=5   ctermbg=233	guifg=DarkViolet	guibg=#1c1c1c
 
 highlight DiffAdd        cterm=none           	ctermfg=15  ctermbg=56  guifg=white	guibg=SlateBlue4 gui=bold
-highlight DiffDelete     cterm=none           	ctermfg=19  ctermbg=56	guifg=VioletRed	guibg=SlateBlue4
+highlight DiffDelete     cterm=none           	ctermfg=19  ctermbg=125	guifg=VioletRed	guibg=DeepPink4
 highlight DiffChange     cterm=none           	ctermfg=173 ctermbg=125	guifg=salmon	guibg=DeepPink4
 highlight DiffText       cterm=bold           	ctermfg=white ctermbg=125  guifg=white	guibg=DeepPink4
 

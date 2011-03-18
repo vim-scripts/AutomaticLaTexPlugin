@@ -4,7 +4,7 @@
 " URL:	       https://launchpad.net/automatictexplugin	
 " BUG Trucer:  https://bugs.launchpad.net/automatictexplugin
 " Language:    bib
-" Last Change: Mon Dec 06 08:00  2010 W
+" Last Change: Sat Mar 12 01:00  2011 W
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.
 "
@@ -32,13 +32,18 @@ if !exists("g:atpbib_pathseparator")
 	let g:atpbib_pathseparator = "/"
     endif 
 endif
+" if !exists("g:atpbib_WgetOutputFile")
+"     let tmpname = tempname()
+"     let g:atpbib_WgetOutputFile = tmpname . g:atpbib_pathseparator . "amsref.html"
+" endif
+" if !exists("g:atpbib_wget")
+"     let g:atpbib_wget="wget -O " . g:atpbib_WgetOutputFile
+" endif
 if !exists("g:atpbib_WgetOutputFile")
-    let tmpname = tempname()
-    let g:atpbib_WgetOutputFile = tmpname . g:atpbib_pathseparator . "amsref.html"
-    call mkdir(tmpname)
+    let g:atpbib_WgetOutputFile = "amsref.html"
 endif
 if !exists("g:atpbib_wget")
-    let g:atpbib_wget="wget -O " . g:atpbib_WgetOutputFile
+    let g:atpbib_wget="wget"
 endif
 if !exists("g:atpbib_Article")
     let g:atpbib_Article = [ '@article{',
@@ -165,64 +170,55 @@ function! <SID>GetAMSRef(what)
     let what = substitute(what, '&',	'%26',	'g')
     let what = substitute(what, '@',	'%40',	'g')
     let what = substitute(what, ' ',	'+',	'g')
+
+    let tmpdir=tempname()
+    call mkdir(tmpdir, "p")
+    let atpbib_WgetOutputFile = tmpdir . g:atpbib_pathseparator . "amsref.html"
+
     " Note: Quoting a:what works not as good.
-"     let g:what	= what
-    let cmd = g:atpbib_wget . " " . '"http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=bibtex"'
-"     let g:cmd=cmd
+    let cmd = g:atpbib_wget . " -O " . atpbib_WgetOutputFile . ' "http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=bibtex"'
     call system(cmd)
     let loclist = getloclist(0)
 
     try
-	exe '1lvimgrep /\CNo Unique Match Found/j ' . fnameescape(g:atpbib_WgetOutputFile)
+	exe '1lvimgrep /\CNo Unique Match Found/j ' . fnameescape(atpbib_WgetOutputFile)
     catch /E480/
     endtry
     if len(getloclist(0))
 	echohl WarningMsg
 	echomsg "No Unique Match Found"
 	echohl None
-	return
+	return [0]
     endif
     let pattern = '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\s*{\|^\s*\%(ADDRESS\|ANNOTE\|AUTHOR\|BOOKTITLE\|CHAPTER\|CROSSREF\|EDITION\|EDITOR\|HOWPUBLISHED\|INSTITUTION\|JOURNAL\|KEY\|MONTH\|NOTE\|NUMBER\|ORGANIZATION\|PAGES\|PUBLISHER\|SCHOOL\|SERIES\|TITLE\|TYPE\|VOLUME\|YEAR\|MRCLASS\|MRNUMBER\|MRREVIEWER\)\s*=\s*.*$'
     try 
-	exe 'lvimgrep /'.pattern.'/j ' . fnameescape(g:atpbib_WgetOutputFile)
+	exe 'lvimgrep /'.pattern.'/j ' . fnameescape(atpbib_WgetOutputFile)
     catch /E480:/
     endtry
     let data = getloclist(0)
     call setloclist(0, loclist)
-"     let g:data = copy(data)
     if !len(data) 
 	echohl WarningMsg
 	echomsg "Nothing found."
 	echohl None
-	return
+	return [0]
     endif
 
     let type_pattern= '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\>'
     let bdata		= filter(copy(data), "v:val['text'] =~ type_pattern")
-"     let g:bdata		= copy(bdata)
     let blinenumbers	= map(copy(bdata), 'v:val["lnum"]')
     let begin		= max(blinenumbers)
-"     let g:begin = begin
     let linenumbers	= map(copy(data), 'v:val["lnum"]')
     let end		= max(linenumbers)
-"     let g:end	= end
 
-    let bufnr = bufnr(g:atpbib_WgetOutputFile)
-"     let g:bufnr = bufnr
+    let bufnr = bufnr(atpbib_WgetOutputFile)
     " To use getbufline() buffer must be loaded. It is enough to use :buffer
     " command because vimgrep loads buffer and then unloads it. 
     execute "buffer " . bufnr
     let bibdata	= getbufline(bufnr, begin, end)
-"     let g:bibdata = bibdata
     execute "bdelete " . bufnr 
     let type = matchstr(bibdata[0], '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\ze\s*\%("\|{\|(\)')
-"     let g:type = type
 "     Suggest Key:
-"     let author = substitute(matchstr(get(filter(copy(bibdata), "v:val =~ '\\<author\\>'"),0, ""), 'author\s*=\s*\("\|{\|''\|(\)\zs.*\ze'), '{\|}\|(\|)\|''\|"\|,', '', 'g')
-"     let firstauthor = split(author, "and")[0]
-"     let title = substitute(matchstr(get(filter(copy(bibdata), "v:val =~ '\\<title\\>'"),0, ""), 'title\s*=\s*\("\|{\|''\|(\)\zs.*\ze'), '{\|}\|(\|)\|''\|"\|,', '', 'g')
-"     let suggested_key = substitute(firstauthor . ":" . title, " ", "_", "g")
-"     let g:suggested_key = suggested_key
     let bibkey = input("Provide a key (Enter for the AMS bibkey): ")
     if !empty(bibkey)
 	let bibdata[0] = type . '{' . bibkey . ','
@@ -240,14 +236,13 @@ function! <SID>GetAMSRef(what)
     endif
 
     "Append the bibdata:
-"     let g:eline = getline(line('$')) !~ '^\s*$'
     if getline(line('$')) !~ '^\s*$' 
 	let bibdata = extend([''], bibdata)
     endif
     let bibdata = extend(bibdata, [''])
-"     echomsg string(bibdata)
     call append(line('.'), bibdata)
     let g:atp_bibdata = bibdata
+    call system("rm -rf " . fnamemodify(atpbib_WgetOutputFile, ":h"))
     return bibdata
 endfunction
 catch /E127/

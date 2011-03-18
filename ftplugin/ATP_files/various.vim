@@ -3,7 +3,7 @@
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Sat Mar 05 12:00  2011 W
+" Last Change: Fri Mar 18 10:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -223,71 +223,79 @@ endfunction
 function! TexAlign()
     let save_pos = getpos(".")
     let synstack = map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
-    if count(synstack, 'texMathZoneA') || count(synstack, 'texMathZoneAS')
+
+    let balign=searchpair('\\begin\s*{\s*array\s*}', '', '\\end\s*{\s*array\s*}', 'bnW')
+    let [bmatrix, bmatrix_col]=searchpairpos('\\matrix\s*\[[^]]*\]\s*\zs{', '', '}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
+    if bmatrix
+	let bpat = '\\matrix\s*\[[^]]*\]\s*{'
+	let bline = bmatrix+1 
+	let epat = '}'
+	let AlignCtr = 'jl+ &'
+	let env = "matrix"
+    elseif balign
+	let bpat = '\\begin\s*{\s*array\s*}'
+	let bline = balign+1
+	let epat = '\\end\s*{\s*array\s*}'
+	let AlignCtr = 'Il+ &'
+	let env = "array"
+    elseif count(synstack, 'texMathZoneA') || count(synstack, 'texMathZoneAS')
 	let bpat = '\\begin\s*{\s*align\*\=\s*}' 
 	let epat = '\\end\s*{\s*align\*\=\s*}' 
 	let AlignCtr = 'Il+ &'
-" 	let g:debug = "align"
+	let env = "align"
     elseif count(synstack, 'texMathZoneB') || count(synstack, 'texMathZoneBS')
 	let bpat = '\\begin\s*{\s*alignat\*\=\s*}' 
 	let epat = '\\end\s*{\s*alignat\*\=\s*}' 
 	let AlignCtr = 'Il+ &'
-" 	let g:debug = "alignat"
+	let env = "alignat"
     elseif count(synstack, 'texMathZoneD') || count(synstack, 'texMathZoneDS')
 	let bpat = '\\begin\s*{\s*eqnarray\*\=\s*}' 
 	let epat = '\\end\s*{\s*eqnarray\*\=\s*}' 
 	let AlignCtr = 'Il+ &'
-" 	let g:debug = "eqnarray"
+	let env = "eqnarray"
     elseif count(synstack, 'texMathZoneE') || count(synstack, 'texMathZoneES')
 	let bpat = '\\begin\s*{\s*equation\*\=\s*}' 
 	let epat = '\\end\s*{\s*equation\*\=\s*}' 
 	let AlignCtr = 'Il+ =+-'
-" 	let g:debug = "equation"
+	let env = "equation"
     elseif count(synstack, 'texMathZoneF') || count(synstack, 'texMathZoneFS')
 	let bpat = '\\begin\s*{\s*flalign\*\=\s*}' 
 	let epat = '\\end\s*{\s*flalign\*\=\s*}' 
 	let AlignCtr = 'jl+ &'
-" 	let g:debug = "falign"
+	let env = "falign"
 "     elseif count(synstack, 'texMathZoneG') || count(synstack, 'texMathZoneGS')
 "     gather doesn't need alignment (by design it give unaligned equation.
 " 	let bpat = '\\begin\s*{\s*gather\*\=\s*}' 
 " 	let epat = '\\end\s*{\s*gather\*\=\s*}' 
 " 	let AlignCtr = 'Il+ &'
-" 	let g:debug = "gather"
+" 	let env = "gather"
     elseif count(synstack, 'displaymath')
 	let bpat = '\\begin\s*{\s*displaymath\*\=\s*}' 
 	let epat = '\\end\s*{\s*displaymath\*\=\s*}' 
 	let AlignCtr = 'Il+ =+-'
-" 	let g:debug = "displaymath"
+	let env = "displaymath"
     elseif searchpair('\\begin\s*{\s*tabular\s*\}', '', '\\end\s*{\s*tabular\s*}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
 	let bpat = '\\begin\s*{\s*tabular\*\=\s*}' 
 	let epat = '\\end\s*{\s*tabular\*\=\s*}' 
 	let AlignCtr = 'jl+ &'
-" 	let g:debug = "tabular"
-    elseif searchpair('\\matrix\s*\[[^]]*\]\s*{', '', '}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
-	let bpat = '\\matrix\s*\[[^]]*\]\s*{'
-	let epat = '}'
-	let AlignCtr = 'jl+ &'
-	let g:debug = "matrix"
+	let env = "tabular"
     else
 	return
     endif
-
-    " Check if we are inside array environment
-    let align = searchpair('\\begin\s*{\s*array\s*}', '', '\\end\s*{\s*array\s*}', 'bnW')
-    if align
-" 	let bpat = '\\begin\s*{\s*array\s*}'
-	let bline = align + 1
-	let epat = '\\end\s*{\s*array\s*}'
-	let AlignCtr = 'Il+ &'
-    endif
-
-"     let g:AlignCtr = AlignCtr
+	
+"     let g:env=env
 
     if !exists("bline")
 	let bline = search(bpat, 'cnb') + 1
     endif
-    let eline = searchpair(bpat, '', epat, 'cn')  - 1
+    if env != "matrix"
+	let eline = searchpair(bpat, '', epat, 'cn')  - 1
+    else
+	let saved_pos = getpos(".")
+	call cursor(bmatrix, bmatrix_col)
+	let eline = searchpair('{', '', '}', 'n')  - 1
+	call cursor(saved_pos[1], saved_pos[2])
+    endif
 
 " 	let g:bline = bline
 " 	let g:eline = eline
@@ -346,7 +354,11 @@ function! InsertItem()
     let [ bline, bcol]	= searchpos('\\item\s*\zs\[', 'b', begin_line) 
     if bline == 0
 	keepjumps call setpos(".", saved_pos)
-	let new_line	= strpart(getline("."), 0, col(".")) . '\item'. strpart(getline("."), col("."))
+	if search('\\item\>', 'nb', begin_line)
+	    let new_line	= strpart(getline("."), 0, col(".")) . '\item '. strpart(getline("."), col("."))
+	else
+	    let new_line	= strpart(getline("."), 0, col(".")) . '\item'. strpart(getline("."), col("."))
+	endif
 	call setline(line("."), new_line)
 
 	" Indent the line:
@@ -383,15 +395,20 @@ function! InsertItem()
     let space		= matchstr(getline("."), '\\item\zs\s*\ze\[')
     if nr2char(number) != "" && subNr == "" 
 	let new_item	= substitute(item, number, number + 1, '')
+    elseif item =~ '\%('.bpat.'\)\=\s*\%(i\|ii\|iii\|iv\|v\|vi\|vii\|viii\|ix\)\%('.epat.'\)\=$'
+	let numbers	= [ 'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x' ]
+	let roman	= matchstr(item, '\%('.bpat.'\)\=\s*\zs\w\+\ze\s*\%('.epat.'\)\=$')
+	let new_roman	= get(numbers, index(numbers, roman) + 1, 'xi') 
+	let new_item	= substitute(item,  '^\%('.bpat.'\)\=\s*\zs\a\+\ze\s*\%('.epat.'\)\=$', new_roman, 'g') 
     elseif nr2char(number) != "" && subNr != ""
-	let alphabet 	= [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y', 'z' ] 
+	let alphabet 	= [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y', 'z' ] 
 	let char	= matchstr(item, '^\%('.bpat.'\)\=\s*\d\+\zs\a\ze\s*\%('.epat.'\)\=$')
 	let new_char	= get(alphabet, index(alphabet, char) + 1, 'z')
 	let new_item	= substitute(item, '^\%('.bpat.'\)\=\s*\d\+\zs\a\ze\s*\%('.epat.'\)\=$', new_char, 'g')
     elseif item =~ '\%('.bpat.'\)\=\s*\w\s*\%('.epat.'\)\='
 	let alphabet 	= [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y', 'z' ] 
 	let char	= matchstr(item, '^\%('.bpat.'\)\=\s*\zs\w\ze\s*\%('.epat.'\)\=$')
-	let new_char	= get(alphabet, index(alphabet, char) + 1, 'z')
+	let new_char	= get(alphabet, index(alphabet, char) + 1, 'a')
 	let new_item	= substitute(item, '^\%('.bpat.'\)\=\s*\zs\w\ze\s*\%('.epat.'\)\=$', new_char, 'g')
     else
 	let new_item	= item
@@ -399,7 +416,7 @@ function! InsertItem()
 
     keepjumps call setpos(".", saved_pos)
 
-    let new_line	= strpart(getline("."), 0, col(".")) . '\item' . space . '[' . new_item . ']' . strpart(getline("."), col("."))
+    let new_line	= strpart(getline("."), 0, col(".")) . '\item' . space . '[' . new_item . '] ' . strpart(getline("."), col("."))
     call setline(line("."), new_line)
 
     " Indent the line:
@@ -468,12 +485,21 @@ function! s:ToggleStar()
     let to_line=line(".")+g:atp_completion_limits[2]
 
     " omit pattern
-    let omit=join(g:atp_no_star_environments,'\|')
+    let no_star=copy(g:atp_no_star_environments)
+    let cond = atplib#SearchPackage('mdwlist')
+    if cond || exists("b:atp_LocalEnvironments") && index(b:atp_LocalEnvironments, 'enumerate*') != -1
+	call remove(no_star, index(no_star, 'enumerate'))
+    endif
+    if cond || exists("b:atp_LocalEnvironments") && index(b:atp_LocalEnvironments, 'itemize') != -1
+	call remove(no_star, index(no_star, 'itemize'))
+    endif
+    if cond || exists("b:atp_LocalEnvironments") && index(b:atp_LocalEnvironments, 'description') != -1
+	call remove(no_star, index(no_star, 'description'))
+    endif
+    let omit=join(no_star,'\|')
     let open_pos=searchpairpos('\\begin\s*{','','\\end\s*{[^}]*}\zs','cbnW','getline(".") =~ "\\\\begin\\s*{".omit."}"',from_line)
-    let b:open_pos=open_pos
     let env_name=matchstr(strpart(getline(open_pos[0]),open_pos[1]),'begin\s*{\zs[^}]*\ze}')
-    let b:env_name=env_name
-    if ( open_pos == [0, 0] || index(g:atp_no_star_environments,env_name) != -1 ) && getline(line(".")) !~ '\\\%(part\|chapter\|\%(sub\)\{0,2}section\)'
+    if ( open_pos == [0, 0] || index(no_star, env_name) != -1 ) && getline(line(".")) !~ '\\\%(part\|chapter\|\%(sub\)\{0,2}section\)'
 	return
     endif
     if env_name =~ '\*$'
@@ -664,10 +690,12 @@ function! <SID>EnvCompletion(ArgLead, CmdLine, CursorPos)
     endif
 
     let env_list = copy(b:atp_LocalEnvironments)
+    " add standard and ams environment if not present.
+    let env_list=atplib#Extend(env_list, g:atp_Environments)
+    if atplib#SearchPackage('amsmath')
+	let env_list=atplib#Extend(env_list, g:atp_amsmath_environments)
+    endif
     call filter(env_list, "v:val =~ '^' .a:ArgLead")
-    let g:env_list = copy(env_list)
-    let g:ArgLead = a:ArgLead
-    let g:CmdLine = a:CmdLine
     return env_list
 endfunction
 " TexDoc commanand and its completion
@@ -721,7 +749,6 @@ function! s:Delete(delete_output)
     call atplib#outdir()
 
     let l:atp_tex_extensions=deepcopy(g:atp_tex_extensions)
-    let error=0
 
     if a:delete_output == "!"
 	if b:atp_TexCompiler == "pdftex" || b:atp_TexCompiler == "pdflatex"
@@ -738,27 +765,17 @@ function! s:Delete(delete_output)
 		if l:ext != "dvi" && l:ext != "pdf"
 		    let l:rm=g:rmcommand . " " . shellescape(b:atp_OutDir) . "*." . l:ext . " 2>/dev/null && echo Removed: ./*" . l:ext 
 		else
-		    let l:rm=g:rmcommand . " " . fnamemodify(atp_MainFile,":r").".".l:ext . " 2>/dev/null && echo Removed: " . fnamemodify(atp_MainFile,":r").".".l:ext
+		    let l:rm=g:rmcommand . " " . shellescape(fnamemodify(atp_MainFile,":r")).".".l:ext . " 2>/dev/null && echo Removed: " . fnamemodify(atp_MainFile,":r").".".l:ext
 		endif
-	    endif
-	    if !exists("g:rm")
-		let g:rm	= [l:rm] 
-	    else
-		call add(g:rm, l:rm)
 	    endif
 	    echo system(l:rm)
 	else
-	    let error=1
 	    let file=b:atp_OutDir . fnamemodify(expand("%"),":t:r") . "." . l:ext
 	    if delete(file) == 0
 		echo "Removed " . l:file 
 	    endif
 	endif
     endfor
-
-" 	if error
-" 		echo "Please set g:rmcommand to clear the working directory"
-" 	endif
 endfunction
 "}}}
 
@@ -1564,66 +1581,56 @@ function! <SID>GetAMSRef(what, bibfile)
     let what = substitute(what, '&',	'%26',	'g')
     let what = substitute(what, '@',	'%40',	'g')
     let what = substitute(what, ' ',	'+',	'g')
-"     let g:what = what
+
+    let tmpdir=tempname()
+    call mkdir(tmpdir, "p")
+    let atpbib_WgetOutputFile = tmpdir . g:atpbib_pathseparator . "amsref.html"
+ 
     if a:bibfile != "nobibfile"
-	let cmd = g:atpbib_wget . " " . '"http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=bibtex"'
+	let cmd = g:atpbib_wget . " -O " . atpbib_WgetOutputFile . ' "http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=bibtex"'
     else
-	let cmd = g:atpbib_wget . " " . '"http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=tex"'
+	let cmd = g:atpbib_wget . " -O " . atpbib_WgetOutputFile . ' "http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=tex"'
     endif
-"     let g:cmd=cmd
     call system(cmd)
+    let g:cmd=cmd
     let loclist = getloclist(0)
 
     try
-	exe '1lvimgrep /\CNo Unique Match Found/j ' . fnameescape(g:atpbib_WgetOutputFile)
+	exe '1lvimgrep /\CNo Unique Match Found/j ' . fnameescape(atpbib_WgetOutputFile)
     catch /E480/
     endtry
     if len(getloclist(0))
-	echohl WarningMsg
-	echomsg "No Unique Match Found"
-	echohl None
-	return
+	return ['NoUniqueMatch']
     endif
 
     if len(b:AllBibFiles) > 0
 	let pattern = '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\s*{\|^\s*\%(ADDRESS\|ANNOTE\|AUTHOR\|BOOKTITLE\|CHAPTER\|CROSSREF\|EDITION\|EDITOR\|HOWPUBLISHED\|INSTITUTION\|JOURNAL\|KEY\|MONTH\|NOTE\|NUMBER\|ORGANIZATION\|PAGES\|PUBLISHER\|SCHOOL\|SERIES\|TITLE\|TYPE\|VOLUME\|YEAR\|MRCLASS\|MRNUMBER\|MRREVIEWER\)\s*=\s*.*$'
 	try 
-	    exe 'lvimgrep /'.pattern.'/j ' . fnameescape(g:atpbib_WgetOutputFile)
+	    exe 'lvimgrep /'.pattern.'/j ' . fnameescape(atpbib_WgetOutputFile)
 	catch /E480:/
 	endtry
 	let data = getloclist(0)
 	call setloclist(0, loclist)
-"         let g:data = copy(data)
 
 	if !len(data) 
 	    echohl WarningMsg
 	    echomsg "Nothing found."
 	    echohl None
-	    return
+	    return [0]
 	endif
 
 	let linenumbers = map(copy(data), 'v:val["lnum"]')
 	let begin	= min(linenumbers)
-"         let g:begin = begin
 	let end	= max(linenumbers)
-"         let g:end	= end
 
-	let bufnr = bufnr(g:atpbib_WgetOutputFile)
-" 	let g:bufnr = bufnr
+	let bufnr = bufnr(atpbib_WgetOutputFile)
 	" To use getbufline() buffer must be loaded. It is enough to use :buffer
 	" command because vimgrep loads buffer and then unloads it. 
 	execute "buffer " . bufnr
 	let bibdata	= getbufline(bufnr, begin, end)
-"         let g:bibdata = bibdata
 	execute "bdelete " . bufnr 
 	let type = matchstr(bibdata[0], '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\ze\s*\%("\|{\|(\)')
-"         let g:type = type
         " Suggest Key:
-"         let author = substitute(matchstr(get(filter(copy(bibdata), "v:val =~ '\\<author\\>'"),0, ""), 'author\s*=\s*\("\|{\|''\|(\)\zs.*\ze'), '{\|}\|(\|)\|''\|"\|,', '', 'g')
-"         let firstauthor = split(author, "and")[0]
-"         let title = substitute(matchstr(get(filter(copy(bibdata), "v:val =~ '\\<title\\>'"),0, ""), 'title\s*=\s*\("\|{\|''\|(\)\zs.*\ze'), '{\|}\|(\|)\|''\|"\|,', '', 'g')
-"         let suggested_key = substitute(firstauthor . ":" . title, " ", "_", "g")
-"         let g:suggested_key = suggested_key
 	let bibkey = input("Provide a key (Enter for the AMS bibkey): ")
 	if !empty(bibkey)
 	    let bibdata[0] 	= type . '{' . bibkey . ','
@@ -1636,11 +1643,9 @@ function! <SID>GetAMSRef(what, bibfile)
 
 	" Open bibfile and append the bibdata:
 	execute "silent! edit " . a:bibfile
-"         let g:eline = getline(line('$')) !~ '^\s*$'
 	if getline(line('$')) !~ '^\s*$' 
 	    let bibdata = extend([''], bibdata)
 	endif
-"         echomsg string(bibdata)
 	call append(line('$'), bibdata)
 	normal GG
 	echohl WarningMsg
@@ -1650,25 +1655,25 @@ function! <SID>GetAMSRef(what, bibfile)
 	" If the user is using \begin{bibliography} environment.
 	let pattern = '^<tr><td align="left">'
 	try 
-	    exe 'lvimgrep /'.pattern.'/j ' . fnameescape(g:atpbib_WgetOutputFile)
+	    exe 'lvimgrep /'.pattern.'/j ' . fnameescape(atpbib_WgetOutputFile)
 	catch /E480:/
 	endtry
 	let data = getloclist(0)
-"         let g:data = copy(data)
 	if !len(data) 
 	    echohl WarningMsg
 	    echomsg "Nothing found."
 	    echohl None
-	    return
+	    return [0]
 	elseif len(data) > 1
 	    echoerr "ATP Error: AMSRef vimgrep pattern error. You can send a bug report. Please include the exact :ATPRef command." 
 	endif
 	let bibref = '\bibitem{} ' . matchstr(data[0]['text'], '^<tr><td align="left">\zs.*\ze<\/td><\/tr>')
 	let g:atp_bibref = bibref
-	exe "let @" . g:atp_bibrefRegister . " = '" . bibref . "'"
+	exe "let @" . g:atp_bibrefRegister . ' = "' . escape(bibref, '\') . '"'
 	let bibdata = [ bibref ]
     endif
     let g:atp_bibdata = bibdata
+    call system("rm -rf " . fnamemodify(atpbib_WgetOutputFile, ":h"))
     return bibdata
 endfunction
 catch /E127/
@@ -1684,19 +1689,25 @@ function! AMSRef(bang, what)
 	let bibfile = b:AllBibFiles[0]
     elseif !len(b:AllBibFiles)
 	let bibfile = "nobibfile"
-" 	let bibfile = get(b:AllBibFiles, 0, "")
-" 	if empty(bibfile)
-" 	    let bibfile = input("Provide full path to bib file and press <Enter>:")
-" 	    if empty(bibfile)
-" 		return
-" 	    endif
-" 	endif
     endif
 
-    call <SID>GetAMSRef(a:what, bibfile)
-    if a:bang == ""
+    let return=<SID>GetAMSRef(a:what, bibfile)
+"     let g:bang=a:bang
+"     let g:bibfile=bibfile
+"     let g:return=return
+    if a:bang == "" && bibfile != "nobibfile" && return != [0] && return != ['NoUniqueMatch']
 	silent! w
 	silent! bd
+    elseif bibfile == "nobibfile" && return != [0] && return != ['NoUniqueMatch']
+	redraw
+	echohl WarningMsg
+	echomsg "Found bib data is in register " . g:atp_bibrefRegister
+	echohl Normal
+    elseif return[0] == 'NoUniqueMatch' 
+	redraw
+	echohl WarningMsg
+	echomsg "No Unique Match Found"
+	echohl None
     endif
 endfunction
 "}}}
@@ -1740,6 +1751,130 @@ function! <SID>ShowWordCount(bang)
 	echomsg wc . "  " . b:atp_MainFile
     endif
 endfunction "}}}
+
+" Wdiff
+" {{{
+" Needs wdiff program.
+function! <SID>Wdiff(new_file, old_file)
+
+    if !executable("wdiff")
+	echohl WarningMsg
+	echo "You need to install GNU wdiff program." 
+	echohl Normal
+	return 1
+    endif
+
+    " Operate on temporary copies:
+    try
+	let new_file	= readfile(a:new_file)
+    catch /E484/
+	echohl ErrorMsg
+	echomsg "Can't open file " . a:new_file
+	return 1
+    endtry
+    try
+	let old_file	= readfile(a:old_file)
+    catch /E484/
+	echohl ErrorMsg
+	echomsg "Can't open file " . a:old_file
+	return 1
+    endtry
+
+    " Remove the preambule:
+    let new_pend=0
+    for line in new_file
+	if line =~ '^[^%]*\\begin{document}'
+	    break
+	endif
+	let new_pend+=1
+    endfor
+    let old_pend=0
+    for line in new_file
+	if line =~ '^[^%]*\\begin{document}'
+	    break
+	endif
+	let old_pend+=1
+    endfor
+
+    let new_preambule	= remove(new_file, 0, new_pend)  
+    let old_preambule	= remove(old_file, 0, old_pend)  
+
+    let g:new_preambule = new_preambule
+    let g:old_preambule = old_preambule
+    let g:new_file	= new_file
+    let g:old_file	= old_file
+
+    let new_tmp		= tempname()
+    let old_tmp		= tempname()
+
+    if new_preambule != old_preambule
+	let which_pre=inputlist(["Wich preambule to use:", "(1) from " . a:new_file, "(2) from " . a:old_file])
+	if which_pre != 1 && which_pre != 2
+	    return 0
+	endif
+    else
+	let which_pre = 1
+    endif
+
+    execute "keepalt edit " . new_tmp
+    call append(0, new_file)
+    let buf_new	= bufnr("%")
+    "delete all comments
+    if expand("%:p") == new_tmp
+	silent! execute ':%g/^\s*%/d'
+	silent! execute ':%s/\s*\\\@!%.*$//g'
+	silent! write
+	silent! bdelete
+    else
+	return 1
+    endif
+
+    execute "keepalt edit " . old_tmp
+    call append(0, old_file)
+    let buf_old	= bufnr("%")
+    "delete all comments
+    if expand("%:p") == old_tmp
+	silent! execute ':%g/^\s*%/d'
+	silent! execute ':%s/\s*\\\@!%.*$//g'
+	silent! write
+	silent! bdelete
+    else
+	return 1
+    endif
+
+    " make wdiff:
+    if filereadable("/tmp/wdiff.tex")
+	call delete("/tmp/wdiff.tex")
+    endif
+"     call system("wdiff -w '{\\textcolor{red}{=}' -x '\\textcolor{red}{=}}' -y '{\\textcolor{blue}{+}' -z '\\textcolor{blue}{+}}' " . new_tmp . " " . old_tmp . " > /tmp/wdiff.tex")
+    call system("wdiff " . "-w '\\{=' -x '=\\}' -y '\\{+' -z '+\\}'" . " " . new_tmp . " " . old_tmp . " > /tmp/wdiff.tex")
+    split /tmp/wdiff.tex
+
+    " Set atp
+    let b:atp_autex=0
+    let b:atp_ProjectScript=0
+
+    " These do not match multiline changes!
+    let s:atp_IDdelete	= matchadd('DiffDelete', '\\{=\zs\%(=\\}\@!\|=\\\@!}\|=\@!\\}\|[^}=\\]\|=\\\@!\|\\}\@!\|=\@<!\\\|\\}\@!\|\\\@<!}\)*\ze=\\}', 10)
+    let s:atp_IDadd	= matchadd('DiffAdd', '\\{+\zs\%(+\\}\@!\|+\\\@!}\|+\@!\\}\|[^}+\\]\|+\\\@!\|\\}\@!\|+\@<!\\\|\\}\@!\|\\\@<!}\)*\ze+\\}', 10)
+    normal "gg"
+    call append(0, ( which_pre == 1 ? new_preambule : old_preambule )) 
+    silent! call search('\\begin{document}')
+    normal "zt"
+    map ]s /\\{[=+]\_.*[+=]\\}<CR>
+    map [s ?\\{[=+]\_.*[+=]\\}<CR>
+    function! NiceDiff()
+	let saved_pos=getpos(".")
+	keepjumps %s/\\{=\(\%(=\\}\@!\|=\\\@!}\|=\@!\\}\|[^}=\\]\|=\\\@!\|\\}\@!\|=\@<!\\\|\\}\@!\|\\\@<!}\)*\)=\\}/\\textcolor{red}{\1}/g
+	keepjumps %s/\\{+\(\%(+\\}\@!\|+\\\@!}\|+\@!\\}\|[^}+\\]\|+\\\@!\|\\}\@!\|+\@<!\\\|\\}\@!\|\\\@<!}\)*\)+\\}/\\textcolor{blue}{\1}/g
+	call cursor(saved_pos[1], saved_pos[2])
+	map ]s /\\textcolor{\%(blue\|red\)}{/e+1
+	map [s ?\\textcolor{\%(blue\|red\)}{?e+1
+	call matchadd('DiffDelete', '\textcolor{red}{[^}]*}', 10)
+	call matchadd('DiffAdd', '\textcolor{blue}{[^}]*}',  10)
+    endfunction
+    command! -buffer NiceDiff :call NiceDiff()
+endfunction "}}}
 endif "}}}
 
 " COMMANDS AND MAPS:
@@ -1752,6 +1887,7 @@ nnoremap <silent> <buffer> 	<Plug>ToggleEnvBackward		:call <SID>ToggleEnvironmen
 nnoremap <silent> <buffer> 	<Plug>ChangeEnv			:call <SID>ToggleEnvironment(1)<CR>
 nnoremap <silent> <buffer> 	<Plug>TexDoc			:TexDoc 
 " Commands: "{{{1
+command! -buffer -nargs=* -complete=file Wdiff			:call <SID>Wdiff(<f-args>)
 command! -buffer -nargs=? -range WrapSelection			:call <SID>WrapSelection(<args>)
 command! -buffer -nargs=? -range InteligentWrapSelection	:call <SID>InteligentWrapSelection(<args>)
 command! -buffer	TexAlign				:call TexAlign()

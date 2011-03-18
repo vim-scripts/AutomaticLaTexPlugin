@@ -4,7 +4,7 @@
 " Note:		   This file is a part of Automatic Tex Plugin for Vim.
 " URL:		   https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Sat Feb 26 10:00  2011 W
+" Last Change: Sat Mar 12 11:00  2011 W
 
 let s:sourced = exists("s:sourced") ? 1 : 0
 " Settings {{{
@@ -210,8 +210,8 @@ function! LatexBox_GetCurrentEnvironment(...)
 		let with_pos = 0
 	endif
 
-	let begin_pat = '\C\\begin\_\s*{[^}]*}\|\\\[\|\\('
-	let end_pat = '\C\\end\_\s*{[^}]*}\|\\\]\|\\)'
+	let begin_pat = '\C\\begin\_\s*{[^}]*}\|\\\@<!\\\[\|\\\@<!\\('
+	let end_pat = '\C\\end\_\s*{[^}]*}\|\\\@<!\\\]\|\\\@<!\\)'
 	let saved_pos = getpos('.')
 
 	" move to the left until on a backslash

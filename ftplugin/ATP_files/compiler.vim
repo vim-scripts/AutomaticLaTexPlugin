@@ -350,7 +350,6 @@ endfunction
 " needs reltime feature (used already in the command)
 
 	" DEBUG:
-    let g:MakeLatex_debug	= 0
     	" errorfile /tmp/mk_log
 	
 
@@ -379,7 +378,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     let runtex_before	= a:0 == 0 || a:1 == 0 ? 0 : 1
     let runtex_before	= runtex_before
 
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	    if a:run == 1
 		redir! > /tmp/mk_log
 	    else
@@ -400,7 +399,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     let g:ml_debug 	= ""
 
     let mode 		= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
-    let tex_options	= " -interaction nonstopmode -output-directory=" . b:atp_OutDir . " " . b:atp_TexOptions
+    let tex_options	= " -interaction nonstopmode -output-directory=" . fnameescape(b:atp_OutDir) . " " . b:atp_TexOptions
 
     " This supports b:atp_OutDir
     let texfile		= b:atp_OutDir . fnamemodify(a:texfile, ":t")
@@ -421,7 +420,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     endif
     let outfile		= fnamemodify(texfile, ":r") . ext
 
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	silent echo a:run . " BEGIN " . strftime("%c")
 	silent echo a:run . " logfile=" . logfile . " " . filereadable(logfile) . " auxfile=" . auxfile . " " . filereadable(auxfile). " runtex_before=" . runtex_before . " a:force=" . a:force
 	endif
@@ -438,12 +437,13 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     " grep in aux file for 
     " 'Citation .* undefined\|Rerun to get cross-references right\|Writing index file'
     let saved_llist	= getloclist(0)
+"     execute "silent! lvimgrep /Citation\\_s\\_.*\\_sundefined\\|Label(s)\\_smay\\_shave\\_schanged.\\|Writing\\_sindex\\_sfile/j " . fnameescape(logfile)
     execute "silent! lvimgrep /C\\n\\=i\\n\\=t\\n\\=a\\n\\=t\\n\\=i\\n\\=o\\n\\=n\\_s\\_.*\\_su\\n\\=n\\n\\=d\\n\\=e\\n\\=f\\n\\=i\\n\\=n\\n\\=e\\n\\=d\\|L\\n\\=a\\n\\=b\\n\\=e\\n\\=l\\n\\=(\\n\\=s\\n\\=)\\_sm\\n\\=a\\n\\=y\\_sh\\n\\=a\\n\\=v\\n\\=e\\_sc\\n\\=h\\n\\=a\\n\\=n\\n\\=g\\n\\=e\\n\\=d\\n\\=.\\|W\\n\\=r\\n\\=i\\n\\=t\\n\\=i\\n\\=n\\n\\=g\\_si\\n\\=n\\n\\=d\\n\\=e\\n\\=x\\_sf\\n\\=i\\n\\=l\\n\\=e/j " . fnameescape(logfile)
     let location_list	= copy(getloclist(0))
     call setloclist(0, saved_llist)
 
     " Check references:
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	silent echo a:run . " location_list=" . string(len(location_list))
 	silent echo a:run . " references_list=" . string(len(filter(copy(location_list), 'v:val["text"] =~ "Citation"')))
 	endif
@@ -458,14 +458,14 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     let bibtex		= len(getloclist(0)) == 0 ? 0 : 1
     call setloclist(0, saved_llist)
 
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	silent echo a:run . " references=" . references . " bibtex=" . bibtex . " a:did_bibtex=" . a:did_bibtex
 	endif
 
     " Check cross-references:
     let cross_references = len(filter(copy(location_list), 'v:val["text"]=~"Rerun"'))==0?0:1
 
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	silent echo a:run . " cross_references=" . cross_references
 	endif
 
@@ -486,7 +486,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	let index			= 0
     endif
 
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	silent echo a:run . " index=" . index . " makeidx=" . makeidx . " idx_cdm=" . idx_cmd . " a:did_index=" . a:did_index 
 	endif
 
@@ -521,7 +521,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     endif
 
 
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	silent echo a:run." toc=".toc." lof=".lof." lot=".lot." open_out=".string(open_out)
 	endif
 
@@ -539,7 +539,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 		\ !tocfile_readable && toc || !loffile_readable && lof || !lotfile_readable && lot || 
 		\ runtex_before
 
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	silent echo a:run . " log_rea=" . logfile_readable . " aux_rea=" . auxfile_readable . " idx_rea&&mke=" . ( makeidx && idxfile_readable ) . " runtex_before=" . runtex_before 
 	silent echo a:run . " Run First " . condition
 	endif
@@ -564,19 +564,20 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	endif
 	let did_bibtex	= 0
 	let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID . 
-		\ "MakeLatex\(\'".texfile."\', ".did_bibtex.", 0, [".time[0].",".time[1]."], ".
+		\ "MakeLatex\(\'".fnameescape(texfile)."\', ".did_bibtex.", 0, [".time[0].",".time[1]."], ".
 		\ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
-	let cmd	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
+	let cmd	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . fnameescape(texfile) . " ; " . callback_cmd
 
-	    if g:MakeLatex_debug
-	    let g:ml_debug .= "First run. (make log|aux|idx file)" . " [" . b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . "]#"
+	    if g:atp_debugML
+	    let g:ml_debug .= "First run. (make log|aux|idx file)" . " [" . b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . fnameescape(texfile) . " ; " . callback_cmd . "]#"
 	    silent echo a:run . " Run First CMD=" . cmd 
+	    let g:debug_cmd=cmd
 	    redir END
 	    endif
 
 	redraw
 	echomsg "[MakeLatex] Updating files [".Compiler."]."
-	call system("("  . b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd . " )&")
+	call system("(" . cmd . " )&")
 	return "Making log file or aux file"
     endif
 
@@ -596,20 +597,19 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     let condition_noforce 	= bib_condition_noforce || cross_references || index && !a:did_index || 
 		\ ( ( toc || lof || lot || thm ) && a:run < 2 )
 
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	silent echo a:run . " Run Second NoForce:" . ( condition_noforce && a:force == "" ) . " Force:" . ( condition_force && a:force == "!" )
 	silent echo a:run . " BIBTEX: did_bibtex[updated]=" . did_bibtex . " references=" . references . " CROSSREF:" . cross_references . " INDEX:" . (index  && !a:did_index)
 	endif
 
     if ( condition_force && a:force == "!" ) || ( condition_noforce && a:force == "" )
 	  let cmd	= ''
-	  let bib_cmd 	= 'bibtex ' 	. auxfile . ' ; '
-	  let idx_cmd 	= 'makeindex ' 	. idxfile . ' ; '
+	  let bib_cmd 	= 'bibtex ' 	. fnameescape(auxfile) . ' ; '
+	  let idx_cmd 	= 'makeindex ' 	. fnameescape(idxfile) . ' ; '
 	  let message	=   "Making:"
 	  if ( bib_condition_force && a:force == "!" ) || ( bib_condition_noforce && a:force == "" )
 	      let bib_msg	 = ( bibtex  ? ( did_bibtex == 0 ? " [bibtex,".Compiler."]" : " [".Compiler."]" ) : " [".Compiler."]" )
 	      let message	.= " references".bib_msg."," 
-	      let g:ml_debug 	.= "(make references)"
 	  endif
 	  if toc && a:run <= 2
 	      let message	.= " toc,"
@@ -625,11 +625,9 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	  endif
 	  if cross_references
 	      let message	.= " cross-references," 
-	      let g:ml_debug	.= "(make cross-references)"
 	  endif
 	  if !a:did_index && index && idxfile_readable
 	      let message	.= " index [makeindex]." 
-	      let g:ml_debug 	.= "(make index)"
 	  endif
 	  let message	= substitute(message, ',\s*$', '.', '') 
 	  if !did_bibtex && auxfile_readable && bibtex
@@ -654,11 +652,11 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	      let did_index	=  1
 	  endif
 	  let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID .
-		      \ "MakeLatex\(\'".texfile."\', ".did_bibtex." , ".did_index.", [".time[0].",".time[1]."], ".
+		      \ "MakeLatex\(\'".fnameescape(texfile)."\', ".did_bibtex." , ".did_index.", [".time[0].",".time[1]."], ".
 		      \ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
-	  let cmd	.= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . texfile . " ; " . callback_cmd
+	  let cmd	.= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . fnameescape(texfile) . " ; " . callback_cmd
 
-	      if g:MakeLatex_debug
+	      if g:atp_debugML
 	      silent echo a:run . " a:did_bibtex="a:did_bibtex . " did_bibtex=" . did_bibtex
 	      silent echo a:run . " Run Second CMD=" . cmd
 	      redir END
@@ -670,7 +668,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     endif
 
     " Post compeltion works:
-	if g:MakeLatex_debug
+	if g:atp_debugML
 	silent echo a:run . " END"
 	redir END
 	endif
@@ -947,7 +945,7 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	    endif
 	    let l:j+=1
 	endfor
-	let s:command=s:command . " " . s:copy . " ; "
+	let s:command=s:command . " " . s:copy . " ; " 
 
 	" Callback:
 	if has('clientserver') && v:servername != "" && g:atp_callback == 1
@@ -964,7 +962,7 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	silent echomsg "callback_cmd=" . callback_cmd
     endif
 
- 	let s:rmtmp="rm -r " . shellescape(s:tmpdir)
+ 	let s:rmtmp="rm -rf " . shellescape(s:tmpdir)
 	let s:command=s:command . " " . s:rmtmp . ")&"
 
 	if str2nr(a:start) != 0 
@@ -1415,7 +1413,7 @@ endfunction
 "}}}
 if !exists("*ListErrorsFlags")
 function! ListErrorsFlags(A,L,P)
-	return "e\nw\nc\nr\ncr\nf\nfi\nall\nF"
+	return "all\nc\ne\nF\nf\nfi\no\nr\nw"
 endfunction
 endif
 "}}}

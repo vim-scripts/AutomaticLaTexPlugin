@@ -41,6 +41,10 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
+if !exists("g:atp_debugML") || g:atp_reload
+    " debug MakeLatex (compiler.vim)
+    let g:atp_debugML	= 0
+endif
 if !exists("g:atp_debugGAF") || g:atp_reload
     " debug aptlib#GrepAuxFile
     let g:atp_debugGAF	= 0
@@ -152,6 +156,7 @@ if g:atp_indentation
 endif
 " }}}
 
+setl nrformats=alpha
 setl keywordprg=texdoc\ -m
 " Borrowed from tex.vim written by Benji Fisher:
     " Set 'comments' to format dashed lists in comments
@@ -200,7 +205,7 @@ let b:atp_running	= 0
 let s:optionsDict= { 	"atp_TexOptions" 	: "", 		
 	        \ "atp_ReloadOnError" 		: "1", 
 		\ "atp_OpenViewer" 		: "1", 		
-		\ "atp_autex" 			: !&l:diff, 
+		\ "atp_autex" 			: !&l:diff && expand("%:e") == 'tex', 
 		\ "atp_ProjectScript"		: "1",
 		\ "atp_Viewer" 			: has("win26") || has("win32") || has("win64") || has("win95") || has("win32unix") ? "AcroRd32.exe" : "xpdf" , 
 		\ "atp_TexFlavor" 		: &l:filetype, 
@@ -211,7 +216,7 @@ let s:optionsDict= { 	"atp_TexOptions" 	: "",
 		\ "atp_auruns"			: "1",
 		\ "atp_TruncateStatusSection"	: "40", 
 		\ "atp_LastBibPattern"		: "" }
-
+let g:optionsDict=deepcopy(s:optionsDict)
 " the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
 " remember what is the default used by s:SetOutDir().
 
@@ -228,8 +233,7 @@ function! s:SetOptions()
     "value unless it was already set in .vimrc file.
     for key in s:optionsKeys
 	if string(get(s:optionsinuseDict,key, "optionnotset")) == string("optionnotset") && key != "atp_OutDir" && key != "atp_autex" || key == "atp_TexCompiler"
-" 	    echomsg key . " " . s:optionsDict[key]
-	    call setbufvar(bufname("%"),key,s:optionsDict[key])
+	    call setbufvar(bufname("%"), key, s:optionsDict[key])
 	elseif key == "atp_OutDir"
 
 	    " set b:atp_OutDir and the value of errorfile option
@@ -239,18 +243,15 @@ function! s:SetOptions()
 	    let s:ask["ask"] 	= 1
 	endif
     endfor
-    " Do not run tex on tex files which are in texmf tree
+
+        " Do not run tex on tex files which are in texmf tree
     " Exception: if it is opened using the command ':EditInputFile'
     " 		 which sets this itself.
     if string(get(s:optionsinuseDict,"atp_autex", 'optionnotset')) == string('optionnotset')
 	let atp_texinputs=split(substitute(substitute(system("kpsewhich -show-path tex"),'\/\/\+','\/','g'),'!\|\n','','g'),':')
-	call remove(atp_texinputs, '.')
-	call filter(atp_texinputs, 'v:val =~# b:atp_OutDir')
-	if len(l:atp_texinputs) == 0
-	    let b:atp_autex	= 1
-	else
-	    let b:atp_autex	= 0
-	endif
+	call remove(atp_texinputs, index(atp_texinputs, '.'))
+	call filter(atp_texinputs, 'b:atp_OutDir =~# v:val')
+	let b:atp_autex = ( len(atp_texinputs) ? 0 : s:optionsDict['atp_autex'])  
     endif
 
     if !exists("b:TreeOfFiles") || !exists("b:ListOfFiles") || !exists("b:TypeDict") || !exists("b:LevelDict")
@@ -269,13 +270,65 @@ call s:SetOptions()
 
 " Global Variables: (almost all)
 " {{{ global variables 
+" Variables for imaps, standard environment names:
+    if !exists("g:atp_EnvNameTheorem")
+	let g:atp_EnvNameTheorem="theorem"
+    endif
+    if !exists("g:atp_EnvNameDefinition")
+	let g:atp_EnvNameDefinition="definition"
+    endif
+    if !exists("g:atp_EnvNameProposition")
+	let g:atp_EnvNameProposition="proposition"
+    endif
+    if !exists("g:atp_EnvNameObservation")
+	" This mapping is defined only in old layout:
+	" i.e. if g:atp_env_maps_old == 1
+	let g:atp_EnvNameObservation="observation"
+    endif
+    if !exists("g:atp_EnvNameLemma")
+	let g:atp_EnvNameLemma="lemma"
+    endif
+    if !exists("g:atp_EnvNameNote")
+	let g:atp_EnvNameNote="note"
+    endif
+    if !exists("g:atp_EnvNameCorollary")
+	let g:atp_EnvNameCorollary="corollary"
+    endif
+    if !exists("g:atp_EnvNameRemark")
+	let g:atp_EnvNameRemark="remark"
+    endif
+if !exists("g:atp_StarEnvDefault")
+    " Values are "" or "*". 
+    " It will be added to enrionemnt names which support it.
+    let g:atp_StarEnvDefault=""
+endif
+if !exists("g:atp_StarMathEnvDefault")
+    " Values are "" or "*". 
+    " It will be added to enrionemnt names which support it.
+    let g:atp_StarMathEnvDefault=""
+endif
+if !exists("g:atp_EnvOptions_enumerate")
+    " add options to \begin{enumerate} for example [topsep=0pt,noitemsep] Then the
+    " enumerate map <Leader>E will put \begin{enumerate}[topsep=0pt,noitemsep] Useful
+    " options of enumitem to make enumerate more condenced.
+    let g:atp_EnvOptions_enumerate=""
+endif
+if !exists("g:atp_EnvOptions_itemize")
+    " Similar to g:atp_enumerate_options.
+    let g:atp_EnvOptions_itemize=""
+endif
+if !exists("g:atp_VimCompatible")
+    " Used by: % (s:JumpToMatch in LatexBox_motion.vim).
+    let g:atp_VimCompatible = "no"
+    " It can be 0/1 or yes/no.
+endif 
 if !exists("g:atp_CupsOptions")
     " lpr command options for completion of SshPrint command.
     let g:atp_CupsOptions = [ 'landscape=', 'scaling=', 'media=', 'sides=', 'Collate=', 'orientation-requested=', 
 		\ 'job-sheets=', 'job-hold-until=', 'page-ragnes=', 'page-set=', 'number-up=', 'page-border=', 
 		\ 'number-up-layout=', 'fitplot=', 'outputorder=', 'mirror=', 'raw=', 'cpi=', 'columns=',
 		\ 'page-left=', 'page-right=', 'page-top=', 'page-bottom=', 'prettyprint=', 'nowrap=', 'position=',
-		\ 'natural-scaling=', 'hue=', 'saturation=', 'blackplot=', 'penwidth=']
+		\ 'natural-scaling=', 'hue=', 'ppi=', 'saturation=', 'blackplot=', 'penwidth=']
 endif
 if !exists("g:atp_lprcommand")
     " Used by :SshPrint
@@ -297,12 +350,10 @@ if !exists("g:atpbib_pathseparator")
     endif 
 endif
 if !exists("g:atpbib_WgetOutputFile")
-    let tmpname = tempname()
-    let g:atpbib_WgetOutputFile = tmpname . g:atpbib_pathseparator . "amsref.html"
-    call mkdir(tmpname)
+    let g:atpbib_WgetOutputFile = "amsref.html"
 endif
 if !exists("g:atpbib_wget")
-    let g:atpbib_wget="wget -O " . g:atpbib_WgetOutputFile
+    let g:atpbib_wget="wget"
 endif
 if !exists("g:atp_vmap_text_font_leader") || g:atp_reload
     let g:atp_vmap_text_font_leader="<LocalLeader>"
@@ -505,7 +556,6 @@ endif
 if !exists("g:atp_bracket_dict") || g:atp_reload
     let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']', '\lceil' : '\rceil', '\lfloor' : '\rfloor', '\langle' : '\rangle', '\lgroup' : '\rgroup' }
 endif
-" }}}2 			variables
 if !exists("g:atp_LatexBox") || g:atp_reload
     let g:atp_LatexBox		= 1
 endif
@@ -530,7 +580,7 @@ if !exists("g:atp_no_math_command_completion") || g:atp_reload
     let g:atp_no_math_command_completion = 0
 endif
 if !exists("g:atp_tex_extensions") || g:atp_reload
-    let g:atp_tex_extensions	= ["tex.project.vim", "aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
+    let g:atp_tex_extensions	= ["tex.project.vim", "aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync"]
 endif
 if !exists("g:atp_delete_output") || g:atp_reload
     let g:atp_delete_output	= 0
@@ -775,7 +825,7 @@ function! <SID>Babel()
 
     let saved_loclist = getloclist(0)
     try
-	execute '1lvimgrep /\\usepackage.*{babel}/j ' . fnameescape(atp_MainFile)
+	execute '1lvimgrep /^[^%]*\\usepackage.*{babel}/j ' . fnameescape(atp_MainFile)
 	" Find \usepackage[babel_options]{babel} - this is the only way that one can
 	" pass options to babel.
     catch /E480:/
@@ -825,10 +875,10 @@ fun! SetXdvi()
     let Compiler		= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\S*'), 'Compiler')
     let Viewer			= get(g:ViewerMsg_Dict, matchstr(b:atp_Viewer, '^\s*\S*'), 'View\ Output')
     try
-	execute "unmenu LaTeX.".Compiler
-	execute "unmenu LaTeX.".Compiler."\\ debug"
-	execute "unmenu LaTeX.".Compiler."\\ twice"
-	execute "unmenu LaTeX.View\\ with\\ ".Viewer
+	execute "aunmenu LaTeX.".Compiler
+	execute "aunmenu LaTeX.".Compiler."\\ debug"
+	execute "aunmenu LaTeX.".Compiler."\\ twice"
+	execute "aunmenu LaTeX.View\\ with\\ ".Viewer
     catch /E329:/
     endtry
 
@@ -840,7 +890,8 @@ fun! SetXdvi()
     if !exists("*RevSearch")
     function! RevSearch()
 	let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
-	let dvi_file	= fnameescape(fnamemodify(atp_MainFile,":p:r") . ".dvi")
+	let dvi_file	= fnamemodify(atp_MainFile,":p:r") . ".dvi"
+	let g:dvi_file = dvi_file
 	if !filereadable(dvi_file)
 	   echomsg "dvi file doesn't exist" 
 	   ViewOutput RevSearch
@@ -848,13 +899,12 @@ fun! SetXdvi()
 	endif
 
 	let options = (exists("g:atp_xdviOptions") ? g:atp_xdviOptions : "" ) . getbufvar(bufnr(""), "atp_xdviOptions")
-	let g:options	= options
 
 	let b:xdvi_reverse_search="xdvi " . options . 
 		\ " -editor '" . v:progname . " --servername " . v:servername . 
 		\ " --remote-wait +%l %f' -sourceposition " . 
 		\ line(".") . ":" . col(".") . fnameescape(fnamemodify(expand("%"),":p")) . 
-		\ " " . dvi_file
+		\ " " . fnameescape(dvi_file)
 	call system(b:xdvi_reverse_search)
     endfunction
     endif
@@ -887,11 +937,13 @@ fun! SetXpdf()
     " Remove menu entries.
     let Compiler		= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\S*'), 'Compiler')
     let Viewer			= get(g:ViewerMsg_Dict, matchstr(b:atp_Viewer, '^\s*\S*'), 'View\ Output')
+    echomsg Compiler
+    let g:Compiler=Compiler
     try 
-	execute "unmenu LaTeX.".Compiler
-	execute "unmenu LaTeX.".Compiler."\\ debug"
-	execute "unmenu LaTeX.".Compiler."\\ twice"
-	execute "unmenu LaTeX.View\\ with\\ ".Viewer
+	execute "aunmenu LaTeX.".Compiler
+	execute "aunmenu LaTeX.".Compiler."\\ debug"
+	execute "aunmenu LaTeX.".Compiler."\\ twice"
+	execute "aunmenu LaTeX.View\\ with\\ ".Viewer
     catch /E329:/
     endtry
 
@@ -1159,7 +1211,7 @@ let g:atp_completion_modes=[
 	    \ 'font shape',		'algorithmic',
 	    \ 'beamerthemes', 		'beamerinnerthemes',
 	    \ 'beamerouterthemes', 	'beamercolorthemes',
-	    \ 'beamerfontthemes' ]
+	    \ 'beamerfontthemes',	'todonotes' ]
 lockvar 2 g:atp_completion_modes
 catch /E741:/
 endtry
@@ -1261,7 +1313,7 @@ endif
 
 	" the command \label is added at the end.
 	let g:atp_Commands=["\\begin{", "\\end{", 
-	\ "\\cite{", "\\nocite{", "\\ref{", "\\pageref{", "\\eqref{", "\\item",
+	\ "\\cite", "\\nocite{", "\\ref{", "\\pageref{", "\\eqref{", "\\item",
 	\ "\\emph{", "\\documentclass{", "\\usepackage{",
 	\ "\\section", "\\subsection", "\\subsubsection", "\\part", 
 	\ "\\chapter", "\\appendix", "\\subparagraph", "\\paragraph",
@@ -1282,7 +1334,7 @@ endif
 	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
 	\ "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", 
 	\ "\\hrulefill", "\hfil", "\\dotfill",
-	\ "\\thispagestyle", "\\mathnormal", "\\markright", "\\pagestyle", "\\pagenumbering",
+	\ "\\thispagestyle{", "\\mathnormal", "\\markright{", "\\markleft{", "\\pagestyle{", "\\pagenumbering{",
 	\ "\\author{", "\\date{", "\\thanks{", "\\title{",
 	\ "\\maketitle",
 	\ "\\marginpar", "\\indent", "\\par", "\\sloppy", "\\pagebreak", "\\nopagebreak",
@@ -1312,7 +1364,7 @@ endif
 	\ "\\DeclareMathDelimiter", "\\DeclareMathAccent", "\\DeclareMathRadical",
 	\ "\\SetMathAlphabet", "\\show", "\\CheckCommand", "\\mathnormal",
 	\ "\\pounds", "\\magstep{", "\\hyperlink", "\\newenvironment{", 
-	\ "\\renewenvironemt{", "\\DeclareFixedFont", "\\layout" ]
+	\ "\\renewenvironemt{", "\\DeclareFixedFont", "\\layout", "\\parskip" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -1432,7 +1484,7 @@ endif
 	let g:atp_fancyhdr_commands=["\\lfoot{", "\\rfoot{", "\\rhead{", "\\lhead{", 
 		    \ "\\cfoot{", "\\chead{", "\\fancyhead{", "\\fancyfoot{",
 		    \ "\\fancypagestyle{", "\\fancyhf{}", "\\headrulewidth", "\\footrulewidth",
-		    \ "\\rightmark", "\\leftmark", "\\markboth", 
+		    \ "\\rightmark", "\\leftmark", "\\markboth{", 
 		    \ "\\chaptermark", "\\sectionmark", "\\subsectionmark",
 		    \ "\\fancyheadoffset", "\\fancyfootoffset", "\\fancyhfoffset"]
 
@@ -1594,6 +1646,11 @@ endif
 		    \ 'multilined', 'dcases', 'dcases*', 'rcases', 'rcases*', 'drcases*', 'cases*', 'spreadlines',
 		    \ 'lgathered', 'rgathered' ]
 
+	let g:atp_TodoNotes_commands = [ '\todo{', '\listoftodos', '\missingfigure' ] 
+	let g:atp_TodoNotes_todo_options	= [ 'disable', 'color=', 'backgroundcolor=', 'linecolor=', 'bordercolor=', 
+		    \ 'line', 'noline', 'inline', 'noinline', 'size=', 'list', 'nolist', 
+		    \ 'caption=', 'prepend', 'noprepend', 'fancyline']   
+	let g:atp_TodoNotes_missingfigure_options = [ 'figwidth=' ]
 if !exists("g:atp_MathOpened") || g:atp_reload
     let g:atp_MathOpened = 1
 endif
@@ -1602,21 +1659,21 @@ endif
 "     au Syntax tex :let g:atp_MathOpened = 1
 " augroup END
 
-" ToDo: Think about even better math modes patterns.
-" \[ - math mode \\[ - not mathmode (this can be at the end of a line as: \\[3pt])
-" \\[ - this is math mode, but tex will complain (now I'm not matching it,
-" that's maybe good.) 
-" How to deal with $:$ (they are usually in one line, we could count them)  and $$:$$ 
-" matchpair
-
 let g:atp_math_modes=[ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)(','\%([^\\]\|^\)\%(\\\|\\\{3}\)\zs)'],
 	    \ ['\%([^\\]\|^\)\%(\\\|\\\{3}\)\[','\%([^\\]\|^\)\%(\\\|\\\{3}\)\zs\]'],	
 	    \ ['\\begin{align', '\\end{alig\zsn'], 	['\\begin{gather', '\\end{gathe\zsr'], 
 	    \ ['\\begin{falign', '\\end{flagi\zsn'], 	['\\begin[multline', '\\end{multlin\zse'],
 	    \ ['\\begin{equation', '\\end{equatio\zsn'],
 	    \ ['\\begin{\%(display\)\?math', '\\end{\%(display\)\?mat\zsh'] ] 
-" ToDo: user command list, env list g:atp_Commands, g:atp_Environments, 
+
+" Completion variables for \pagestyle{} and \thispagestyle{} LaTeX commands.
+let g:atp_pagestyles = [ 'plain', 'headings', 'empty', 'myheadings' ]
+let g:atp_fancyhdr_pagestyles = [ 'fancy' ]
+
+" Completion variable for \pagenumbering{} LaTeX command.
+let g:atp_pagenumbering = [ 'arabic', 'roman', 'Roman', 'alph', 'Alph' ]
 " }}}
+"
 
 " Some of the autocommands (Status Line, LocalCommands, Log File):
 " {{{ Autocommands:

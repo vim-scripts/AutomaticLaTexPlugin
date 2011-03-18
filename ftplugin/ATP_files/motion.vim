@@ -671,6 +671,7 @@ endfunction
 " Labels Front End Finction. The search engine/show function are in autoload/atplib.vim script
 " library.
 " {{{ Labels
+" a:bang = "!" do not regenerate labels if not necessary
 function! <SID>Labels(bang)
     let t:atp_bufname	= bufname("%")
     let error		= len(getqflist())
@@ -692,7 +693,90 @@ function! <SID>Labels(bang)
     endif
 endfunction
 nnoremap <Plug>ATP_Labels		:call <SID>Labels("")<CR>
+" }}}
 
+" GotoLabel & GotoLabelCompletion {{{
+" a:bang = "!" do not regenerate labels if not necessary
+" This is developed for one tex project in a vim.
+function! GotoLabel(bang,...)
+
+    let alabel = ( a:0 == 0 ? "" : a:1 )
+
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    " Generate the dictionary with labels
+    if a:bang == "" || ( a:bang == "!" && ( !exists("b:ListOfFiles") || !exists("t:atp_labels") ) )
+	let [ t:atp_labels, b:ListOfFiles ] =  atplib#generatelabels(atp_MainFile, 1)
+    endif
+
+    let matches = []
+    let g:matches=matches
+
+    for file in keys(t:atp_labels)
+	if index(b:ListOfFiles, fnamemodify(file, ":t")) != -1 || index(b:ListOfFiles, file) != -1
+	    for label in t:atp_labels[file]
+		if label[1] =~ alabel || label[2] =~ '^'.alabel
+		    call add(matches, extend([file], label))
+		endif
+	    endfor
+	endif
+    endfor
+
+    if len(matches) == 0
+	redraw
+	echohl WarningMsg
+	echomsg "No matching label"
+	echohl Normal
+	return 1
+    elseif len(matches) == 1
+	let file=matches[0][0]
+	let line=matches[0][1]
+    else
+	if len(keys(filter(copy(b:TypeDict), 'v:val == "input"'))) == 0
+	    let mlabels=map(copy(matches), "['('.(index(matches, v:val)+1).')', v:val[2],v:val[3]]")
+	    let file=0
+	else
+	    let mlabels=map(copy(matches), "['('.(index(matches, v:val)+1).')', v:val[2], v:val[3], fnamemodify(v:val[0], ':t')]")
+	    let file=1 
+	endif
+	echohl Title
+	echo "Which label to choose?"
+	echohl Normal
+	let mlabels= ( file ? extend([[' nr', 'LABEL', 'LABEL NR', 'FILE']], mlabels) : extend([[' nr', 'LABEL', 'LABEL NR']], mlabels) )
+	let nr = inputlist(atplib#Table(mlabels, [1,2,5]))-1
+	let file=matches[nr][0]
+	let line=matches[nr][1]
+    endif
+
+    " Check if the buffer is loaded.
+    if bufloaded(file)
+	execute "b " . file
+	call cursor(line,1)
+    else
+	execute "edit " . file
+	call cursor(line,1)
+    endif
+endfunction
+
+function! GotoLabelCompletion(ArgLead, CmdLine, CursorPos)
+
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    " Generate the dictionary with labels (only if it doesn't exist)
+    if !exists("t:atp_labels") || t:atp_labels == {} || !exists("b:ListOfFiles")
+	let [ t:atp_labels, b:ListOfFiles ] =  atplib#generatelabels(atp_MainFile, 1)
+    endif
+
+    let labels=[]
+    for file in keys(t:atp_labels)
+	if index(b:ListOfFiles, fnamemodify(file, ":t")) != -1 || index(b:ListOfFiles, file) != -1
+	    call extend(labels, map(deepcopy(t:atp_labels)[file], 'v:val[1]'))
+	    call extend(labels, map(deepcopy(t:atp_labels)[file], 'v:val[2]'))
+	endif
+    endfor
+    let g:labels=copy(labels)
+    call filter(labels, "v:val !~ '^\s*$' && v:val =~ a:ArgLead ")
+
+    return map(labels, "v:val.'\\>'")
+endfunction
 " }}}
 
 " Motion functions through environments and sections. 
@@ -794,7 +878,6 @@ function! <SID>GotoSection(bang, flag, secname, ...)
     else
 	execute "S /". bpat . pattern . "/ " . a:flag 	
     endif
-    let g:pattern = bpat.pattern
 
     call histadd("search", pattern)
     let @/	= pattern
@@ -817,7 +900,7 @@ function! Env_compl(A,P,L)
     return returnlist
 endfunction
 
-" {{{ NInput(), PInput functions
+" {{{ Input() function
 function! <SID>Input(flag)
     let pat 	= ( &l:filetype == "plaintex" ? '\\input\s*{' : '\%(\\input\>\|\\include\s*{\)' )
     let @/	= '^\([^%]\|\\\@<!\\%\)*' . pat
@@ -934,8 +1017,6 @@ function! GotoFile(bang,file,...)
 	    let file_l	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\)')
 	    let file	= get(file_l, 0, "file_missing")
 	    let options = ' +setl\ ft=' . &l:filetype  
-	    let g:File_l = file_l
-	    let g:File	= file
 
     " \documentclass{...}
     elseif line =~ '\\documentclass' && g:atp_developer
@@ -1054,7 +1135,6 @@ function! GotoFile(bang,file,...)
 	let file 	= file_l[choice-1]
 	let fname 	= file
     elseif a:file !~ '^\s*$'
-	let g:method 	= "single"
 	let file 	= atplib#FullPath(a:file)
 	let fname	= file
     endif
@@ -1079,6 +1159,12 @@ function! GotoFile(bang,file,...)
 	execute "edit " . fnameescape(file)
 	if &l:filetype =~ 'tex$' && file =~ '\.tex$' && &l:filetype != filetype  
 	    let &l:filetype	= filetype
+	" If the filetype is 'bib' we should source some portion of ATP, so
+	" that if the bib file is changed tex will process that file
+	" 	The best approach is to source only compiler.vim and add an
+	" 	autocommand.
+" 	elseif &l:filetype == 'bib'
+" 	    source ~/.vim/ftplugin/tex_atp.vim
 	endif
 
 	" Set the main file variable and pass the TreeOfFiles variables to the new
@@ -1104,7 +1190,7 @@ function! GotoFile(bang,file,...)
     endif
 endfunction
 catch /E127:/
-endtry "}}}
+endtry
 function! <SID>GotoFileComplete(ArgLead, CmdLine, CursorPos)
     let bang = ( a:CmdLine =~ '^\w*!' ? '!' : '')
     if bang == "!" || !exists("b:TreeOfFiles") || !exists("b:ListOfFiles") || !exists("b:TypeDict") || !exists("b:LevelDict") 
@@ -1112,9 +1198,49 @@ function! <SID>GotoFileComplete(ArgLead, CmdLine, CursorPos)
     else
 	let [tree_d, file_l, type_d, level_d ] 	= deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ])
     endif
-    call add(file_l, b:atp_MainFile) 
+    if index(file_l, b:atp_MainFile) == -1 || index(file_l, fnamemodify(b:atp_MailFile, ":p")) == -1 
+	call add(file_l, b:atp_MainFile) 
+    endif
     return  filter(file_l, "v:val =~ a:ArgLead")
-endfunction
+endfunction "}}}
+" Skip Comment "{{{
+" a:flag=fb (f-forward, b-backward)
+" f works like ]*
+" b workd like [*
+" Note: the 's' search flag is passed by the associated commands.
+" This can be extended: 
+" 	(1) skip empty lines between comments
+function! <SID>SkipComment(flag, mode, ...)
+    let flag 	= ( a:flag =~ 'b' ? 'b' : '' ) 
+    let nr	= ( a:flag =~ 'b' ? '-1' : 1 )
+    call search('^\zs\s*%', flag)
+    call cursor(line("."), ( nr == -1 ? 1 : len(getline(line(".")))))
+
+    let line	= getline(line("."))
+    " find previous line
+    let pline_nr=min([line("$"), max([1,line(".")+nr])])
+    let pline	= getline(pline_nr) 
+    " This code find previous non empty line    
+"     while pline =~ '^\s*$' && pline_nr > 1 && pline_nr < line("$")
+" 	let pline_nr += nr
+" 	let pline=getline(pline_nr)
+"     endwhile
+
+"     while line =~ '^\s*%' || ( line =~ '^\s*$' && pline =~ '^\s*%' )
+    while pline =~ '^\s*%'
+	call cursor(line(".")+nr, ( nr == -1 ? 1 : len(getline(line(".")+nr))))
+" 	let line=getline(line("."))
+	let pline_nr=min([line("$"), max([1,line(".")+nr])])
+	let pline	= getline(pline_nr) 
+    endwhile
+    if a:mode == 'v'
+	let end_pos = [ line("."), col(".") ]
+	" Go where visual mode started
+	exe "normal `" . ( nr == 1 ? '<' : '>' ) 
+	exe "normal " . visualmode()
+	call cursor(end_pos)
+    endif
+endfunction "}}}
 "}}}
 
 " Syntax motion
@@ -1140,19 +1266,12 @@ function! TexSyntaxMotion(forward, how, ...)
     else
 	let col = col(".")
     endif
-    let g:pos	= [ line(".") , col(".")]
-    let g:pos0	= [ line , col]
 "     execute "normal l"
     let step 		= ( a:forward > 0 ? "l" : "h" )
     let synstack	= map(synstack(line, col), 'synIDattr( v:val, "name")')
     let synstackh	= map(synstack(line, max([1, col-1])), 'synIDattr( v:val, "name")')
-    let g:isynstack	= deepcopy(synstack)
-    let g:pos1	= [ line(".") , col(".")]
 
-    let g:synstack	= deepcopy(synstack)
-"     let g:pos		= getpos(".")
     let DelimiterCount	= count(synstack, 'Delimiter') 
-    let g:DelimiterCount = DelimiterCount 
     let ScriptCount	= count(synstack, 'texSuperscript') + count(synstack, 'texSubscript')
     let ScriptsCount	= count(synstack, 'texSuperscripts') + count(synstack, 'texSubscripts')
     let StatementCount	= count(synstack, 'texStatement')
@@ -1171,12 +1290,8 @@ function! TexSyntaxMotion(forward, how, ...)
     let CiteCounth	= count(synstackh, 'texCite') && !count(synstackh, 'Delimiter') && col(".") > 1
     let MatcherCount 	= count(synstack, 'texMatcher')
     let MatcherCounth 	= count(synstackh, 'texMatcher') && !count(synstackh, 'Delimiter') && col(".") > 1
-	let g:MatcherCount 	= MatcherCount
-	let g:MatcherCounth 	= MatcherCounth
     let MathMatcherCount 	= count(synstack, 'texMathMatcher')
     let MathMatcherCounth 	= count(synstackh, 'texMathMatcher') && !count(synstackh, 'Delimiter') && col(".") > 1
-	let g:MathMatcherCount 	= MathMatcherCount
-	let g:MathMatcherCounth 	= MathMatcherCounth
     let SectionNameCount 	= count(synstack, 'texSectionName')
     let SectionNameCounth 	= count(synstackh, 'texSectionName') && !count(synstackh, 'Delimiter') && col(".") > 1
     let SectionMarkerCount 	= count(synstack, 'texSectionMarker')
@@ -1246,12 +1361,10 @@ function! TexSyntaxMotion(forward, how, ...)
 " 	let syntax	= [ 'texMathZoneA', 'texMathZoneB', 'texMathZoneC', 'texMathZoneD', 'texMathZoneE', 'texMathZoneF', 'texMathZoneG', 'texMathZoneH', 'texMathZoneI', 'texMathZoneJ', 'texMathZoneK', 'texMathZoneL', 'texMathZoneT', 'texMathZoneV', 'texMathZoneW', 'texMathZoneX', 'texMathZoneY' ]
     else
 	" Go after first Delimiter
-	let g:syntax = [ 'Delimiter motion' ]
 	let i=0
 	let DelimiterCount	= count(synstack, 'Delimiter') 
 	while !DelimiterCount
 	    exe "normal " . step
-" 	    echomsg step . " " . line(".") . " " . col(".")
 	    let synstack	= map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
 	    let DelimiterCount	= count(synstack, 'Delimiter') 
 	    if i == 1
@@ -1261,13 +1374,9 @@ function! TexSyntaxMotion(forward, how, ...)
 	endwhile
 	if in_imap
 	    normal a
-"         else
-" 	    normal l
 	endif
 	return "Delimiter motion"
     endif
-
-    let g:syntax	= deepcopy(syntax)
 
     let true	= 0
     for syn in syntax
@@ -1301,6 +1410,8 @@ function! TexSyntaxMotion(forward, how, ...)
     endif
 endfunction "}}}
 
+" ctrl-j motion
+" {{{ ctrl-j motion
 " New <Ctrl-j> motion
 function! JMotion(flag)
 " 	Note: pattern to match only commands which do not have any arguments:
@@ -1318,19 +1429,14 @@ function! JMotion(flag)
     "     end of line and press 'a' - then col(".") is not working!
 "     let g:let = getline(line("."))[col(".")-1]
 "     let g:con = getline(line("."))[col(".")-1] =~ '\%(\$\|{\|}\|(\|)\|\[\|\]\)' && col(".") < len(getline(line(".")))
-    let g:pattern = pattern
     if getline(line("."))[col(".")-1] =~ '\%(\$\|{\|}\|(\|)\|\[\|\]\)' && a:flag !~# 'b'
-	let g:debug = 1
 	if col(".") == len(getline(line(".")))
 	    execute "normal a "
-	    let g:debug .= 2
 	else
 	    call cursor(line("."), col(".")+1)
-	    let g:debug .= 3
 	endif
 	return
     else
-	let g:debug = 4
 	call search(pattern, a:flag)
 	" In the imaps we use 'a' for the backward move and 'i' for forward move! 
 	let condition = getline(line("."))[col(".")-1] =~ '\%(\$\|{\|}\|(\|)\|\[\|\]\)'
@@ -1339,13 +1445,18 @@ function! JMotion(flag)
 		execute "normal a "
 	endif
     endif
-endfunction
+endfunction "}}}
 endif "}}}
 " Add newly opened files to t:buflist.
 call s:buflist()
 
 " Commands And Maps:
 " {{{
+command! -buffer SkipCommentForward  	:call <SID>SkipComment('fs', 'n')
+command! -buffer SkipCommentBackward 	:call <SID>SkipComment('bs', 'n')
+vmap <buffer> <Plug>SkipCommentForward	:call <SID>SkipComment('fs', 'v')<CR>
+vmap <buffer> <Plug>SkipCommentBackward	:call <SID>SkipComment('bs', 'v', col("."))<CR>
+
 imap <Plug>TexSyntaxMotionForward	<Esc>:call TexSyntaxMotion(1,1,1)<CR>a
 imap <Plug>TexSyntaxMotionBackward	<Esc>:call TexSyntaxMotion(0,1,1)<CR>a
 nmap <Plug>TexSyntaxMotionForward	:call TexSyntaxMotion(1,1)<CR>
@@ -1360,8 +1471,8 @@ command! -buffer -nargs=1 -complete=buffer MakeToc	:echo s:maketoc(fnamemodify(<
 command! -buffer -bang -nargs=? TOC	:call <SID>TOC(<q-bang>)
 command! -buffer CTOC		:call CTOC()
 command! -buffer -bang Labels		:call <SID>Labels(<q-bang>)
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv	:call <SID>GotoEnvironment('W',<q-args>)  | let v:searchforward=1 
-command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PEnv	:call <SID>GotoEnvironment('bW',<q-args>) | let v:searchforward=0
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl NEnv	:call <SID>GotoEnvironment('sW',<q-args>)  | let v:searchforward=1 
+command! -buffer -count=1 -nargs=? -complete=customlist,Env_compl PEnv	:call <SID>GotoEnvironment('bsW',<q-args>) | let v:searchforward=0
 
 nnoremap <silent> <buffer> <Plug>GotoNextEnvironment			:NEnv <CR>
 nnoremap <silent> <buffer> <Plug>GotoPreviousEnvironment		:PEnv <CR>
@@ -1374,48 +1485,48 @@ nnoremap <silent> <buffer> <Plug>GotoPreviousInlineMath			:PEnv inlinemath<CR>
 
 nnoremap <silent> <buffer> <Plug>GotoNextDisplayedMath	 		:NEnv displayedmath<CR>
 nnoremap <silent> <buffer> <Plug>GotoPreviousDisplayedMath		:PEnv displayedmath<CR>
-nnoremap <silent> <Plug>GotoNextSubSection	:call <SID>GotoSection("", "", '"\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', '')<CR>
-onoremap <silent> <Plug>GotoNextSubSection	:call <SID>GotoSection("", "","\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\s*{", 'vim')<CR>
+nnoremap <silent> <Plug>GotoNextSubSection	:call <SID>GotoSection("", "s", '"\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', '')<CR>
+onoremap <silent> <Plug>GotoNextSubSection	:call <SID>GotoSection("", "s","\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\s*{", 'vim')<CR>
 vnoremap <silent> <Plug>vGotoNextSubSection	m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\|\\\@<!\\%\)*\\\%(subsection\\|section\\|chapter\\|part\)\s*{\\|\\end\s*{\s*document\s*}', 'W')<Bar>exe "normal! b"<CR>
 
-nnoremap <silent> <Plug>GotoNextSection		:call <SID>GotoSection("", "", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', '')<CR>
-onoremap <silent> <Plug>GotoNextSection		:call <SID>GotoSection("", "", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\s*{", 'vim')<CR>
+nnoremap <silent> <Plug>GotoNextSection		:call <SID>GotoSection("", "s", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', '')<CR>
+onoremap <silent> <Plug>GotoNextSection		:call <SID>GotoSection("", "s", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\s*{", 'vim')<CR>
 vnoremap <silent> <Plug>vGotoNextSection	m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\|\\\@<!\\%\)*\\\%(section\\|chapter\\|part\)\s*{\\|\\end\s*{\s*document\s*}', 'W')<Bar>exe "normal! b"<CR>
 
-nnoremap <silent> <Plug>GotoNextChapter		:call <SID>GotoSection("", "", "\\\\\\%(chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
-onoremap <silent> <Plug>GotoNextChapter		:call <SID>GotoSection("", "", "\\\\\\%(chapter\\\\|part\\)\\s*{", 'vim')<CR>
+nnoremap <silent> <Plug>GotoNextChapter		:call <SID>GotoSection("", "s", "\\\\\\%(chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
+onoremap <silent> <Plug>GotoNextChapter		:call <SID>GotoSection("", "s", "\\\\\\%(chapter\\\\|part\\)\\s*{", 'vim')<CR>
 vnoremap <silent> <Plug>vGotoNextChapter	m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\|\\\@<!\\%\)*\\\%(chapter\\|part\)\s*{\\|\\end\s*{\s*document\s*}', 'W')<Bar>exe "normal! b"<CR>
 
-nnoremap <silent> <Plug>GotoNextPart		:call <SID>GotoSection("", "", "\\\\part\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
-onoremap <silent> <Plug>GotoNextPart		:call <SID>GotoSection("", "", "\\\\part\\s*{", 'vim', 'n')<CR>
+nnoremap <silent> <Plug>GotoNextPart		:call <SID>GotoSection("", "s", "\\\\part\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
+onoremap <silent> <Plug>GotoNextPart		:call <SID>GotoSection("", "s", "\\\\part\\s*{", 'vim', 'n')<CR>
 vnoremap <silent> <Plug>vGotoNextPart		m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\|\\\@<!\\%\)*\\\%(part\\|end\s*{\s*document\s*}\)\s*{', 'W')<Bar>exe "normal! b"<CR>
 
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSSSec	:call <SID>GotoSection(<q-bang>, "", '\\\%(subsubsection\|subsection\|section\|chapter\|part\)\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSSec		:call <SID>GotoSection(<q-bang>, "", '\\\%(subsection\|section\|chapter\|part\)\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSec		:call <SID>GotoSection(<q-bang>, "", '\\\%(section\|chapter\|part\)\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NChap		:call <SID>GotoSection(<q-bang>, "", '\\\%(chapter\|part\)\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NPart		:call <SID>GotoSection(<q-bang>, "", '\\part\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-nnoremap <silent> <Plug>GotoPreviousSubSection	:call <SID>GotoSection("", "b", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
-onoremap <silent> <Plug>GotoPreviousSubSection	:call <SID>GotoSection("", "b", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\s*{", 'vim')<CR>
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSSSec	:call <SID>GotoSection(<q-bang>, "s", '\\\%(subsubsection\|subsection\|section\|chapter\|part\)\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSSec		:call <SID>GotoSection(<q-bang>, "s", '\\\%(subsection\|section\|chapter\|part\)\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSec		:call <SID>GotoSection(<q-bang>, "s", '\\\%(section\|chapter\|part\)\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NChap		:call <SID>GotoSection(<q-bang>, "s", '\\\%(chapter\|part\)\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NPart		:call <SID>GotoSection(<q-bang>, "s", '\\part\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+nnoremap <silent> <Plug>GotoPreviousSubSection	:call <SID>GotoSection("", "sb", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
+onoremap <silent> <Plug>GotoPreviousSubSection	:call <SID>GotoSection("", "sb", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\s*{", 'vim')<CR>
 vnoremap <silent> <Plug>vGotoPreviousSubSection	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(subsection\\\\|section\\|chapter\\|part\)\s*{\\|\\begin\s*{\s*document\s*}', 'bW')<CR>
 
-nnoremap <silent> <Plug>GotoPreviousSection	:call <SID>GotoSection("", "b", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
-onoremap <silent> <Plug>GotoPreviousSection	:call <SID>GotoSection("", "b", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\s*{", 'vim')<CR>
+nnoremap <silent> <Plug>GotoPreviousSection	:call <SID>GotoSection("", "sb", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
+onoremap <silent> <Plug>GotoPreviousSection	:call <SID>GotoSection("", "sb", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\s*{", 'vim')<CR>
 vnoremap <silent> <Plug>vGotoPreviousSection	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(section\\|chapter\\|part\)\s*{\\|\\begin\s*{\s*document\s*}', 'bW')<CR>
 
-nnoremap <silent> <Plug>GotoPreviousChapter	:call <SID>GotoSection("", "b", "\\\\\\%(chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
-onoremap <silent> <Plug>GotoPreviousChapter	:call <SID>GotoSection("", "b", "\\\\\\%(chapter\\\\|part\\)\\s*{", 'vim')<CR
+nnoremap <silent> <Plug>GotoPreviousChapter	:call <SID>GotoSection("", "sb", "\\\\\\%(chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
+onoremap <silent> <Plug>GotoPreviousChapter	:call <SID>GotoSection("", "sb", "\\\\\\%(chapter\\\\|part\\)\\s*{", 'vim')<CR
 vnoremap <silent> <Plug>vGotoPreviousChapter	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(chapter\\|part\)\s*{\\|\\begin\s*{\s*document\s*}', 'bW')<CR>
 
-nnoremap <silent> <Plug>GotoPreviousPart	:call <SID>GotoSection("", "b", "\\\\part\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
-onoremap <silent> <Plug>GotoPreviousPart	:call <SID>GotoSection("", "b", "\\\\part\\s*{", 'vim')<CR>
+nnoremap <silent> <Plug>GotoPreviousPart	:call <SID>GotoSection("", "sb", "\\\\part\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
+onoremap <silent> <Plug>GotoPreviousPart	:call <SID>GotoSection("", "sb", "\\\\part\\s*{", 'vim')<CR>
 vnoremap <silent> <Plug>vGotoPreviousPart	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(part\)\s*{', 'bW')<CR>
 
 command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSSSec	:call <SID>PreviousSection('\\\%(subsubsection\|subsection\|section\|chapter\|part\)', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSSec		:call <SID>GotoSection(<q-bang>, 'b', '\\\%(subsection\|section\|chapter\|part\)', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSec		:call <SID>GotoSection(<q-bang>, 'b', '\\\%(section\|chapter\|part\)', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PChap		:call <SID>GotoSection(<q-bang>, 'b', '\\\%(chapter\|part\)', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call <SID>GotoSection(<q-bang>, 'b', '\\part\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSSec		:call <SID>GotoSection(<q-bang>, 'sb', '\\\%(subsection\|section\|chapter\|part\)', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSec		:call <SID>GotoSection(<q-bang>, 'sb', '\\\%(section\|chapter\|part\)', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PChap		:call <SID>GotoSection(<q-bang>, 'sb', '\\\%(chapter\|part\)', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call <SID>GotoSection(<q-bang>, 'sb', '\\part\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
 command! -buffer NInput				:call <SID>Input("w") 	| let v:searchforward = 1
 command! -buffer PInput 			:call <SID>Input("bw")	| let v:searchforward = 0
 command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete GotoFile	:call GotoFile(<q-bang>,<q-args>, 0)
@@ -1423,3 +1534,4 @@ command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete EditI
 " }}}
 " vimeif data[0]['text'] =~ 'No Unique Match Found'	    echohl WarningMsg
 " echomsg "No Unique Match Found"	    echohl None	    returnfdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1
+command! -bang -nargs=? -complete=customlist,GotoLabelCompletion GotoLabel  		:call GotoLabel(<f-bang>, <f-args>)

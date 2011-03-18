@@ -1,88 +1,21 @@
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=2945
 
-If you have any question, ideas, or suggestion please do not hesitate to write, it is always nice to get some feedback ...
-and many THANKS for RATES, :).
+This is a BIG plugin with lots of tools to make editing of TeX/LaTeX file easier. It's main features include: background compilation, extended completion, AMSRef equry for bibliography references, font preview, support for projects with multiple tex files, and much more. For a detailed list of features see: 
+https://sourceforge.net/apps/mediawiki/atp-vim/index.php?title=Main_Page 
+After looking there you can read the complete documentation in vim (:help automatic-tex-plugin.txt) 
 
-The plugin is known to not work on MS Windows, a help with porting is welcome.
+You can DONATE for this project  (on the project web page: http://sourceforge.net/projects/atp-vim/) 
+(see :h atp-donate). 
 
-This is a file type plugin for vim to comfortably write LaTeX (TeX) documents, which provides functionality not met in other such file type plugins.  It makes you FREE from compiling procedure, making this process automatic using autocommands. Features include (this is not a complete list):
+The project is developed under GPL v3 or higher. 
 
-Compilation Features:
-             * Background tex processing
-             * Making LaTeX documents with just one command 
-                          / bibliography, makeindex, table of contents, lists of: figures, tables, theorems [with ntheorem package] /
-             * various debug modes: silent/debug/verbose.
-                          / automatically close debug window (:copen) if there are no errors /
-             * show errors, warnings, citation/reference warnings, 
-                font warnings, files used ...
-                          / error file is automatically read after compilation /
-             * open log function, in log file you can sync the tex source with the log file (then errors in the source file will be higlighted!) or the xpdf viewer with the log file. There are also maps to go to next/previous error/warning/info/... message.
+You can subscribe to the mailing list: 
+https://lists.sourceforge.net/lists/listinfo/atp-vim-list 
+Its for all kind of purposes: help, bug reports, feature request, comments but also for ANNOUCES (of new releases!) so you can stay up to date. 
 
-Editing Features:
-             * indentation
-             * selection tools for environments (vie, vae) , in line math (vim, vam)
-             * toggling the environment name 
-                        / and changes the label if you use the labeling system; this needs activation /   
-             * toggling the star (add remove a star from environment)
+Project News: https://sourceforge.net/news/?group_id=513143
 
-Completions:
-             * completion for commands (also user defined in associate files), 
-                environments, citations, references, tikz commands, keywords, provided abbreviations, and much more
-                        / there are two completion modes: when you know what you want with <Tab> 
-                         and when you search for a command with <S-Tab> /
-                                          Some completion features:
-                                                            + math commands are completed only in math mode
-                                                            + tikz commands are completed only in tikz environments
-                                                            + completion of \ref, \eqref by numbers from the output (\ref{1.3<Tab> ...)
-                                                            + completion is connected to closing last environment/bracket functions
-                                                               so that you have all under one key <Tab> by default
-                                                            + completion for \usefont{}{}{}{}, \fonttype{}, .... commands
-                                                                       / finds completions in font definition files /
-                                                            + completion for \cite{ supports regular expression which are
-                                                               passed to the searching tool in bibliography files
-             * closing brackets and environments (preserves nested environments in  100%)
-                         / which is included into completion with <Tab> key)
-             * many usefull maps
-             * abbreviations for environments (with tab completion)
-            
-Moving Tools:
-             * table of contents
-                         / which allows moving through files, chapters, sections, opening a preview window /      
-             * list of labels
-                         / as with toc, you can see the context of the label in a preview window /
-             * moving commands to next environment
-                         / configured with vim commands: 'n' and 'N' for repeating / the vim commands: 'n' and 'N' for repeating /
-                         / also to next [inline/displayed] math environment /
-                         / support of project files /
-             * % operates on $:$ (in plain tex also on $$:$$), brackets and 
-                \begin:\end pairs /which also get highlighted/
-             * (TeX/LaTeX) oriented normal gf map
-                         / gf = go to file under cursor, if there is no file under the cursor gives a recursive list input files /
-                                               + with nice indentation for the list of files to chose
-                                               + with g:atp_developer = 1 you can easily open package (.sty) and classes (.cls) files
+This plugin includes: vimscript#3109  (LatexBox by David Munger). 
 
-Searching Tools:
-             * reverse/inverse searching for xdvi
-             * search for definitions ( \def ) declared in input files
-                            / like [D command but works with multiple line definitions /
-             * extended search in bib files
-             * query amsref web page for bibliography data  
-             * a function which toggles a command map of <space> to \_s\+
-                            / this is a handy way to search in text which is broken into lines /
-
-Support for Projects
-             * project script which restores project specific variables ( for example: b:atp_MainFile, b:ListOfFiles - the list of files included in the project, ...) 
-                            / The project script name is <MainProjectFile>.project.vim /
-                            / It is possible to store many projects in one directory! /
-             * GotoFile function (replace vim gf map), which list all the input files for the main project file and let you go to one of them (it also sets the main file variable for the new buffer to correct value automaticaly).
-             * A command to search in project files (like it would be just one long file)
-                                       + supports flags: bceswW of vim search() function and the 
-                                                                 vim 'wrapscan' option.
-            * :Labels command (which list all defined labels) support project files.
-            * :TOC command (Table of Contents) almost supports project files (work in progress).
-            * :NInput/:PInput commands : to go to next/previous input file.
-
-This plugin includes: vimscript#3109  (LatexBox by David Munger).
-
-Project Web Page:  https://launchpad.net/automatictexplugin
-BUG tracker:       https://bugs.launchpad.net/automatictexplugin
+BUG tracker: send a mail to the mailing list: https://lists.sourceforge.net/lists/listinfo/atp-vim-list 
+PROJECT site: http://sourceforge.net/projects/atp-vim/

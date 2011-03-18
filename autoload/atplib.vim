@@ -5,6 +5,32 @@
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 
+" Table:
+function! atplib#Table(list,spaces) " {{{
+" take a list of lists and make a list which is nicly formated (to echo it)
+" spaces = list of spaces between columns.
+    "maximal length of columns:
+    let max_list=[]
+    let new_list=[]
+    for i in range(len(a:list[0]))
+	let max=max(map(deepcopy(a:list), "len(v:val[i])"))
+	call add(max_list, max)
+    endfor
+
+    for row in a:list
+	let new_row=[]
+	let i=0
+	for el in row
+	    let new_el=el.join(map(range(max([0,max_list[i]-len(el)+get(a:spaces,i,0)])), "' '"), "")
+	    call add(new_row, new_el)
+	    let i+=1
+	endfor
+	call add(new_list, new_row)
+    endfor
+
+    return map(new_list, "join(v:val, '')")
+endfunction 
+"}}}
 " Outdir: append to '/' to b:atp_OutDir if it is not present. 
 function! atplib#outdir() "{{{1
     if has("win16") || has("win32") || has("win64") || has("win95")
@@ -505,14 +531,11 @@ function! atplib#showlabels(labels)
 
     " set the cursor position on the correct line number.
     call search(l:bufname, 'w')
-"     normal j
     let l:number=1
     for label  in get(a:labels[0], BufFullName, [])
 	if l:cline >= label[0]
-" 	    echo "1 " . label[0]
 	    keepjumps call cursor(line(".")+1, col("."))
 	elseif l:number == 1 && l:cline < label[0]
-" 	    echo "2 " . label[0]
 	    keepjumps call cursor(line(".")+1, col("."))
 	endif
 	let l:number+=1
@@ -611,7 +634,7 @@ let atplib#bibflagsdict={ 't' : ['title', 'title        '] , 'a' : ['author', 'a
 " let atplib#bibflagslist=keys(atplib#bibflagsdict)
 " let atplib#bibflagsstring=join(atplib#bibflagslist,'')
 "}}}
-" This functions finds bibfiles defined in the tex source file. 
+" This is the main search engine.
 "{{{ atplib#searchbib
 " ToDo should not search in comment lines.
 
@@ -719,16 +742,16 @@ function! atplib#searchbib(pattern, ...)
 		" line number to the list l:list
 		" remove ligatures and brackets {,} from the line
 		let line_without_ligatures = substitute(substitute(l:line,'\C{\|}\|\\\%("\|`\|\^\|=\|\.\|c\|\~\|v\|u\|d\|b\|H\|t\)\s*','','g'), "\\\\'\\s*", '', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\oe', 'oe', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\OE', 'OE', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\ae', 'ae', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\AE', 'AE', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\o', 'o', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\O', 'O', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\i', 'i', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\j', 'j', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\l', 'l', 'g')
-		let line_withouf_ligatures = substitute(line_without_ligatures, '\C\\L', 'L', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\oe', 'oe', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\OE', 'OE', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\ae', 'ae', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\AE', 'AE', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\o', 'o', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\O', 'O', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\i', 'i', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\j', 'j', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\l', 'l', 'g')
+		let line_without_ligatures = substitute(line_without_ligatures, '\C\\L', 'L', 'g')
 
 		if line_without_ligatures =~? a:pattern
 
@@ -833,14 +856,12 @@ function! atplib#searchbib(pattern, ...)
 			    if l:lkey != ""
 				let s:lbibd[l:lkey]=l:line
 	" IF THE LINE IS SPLIT ATTACH NEXT LINE									
-" 				echomsg "l:nr=".l:nr. "       line=".l:line 
 				let l:nline=get(l:bibdict[l:bibfile],l:nr+l:y)
 				while l:nline !~ '=' && 
 					    \ l:nline !~ pattern &&
 					    \ (l:nr+l:y) < l:bibfile_len
 				    let s:lbibd[l:lkey]=substitute(s:lbibd[l:lkey],'\s*$','','') . " ". substitute(get(l:bibdict[l:bibfile],l:nr+l:y),'^\s*','','')
 				    let l:line=get(l:bibdict[l:bibfile],l:nr+l:y)
-" 				    echomsg "l:nr=".l:nr. " l:y=".l:y." line=".l:line 
 				    let l:y+=1
 				    let l:nline=get(l:bibdict[l:bibfile],l:nr+l:y)
 				    if l:y > 30
@@ -849,7 +870,6 @@ function! atplib#searchbib(pattern, ...)
 				    endif
 				endwhile
 				if l:nline =~ pattern 
-" 				    echomsg "BREAK l:nr=".l:nr. " l:y=".l:y." nline=".l:nline 
 				    let l:y=1
 				endif
 			    endif
@@ -883,27 +903,21 @@ function! atplib#searchbib(pattern, ...)
 "	line till the last matching } 
  	let s:bibd={}
  	for l:linenr in b:bibentryline[l:bibfile]
-"
-" 	new algorithm is on the way, using searchpair function
-" 	    l:time=0
-" 	    l:true=1
-" 	    let b:pair1=searchpair('(','',')','b')
-" 	    let b:pair2=searchpair('{','','}','b')
-" 	    let l:true=b:pair1+b:pair2
-" 	    while l:true == 0
-" 		let b:pair1p=b:pair1	
-" 		let b:pair1=searchpair('(','',')','b')
-" 		let b:pair2p=b:pair2	
-" 		let b:pair2=searchpair('{','','}','b')
-" 		let l:time+=1
-" 	    endwhile
-" 	    let l:bfieldline=l:time
 
 	    let l:nr=l:linenr-1
 	    let l:i=atplib#count(get(l:bibdict[l:bibfile],l:linenr-1),"{")-atplib#count(get(l:bibdict[l:bibfile],l:linenr-1),"}")
 	    let l:j=atplib#count(get(l:bibdict[l:bibfile],l:linenr-1),"(")-atplib#count(get(l:bibdict[l:bibfile],l:linenr-1),")") 
 	    let s:lbibd={}
 	    let s:lbibd["bibfield_key"]=get(l:bibdict[l:bibfile],l:linenr-1)
+	    if s:lbibd["bibfield_key"] !~ '@\w\+\s*{.\+' 
+		let l:l=0
+		while get(l:bibdict[l:bibfile],l:linenr-l:l) =~ '^\s*$'
+		    let l:l+=1
+		endwhile
+		let s:lbibd["bibfield_key"] .= get(l:bibdict[l:bibfile],l:linenr+l:l)
+		let s:lbibd["bibfield_key"] = substitute(s:lbibd["bibfield_key"], '\s', '', 'g')
+	    endif
+
 	    let l:x=1
 " we go from the first line of bibentry, i.e. @article{ or @article(, until the { and (
 " will close. In each line we count brackets.	    
@@ -983,7 +997,7 @@ function! atplib#searchbib(pattern, ...)
     return l:bibresults
 endfunction
 "}}}
-" This is the main search engine.
+"
 " {{{ atplib#SearchBibItems
 " the argument should be b:atp_MainFile but in any case it is made in this way.
 " it specifies in which file to search for include files.
@@ -1159,10 +1173,10 @@ function! atplib#showresults(bibresults, flags, pattern)
     unlet l:bufnr
     let l:openbuffer=" +setl\\ buftype=nofile\\ filetype=bibsearch_atp " . fnameescape("___Bibsearch: " . a:pattern . "___")
     if g:vertical ==1
-	let l:openbuffer="vsplit " . l:openbuffer 
+	let l:openbuffer="keepalt vsplit " . l:openbuffer 
 	let l:skip=""
     else
-	let l:openbuffer="split " . l:openbuffer 
+	let l:openbuffer="keepalt split " . l:openbuffer 
 	let l:skip="       "
     endif
 
@@ -2859,6 +2873,7 @@ function! atplib#TabCompletion(expert_mode,...)
     " and this for '\<\w*$' (beginning of last started word) -- used in
     " tikzpicture completion method 
     let tbegin		= matchstr(l,'\zs\<\w*$')
+    " start with last '\'
     let obegin		= strpart(l,o)
 
     " what we are trying to complete: usepackage, environment.
@@ -2888,7 +2903,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	let g:pline	= pline
 	let g:ppline	= ppline
 
-	let g:limit_line=limit_line
+	let g:limit_line= limit_line
     endif
 
 
@@ -2942,6 +2957,16 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let b:comp_method='labels fast return'
 	    return ''
 	endif
+    "{{{3 --------- pagestyle
+    elseif l =~ '\\\%(pagestyle\|thispagestyle\){\s*$'
+	let completion_method='pagestyle'
+	" DEBUG:
+	let b:comp_method='pagestyle'
+    "{{{3 --------- pagenumbering
+    elseif l =~ '\\pagenumbering{\s*$'
+	let completion_method='pagenumbering'
+	" DEBUG:
+	let b:comp_method='pagenumbering'
     "{{{3 --------- bibitems
     elseif ppline =~ '\\\%(no\)\?cite\(\s*\[[^]]*\]\s*\)\={[^}]*$' && !normal_mode
 	if index(g:atp_completion_active_modes, 'bibitems') != -1
@@ -3034,11 +3059,28 @@ function! atplib#TabCompletion(expert_mode,...)
 	endif
     "{{{3 --------- bibstyles
     elseif pline =~ '\\bibliographystyle' && !normal_mode 
-	if (index(g:atp_completion_active_modes, 'bibstyles') != -1 ) 
+	if ( index(g:atp_completion_active_modes, 'bibstyles') != -1 ) 
 	    let completion_method='bibstyles'
 	    let b:comp_method='bibstyles'
 	else
 	    let b:comp_method='bibstyles fast return'
+	    return ''
+	endif
+    "{{{3 --------- todo & missingfigure options
+    elseif obegin =~ '\\todo\[[^\]]*'
+	if ( index(g:atp_completion_active_modes, 'todonotes') != -1 ) 
+	    let completion_method='todo options'
+	    let b:comp_method='todo options'
+	else
+	    let b:comp_method='todo options fast return'
+	    return ''
+	endif
+    elseif obegin =~ '\\missingfigure\[[^\]]*'
+	if ( index(g:atp_completion_active_modes, 'todonotes') != -1 ) 
+	    let completion_method='missingfigure options'
+	    let b:comp_method='missingfigure options'
+	else
+	    let b:comp_method='missingfigure options fast return'
 	    return ''
 	endif
     "{{{3 --------- documentclass
@@ -3257,6 +3299,11 @@ function! atplib#TabCompletion(expert_mode,...)
     " {{{3 ------------ ENVIRONMENT NAMES
     if completion_method == 'environment_names'
 	let end=strpart(line,pos[2]-1)
+
+	keepjumps call setpos(".",[0,1,1,0])
+	let stop_line=search('\\begin\s*{document}','cnW')
+	keepjumps call setpos(".",pos_saved)
+
 	if end !~ '\s*}'
 	    let completion_list = []
 	    if atplib#DocumentClass(b:atp_MainFile) == 'beamer'
@@ -3286,9 +3333,6 @@ function! atplib#TabCompletion(expert_mode,...)
 	    endif
 	endif
 	" TIKZ
-	keepjumps call setpos(".",[0,1,1,0])
-	let stop_line=search('\\begin\s*{document}','cnW')
-	keepjumps call setpos(".",pos_saved)
 	let in_tikz=searchpair('\\begin\s*{tikzpicture}','','\\end\s*{tikzpicture}','bnW',"", max([1,(line(".")-g:atp_completion_limits[2])])) || atplib#CheckOpened('\\tikz{','}',line("."),g:atp_completion_limits[0])
 	if in_tikz
 	    if end !~ '\s*}'
@@ -3325,11 +3369,19 @@ function! atplib#TabCompletion(expert_mode,...)
     elseif completion_method == 'colors'
 	" To Do: make a predefined lists of colors depending on package
 	" options! 
-	" Make a list of local envs and commands
 	if !exists("b:atp_LocalColors") 
 	    call LocalCommands()
 	endif
 	let completion_list=copy(b:atp_LocalColors)
+    "{{{3 ------------ PAGESTYLE
+    elseif completion_method == 'pagestyle'
+	let completion_list=copy(g:atp_pagestyles)
+	if atplib#SearchPackage('fancyhdr')
+	    call extend(completion_list, g:atp_fancyhdr_pagestyles)
+	endif
+    "{{{3 ------------ PAGENUMBERING
+    elseif completion_method == 'pagenumbering'
+	let completion_list=copy(g:atp_pagenumbering)
     " {{{3 ------------ TIKZ LIBRARIES
     elseif completion_method == 'tikz libraries'
 	let completion_list=deepcopy(g:atp_tikz_libraries)
@@ -3445,7 +3497,6 @@ function! atplib#TabCompletion(expert_mode,...)
 	endif
 	" -------------------- LOCAL commands {{{4
 	if g:atp_local_completion
-
 	    " make a list of local envs and commands:
 	    if !exists("b:atp_LocalCommands") 
 		call LocalCommands()
@@ -3490,6 +3541,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	" {{{4 -------------------- MathTools commands
 	if atplib#SearchPackage('mathtools', stop_line)
 	    call extend(completion_list, g:atp_MathTools_commands)
+	endif
+	" {{{4 -------------------- ToDoNotes package commands
+	if ( index(g:atp_completion_active_modes, 'todonotes') != -1 ) && atplib#SearchPackage('todonotes', stop_line)
+	    call extend(completion_list, g:atp_TodoNotes_commands)
 	endif
 	"}}}4 
 	" ToDo: add layout commands and many more packages. (COMMANDS FOR
@@ -3751,6 +3806,12 @@ function! atplib#TabCompletion(expert_mode,...)
 
 	" add the \bibitems found in include files
 	call extend(completion_list,keys(atplib#SearchBibItems(atp_MainFile)))
+    " {{{3 ------------ TodoNotes todo & missing figure options
+    elseif completion_method == 'todo options'
+	let completion_list = g:atp_TodoNotes_todo_options
+    elseif completion_method == 'missingfigure options'
+	let completion_list = g:atp_TodoNotes_missingfigure_options
+    " {{{3 ------------ Colors
     elseif completion_method == 'colors'
 	" ToDo:
 	let completion_list=[]
@@ -3771,6 +3832,8 @@ function! atplib#TabCompletion(expert_mode,...)
 			\ completion_method == 'font series' 	||
 			\ completion_method == 'font shape'	||
 			\ completion_method == 'font encoding'||
+			\ completion_method == 'pagestyle'||
+			\ completion_method == 'pagenumbering'||
 			\ completion_method == 'documentclass' )
 		if a:expert_mode
 		    let completions	= filter(deepcopy(completion_list),' v:val =~? "^".begin') 
@@ -3807,7 +3870,9 @@ function! atplib#TabCompletion(expert_mode,...)
 	    elseif completion_method == 'abbreviations'
 		let completions		= filter(copy(completion_list), 'v:val =~# "^" . abegin')
 	    " {{{4 --------- Tikzpicture Keywords
-	    elseif completion_method == 'tikzpicture keywords'
+	    elseif completion_method == 'tikzpicture keywords' || 
+			\ completion_method == 'todo options' ||
+			\ completion_method == 'missingfigure options'
 		if a:expert_mode == 1 
 		    let completions	= filter(deepcopy(completion_list),'v:val =~# "^".tbegin') 
 		elseif a:expert_mode != 1 
@@ -3871,6 +3936,8 @@ function! atplib#TabCompletion(expert_mode,...)
 		\ completion_method == 'environment_names' ||
 		\ completion_method == 'abbreviations' ||
 		\ completion_method == 'colors'	||
+		\ completion_method == 'pagestyle'	||
+		\ completion_method == 'pagenumbering'	||
 		\ completion_method == 'bibfiles' 	|| 
 		\ completion_method == 'bibstyles' 	|| 
 		\ completion_method == 'documentclass'|| 
@@ -3879,6 +3946,8 @@ function! atplib#TabCompletion(expert_mode,...)
 		\ completion_method == 'font series'  ||
 		\ completion_method == 'font shape'   ||
 		\ completion_method == 'font encoding'||
+		\ completion_method == 'todo options' ||
+		\ completion_method == 'missingfigure options' ||
 		\ completion_method == 'inputfiles' 
 	call complete(nr+2,completions)
 	let b:tc_return="labels,package,tikz libraries,environment_names,bibitems,bibfiles,inputfiles"
@@ -3903,10 +3972,9 @@ function! atplib#TabCompletion(expert_mode,...)
     " there was no completion, check if environments are closed.
     " {{{ 3 Final call of CloseLastEnvrionment / CloseLastBracket
     let len=len(completions)
-    let g:len=len
     if len == 0 && (!count(['package', 'bibfiles', 'bibstyles', 'inputfiles'], completion_method) || a:expert_mode == 1 )|| len == 1
 	if count(['command', 'tikzpicture commands', 'tikzpicture keywords'], completion_method) && 
-	    \ (len == 0 || len == 1 && completions[0] == '\'. begin )
+	    \ (len == 0 || len == 1 && completions[0] =~ '^\\\='. begin . '$' )
 
 	    let filter 		= 'strpart(getline("."), 0, col(".") - 1) =~ ''\\\@<!%'''
 	    let stopline 	= search('^\s*$\|\\par\>', 'bnW')
@@ -4154,7 +4222,6 @@ function! atplib#Preview(fd_files,keep_tex)
 	endfor
     endfor
 
-"     let l:tmp_dir=tempname()
     if exists("b:tmp_dir")
 	let l:tmp_dir=b:tmp_dir
     else
@@ -4387,6 +4454,3 @@ endfunction
 " }}}1
 
 " vim:fdm=marker:ff=unix:noet:ts=8:sw=4:fdc=1
-
-
-

@@ -83,19 +83,23 @@ function! s:JumpToMatch(mode, ...)
 	" move to the left until not on alphabetic characters
 	call search('\A', 'cbW', line('.'))
 
+		let zonex=s:HasSyntax('texMathZoneX', line("."), col(".")) || s:HasSyntax('texMathZoneX', line('.'), max([1, col(".")-1])) 
+		let zoney=s:HasSyntax('texMathZoneY', line("."), col("."))  
+
+	let stopline = ( g:atp_VimCompatible || g:atp_VimCompatible =~ '\c\<yes\>' ? line('.') : 0 )
 	" go to next opening/closing pattern on same line
 	if !s:HasSyntax('texSectionModifier', line('.'), col('.'))
-	    let g:pos = !s:SearchAndSkipComments(
+	    let pos = !s:SearchAndSkipComments(
 				    \	'\m\C\%(' . join(open_pats + close_pats + [dollar_pat], '\|') . '\)',
-				    \	sflags, line('.'))
+				    \	sflags, stopline)
 	else
-	    let g:pos = !s:SearchAndSkipComments(
+	    let pos = !s:SearchAndSkipComments(
 				    \	'\m\C\%(' . join(open_pats + close_pats, '\|') . '\)',
-				    \	sflags, line('.'))
+				    \	sflags, stopline)
 	endif
 	" THE line('.') above blocks it from workin not just in one line
 	" (especially with \begin:\end which might be in different lines).
-	if g:pos
+	if pos
 		" abort if no match or if match is inside a comment
 		call setpos('.', saved_pos)
 		return
@@ -107,17 +111,22 @@ function! s:JumpToMatch(mode, ...)
 	if rest_of_line =~ '^\$' && !s:HasSyntax('texSectionModifier', line('.'), col('.'))
 
 		" check if next character is in inline math
+		let zonex+=s:HasSyntax('texMathZoneX', line("."), col(".")) 
+		let zoney+=s:HasSyntax('texMathZoneY', line("."), col(".")) || s:HasSyntax('texMathZoneY', line('.'), max([1, col(".")-1])) 
 		let [lnum, cnum] = searchpos('.', 'nW')
-		if lnum && s:HasSyntax('texMathZoneX', lnum, cnum)
-			call s:SearchAndSkipComments(dollar_pat, 'W')
-		elseif !s:HasSyntax('texMathZoneY', lnum, cnum)
-			call s:SearchAndSkipComments(dollar_pat, 'bW')
-		endif
 
-		if lnum && s:HasSyntax('texMathZoneY', lnum, cnum)
-			call s:SearchAndSkipComments(two_dollar_pat, 'W')
-		elseif !s:HasSyntax('texMathZoneX', lnum, cnum) 
-			call s:SearchAndSkipComments(two_dollar_pat, 'bW')
+		if zonex
+		    if lnum && s:HasSyntax('texMathZoneX', lnum, cnum)
+			    call s:SearchAndSkipComments(dollar_pat, 'W')
+		    else
+			    call s:SearchAndSkipComments(dollar_pat, 'bW')
+		    endif
+		elseif zoney
+		    if lnum && s:HasSyntax('texMathZoneY', lnum, cnum)
+			    call s:SearchAndSkipComments(two_dollar_pat, 'W')
+		    else
+			    call s:SearchAndSkipComments(two_dollar_pat, 'bW')
+		    endif
 		endif
 	else
 
@@ -193,6 +202,7 @@ function! s:SelectInlineMath(seltype)
 		    let return 	= 0
 	    endif
 	endfor
+
 
 	if return
 	    call cursor(saved_pos[1], saved_pos[2])
@@ -535,20 +545,11 @@ function! s:InnerSearchPos(begin, line, col, run)
 	let ccol	= col(".") 
 	call cursor(a:line, a:col)
 	if a:begin == 1
-" 	    echomsg a:begin
 	    let flag = 'bnW' . (a:run == 1 ? 'c' : '')
 " Note: sometimes it is better is it stops before \\begin some times not,
 " maybe it is better to decide for which environment names to stop
 " (theorem, ... but not align [mathematical ones]). The same about end few
 " lines ahead.
-" 			\ '\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=' .
-" 	    let pattern1 = '\%(^\s*$\|\\\@<!\\\[\|^[^%]*\%(\ze\\par\>\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)'
-" 	    let pattern11 = '\%(^\s*$\|\\\@<!\\\[\|\%(\ze\\par\>\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\)'
-" 
-" 	    let pattern2 = '\%(^\s*$\|\\\@<!\\\[\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\|\\item\%(\s*\[[^\]]*\]\)\=\)'
-" 	    let pattern21 = '\%(^\s*$\|\\\@<!\\\[\|\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\|\\item\%(\s*\[[^\]]*\]\)\=\)'
-" 	    let pattern3 = '\%(^\s*$\|\\\@<!\\\[\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\zs\)\)'
-" 	    let pattern4 = '\%(^\s*$\|\\\@<!\\\[\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\)\)'
 	    let pattern = '\%(^\s*$' . 
 			\ '\|\\begin\>\s*{' .
 			\ '\|\\\@<!\\\[' . 
@@ -565,13 +566,13 @@ function! s:InnerSearchPos(begin, line, col, run)
 				\ '\|subsubsection\*\=' . 
 				\ '\|paragraph\*\=' . 
 				\ '\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=' . 
+			\ '\|\\opening{[^}]*}' .
+			\ '\|\\closing{' .
 			\ '\|\\\@<!\$\$\s*$' . 
 			\ '\|\\\\\*\=' . 
 			\ '\|\%^\|\%$\)'
 	    let [ line, column ] = searchpos(pattern, flag)
 	else
-" 	    echomsg a:begin
-" 			\ '\|\\end\s*{' . 
 	    let pattern = '\%(^\s*$' . 
 			\ '\|\\\@<!\\\]\zs' .
 			\ '\|\%(^\s\+\)\=\\end\>\s*{' .
@@ -587,14 +588,14 @@ function! s:InnerSearchPos(begin, line, col, run)
 				\ '\|\<subsubsection\*\=' . 
 				\ '\|\<paragraph\*\=' . 
 				\ '\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=' . 
+			\ '\|\\opening{[^}]*}' .
+			\ '\|\\closing{' .
 			\ '\|^\s*\\\@<!\\\[' . 
 			\ '\|^\s*\\\@<!\$\$' . 
 			\ '\|\\\\\*\=' .
 			\ '\|\%^\|\%$\)'
 	    let [ line, column ] = searchpos(pattern, 'nW')
 	endif
-	let g:pattern = pattern
-" 	echomsg "IS: " . string([line, column])
 	call cursor(cline, ccol)
 	return [ line, column ] 
 endfunction
@@ -655,6 +656,8 @@ function! s:SelectCurrentParagraph(seltype)
 			\ '\|subsubsection\*\=' . 
 			\ '\|paragraph\*\=' . 
 			\ '\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=' . 
+			\ '\|\\opening{[^}]*}' .
+			\ '\|\\closing{' .
 			\ '\|\\\@<!\\\]\s*$' . 
 			\ '\|\\\@<!\$\$\s*$' . 
 			\ '\|\\\\\*\=\)'
@@ -670,7 +673,6 @@ function! s:SelectCurrentParagraph(seltype)
 	" Find end position (iterate over math zones).
 	let [ eline, ecol ] = s:InnerSearchPos(0, line("."), col("."), 1)
 	let line = strpart(getline(eline), ecol-1)
-	let g:line = line
 	let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\\\['
 	let i = 2
 	if g:atp_debugSCP
@@ -679,7 +681,6 @@ function! s:SelectCurrentParagraph(seltype)
 	while true
 	    let line	= strpart(getline(eline), ecol-1)
 	    if line =~ '^\\\@<!\%(\\)\|\\\]\|\\\[\|\\\@<!\$\$\)'
-" 	    if line =~ '^\\\@<!\%(\\end\|\\)\|\\\]\|\\\[\)'
 		if g:atp_debugSCP
 		    echomsg i . ") E line break " . eline . " line=" . line
 		    let g:line 	= line
@@ -694,12 +695,10 @@ function! s:SelectCurrentParagraph(seltype)
 	    endif
 	    let i+=1
 	endwhile
-" 	let [ bline, bcol ] = searchpos('\%(^\s*$\|^[^%]*\%(\ze\\par\>\|\ze\\newline\>\|\\end\s*{[^}]*}\s*\|\\begin\s*{[^}]*}\s*\%(\%({\|\[\)[^]}]*\%(\]\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\=\|\s*\%(\\footnote\s*\%(\n\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)\|\\item\%(\s*\[[^\]]*\]\)\=\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|subsubsection\*\=\|paragraph\*\=\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=\|\\\@<!\\\]\s*$\|\\\@<!\$\$\s*$\|\\\\\*\=\)', 'ebcnW')
-" 	let [ eline, ecol ] = searchpos('\%(^\s*$\|^[^%]*\%(\zs\\par\>\|\zs\\newline\>\|\\end\s*{\|\\begin\s*{[^}]*}\s*\%(\[[^]]*\]\)\=\)\|\\item\|\\\%(part\*\=\|chapter\*\=\|section\*\=\|subsection\*\=\|\<subsubsection\*\=\|\<paragraph\*\=\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=\|^\s*\\\@<!\\\[\|^\s*\\\@<!\$\$\|\\\\\*\=\)', 'nW')
 	let emove	= "ge"
     else
-	let [ bline, bcol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'bcnW')
-	let [ eline, ecol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>', 'nW')
+	let [ bline, bcol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>\|\\begin\s*{\s*\%(document\|letter\)\s*}', 'bcnW')
+	let [ eline, ecol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>\|\\end\s*{\s*\%(document\|letter\)\s*}\zs', 'nW')
     endif
     
     if g:atp_debugSCP
@@ -717,7 +716,7 @@ function! s:SelectCurrentParagraph(seltype)
 	let g:eeline_str = eeline_str
     endif
 
-    if getline(bline) =~ '\\par\|\\newline' || bline_str =~ '^\%(\\\[\|\\item\>\)'
+    if getline(bline) =~ '\\par\|\\newline\|\\begin\s*{\s*\%(document\|letter\)\s*}' || bline_str =~ '^\%(\\\[\|\\item\>\)'
 	" move to the beginning of \par
 	let bmove	= ''
     else
@@ -730,8 +729,11 @@ function! s:SelectCurrentParagraph(seltype)
 	let emove	= 'gE'
     elseif eline_str  =~ '\\@<!\\\]'
 	let emove	= ''
-    elseif eeline_str =~ '^\\end\s*{\s*\%(align\%(at\)\=\|equation\|display\%(ed\)\=math\|array\|eqnarray\|inlinemath\|math\)\*\=\s*}'
+    elseif eeline_str =~ '^\\end\s*{\s*\%(align\%(at\)\=\|equation\|display\%(ed\)\=math'
+		\ . '\|array\|eqnarray\|inlinemath\|math\)\*\=\s*}'
 	let emove	= 'E'
+    elseif eeline_str =~ '^\\closing'
+	let emove	= 'ge'
     elseif eline_str  =~ '\\$'
 	let emove	= 'h'
     else
@@ -817,7 +819,6 @@ function! HighlightEmphText()
 	     return
 	 endif
 
-" 	 echomsg lnum . " " . cnum
 	 while s:HasSyntax('texMatcher', lnum, cnum)
 	     if cnum < len(getline(lnum))
 		 let cnum += 1

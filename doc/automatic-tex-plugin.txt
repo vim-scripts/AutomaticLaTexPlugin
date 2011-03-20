@@ -1,4 +1,4 @@
-*automatic-tex-plugin.txt* 	For Vim version 7	Last change: 18 March 2011
+*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 20 March 2011
 
 			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 8.8)
 				by Marcin Szamotulski
@@ -72,7 +72,7 @@ FEATURES INCLUDE:
 	|atp-editing|			Editing tools 
 	|atp-requirements|  		Requirements
 	|atp-viewers| 			Note about viewers 
-					(including inverse and reverse searching for xdvi)
+					(with HOW TO CONFIGURE REVERSE SEARCHING for Okular)
 	|atp-tips|			Some tex oriented tips
 	|atp-highlight|			Colours and syntax files
 	|atp-remarks|  			Final remarks
@@ -86,7 +86,7 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 NEWS							*atp-news*
 
 >
-  Changes in version 9
+  Changes in versions 9 & 9.1
 <
   - THE PROJECT HAS MOVED FROM Launchpad to SOURCEFORGE!
     http://sourceforge.net/projects/atp-vim/
@@ -109,7 +109,36 @@ NEWS							*atp-news*
   - There is also a new wiki page: (as for now it only includes features of
     ATP - but it looks nice :)
     http://sourceforge.net/apps/mediawiki/atp-vim/index.php?title=Main_Page
-    
+9.1:    
+  - :SyncTex, forward searching for Okular, Xdvi (they also support reverse
+    searching viewer->vim), and xpdf (only forward search). Read
+    |atp-:SyncTex| and the sections on viewers: |atp-viewers-Okular|,
+    |atp-viewers-Xdvi|. For pdf viewers it uses -synctex=1 for dvi
+    -src-specials. 
+9.1:							
+  - Reverse searching in okular. Read |atp-viewers-Okular| how to install it
+    (it is easy but needs you to do that).
+							*b:atp_TmpDir*
+9.1: IMPORTANT: The default is: >
+	let b:atp_TmpDir='.tmp'
+<   ATP will make this directory under |b:atp_OutDir|. Every latex process
+    will be run in a private directory under it. Every private directory is
+    removed when compiler ends (after copying files), the tmp directory is
+    removed when vim exists with system command 'rmdir' so if sth is in side
+    the directory will not be removed. 
+
+9.1:  
+  - :SetOkular						*atp-:SetOkular*
+    This works the same as |atp-:SetXpdf|. It sets the forward searching
+    options needed for Okular (notably this is just >
+	    b:atp_TexOptions="-synctex=1"
+<   but it also makes some changes in the menu). You can use the commands
+    |atp-:SetOkular|, |atp-:SetXdvi| in your atprc file (|atp-:SetXpdf| has
+    the default settings so it is not needed at startup): >
+    	au VimEnter *.tex :SetOkular
+	au VimEnter *.tex :SetXdvi
+<
+
   							*atp-:GotoLabel*
   - :GotoLabel[!] {pattern} 
     The command does the obvious thing. The {pattern} matches against the
@@ -187,7 +216,13 @@ NEWS							*atp-news*
     packages).
 
   - b:atp_autex file is only set to 1 for files with 'tex' extension.
-
+9.1
+  - one more wrapper: for \mbox{:} with <WrapperLeader>mb, see
+    |atp-maps-WrapSelection|.
+9.1    
+  - :SyncLog is now called |atp-:LogSync|,
+    g:atp_SyncLog is now |g:atp_LogSync|.
+    
   - Some other fixes.
     						Chears, Marcin
 >
@@ -878,31 +913,57 @@ map \b
 	This is a list of directories as g:atp_raw_texinputs with appended '**' 
 	see ':h file-searching'.
 
-:ViewOutput						*atp-:ViewOutput*
+:ViewOutput [sync]					*atp-:ViewOutput*
 map \v,map <F3>, imap <F3>  
 	You would like to see what you are editing use this function. It will
 	use the program defined in the variable b:atp_Viewer. See |b:atp_Viewer|,
 	|g:atp_XpdfServer|, |atp-xpdfOptions|. When there is no output file it will run
 	TeX and open the file. Read more about particular viewers
 	(inverse/reverse searching) in |atp-viewers|. 
+	You can open and sync the viewer with: >
+		:SyncTex
+		<S-LeftMouse>
+		:ViewOutput sync
+<
+
+:SyncTex						*atp-:SyncTex*
+map t, map <S-LeftMouse>
+	Which makes an forward search (vim->Viewer). As for now ATP supports Okular,
+	Xpdf and Xdvi with this feature (Evince is not yet supported).
+
+	Note: you can also set reverse search for Okular and Xdvi, see
+	|atp-viewers-Okular| and |atp-viewers-Xdvi| for an instruction how to
+	do that. Xpdf doesn't support reverse searching.
+
+	When the output file or the synctex file (.synctex.gz) doesn't exists
+	then first it will be generated. It can also open the document if it
+	is not yet opened.
 
 :Viewer {viewer-program}				*atp-:Viewer*
     Command which help to set b:atp_Viewer variable (with nice completion).
 
 :SetXdvi						*atp-:SetXdvi*
 	This command sets the options for xdvi viewer, which enables inverse
-	and reverse searching. It sets the command >
-		:RevSearch
-		map \rs
+	and reverse searching. You can use the command |atp-:SyncTex| for
+	forward searches (Vim->Xdvi) >
+		:SyncTex	(although dvi is using srcspecials rather than synctex)
+		map t
 <	For inverse searching hold CTRL and click left mouse button on
-	the text in xdvi viewer. 
-
+	the text in xdvi viewer. It sets: >
+	    let b:atp_TexOptions="-src-specials"
+<	and also other variable to enable reverse searching (Xdvi->Vim) see
+	more |atp-viewers-Xdvi|.
 :SetXpdf						*atp-:SetXpdf*
-	This command sets the options for xpdf viewer (as for now the
-	inverse/reverse searching in pdf files is not implemented)
-	It will read the xpdf viewer options from the variables
-	b:atp_xpdfOptions and g:atp_xpdfOptions.
+:SetOkular						*atp-SetOkular*
+	This command sets options for xpdf viewer. Xpdf supports forward
+	searching (vim->Xpdf) with command: |atp-:SyncTex|. It sets >
+	    let b:atp_TexOptions="-synctex=1"
+< 	Thus it enables the forward searching (the above is the default 
+	value for ATP, but it will change when you use |atp-:SetXdvi| which
+	uses "-src-specials".
 
+	It reads the Xpdf viewer options from the variables
+	b:atp_xpdfOptions and g:atp_xpdfOptions. Similarly for Okular.
 						
 :BibSearch /{pattern}/ [flag]				see |atp-:BibSearch|
 	This function finds bib entries in bib files defined in your tex file
@@ -1003,7 +1064,7 @@ In the log file there are some special tools to syncronize the tex source file
 and the Viewer (currently on xpdf is supported) with log file: |atp-:SyncTex|
 and |atp-:SyncXpdfLog|) These tools can sync tex file/xpdf automatically using
 autocommand group |CursorMoved|.
-							*atp-:SyncTex*
+							*atp-:SyncTex-(log_file)*
 :SyncTex[!]
 :nmap \g
 	If you open log file with ':ShowErrors o' command then you can use
@@ -1016,13 +1077,13 @@ autocommand group |CursorMoved|.
 	With bang [!] it opens new window if the file with error is not shown
 	in the current tab page. Without bang it opens the file in the window
 	where ':ShowErrors o' was used.
-							*g:atp_SyncLog*
+							*g:atp_LogSync*
 	If you set g:atp_SyncLog = 1 (the default value is 0) then the source
 	file will be syncronize with the log file via autocommand (with
 	|CursorMoved|). This sets 'cursorline' option to indicate the
 	corresponding line in the source file. When the log buffer becomes
 	hidden this option should be unset.
-							*atp-:Sync*
+							*atp-:LogSync*
 	To set g:atp_SyncLog you can use :Sync command. ':Sync' will toggle
 	the value, ':Sync on' will set it to 1 and ':Sync off' will set it 
 	to 0.
@@ -1031,10 +1092,9 @@ autocommand group |CursorMoved|.
 	under texmf tree (packages and classes).
 
 							*atp-:SyncXpdf*
-							*atp-:Xpdf*
 							*g:atp_SyncXpdfLog*
 	If you set g:atp_SyncXpdfLog = 1 (the default value is 0) and you use
-	xpdf as a viewer it will be synchronised with the log file (with
+	Xpdf as a viewer it will be synchronised with the log file (with
 	autocommand group |CursorMoved|). You can also use the command
 	:SyncXpdf or :Xpdf in the log buffer which does the same.
 
@@ -1173,6 +1233,8 @@ map <F6>d
 	    vmap <buffer> \n	:<C-U>InteligentWrapSelection ['\\textnormal{'],['\\mathnormal{']<CR>
 	    vmap <buffer> \cal	:<C-U>InteligentWrapSelection [''],['\\mathcal{']<CR>
 	    vmap <LocalLeader>f	:WrapSelection '{\usefont{'.g:atp_font_encoding.'}{}{}{}\selectfont ', '}',(len(g:atp_font_encoding)+11)<CR>
+
+	    vmap <LocalLeader>mb :WrapSelection '\\mbox{', '}', 'begin'<CR>
 <   	Suggested maps: >
 	    vmap <buffer> \tx	:<C-U>InteligentWrapSelection [''],['\\text{']<CR>
 	    vmap <buffer> \in	:<C-U>InteligentWrapSelection [''],['\\intertext{']<CR>"
@@ -3072,6 +3134,11 @@ PROJECT SCRIPT						*atp-ProjectScript*
  let g:atp_delete_output	= 0
 <	If set to 1 then Delete function (map <F6>d) will delete also the
 	output file.	
+							*g:atp_cpcmd*
+>
+ let g:atp_cpcmd		= "/bin/cp"
+< 	This sets the copy command used by compiler. The value tries to not use
+	shell internal function and to avoid the -i switch (ask if overwrite). 
 
 							*g:atp_tex_extensions*	
 >
@@ -3459,7 +3526,8 @@ visual mode: ie, iE, ae, im, am, ip, ap, iS, aS, c
 				e 	- environment 
 				p	- paragraph	  
 				m	- math zones: \(:\), $:$, \[:\], $$:$$, 
-					  or math environment \begin:\end.
+					  or math environment \begin:\end.ard
+					  search is set by ATP
 				)	- bracket
 				s	- syntax
 <								*atp-vie* *atp-viE* *atp-vae*
@@ -3527,11 +3595,15 @@ There is a map to use pdffonts, see: |pdffonts|.
 NOTES ON VIEWERS                          			*atp-viewers*
 
 
-xpdf								*atp-viewers-xpdf*
-	It is fully supported. It is configured in the way that when your tex
-	file have errors, xpdf viewer will not reload your file, which I found
-	useful. 
-
+Xpdf								*atp-viewers-Xpdf*
+	It is supported. It is configured in the way that when your tex file
+	have errors, xpdf viewer will not reload your file, which I found
+	useful. Xpdf supports forward searching (vim->Xpdf)
+	with command: |atp-:SyncTex| >
+		:SyncTex
+		map t
+		map <S-LeftMouse>
+<	There is useful command |atp-:SetXpdf|.
 	You can set your own options of xpdf using b:XpdfOptions, for example
 >
 	    let b:atp_xpdfOptions="-bg NavajoWhite4 -fg black -mattecolor burylwood"
@@ -3541,128 +3613,86 @@ xpdf								*atp-viewers-xpdf*
 >
 	    let b:atp_xpdfOptions="-bg Grey30 -mattecolor SlateBlue2 -papercolor White"
 <
-evince
+Evince
 	Works fine.
-								*atp-viewers-okular*
-okular
-	Works fine. Note that okular has supports syncing in pdf. Just use
-	'pdfsync' package ('\usepackage{pdfsync}') and set the option in
-	okular: >
+								*atp-viewers-Okular*
+Okular
+	Works fine. It supports both forward (Vim->Okular) and inverse
+	(Okular->Vim) searches. Okular supports forward searching (vim->Okular)
+	with command: |atp-:SyncTex| >
+		:SyncTex
+		map t
+		map <S-LeftMouse>
+<	Here is how to CONFIGURE REVERSE SEARCHING (Okular->Vim): 
+	open Okular and go to >
 		settings>Configure Okular>Editor
 <	and set >
 		Editor		Custom Text Editor
-		Command		gvim --servername GVIM --remote-expr "atplib#FindAndOpen('%f','%l')"
-<	Then you can use <Shift>+<Left_Mouse> in okular to syncronize the gvim
-	with pdf. This syncing is not 100% accurate and you can find on the
-	pdfsync web-page that this is not a bug. For me syncing in xdvi works
-	better. 
+		Command		$HOME/.vim/ftplugin/ATP_files/atp_RevSearch.py '%p' '%l'
+<	NOTE: You must substitute $HOME directory to its value!!! It will not
+	work other way. You can also copy the script somewhere inside your
+	$PATH but then when this script will change you have to keep in mind
+	to copy it again. 
+
+	Next you have to add executable permissions to the python script
+	atp_RevSearch.py (in terminal: go to $HOME/.vim/ftplugin/ATP_files/,
+	and type: chmod 755 atp_RevSearch.py).
+
+	Then you can use <Shift>+<Left_Mouse> in Okular to synchronize the Vim
+	(gVim) with pdf. 
+
+								*atplib#FindAndOpen()*	
+	The function atplib#FindAndOpen() asks each running gvim server if is
+	is "hosting" source of the file %f. Then it uses this server to set
+	the line (but it doesn't check if the cursor is in the right window!).
+	Note: if you like command line vim (which has its own beauty
+	- actually I'm just typing in it :) you need to set up vim server
+	  option on startup: >
+ 		vim --servername VIM <file>
+<	{LIMITATIONS}:
+	The project files which are split into many input files are not yet
+	supported.
 	
-	The function atplib#FindAndOpen asks each running gvim server if is is
-	"hosting" source of the file %f. Then it uses this server to set the
-	line (but it doesn't check if the cursor is in the right window!).
 
-	To do:
-	The function 'atplib#FindAndOpen' will not start gvim if it is not
-	running.
-
-	Alternative configuration would be to run okular from vim and
-	set the Command to >
-		Command 	gvim --servername GVIM --remote-wait +%l %f
-<	but I don't know how to set this from the command line. If you know,
-	Many Thanks for Reporting!
-
-
-kpdf
+Kpdf
 	Works fine (moves page a little bit when updates a file).
-epdfview
+
+EpdfView
 	This viewer does not support automatic reloads when the file changes
 	(but it seems that the work is in progress). You have to issue CTRL-R
 	yourself when the file is changed.
-acroread
+
+AcroRead
 	As with epdfview (with the difference that it supports automatic
-	updates, but it do not works somehow)
-								
-xdvi							*atp-viewers-xdvi*
-							*atp-viewers-xdvi-reverse/inverse-searching*
+	updates, but it do not works somehow). There is a way to configure
+	forward searching (Vim->AcroRead)! but it is not supported yet, if you
+	really want it, write to me.
+
+Xdvi								*atp-viewers-Xdvi*
 	Works fine. The file will be updated after a click (or use the xdvi
 	options '-watchfile 1' see man xdvi for explanations). You can set
-	inverse/reverse searching by the command |SetXdvi|. It is recommended
-	to use gVim rather than Vim, if you want to use Vim you have to run it
-	with the command: >
+	forward/reverse searching by the command |SetXdvi| then use
+	|atp-:SyncTex| for forward searching (Vim->Xdvi). To get reverse
+	searching Xdvi must be opened by ATP (:ViewOutput, or any other
+	command)
+
+	If you want to use Vim you have to run it with the command: >
  		vim --servername xdvi <file>
 <	You can pick any server name.
 	
-	The command SetXdvi defines a new function:
-
-RevSearch()							*atp-:RevSearch*
-map \rs, :RevSearch
-	Which makes an reverse search (sets the xdvi position according to the
-	cursor position in gVim).
-
-	Here I describe how inverse/reverse searching is done. 
-	
-    (1) Inverse searching
-	(i.e. position Vim's cursor after xdvi event:
-	usually CTRL+Left Mouse) with this options:
->
+	ATP supports forward (Vim->Xdvi) and inverse (Xdvi->Vim) searching for
+	Xdvi. The forward search is set by ATP (see |atp:SyncTex|), the
+	inverse search is set by: >
 	    let b:atp_TexCompiler	= "latex"
 	    let b:atp_TexOptions	= "-src-specials"
 	    let b:atp_Viewer		= "xdvi -editor 'gvim --remote-wait +%l %f'"
-<
-	See Vim tip at: http://Vim.wikia.com/wiki/Vim_can_interact_with_xdvi 	
+<	They are not set by default, however there is simple command to set
+	them at once |atp-:SetXdvi|.	
+	This are excellent sources of information on this:
+	    http://xdvi.sourceforge.net/inverse-search.html
+	    http://Vim.wikia.com/wiki/Vim_can_interact_with_xdvi
 
-    (2) Reverse searching
-	For reverse searching (position xdvi according to the Vim's cursor
-	position) you can set:
->
-	    let b:reverse_search="xdvi -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
-<
-	To make an reverse search:
->
-		:call system(b:reverse_search)
-<
-	And xdvi will place itself at the current cursor position in the 'tex'
-	source file. You can make a map for this. 
-
-	To use this with Vim one have to add server name. Run
-	Vim as:
->
-	    vim --servername VimTeX
-	    let b:atp_Viewer="xdvi -editor 'vim --servername " . v:servername . " --remote-wait +%l %f'"
-	    let b:reverse_search="xdvi -editdor 'vim --servername " . v:servername "' -sourceposition " . line(".") . ":" . col(".") . fnamemodify(expand("%"),":p") . " " . fnamemodify(expand("%"),":p:r") . ".dvi"
-<
-	In case of troubles:
-
-	Reverse Searching:
-	    If reverse searching do not works for you, and you get an error, that
-	    there is no reference to your tex file in the dvi file, then open
-	    your dvi file in an editor (Vim :) and check what is the name after
-	    'src:<line number>' (this are the source specials put by 'latex
-	    -src-specials' command). It should refer to your tex file. Xdvi
-	    will not recognize if you specify the full name of the tex file (i.e.
-	    with path) in the b:reverse_search (as we do above using the
-	    modifier :p and the function fnamemodify in
-	    'fnamemodify(expand("%"),":p")' the other one with ":p:r" is OK!)
-	    and in the dvi file there is written just the name without the
-	    path (and vice versa, if you give just the name in
-	    b:reverse_search and in the file there is full path).
-	    
-	There is an excellent web pages on inverse/reverse searching with
-	xdvi: >
-		http://xdvi.sourceforge.net/inverse-search.html
-<	'tip': You can put in your atprc file |atprc| file >
-		    au BufEnter *.tex :SetXdvi
-<	'tip': If you want to change the name of the command this is also
-	       possible for example by putting in you atprc file: >
-     augroup DelCommands
-	 au VimEnter *tex delcommand SetXdvi
-	 au VimEnter *tex delcommand SetXpdf
-     augroup END
-     command! -buffer	Xdvi	:call SetXdvi()
-     command! -buffer	Xpdf	:call SetXpdf()
-<    
-
-zathura							
+Zathura							
 	Perfectly works.
 
 ================================================================================

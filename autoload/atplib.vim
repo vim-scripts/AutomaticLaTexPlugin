@@ -173,18 +173,27 @@ endfunction
 " 		vim --servername VIM
 " and use servername VIM in the Command above.		
 function! atplib#FindAndOpen(file, line)
-    let file		= fnamemodify(a:file, ":p:r") . ".tex"
+    let file		= ( fnamemodify(a:file, ":e") == "tex" ? a:file : fnamemodify(a:file, ":p:r") . ".tex" )
     let server_list	= split(serverlist(), "\n")
+    if len(server_list) == 0
+	retun 1
+    endif
     for server in server_list
 	if remote_expr(server, "bufexists('".file."')")
 	    let use_server	= server
 	    break
 	else
-	    let use_server	= "GVIM"
+	    let use_server	= "no_server"
 	endif
     endfor
-    call system("gvim --servername " . use_server . " --remote-wait +" . a:line . " " . file . " &")
-    return "File:".file." line:".line. " server name:".use_server." Hitch-hiking server:".v:servername 
+    if use_server == "no_server"
+	let use_server=serverlist[0]
+    endif
+    call system("gvim --servername " . use_server . " --remote-wait +" . a:line . " " . fnameescape(file) . " &")
+    redir > /tmp/atp_debugreversesearch
+	echo "file:".file." line:".a:line. " server name:".use_server." hitch-hiking server:".v:servername 
+    redir end
+    return "File:".file." line:".a:line. " server name:".use_server." Hitch-hiking server:".v:servername 
 endfunction
 "}}}1
 

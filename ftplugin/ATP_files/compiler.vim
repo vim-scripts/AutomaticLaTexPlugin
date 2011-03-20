@@ -29,7 +29,7 @@ function! <SID>ViewOutput(...)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
-    let rev_search	= ( a:0 == 1 && a:1 == "RevSearch" ? 1 : 0 )
+    let fwd_search	= ( a:0 == 1 && a:1 =~? 'sync' ? 1 : 0 )
 
     call atplib#outdir()
 
@@ -51,18 +51,35 @@ function! <SID>ViewOutput(...)
     endif
 
     if b:atp_Viewer == "xpdf"	
-	let viewer	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . getbufvar("%", b:atp_Viewer.'Options') 
+	let viewer	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer)
     else
-	let viewer	= b:atp_Viewer  . " " . getbufvar("%", "atp_".b:atp_Viewer.'Options')
+	let viewer	= b:atp_Viewer
     endif
 
-    let view_cmd	= viewer . " " . global_options . " " . local_options . " " . shellescape(outfile)  . " &"
+
+    let sync_args 	= ( fwd_search ?  <SID>SyncTex(0,1) : "" )
+    let g:global_options = global_options
+    let g:local_options = local_options
+    let g:sync_args	= sync_args
+    let g:viewer	= viewer
+    if b:atp_Viewer =~ '\<okular\>' && fwd_search
+	let view_cmd	= "(".viewer." ".global_options." ".local_options." ".sync_args.")&"
+    elseif b:atp_Viewer =~ '^\s*xdvi\>'
+	let view_cmd	= "(".viewer." ".global_options." ".local_options." ".sync_args." ".shellescape(outfile).")&"
+    else
+" I couldn't get it work with okular.	
+" 	let SyncTex	= s:SidWrap('SyncTex')
+" 	let sync_cmd 	= (fwd_search ? "vim "." --servername ".v:servername." --remote-expr "."'".SyncTex."()';" : "" ) 
+" 	let g:sync_cmd=sync_cmd
+	let view_cmd	= viewer." ".global_options." ".local_options." ".shellescape(outfile)."&"
+    endif
 
     if g:atp_debugV
 	let g:view_cmd	= view_cmd
     endif
 
     if filereadable(outfile)
+	let g:debug=0
 	if b:atp_Viewer == "xpdf"	
 	    call system(view_cmd)
 	else
@@ -70,8 +87,9 @@ function! <SID>ViewOutput(...)
 	    redraw!
 	endif
     else
+	let g:debug=1
 	echomsg "Output file do not exists. Calling " . b:atp_TexCompiler
-	if rev_search
+	if fwd_search
 	    call s:Compiler( 0, 2, 1, 'silent' , "AU" , atp_MainFile, "")
 	else
 	    call s:Compiler( 0, 1, 1, 'silent' , "AU" , atp_MainFile, "")
@@ -81,6 +99,113 @@ endfunction
 noremap <silent> 		<Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
 "}}}
 
+" Forward Search
+function! <SID>GetSyncData()
+
+     	if !filereadable(fnamemodify(atplib#FullPath(b:atp_MainFile), ":r").'.synctex.gz') 
+	    echomsg "Calling ".get(g:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)." to generate synctex data. Wait a moment..."
+ 	    call system(b:atp_TexCompiler . " -synctex=1 " . b:atp_MainFile) 
+ 	endif
+	" Note: synctex view -i line:col:tex_file -o output_file
+	" tex_file must be full path.
+	let synctex_cmd="synctex view -i ".line(".").":".col(".").":'".fnamemodify(b:atp_MainFile, ":p"). "' -o '".fnamemodify(b:atp_MainFile, ":p:r").".pdf'"
+
+	let synctex_output=split(system(synctex_cmd), "\n")
+	if get(synctex_output, 1, '') =~ '^SyncTex Warning:'
+	    return [ "no_sync", get(synctex_output, 1, '') ]
+	endif
+
+	if g:atp_debugSync
+	    let g:synctex_cmd=synctex_cmd
+	    let g:synctex_ouput=copy(synctex_output)
+	endif
+
+	let page_list=copy(synctex_output)
+	call filter(page_list, "v:val =~ '^\\cpage:\\d\\+'")
+	let page=get(page_list, 0, "no_sync") 
+	let y_coord_list=copy(synctex_output) 
+	call filter(y_coord_list, "v:val =~ '^\\cy:\\d\\+'")
+	let y_coord=matchstr(get(y_coord_list, 0, "no sync data"), 'y:\zs[0-9.]*')
+
+	if g:atp_debugSync
+	    let g:page=page
+	    let g:y_coord=y_coord
+	endif
+
+	if page == "no_sync"
+	    return [ "no_sync", "No SyncTex Data: try on another line (comments are not allowed)." ]
+	endif
+	let page_nr=matchstr(page, '^\cPage:\zs\d\+') 
+	return [ page_nr, y_coord ]
+endfunction
+function! <SID>SyncShow( page_nr, y_coord)
+    if a:y_coord < 325
+	let height="Top"
+    elseif a:y_coord < 550
+	let height="Middle"
+    else
+	let height="Bottom"
+    endif
+    if a:page_nr != "no_sync"
+	echomsg height." of page ".a:page_nr
+    else
+	echohl WarningMsg
+	echomsg a:y_coord
+" 	echomsg "You cannot forward search on comment lines, if this is not the case try one or two lines above/below"
+	echohl Normal
+    endif
+endfunction
+function! <SID>SyncTex(...) "{{{
+    let dryrun 		= ( a:0 >= 2 && a:2 == 1 ? 1 : 0 )
+    let output_check 	= ( a:0 >= 1 && a:1 == 0 ? 0 : 1 )
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    let ext		= get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf")
+    let output_file	= fnamemodify(atp_MainFile,":p:r") . ext
+    if !filereadable(output_file) && output_check
+       ViewOutput sync
+       return 2
+    endif
+    if b:atp_Viewer == "xpdf"
+	let [ page_nr, y_coord ] = <SID>GetSyncData()
+	let sync_cmd = "xpdf -remote " . shellescape(b:atp_XpdfServer) . ' -exec gotoPage\('.page_nr.'\)'
+	let sync_args = sync_cmd
+	if !dryrun
+	    call system(sync_cmd)
+	    call <SID>SyncShow(page_nr, y_coord)
+	endif
+    elseif b:atp_Viewer == "okular"
+	let [ page_nr, y_coord ] = <SID>GetSyncData()
+	" This will not work in project files. (so where it is mostly needed.) 
+	let sync_cmd = "okular --unique ".shellescape(expand("%:p:r")).".pdf\\#src:".line(".").shellescape(expand("%:p"))." &"
+	let sync_args = " ".shellescape(expand("%:p:r")).".pdf\\#src:".line(".").shellescape(expand("%:p"))." "
+	if !dryrun
+	    call system(sync_cmd)
+	    redraw!
+	    call <SID>SyncShow(page_nr, y_coord)
+	endif
+"     elseif b:atp_Viewer == "evince"
+" 	let rev_searchcmd="synctex view -i ".line(".").":".col(".").":".fnameescape(b:atp_MainFile). " -o ".fnameescape(fnamemodify(b:atp_MainFile, ":p:r").".pdf") . " -x 'evince %{output} -i %{page}'"
+"     endif
+    elseif b:atp_Viewer =~ '^\s*xdvi\>'
+	let options = (exists("g:atp_xdviOptions") ? g:atp_xdviOptions : "" ) . getbufvar(bufnr(""), "atp_xdviOptions")
+	let sync_cmd = "xdvi ".options.
+		\ " -editor '".v:progname." --servername ".v:servername.
+		\ " --remote-wait +%l %f' -sourceposition " . 
+		\ line(".").":".col(".").shellescape(fnameescape(fnamemodify(expand("%"),":p"))). 
+		\ " " . fnameescape(output_file)
+	let sync_args = " -sourceposition ".line(".").":".col(".").shellescape(fnameescape(fnamemodify(expand("%"),":p")))." "
+	if !dryrun
+	    call system(sync_cmd)
+	endif
+    else
+	let sync_cmd=""
+    endif
+    let g:sync_cmd = sync_cmd
+    return sync_args
+endfunction 
+nmap <buffer> <Plug>SyncTex		:call <SID>SyncTex()<CR>
+"}}}
+"
 " This function gets the pid of the running compiler
 " ToDo: review LatexBox has a better approach!
 "{{{ Get PID Functions
@@ -399,10 +524,12 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     let g:ml_debug 	= ""
 
     let mode 		= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
-    let tex_options	= " -interaction nonstopmode -output-directory=" . fnameescape(b:atp_OutDir) . " " . b:atp_TexOptions
+    let tex_options	= " -interaction nonstopmode -output-directory=" . fnameescape(b:atp_OutDir) . " " . b:atp_TexOptions . " "
 
     " This supports b:atp_OutDir
-    let texfile		= b:atp_OutDir . fnamemodify(a:texfile, ":t")
+    let saved_cwd	= getcwd()
+    exe "lcd " . b:atp_OutDir
+    let texfile		= fnamemodify(a:texfile, ":t")
     let logfile		= fnamemodify(texfile, ":r") . ".log"
     let auxfile		= fnamemodify(texfile, ":r") . ".aux"
     let bibfile		= fnamemodify(texfile, ":r") . ".bbl"
@@ -422,6 +549,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 
 	if g:atp_debugML
 	silent echo a:run . " BEGIN " . strftime("%c")
+	silent echo "TEXFILE: ".texfile
 	silent echo a:run . " logfile=" . logfile . " " . filereadable(logfile) . " auxfile=" . auxfile . " " . filereadable(auxfile). " runtex_before=" . runtex_before . " a:force=" . a:force
 	endif
 
@@ -566,10 +694,10 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID . 
 		\ "MakeLatex\(\'".fnameescape(texfile)."\', ".did_bibtex.", 0, [".time[0].",".time[1]."], ".
 		\ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
-	let cmd	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . fnameescape(texfile) . " ; " . callback_cmd
+	let cmd	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . fnameescape(atplib#FullPath(texfile)) . " ; " . callback_cmd
 
 	    if g:atp_debugML
-	    let g:ml_debug .= "First run. (make log|aux|idx file)" . " [" . b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . fnameescape(texfile) . " ; " . callback_cmd . "]#"
+	    let g:ml_debug .= "First run. (make log|aux|idx file)" . " [" . cmd . "]#"
 	    silent echo a:run . " Run First CMD=" . cmd 
 	    let g:debug_cmd=cmd
 	    redir END
@@ -578,6 +706,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	redraw
 	echomsg "[MakeLatex] Updating files [".Compiler."]."
 	call system("(" . cmd . " )&")
+	exe "lcd " . saved_cwd
 	return "Making log file or aux file"
     endif
 
@@ -654,7 +783,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	  let callback_cmd = v:progname . " --servername " . v:servername . " --remote-expr \"" . compiler_SID .
 		      \ "MakeLatex\(\'".fnameescape(texfile)."\', ".did_bibtex." , ".did_index.", [".time[0].",".time[1]."], ".
 		      \ a:did_firstrun.", ".(a:run+1).", \'".a:force."\'\)\""
-	  let cmd	.= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . fnameescape(texfile) . " ; " . callback_cmd
+	  let cmd	.= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . tex_options . fnameescape(atplib#FullPath(texfile)) . " ; " . callback_cmd
 
 	      if g:atp_debugML
 	      silent echo a:run . " a:did_bibtex="a:did_bibtex . " did_bibtex=" . did_bibtex
@@ -664,6 +793,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 
 	  echomsg "[MakeLatex] " . message
 	  call system("(" . cmd . ")&")
+	  exe "lcd " . saved_cwd
 	  return "Making references|cross-references|index."
     endif
 
@@ -697,16 +827,9 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	let Reload_Viewer 	= b:atp_Viewer." -remote ".shellescape(b:atp_XpdfServer)." -reload &"
 	call system(Reload_Viewer)
     endif
+    exe "lcd " . saved_cwd
     return "Proper end"
 endfunction
-function! Make()
-    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
-    if &l:filetype =~ 'tex$'
-	call <SID>MakeLatex(atp_MainFile, 0,0, [],1,1,0,1)
-    endif
-    return ""
-endfunction
-
 "}}}
 
 " THE MAIN COMPILER FUNCTION:
@@ -757,18 +880,17 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	" this prevents from running tex as many times as the current line
 	" what can be done by a mistake using the range for the command.
 	if a:runs > s:runlimit
-	    let l:runs = s:runlimit
+	    let runs = s:runlimit
 	else
-	    let l:runs = a:runs
+	    let runs = a:runs
 	endif
 
-	let s:tmpdir=tempname()
-	let s:tmpfile=atplib#append(s:tmpdir, "/") . fnamemodify(a:filename,":t:r")
+	let tmpdir=b:atp_TmpDir . matchstr(tempname(), '\/\w\+\/\d\+')
+	let tmpfile=atplib#append(tmpdir, "/") . fnamemodify(a:filename,":t:r")
 	if exists("*mkdir")
-	    call mkdir(s:tmpdir, "p", 0700)
+	    call mkdir(tmpdir, "p", 0700)
 	else
-	    echoerr 'Your vim doesn't have mkdir function, there is a workaround this though. 
-			\ Send an email to the author: mszamot@gmail.com '
+	    echoerr 'Your vim doesn't have mkdir function'
 	endif
 
 	" SET THE NAME OF OUTPUT FILES
@@ -777,28 +899,30 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 
 	" check if the file is a symbolic link, if it is then use the target
 	" name.
-	let l:link=system("readlink " . a:filename)
-	if l:link != ""
-	    let l:basename=fnamemodify(l:link,":r")
+	let link=system("readlink " . a:filename)
+	if link != ""
+	    let basename=fnamemodify(link,":r")
 	else
-	    let l:basename=a:filename
+	    let basename=a:filename
 	endif
 
 	" finally, set the output file names. 
-	let outfile 	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . ext
-	let outaux  	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".aux"
-	let tmpaux  	= fnamemodify(s:tmpfile, ":r") . ".aux"
-	let tmptex  	= fnamemodify(s:tmpfile, ":r") . ".tex"
-	let outlog  	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . ".log"
+	let outfile 	= b:atp_OutDir . fnamemodify(basename,":t:r") . ext
+	let outaux  	= b:atp_OutDir . fnamemodify(basename,":t:r") . ".aux"
+	let tmpaux  	= fnamemodify(tmpfile, ":r") . ".aux"
+	let tmptex  	= fnamemodify(tmpfile, ":r") . ".tex"
+	let outlog  	= b:atp_OutDir . fnamemodify(basename,":t:r") . ".log"
+	let syncgzfile 	= b:atp_OutDir . fnamemodify(basename,":t:r") . ".synctex.gz"
+	let syncfile 	= b:atp_OutDir . fnamemodify(basename,":t:r") . ".synctex"
 
 "	COPY IMPORTANT FILES TO TEMP DIRECTORY WITH CORRECT NAME 
 "	except log and aux files.
-	let l:list	= copy(g:keep)
-	call filter(l:list, 'v:val != "log" && v:val != "aux"')
-	for l:i in l:list
-	    let l:ftc	= b:atp_OutDir . fnamemodify(l:basename,":t:r") . "." . l:i
-	    if filereadable(l:ftc)
-		call s:copy(l:ftc,s:tmpfile . "." . l:i)
+	let list	= copy(g:keep)
+	call filter(list, 'v:val != "log" && v:val != "aux"')
+	for i in list
+	    let ftc	= b:atp_OutDir . fnamemodify(basename,":t:r") . "." . i
+	    if filereadable(ftc)
+		call s:copy(ftc,tmpfile . "." . i)
 	    endif
 	endfor
 
@@ -827,7 +951,8 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 		" If run through RevSearch command use source specials rather than
 		" just reload:
 		if str2nr(a:start) == 2
-		    let callback_rs_cmd = " vim " . " --servername " . v:servername . " --remote-expr " . "'RevSearch()' ; "
+		    let synctex		= s:SidWrap('SyncTex')
+		    let callback_rs_cmd = " vim " . " --servername " . v:servername . " --remote-expr " . "'".synctex."()' ; "
 		    let Reload_Viewer	= callback_rs_cmd
 		endif
 	    else
@@ -836,54 +961,57 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 		let Reload_Viewer = " "
 	    endif	
 	endif
+	if g:atp_debugCompiler
+	    let g:Reload_Viewer = Reload_Viewer
+	endif
 
 " 	IF OPENING NON EXISTING OUTPUT FILE
 "	only xpdf needs to be run before (we are going to reload it)
 	if a:start && b:atp_Viewer == "xpdf"
 	    let xpdf_options	= ( exists("g:atp_xpdfOptions")  ? g:atp_xpdfOptions : "" )." ".getbufvar(0, "atp_xpdfOptions")
-	    let s:start 	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . xpdf_options . " & "
+	    let start 	= b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . xpdf_options . " & "
 	else
-	    let s:start = ""	
+	    let start = ""	
 	endif
 
 "	SET THE COMMAND 
-	let s:comp	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . " " . b:atp_TexOptions . " -interaction " . s:texinteraction . " -output-directory " . shellescape(s:tmpdir) . " " . shellescape(a:filename)
-	let s:vcomp	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . " " . b:atp_TexOptions  . " -interaction errorstopmode -output-directory " . shellescape(s:tmpdir) .  " " . shellescape(a:filename)
+	let comp	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . " " . b:atp_TexOptions . " -interaction=" . s:texinteraction . " -output-directory=" . shellescape(tmpdir) . " " . shellescape(a:filename)
+	let vcomp	= b:atp_TexCompilerVariable . " " . b:atp_TexCompiler . " " . b:atp_TexOptions  . " -interaction=errorstopmode -output-directory=" . shellescape(tmpdir) .  " " . shellescape(a:filename)
 	
 	" make function:
 " 	let make	= "vim --servername " . v:servername . " --remote-expr 'MakeLatex\(\"".tmptex."\",1,0\)'"
 
 	if a:verbose == 'verbose' 
-	    let s:texcomp=s:vcomp
+	    let texcomp=vcomp
 	else
-	    let s:texcomp=s:comp
+	    let texcomp=comp
 	endif
-	if l:runs >= 2 && a:bibtex != 1
+	if runs >= 2 && a:bibtex != 1
 	    " how many times we want to call b:atp_TexCompiler
-	    let l:i=1
-	    while l:i < l:runs - 1
-		let l:i+=1
-		let s:texcomp=s:texcomp . " ; " . s:comp
+	    let i=1
+	    while i < runs - 1
+		let i+=1
+		let texcomp=texcomp . " ; " . comp
 	    endwhile
 	    if a:verbose != 'verbose'
-		let s:texcomp=s:texcomp . " ; " . s:comp
+		let texcomp=texcomp . " ; " . comp
 	    else
-		let s:texcomp=s:texcomp . " ; " . s:vcomp
+		let texcomp=texcomp . " ; " . vcomp
 	    endif
 	endif
 	
 	if a:bibtex == 1
 	    " this should be decided using the log file as well.
 	    if filereadable(outaux)
-		call s:copy(outaux,s:tmpfile . ".aux")
-		let s:texcomp="bibtex " . shellescape(s:tmpfile) . ".aux ; " . s:comp . "  1>/dev/null 2>&1 "
+		call s:copy(outaux,tmpfile . ".aux")
+		let texcomp="bibtex " . shellescape(tmpfile) . ".aux ; " . comp . "  1>/dev/null 2>&1 "
 	    else
-		let s:texcomp=s:comp . " ; clear ; bibtex " . shellescape(s:tmpfile) . ".aux ; " . s:comp . " 1>/dev/null 2>&1 "
+		let texcomp=comp . " ; clear ; bibtex " . shellescape(tmpfile) . ".aux ; " . comp . " 1>/dev/null 2>&1 "
 	    endif
 	    if a:verbose != 'verbose'
-		let s:texcomp=s:texcomp . " ; " . s:comp
+		let texcomp=texcomp . " ; " . comp
 	    else
-		let s:texcomp=s:texcomp . " ; " . s:vcomp
+		let texcomp=texcomp . " ; " . vcomp
 	    endif
 	endif
 
@@ -899,26 +1027,26 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	endif
 
 	" copy output file (.pdf\|.ps\|.dvi)
-	let s:cpoption="--remove-destination "
-	let s:cpoutfile="cp " . s:cpoption . shellescape(atplib#append(s:tmpdir,"/")) . "*" . ext . " " . shellescape(atplib#append(b:atp_OutDir,"/")) . " ; "
+	let cpoptions	= "--remove-destination"
+	let cpoutfile	= g:atp_cpcmd." ".cpoptions." ".shellescape(atplib#append(tmpdir,"/"))."*".ext." ".shellescape(atplib#append(b:atp_OutDir,"/"))." ; "
 
 	if a:start
-	    let s:command="(" . s:texcomp . " ; (" . catchstatus_cmd . " " . s:cpoutfile . " " . Reload_Viewer . " ) || ( ". catchstatus_cmd . " " . s:cpoutfile . ") ; " 
+	    let command	= "(" . texcomp . " ; (" . catchstatus_cmd . " " . cpoutfile . " " . Reload_Viewer . " ) || ( ". catchstatus_cmd . " " . cpoutfile . ") ; " 
 	else
 	    " 	Reload on Error:
 	    " 	for xpdf it copies the out file but does not reload the xpdf
 	    " 	server for other viewers it simply doesn't copy the out file.
 	    if b:atp_ReloadOnError || a:bang == "!"
 		if a:bang == "!"
-		    let s:command="( " . s:texcomp . " ; " . catchstatus_cmd . " cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . "   ; " . s:cpoutfile . " " . Reload_Viewer 
+		    let command="( ".texcomp." ; ".catchstatus_cmd." ".g:atp_cpcmd." ".cpoptions." ".shellescape(tmpaux)." ".shellescape(b:atp_OutDir)." ; ".cpoutfile." ".Reload_Viewer 
 		else
-		    let s:command="( (" . s:texcomp . " && cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . "  ) ; " . catchstatus_cmd . " " . s:cpoutfile . " " . Reload_Viewer 
+		    let command="( (".texcomp." && ".g:atp_cpcmd." ".cpoptions." ".shellescape(tmpaux)." ".shellescape(b:atp_OutDir)." ) ; ".catchstatus_cmd." ".cpoutfile." ".Reload_Viewer 
 		endif
 	    else
 		if b:atp_Viewer =~ '\<xpdf\>'
-		    let s:command="( " . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . Reload_Viewer . " cp --remove-destination ". shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . " ) || (" . catchstatus_cmd . " " . s:cpoutfile . ") ; " 
+		    let command="( ".texcomp." && (".catchstatus_cmd.cpoutfile." ".Reload_Viewer." ".g:atp_cpcmd." ".cpoptions." ".shellescape(tmpaux)." ".shellescape(b:atp_OutDir)." ) || (".catchstatus_cmd." ".cpoutfile.") ; " 
 		else
-		    let s:command="(" . s:texcomp . " && (" . catchstatus_cmd . s:cpoutfile . " " . Reload_Viewer . " cp --remove-destination " . shellescape(tmpaux) . " " . shellescape(b:atp_OutDir) . " ) || (" . catchstatus_cmd . ") ; " 
+		    let command="(".texcomp." && (".catchstatus_cmd.cpoutfile." ".Reload_Viewer." ".g:atp_cpcmd." ".cpoptions." ".shellescape(tmpaux)." ".shellescape(b:atp_OutDir)." ) || (".catchstatus_cmd.") ; " 
 		endif
 	    endif
 	endif
@@ -926,26 +1054,29 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
     if g:atp_debugCompiler
 	silent echomsg "Reload_Viewer=" . Reload_Viewer
 	let g:Reload_Viewer 	= Reload_Viewer
-	let g:command		= s:command
+	let g:command		= command
     elseif g:atp_debugCompiler >= 2 
-	silent echomsg "s:command=" . s:command
+	silent echomsg "command=" . command
     endif
 
 	" Preserve files with extension belonging to the g:keep list variable.
-	let s:copy=""
-	let l:j=1
-	for l:i in filter(copy(g:keep), 'v:val != "aux"') 
+	let copy_cmd=""
+	let j=1
+	for i in filter(copy(g:keep), 'v:val != "aux"') 
 " ToDo: this can be done using internal vim functions.
-	    let s:copycmd=" cp " . s:cpoption . " " . shellescape(atplib#append(s:tmpdir,"/")) . 
-			\ "*." . l:i . " " . shellescape(atplib#append(b:atp_OutDir,"/"))  
-	    if l:j == 1
-		let s:copy=s:copycmd
+	    let copycmd=g:atp_cpcmd." ".cpoptions." ".shellescape(atplib#append(tmpdir,"/")).
+			\ "*.".i." ".shellescape(atplib#append(b:atp_OutDir,"/")) 
+	    if j == 1
+		let copy_cmd=copycmd
 	    else
-		let s:copy=s:copy . " ; " . s:copycmd	  
+		let copy_cmd=copy_cmd . " ; " . copycmd	  
 	    endif
-	    let l:j+=1
+	    let j+=1
 	endfor
-	let s:command=s:command . " " . s:copy . " ; " 
+	if g:atp_debugCompiler
+	    let g:copy_cmd = copy_cmd
+	endif
+	let command=command . " " . copy_cmd . " ; " 
 
 	" Callback:
 	if has('clientserver') && v:servername != "" && g:atp_callback == 1
@@ -954,7 +1085,7 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	    let callback_cmd 	= ' vim ' . ' --servername ' . v:servername . ' --remote-expr ' . 
 				    \ shellescape(callback).'\(\"'.a:verbose.'\"\)'. " ; "
 
-	    let s:command = s:command . " " . callback_cmd
+	    let command = command . " " . callback_cmd
 
 	endif
 
@@ -962,16 +1093,16 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	silent echomsg "callback_cmd=" . callback_cmd
     endif
 
- 	let s:rmtmp="rm -rf " . shellescape(s:tmpdir)
-	let s:command=s:command . " " . s:rmtmp . ")&"
+ 	let rmtmp="rm -rf " . shellescape(tmpdir) . "; "
+	let command=command . " " . rmtmp . ") &"
 
 	if str2nr(a:start) != 0 
-	    let s:command=s:start . s:command
+	    let command=start . command
 	endif
 
 	" Take care about backup and writebackup options.
-	let s:backup=&backup
-	let s:writebackup=&writebackup
+	let backup=&backup
+	let writebackup=&writebackup
 	if a:command == "AU"  
 	    if &backup || &writebackup | setlocal nobackup | setlocal nowritebackup | endif
 	endif
@@ -991,24 +1122,24 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
     endif
 
 	if a:command == "AU"  
-	    let &l:backup=s:backup 
-	    let &l:writebackup=s:writebackup 
+	    let &l:backup=backup 
+	    let &l:writebackup=writebackup 
 	endif
 
 	if a:verbose != 'verbose'
-	    call system(s:command)
+	    let g:atp_TexOutput=system(command)
 	else
-	    let s:command="!clear;" . s:texcomp . " " . s:cpoutfile . " " . s:copy 
-	    exe s:command
+	    let command="!clear;" . texcomp . " " . cpoutfile . " " . copy_cmd
+	    exe command
 	endif
 
 	unlockvar g:atp_TexCommand
-	let g:atp_TexCommand=s:command
+	let g:atp_TexCommand=command
 	lockvar g:atp_TexCommand
 
 
     if g:atp_debugCompiler
-	silent echomsg "s:command=" . s:command
+	silent echomsg "command=" . command
 	redir END
     endif
 endfunction
@@ -1163,15 +1294,23 @@ inoremap <silent> <Plug>iATP_TeXVerbose		<Esc>:<C-U>call <SID>TeX(v:count1, "", 
 function! <SID>SimpleBibtex()
     let bibcommand 	= "bibtex "
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
-    let auxfile		= b:atp_OutDir . (fnamemodify(resolve(atp_MainFile),":t:r")) . ".aux"
+    let auxfile		= fnamemodify(resolve(atp_MainFile),":t:r") . ".aux"
+    " When oupen_out = p (in texmf.cnf) bibtex can only open files in the working
+    " directory and they should no be given with full path:
+    "  		p (paranoid)   : as `r' and disallow going to parent directories, and
+    "                  		 restrict absolute paths to be under $TEXMFOUTPUT.
+    let saved_cwd	= getcwd()
+    exe "lcd " . b:atp_OutDir
+    let g:cwd = getcwd()
     if filereadable(auxfile)
 	let command	= bibcommand . shellescape(l:auxfile)
+	let g:command	= command
 	echo system(command)
     else
 	echomsg "aux file " . auxfile . " not readable."
     endif
+    exe "lcd " . saved_cwd
 endfunction
-" command! -buffer SBibtex		:call <SID>SimpleBibtex()
 nnoremap <silent> <Plug>SimpleBibtex	:call <SID>SimpleBibtex()<CR>
 
 function! <SID>Bibtex(bang,...)
@@ -1422,6 +1561,7 @@ endif "}}}
 " Commands: 
 " {{{
 command! -buffer -nargs=? 	ViewOutput		:call <SID>ViewOutput(<f-args>)
+command! -buffer 		SyncTex			:call <SID>SyncTex()
 command! -buffer 		PID			:call <SID>GetPID()
 command! -buffer -bang 		MakeLatex		:call <SID>MakeLatex(( g:atp_RelativePath ? globpath(b:atp_ProjectDir, fnamemodify(b:atp_MainFile, ":t")) : b:atp_MainFile ), 0,0, [],1,1,<q-bang>,1)
 command! -buffer -nargs=? -bang -count=1 -complete=customlist,TEX_Comp TEX	:call <SID>TeX(<count>, <q-bang>, <f-args>)

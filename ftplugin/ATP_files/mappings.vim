@@ -24,6 +24,9 @@ let g:atp_map_list	= [
 if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_maps == 0 ) && 
 	    \ ( !exists("g:no_atp_maps") || exists("g:no_plugin_maps") && g:no_atp_maps == 0 ) 
 
+nmap <buffer> <silent> t 		<Plug>SyncTex
+nmap <buffer> <silent> <S-LeftMouse> 	<Plug>SyncTex
+
 nmap <buffer> <silent> ]*	:SkipCommentForward<CR> 
 omap <buffer> <silent> ]*	:SkipCommentForward<CR> 
 nmap <buffer> <silent> gc	:SkipCommentForward<CR>
@@ -120,6 +123,7 @@ nmap <C-k> <Plug>TexJMotionBackward
 
     " Fonts:
     execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."f		:WrapSelection '{\\usefont{".g:atp_font_encoding."}{}{}{}\\selectfont ', '}', '".(len(g:atp_font_encoding)+11)."'<CR>"
+    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."mb		:WrapSelection '\\mbox{', '}', 'begin'<CR>"
 
 
     execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."te	:<C-U>InteligentWrapSelection ['\\textrm{'],['\\text{']<CR>"

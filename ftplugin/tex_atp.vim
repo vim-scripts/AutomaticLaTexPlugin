@@ -1,11 +1,11 @@
 " Title:		Vim filetype plugin file
 " Author:		Marcin Szamotulski
-" Email:		mszamot [AT] gmail [DOT] com
-" URL:			https://launchpad.net/automatictexplugin	
-" BUG Trucer:	https://bugs.launchpad.net/automatictexplugin
-" Language:		tex
-" Last Change: Fri Mar 18 10:00  2011 W
-" GetLatestVimScripts: 2945 60 :AutoInstall: tex_atp.vim
+" URL:			https://sourceforge.net/projects/atp-vim/
+" BUGS:			https://lists.sourceforge.net/lists/listinfo/atp-vim-list
+" 
+" Language:	    tex
+" Last Change: Sun Mar 20 05:00  2011 W
+" GetLatestVimScripts: 2945 61 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
 " 	  This file is a part of Automatic Tex Plugin for Vim.

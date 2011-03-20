@@ -3,7 +3,7 @@
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Fri Mar 18 10:00  2011 W
+" Last Change: Sun Mar 20 04:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -748,31 +748,31 @@ function! s:Delete(delete_output)
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     call atplib#outdir()
 
-    let l:atp_tex_extensions=deepcopy(g:atp_tex_extensions)
+    let atp_tex_extensions=deepcopy(g:atp_tex_extensions)
 
     if a:delete_output == "!"
 	if b:atp_TexCompiler == "pdftex" || b:atp_TexCompiler == "pdflatex"
-	    let l:ext="pdf"
+	    let ext="pdf"
 	else
-	    let l:ext="dvi"
+	    let ext="dvi"
 	endif
-	call add(l:atp_tex_extensions,l:ext)
+	call add(atp_tex_extensions,ext)
     endif
 
-    for l:ext in l:atp_tex_extensions
+    for ext in atp_tex_extensions
 	if executable(g:rmcommand)
 	    if g:rmcommand =~ "^\s*rm\p*" || g:rmcommand =~ "^\s*perltrash\p*"
-		if l:ext != "dvi" && l:ext != "pdf"
-		    let l:rm=g:rmcommand . " " . shellescape(b:atp_OutDir) . "*." . l:ext . " 2>/dev/null && echo Removed: ./*" . l:ext 
+		if ext != "dvi" && ext != "pdf"
+		    let rm=g:rmcommand . " " . shellescape(b:atp_OutDir) . "*." . ext . " 2>/dev/null && echo Removed: ./*" . ext 
 		else
-		    let l:rm=g:rmcommand . " " . shellescape(fnamemodify(atp_MainFile,":r")).".".l:ext . " 2>/dev/null && echo Removed: " . fnamemodify(atp_MainFile,":r").".".l:ext
+		    let rm=g:rmcommand . " " . shellescape(fnamemodify(atp_MainFile,":r")).".".ext . " 2>/dev/null && echo Removed: " . fnamemodify(atp_MainFile,":r").".".ext
 		endif
 	    endif
-	    echo system(l:rm)
+	    echo system(rm)
 	else
-	    let file=b:atp_OutDir . fnamemodify(expand("%"),":t:r") . "." . l:ext
+	    let file=b:atp_OutDir . fnamemodify(expand("%"),":t:r") . "." . ext
 	    if delete(file) == 0
-		echo "Removed " . l:file 
+		echo "Removed " . file 
 	    endif
 	endif
     endfor
@@ -882,7 +882,7 @@ function! s:OpenLog()
 		    let g:sync = sync
 		endif 
 
-	    if sync && !g:atp_SyncLog
+	    if sync && !g:atp_LogSync
 		exe "normal! " . cwd
 		let g:debugST 	= 1
 		return
@@ -1913,7 +1913,7 @@ command! -buffer 	ListPrinters				:echo <SID>ListPrinters("", "", "")
 command! -buffer 	ShowPackages				:let b:atp_PackageList = atplib#GrepPackageList() | echo join(b:atp_PackageList, "\n")
 command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
 command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
-command! -buffer -bang ReloadATP				:call <SID>ReloadATP(<q-bang>)
+command! -buffer ReloadATP					:call <SID>ReloadATP("!")
 command! -bang -buffer -nargs=1 AMSRef				:call AMSRef(<q-bang>, <q-args>)
 command! -buffer	Preambule				:call Preambule()
 command! -bang		WordCount				:call <SID>ShowWordCount(<q-bang>)

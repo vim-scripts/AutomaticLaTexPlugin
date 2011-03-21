@@ -172,26 +172,46 @@ endfunction
 " You can also use this with vim but you should start vim with
 " 		vim --servername VIM
 " and use servername VIM in the Command above.		
+function! atplib#ServerListOfFiles()
+    redir! > /tmp/atpvim_ServerListOfFiles.debug
+    let file_list = []
+    for nr in range(1, bufnr('$')-1)
+	let files 	= getbufvar(nr, "ListOfFiles")
+	let main_file 	= getbufvar(nr, "atp_MainFile")
+	if string(files) != "" 
+	    call add(file_list, main_file)
+	endif
+	if string(main_file) != ""
+	    call extend(file_list, files)
+	endif
+    endfor
+    call filter(file_list, 'v:val != ""')
+    call map(file_list, "fnamemodify(v:val, ':p')") 
+    redir end
+    return file_list
+endfunction
 function! atplib#FindAndOpen(file, line)
     let file		= ( fnamemodify(a:file, ":e") == "tex" ? a:file : fnamemodify(a:file, ":p:r") . ".tex" )
     let server_list	= split(serverlist(), "\n")
+    redir! > /tmp/atpvim_FindAndOpen.debug
+    echo "server list=".string(server_list)
     if len(server_list) == 0
 	retun 1
     endif
+    let use_server	= "no_server"
     for server in server_list
-	if remote_expr(server, "bufexists('".file."')")
+	let file_list=split(remote_expr(server, 'atplib#ServerListOfFiles()'), "\n")
+	echo "server " .server . " " . string(file_list)
+	if index(file_list, file) != -1
 	    let use_server	= server
 	    break
-	else
-	    let use_server	= "no_server"
 	endif
     endfor
     if use_server == "no_server"
-	let use_server=serverlist[0]
+	let use_server=server_list[0]
     endif
     call system("gvim --servername " . use_server . " --remote-wait +" . a:line . " " . fnameescape(file) . " &")
-    redir > /tmp/atp_debugreversesearch
-	echo "file:".file." line:".a:line. " server name:".use_server." hitch-hiking server:".v:servername 
+    echo "file:".file." line:".a:line. " server name:".use_server." hitch-hiking server:".v:servername 
     redir end
     return "File:".file." line:".a:line. " server name:".use_server." Hitch-hiking server:".v:servername 
 endfunction

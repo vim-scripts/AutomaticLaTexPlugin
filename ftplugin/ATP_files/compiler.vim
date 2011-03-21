@@ -100,7 +100,7 @@ noremap <silent> 		<Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
 "}}}
 
 " Forward Search
-function! <SID>GetSyncData()
+function! <SID>GetSyncData(line, col)
 
      	if !filereadable(fnamemodify(atplib#FullPath(b:atp_MainFile), ":r").'.synctex.gz') 
 	    echomsg "Calling ".get(g:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)." to generate synctex data. Wait a moment..."
@@ -108,7 +108,7 @@ function! <SID>GetSyncData()
  	endif
 	" Note: synctex view -i line:col:tex_file -o output_file
 	" tex_file must be full path.
-	let synctex_cmd="synctex view -i ".line(".").":".col(".").":'".fnamemodify(b:atp_MainFile, ":p"). "' -o '".fnamemodify(b:atp_MainFile, ":p:r").".pdf'"
+	let synctex_cmd="synctex view -i ".a:line.":".a:col.":'".fnamemodify(b:atp_MainFile, ":p"). "' -o '".fnamemodify(b:atp_MainFile, ":p:r").".pdf'"
 
 	let synctex_output=split(system(synctex_cmd), "\n")
 	if get(synctex_output, 1, '') =~ '^SyncTex Warning:'
@@ -155,9 +155,11 @@ function! <SID>SyncShow( page_nr, y_coord)
 	echohl Normal
     endif
 endfunction
-function! <SID>SyncTex(...) "{{{
+function! <SID>SyncTex(mouse, ...) "{{{
     let dryrun 		= ( a:0 >= 2 && a:2 == 1 ? 1 : 0 )
     let output_check 	= ( a:0 >= 1 && a:1 == 0 ? 0 : 1 )
+    let [ line, col ] 	= ( a:mouse ? [ v:mouse_lnum, v:mouse_col ] : [ line("."), col(".") ] )
+    echomsg "Lint=" . line
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let ext		= get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf")
     let output_file	= fnamemodify(atp_MainFile,":p:r") . ext
@@ -166,7 +168,7 @@ function! <SID>SyncTex(...) "{{{
        return 2
     endif
     if b:atp_Viewer == "xpdf"
-	let [ page_nr, y_coord ] = <SID>GetSyncData()
+	let [ page_nr, y_coord ] = <SID>GetSyncData(line, col)
 	let sync_cmd = "xpdf -remote " . shellescape(b:atp_XpdfServer) . ' -exec gotoPage\('.page_nr.'\)'
 	let sync_args = sync_cmd
 	if !dryrun
@@ -174,10 +176,10 @@ function! <SID>SyncTex(...) "{{{
 	    call <SID>SyncShow(page_nr, y_coord)
 	endif
     elseif b:atp_Viewer == "okular"
-	let [ page_nr, y_coord ] = <SID>GetSyncData()
+	let [ page_nr, y_coord ] = <SID>GetSyncData(line, col)
 	" This will not work in project files. (so where it is mostly needed.) 
-	let sync_cmd = "okular --unique ".shellescape(expand("%:p:r")).".pdf\\#src:".line(".").shellescape(expand("%:p"))." &"
-	let sync_args = " ".shellescape(expand("%:p:r")).".pdf\\#src:".line(".").shellescape(expand("%:p"))." "
+	let sync_cmd = "okular --unique ".shellescape(expand("%:p:r")).".pdf\\#src:".line.shellescape(expand("%:p"))." &"
+	let sync_args = " ".shellescape(expand("%:p:r")).".pdf\\#src:".line.shellescape(expand("%:p"))." "
 	if !dryrun
 	    call system(sync_cmd)
 	    redraw!
@@ -191,9 +193,9 @@ function! <SID>SyncTex(...) "{{{
 	let sync_cmd = "xdvi ".options.
 		\ " -editor '".v:progname." --servername ".v:servername.
 		\ " --remote-wait +%l %f' -sourceposition " . 
-		\ line(".").":".col(".").shellescape(fnameescape(fnamemodify(expand("%"),":p"))). 
+		\ line.":".col.shellescape(fnameescape(fnamemodify(expand("%"),":p"))). 
 		\ " " . fnameescape(output_file)
-	let sync_args = " -sourceposition ".line(".").":".col(".").shellescape(fnameescape(fnamemodify(expand("%"),":p")))." "
+	let sync_args = " -sourceposition ".line.":".col.shellescape(fnameescape(fnamemodify(expand("%"),":p")))." "
 	if !dryrun
 	    call system(sync_cmd)
 	endif
@@ -203,7 +205,8 @@ function! <SID>SyncTex(...) "{{{
     let g:sync_cmd = sync_cmd
     return sync_args
 endfunction 
-nmap <buffer> <Plug>SyncTex		:call <SID>SyncTex()<CR>
+nmap <buffer> <Plug>SyncTexKeyStroke		:call <SID>SyncTex(0)<CR>
+nmap <buffer> <Plug>SyncTexMouse		:call <SID>SyncTex(1)<CR>
 "}}}
 "
 " This function gets the pid of the running compiler
@@ -528,7 +531,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 
     " This supports b:atp_OutDir
     let saved_cwd	= getcwd()
-    exe "lcd " . b:atp_OutDir
+    exe "lcd " . fnameescape(b:atp_OutDir)
     let texfile		= fnamemodify(a:texfile, ":t")
     let logfile		= fnamemodify(texfile, ":r") . ".log"
     let auxfile		= fnamemodify(texfile, ":r") . ".aux"
@@ -706,7 +709,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	redraw
 	echomsg "[MakeLatex] Updating files [".Compiler."]."
 	call system("(" . cmd . " )&")
-	exe "lcd " . saved_cwd
+	exe "lcd " . fnameescape(saved_cwd)
 	return "Making log file or aux file"
     endif
 
@@ -793,7 +796,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 
 	  echomsg "[MakeLatex] " . message
 	  call system("(" . cmd . ")&")
-	  exe "lcd " . saved_cwd
+	  exe "lcd " . fnameescape(saved_cwd)
 	  return "Making references|cross-references|index."
     endif
 
@@ -827,7 +830,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	let Reload_Viewer 	= b:atp_Viewer." -remote ".shellescape(b:atp_XpdfServer)." -reload &"
 	call system(Reload_Viewer)
     endif
-    exe "lcd " . saved_cwd
+    exe "lcd " . fnameescape(saved_cwd)
     return "Proper end"
 endfunction
 "}}}
@@ -1300,7 +1303,7 @@ function! <SID>SimpleBibtex()
     "  		p (paranoid)   : as `r' and disallow going to parent directories, and
     "                  		 restrict absolute paths to be under $TEXMFOUTPUT.
     let saved_cwd	= getcwd()
-    exe "lcd " . b:atp_OutDir
+    exe "lcd " . fnameescape(b:atp_OutDir)
     let g:cwd = getcwd()
     if filereadable(auxfile)
 	let command	= bibcommand . shellescape(l:auxfile)
@@ -1309,7 +1312,7 @@ function! <SID>SimpleBibtex()
     else
 	echomsg "aux file " . auxfile . " not readable."
     endif
-    exe "lcd " . saved_cwd
+    exe "lcd " . fnameescape(saved_cwd)
 endfunction
 nnoremap <silent> <Plug>SimpleBibtex	:call <SID>SimpleBibtex()<CR>
 

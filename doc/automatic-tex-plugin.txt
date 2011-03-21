@@ -3628,7 +3628,7 @@ Okular
 		settings>Configure Okular>Editor
 <	and set >
 		Editor		Custom Text Editor
-		Command		$HOME/.vim/ftplugin/ATP_files/atp_RevSearch.py '%p' '%l'
+		Command		$HOME/.vim/ftplugin/ATP_files/atp_RevSearch.py '%f' '%l'
 <	NOTE: You must substitute $HOME directory to its value!!! It will not
 	work other way. You can also copy the script somewhere inside your
 	$PATH but then when this script will change you have to keep in mind
@@ -3637,6 +3637,11 @@ Okular
 	Next you have to add executable permissions to the python script
 	atp_RevSearch.py (in terminal: go to $HOME/.vim/ftplugin/ATP_files/,
 	and type: chmod 755 atp_RevSearch.py).
+
+	If it is not working for you, please report it, you can also
+	use: >
+	    gvim --remote-wait +%l "+normal %c|" %f
+<
 
 	Then you can use <Shift>+<Left_Mouse> in Okular to synchronize the Vim
 	(gVim) with pdf. 

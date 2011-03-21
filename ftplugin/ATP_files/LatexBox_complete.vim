@@ -129,7 +129,7 @@ function! LatexBox_kpsewhich(file)
 	let out = substitute(out, '\r', '', 'g')
 	let out = glob(fnamemodify(out, ':p'), 1)
 	
-	execute 'lcd ' . old_dir
+	execute 'lcd ' . fnameescape(old_dir)
 
 	return out
 endfunction

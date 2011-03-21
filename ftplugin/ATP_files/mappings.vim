@@ -24,8 +24,8 @@ let g:atp_map_list	= [
 if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_maps == 0 ) && 
 	    \ ( !exists("g:no_atp_maps") || exists("g:no_plugin_maps") && g:no_atp_maps == 0 ) 
 
-nmap <buffer> <silent> t 		<Plug>SyncTex
-nmap <buffer> <silent> <S-LeftMouse> 	<Plug>SyncTex
+nmap <buffer> <silent> t 		<Plug>SyncTexKeyStroke
+nmap <buffer> <silent> <S-LeftMouse> 	<LeftMouse><Plug>SyncTexKeyStroke
 
 nmap <buffer> <silent> ]*	:SkipCommentForward<CR> 
 omap <buffer> <silent> ]*	:SkipCommentForward<CR> 

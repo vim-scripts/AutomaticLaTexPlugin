@@ -12,7 +12,7 @@ if !s:sourced
 function! <SID>HelpMathIMaps()
 
     if exists("g:no_plugin_maps") || exists("g:no_atp_maps")
-	echomsg "ATP maps are turned off"
+	echomsg "[ATP:] ATP maps are turned off"
 	return ''
     endif
 
@@ -55,7 +55,7 @@ silent call <SID>HelpMathIMaps()
 function! <SID>HelpEnvIMaps()
 
     if exists("g:no_plugin_maps") || exists("g:no_atp_maps")
-	echomsg "ATP maps are turned off"
+	echomsg "[ATP:] ATP maps are turned off"
 	return ''
     endif
 
@@ -88,7 +88,7 @@ silent call <SID>HelpEnvIMaps()
 function! <SID>HelpVMaps() 
 
     if exists("g:no_plugin_maps") || exists("g:no_atp_maps")
-	echomsg "ATP maps are turned off"
+	echomsg "[ATP:] ATP maps are turned off"
 	return ''
     endif
 

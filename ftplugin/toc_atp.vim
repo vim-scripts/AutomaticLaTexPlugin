@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Sun Feb 27 11:00  2011 W
+" Last Change: Fri Apr 08 07:00  2011 W
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 
@@ -202,7 +202,7 @@ function! <SID>yank(arg) " {{{
     if choice	== "nokey"
 	" in TOC, if there is a key we will give it back if not:
 	au! CursorHold __ToC__
-	echomsg "There is no key."
+	echomsg "[ATP:] there is no key."
 	sleep 750m
 	au CursorHold __ToC__ :call EchoLine()
 	return ""
@@ -430,7 +430,7 @@ function! s:CompareNumbers(i1, i2)
     return str2nr(a:i1) == str2nr(a:i2) ? 0 : str2nr(a:i1) > str2nr(a:i2) ? 1 : -1
 endfunction "}}}1
 
-" DeleteSection, PasteSection, SectionStack, Undo 
+" YankSection, DeleteSection, PasteSection, SectionStack, Undo 
 " {{{1
 " Stack of sections that were removed but not yet paste
 " each entry is a list [ section title , list of deleted lines, section_nr ]
@@ -441,6 +441,107 @@ if expand("%") == "__ToC__"
     if !exists("t:atp_SectionStack")
 	let t:atp_SectionStack 	= []
     endif
+
+    function! <SID>YankSection(...)
+
+	let register = ( a:0 >= 1 ? '"'.a:1 : '' ) 
+
+	" if under help lines do nothing:
+	let toc_line	= getbufline("%",1,"$")
+	let h_line	= index(reverse(copy(toc_line)),'')+1
+	if line(".") > len(toc_line)-h_line
+	    return ''
+	endif
+
+	let s:deleted_section = toc_line
+
+	" Get the name and path of the file
+	" to operato on
+	let file_name	= s:file()
+
+	let begin_line	= s:getlinenr()
+	let section_nr	= s:getsectionnr()
+	let toc		= deepcopy(t:atp_toc[file_name]) 
+	let type	= toc[begin_line][0]
+
+	" Only some types are supported:
+	if count(['bibliography', 'subsubsection', 'subsection', 'section', 'chapter', 'part'], type) == 0
+	    echo type . " is not supported"
+	    sleep 750m
+	    return
+	endif
+
+	" Find the end of the section:
+	" part 		is ended by part
+	" chapter		is ended by part or chapter
+	" section		is ended by part or chapter or section
+	" and so on,
+	" bibliography 	is ended by like subsubsection.
+	if type == 'part'
+	    let type_pattern = 'part\|bibliography'
+	elseif type == 'chapter'
+	    let type_pattern = 'chapter\|part\|bibliography'
+	elseif type == 'section'
+	    let type_pattern = '\%(sub\)\@<!section\|chapter\|part\|bibliography'
+	elseif type == 'subsection'
+	    let type_pattern = '\%(sub\)\@<!\%(sub\)\=section\|chapter\|part\|bibliography'
+	elseif type == 'subsubsection' || type == 'bibliography'
+	    let type_pattern = '\%(sub\)*section\|chapter\|part\|bibliography'
+	endif
+	let title		= toc[begin_line][2]
+	call filter(toc, 'str2nr(v:key) > str2nr(begin_line)')
+	let end_line 	= -1
+	let bibliography	=  0
+
+	for line in sort(keys(toc), "s:CompareNumbers")
+	    if toc[line][0] =~ type_pattern
+		let end_line = line-1
+		if toc[line][0] =~ 'bibliography'
+		    let bibliography = 1
+		endif
+		break
+	    endif
+	endfor
+
+	if end_line == -1 && &l:filetype == "plaintex"
+	    " TODO:
+	    echomsg "[ATP:] can not yank last section in plain tex files :/"
+	    sleep 750m
+	    return
+	endif
+
+	" Window to go to
+	let toc_winnr	= winnr()
+	let gotowinnr	= s:gotowinnr()
+
+	if gotowinnr != -1
+	    exe gotowinnr . " wincmd w"
+	else
+	    exe gotowinnr . " wincmd w"
+	    exe "e " . fnameescape(file_name)
+	endif
+	    
+	"finally, set the position
+	let winview	= winsaveview()
+	keepjumps call setpos('.',[0,begin_line,1,0])
+	normal! V
+	if end_line != -1 && !bibliography
+	    keepjumps call setpos('.',[0, end_line, 1, 0])
+	elseif bibliography
+	    keepjumps call setpos('.',[0, end_line, 1, 0])
+	    let end_line 	= search('^\s*$', 'cbnW')-1
+	elseif end_line == -1
+	    let end_line 	= search('\ze\\end\s*{\s*document\s*}')
+	    normal! ge
+	endif
+
+	execute 'normal '.register.'y'
+" 	call cursor(saved_pos[1:2])
+	call winrestview(winview)
+	execute toc_winnr . "wincmd w"
+    endfunction
+    command! -buffer -nargs=? YankSection	:call <SID>YankSection(<f-args>)
+
 
     function! s:DeleteSection()
 
@@ -502,7 +603,7 @@ if expand("%") == "__ToC__"
 	endfor
 
 	if end_line == -1 && &l:filetype == "plaintex"
-	    echomsg "ATP can not delete last section in plain tex files :/"
+	    echomsg "[ATP:] can not delete last section in plain tex files :/"
 	    sleep 750m
 	    return
 	endif
@@ -574,7 +675,7 @@ if expand("%") == "__ToC__"
 
 	if !len(t:atp_SectionStack)
 	    sleep 750m
-	    echomsg "The stack of deleted sections is empty"
+	    echomsg "[ATP:] the stack of deleted sections is empty"
 	    return
 	endif
 
@@ -639,7 +740,7 @@ if expand("%") == "__ToC__"
     " Lists title of sections in the t:atp_SectionStack
     function! s:SectionStack()
 	if len(t:atp_SectionStack) == 0
-	    echomsg "Section stack is empty"
+	    echomsg "[ATP:] section stack is empty"
 	    sleep 750m
 	    return
 	endif
@@ -681,8 +782,10 @@ function! Help() " {{{1
     echo "p or P			yank and paste the label (in the source file)"
     echo "e			echo the title to command line"
     if expand("%")  == "__ToC__"
+	echo ":YankSection [reg]	Yank section under the cursor to register"
+	echo "                  	  (by default to the unnamed register \")"
 	echo ":DeleteSection		Delete section under the cursor"
-	echo ":PasteSection [<arg>] 	Paste section from section stack"
+	echo ":PasteSection [arg] 	Paste section from section stack"
 	echo ":SectionStack		Show section stack"
 	echo ":Undo			Undo"
     endif
@@ -719,3 +822,4 @@ if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
     map <silent> <buffer> e 		:call EchoLine()<CR>
     map <silent> <buffer> <F1>		:call Help()<CR>
 endif
+" vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

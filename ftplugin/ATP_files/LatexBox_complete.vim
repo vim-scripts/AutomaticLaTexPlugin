@@ -174,7 +174,7 @@ function! LatexBox_BibSearch(regexp)
 	" find bib data
     let bibdata = s:FindBibData()
     if bibdata == ''
-	echomsg 'error: no \bibliography{...} command found'
+	echomsg '[ATP:] error: no \bibliography{...} command found'
 	return
     endif
 
@@ -260,7 +260,7 @@ function! s:CompleteLabels(regex, ...)
 	" search for the target equation number
 	for line in filter(readfile(file), 'v:val =~ ''^\\newlabel{\|^\\@input{''')
 
-		echomsg "matching line: " . line
+		echomsg "[ATP:] matching line: " . line
 
 		" search for matching label
 		let matches = matchlist(line, '^\\newlabel{\(' . a:regex . '[^}]*\)}{{\([^}]*\)}{\([^}]*\)}.*}')

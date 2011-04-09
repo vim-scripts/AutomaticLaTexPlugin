@@ -65,6 +65,7 @@ let g:atp_cached_local_variables = [
 	    \ 'b:atp_LocalColors',
 	    \ 'b:TreeOfFiles', 			'b:ListOfFiles', 
 	    \ 'b:TypeDict', 			'b:LevelDict', 
+	    \ 'b:atp_StarEnvDefault', 		'b:atp_StarMathEnvDefault',
 	    \ ]
 " Note: b:atp_ProjectDir is not here by default by the following reason: it is
 " specific to the host, without it sharing the project file is possible.
@@ -121,7 +122,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 
     " Global variable overrides local one
     if !ignore && ( exists("g:atp_ProjectScript") && !g:atp_ProjectScript || exists("b:atp_ProjectScript") && ( !b:atp_ProjectScript && (!exists("g:atp_ProjectScript") || exists("g:atp_ProjectScript") && !g:atp_ProjectScript )) )
-	exe silent . ' echomsg "ATP LoadScirpt: not loading project script."'
+	exe silent . ' echomsg "[ATP:] LoadScirpt: not loading project script."'
 
 	if g:atp_debugProject
 	    echomsg "b:atp_ProjectScript=" . ( exists("b:atp_ProjectScript") ? b:atp_ProjectScript : -1 ) . " g:atp_ProjectScript=" . ( exists("g:atp_ProjectScript") ? g:atp_ProjectScript : -1 ) . "\n"
@@ -133,7 +134,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 
     " Load once feature (if ch_load)	- this is used on starup
     if ch_load && get(get(s:project_Load, expand("%:p"), []), a:type, 0) >= 1
-	echomsg "Project script " . a:type . " already loaded for this buffer."
+	echomsg "[ATP:] project script " . a:type . " already loaded for this buffer."
 	if g:atp_debugProject
 	    redir END
 	endif
@@ -144,7 +145,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
     let cond_B	= get(get(s:project_Load, expand("%:p"), []), a:type, 0)
     if empty(expand("%:p"))
 	echohl ErrorMsg
-	echomsg "ATP Error : File name is empty. Not loading project script."
+	echomsg "[ATP:] Error : File name is empty. Not loading project script."
 	echohl Normal
 	if g:atp_debugProject
 	    redir END
@@ -178,7 +179,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 	execute get(get(loclist, 0, {}), 'text', "")
 	if exists("b:atp_ProjectScript") && !b:atp_ProjectScript
 	    if g:atp_debugProject
-		silent echomsg "ATP_ProjectScript: b:atp_ProjectScript == 0 in the project script."
+		silent echomsg "[ATP:] ATP_ProjectScript: b:atp_ProjectScript == 0 in the project script."
 		redir END
 	    endif
 	    return
@@ -192,13 +193,13 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 	endif
 
 	if g:atp_debugProject
-	    echomsg "ATP_ProjectScript: sourcing " . a:project_script
+	    echomsg "[ATP:] ATP_ProjectScript: sourcing " . a:project_script
 	endif
     catch /E484:/
     endtry
 
     if g:atp_debugProject
-	echomsg "ATP_ProjectScript: sourcing time: " . reltimestr(reltime(hist_time))
+	echomsg "[ATP:] ATP_ProjectScript: sourcing time: " . reltimestr(reltime(hist_time))
 	redir! END
     endif
 
@@ -241,7 +242,7 @@ endfunction "}}}
 function! GetProjectScript(project_files)
     for pfile in a:project_files
 	if g:atp_debugLPS
-	    echomsg "Checking " . pfile 
+	    echomsg "[ATP:] checking " . pfile 
 	endif
 	let save_loclist 	= getloclist(0)
 	let file_name 	= s:windows ? escape(expand("%:p"), '\') : escape(expand("%:p"), '/') 
@@ -254,7 +255,7 @@ function! GetProjectScript(project_files)
 	    endif
 	catch /E480:/ 
 	    if g:atp_debugProject
-		silent echomsg "Script file " . pfile . " doesn't match."
+		silent echomsg "[ATP:] script file " . pfile . " doesn't match."
 	    endif
 	endtry
 	let loclist		= getloclist(0)
@@ -418,7 +419,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     " The global variable overrides the local one!
     let cond = exists("g:atp_ProjectScript") && !g:atp_ProjectScript || exists("b:atp_ProjectScript") && ( !b:atp_ProjectScript && (!exists("g:atp_ProjectScript") || exists("g:atp_ProjectScript") && !g:atp_ProjectScript )) || !exists("b:atp_ProjectScript") && !exists("g:atp_ProjectScript")
     if  a:bang == "" && cond
-	echomsg "ATP WriteProjectScript: ProjectScript is turned off."
+	echomsg "[ATP:] WriteProjectScript: ProjectScript is turned off."
 	if g:atp_debugProject
 	    redir END
 	endif
@@ -451,7 +452,6 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 		call extend(existing_variables, { var : string({var}) })
 		exe "let " . lvar . "=" .  string({var})
 		exe "unlet " . var
-" 		echomsg lvar . "=" . string({lvar})
 	    endif
 	endfor
 	" step (2a) source project script
@@ -469,7 +469,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 		endif
 		let cond += cond_A
 		if cond_A
-		    let {lvar} = {var}
+		    let {var} = {lvar}
 		endif
 	    elseif !exists(var) && exists(lvar)
 		if g:atp_debugProject
@@ -650,7 +650,7 @@ function! <SID>WriteProjectScriptInterface(bang,...)
     let script 	= ( type == 'local' ? b:atp_ProjectScriptFile : s:common_project_script )
     let variables = ( type == 'local' ? g:atp_cached_local_variables : g:atp_cached_common_variables )
     if type == 'local'
-	echomsg "Writing to " . b:atp_ProjectScriptFile
+	echomsg "[ATP:] writing to " . b:atp_ProjectScriptFile
     endif
     call s:WriteProjectScript(a:bang, script, variables, type)
 endfunction
@@ -681,9 +681,9 @@ function! <SID>ProjectScript(...)
 	:WriteProjectScript!
     endif
     if b:atp_ProjectScript
-	echomsg "Project Script is set on."
+	echomsg "[ATP:] project Script is set on."
     else
-	echomsg "Project Script is set off."
+	echomsg "[ATP:] project Script is set off."
     endif
     return b:atp_ProjectScript
 endfunction

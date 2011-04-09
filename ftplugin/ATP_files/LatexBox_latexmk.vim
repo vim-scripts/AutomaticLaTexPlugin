@@ -32,9 +32,9 @@ endfunction
 function! s:LatexmkCallback(basename, status)
 	"let pos = getpos('.')
 	if a:status
-		echomsg "latexmk exited with status " . a:status
+		echomsg "[LatexBox:] latexmk exited with status " . a:status
 	else
-		echomsg "latexmk finished"
+		echomsg "[LatexBox:] latexmk finished"
 	endif
 	call remove(s:latexmk_running_pids, a:basename)
 	call LatexBox_LatexErrors(g:LatexBox_autojump && a:status, a:basename)
@@ -53,7 +53,7 @@ function! LatexBox_Latexmk(force)
 	let basename = LatexBox_GetTexBasename(1)
 
 	if has_key(s:latexmk_running_pids, basename)
-		echomsg "latexmk is already running for `" . fnamemodify(basename, ':t') . "'"
+		echomsg "[LatexBox:] latexmk is already running for `" . fnamemodify(basename, ':t') . "'"
 		return
 	endif
 
@@ -91,14 +91,14 @@ function! LatexBox_LatexmkStop()
 	let basename = LatexBox_GetTexBasename(1)
 
 	if !has_key(s:latexmk_running_pids, basename)
-		echomsg "latexmk is not running for `" . fnamemodify(basename, ':t') . "'"
+		echomsg "[LatexBox:] latexmk is not running for `" . fnamemodify(basename, ':t') . "'"
 		return
 	endif
 
 	call s:kill_latexmk(s:latexmk_running_pids[basename])
 
 	call remove(s:latexmk_running_pids, basename)
-	echomsg "latexmk stopped for `" . fnamemodify(basename, ':t') . "'"
+	echomsg "[LatexBox:] latexmk stopped for `" . fnamemodify(basename, ':t') . "'"
 endfunction
 " }}}
 
@@ -153,7 +153,7 @@ function! LatexBox_LatexmkClean(cleanall)
 				\	. ' ' . shellescape(LatexBox_GetMainTexFile())
 
 	silent execute '! ' . l:cmd
-	echomsg "latexmk clean finished"
+	echomsg "[LatexBox:] latexmk clean finished"
 endfunction
 " }}}
 

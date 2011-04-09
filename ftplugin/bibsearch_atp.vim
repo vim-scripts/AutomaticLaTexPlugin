@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Change: Mon Jan 03 01:00  2011 C
+" Last Change: Fri Apr 08 07:00  2011 W
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " URL:		https://launchpad.net/automatictexplugin
 
@@ -130,6 +130,7 @@ function! BibChoose(...)" {{{
 	    elseif letter == '-'
 		let @@=choice
 	    endif
-	    echohl WarningMsg | echomsg "Choice yanekd to the register '" . letter . "'" | echohl None
+	    echohl WarningMsg | echomsg "[ATP:] choice yanekd to the register '" . letter . "'" | echohl None
     endif
 endfunction "}}}
+" vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

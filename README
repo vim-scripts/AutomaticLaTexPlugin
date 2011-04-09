@@ -1,8 +1,10 @@
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=2945
 
-This is a BIG plugin with lots of tools to make editing of TeX/LaTeX file easier. It's main features include: background compilation, extended completion, AMSRef equry for bibliography references, font preview, support for projects with multiple tex files, and much more. For a detailed list of features see: 
+This is a complete plugin with lots of tools to make editing of TeX/LaTeX file more friendly. Its main features include: background compilation, forward and inverse search for both dvi and pdf (okular), extended completion, AMSRef equry for bibliography references, font preview, support for projects with multiple tex files, and much more. For a detailed list of features see: 
 https://sourceforge.net/apps/mediawiki/atp-vim/index.php?title=Main_Page 
-After looking there you can read the complete documentation in vim (:help automatic-tex-plugin.txt) 
+After looking there you can read the complete documentation in vim (:help atp) 
+
+You can get the latest snaphots (stable/unstable releases) on http://sourceforge.net/projects/atp-vim/ or if you have ATP version 9.2 or higher using :UpdateATP command inside vim (check out :help atp-:UpdateATP)
 
 You can DONATE for this project  (on the project web page: http://sourceforge.net/projects/atp-vim/) 
 (see :h atp-donate). 

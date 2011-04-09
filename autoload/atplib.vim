@@ -5,32 +5,6 @@
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 
-" Table:
-function! atplib#Table(list,spaces) " {{{
-" take a list of lists and make a list which is nicly formated (to echo it)
-" spaces = list of spaces between columns.
-    "maximal length of columns:
-    let max_list=[]
-    let new_list=[]
-    for i in range(len(a:list[0]))
-	let max=max(map(deepcopy(a:list), "len(v:val[i])"))
-	call add(max_list, max)
-    endfor
-
-    for row in a:list
-	let new_row=[]
-	let i=0
-	for el in row
-	    let new_el=el.join(map(range(max([0,max_list[i]-len(el)+get(a:spaces,i,0)])), "' '"), "")
-	    call add(new_row, new_el)
-	    let i+=1
-	endfor
-	call add(new_list, new_row)
-    endfor
-
-    return map(new_list, "join(v:val, '')")
-endfunction 
-"}}}
 " Outdir: append to '/' to b:atp_OutDir if it is not present. 
 function! atplib#outdir() "{{{1
     if has("win16") || has("win32") || has("win64") || has("win95")
@@ -67,6 +41,322 @@ function! atplib#FullPath(file_name) "{{{1
     return file_path
 endfunction
 "}}}1
+" Table:
+"{{{ atplibTable, atplib#FormatListinColumns, atplib#PrintTable
+function! atplib#Table(list, spaces)
+" take a list of lists and make a list which is nicely formated (to echo it)
+" spaces = list of spaces between columns.
+    "maximal length of columns:
+    let max_list=[]
+    let new_list=[]
+    for i in range(len(a:list[0]))
+	let max=max(map(deepcopy(a:list), "len(v:val[i])"))
+	call add(max_list, max)
+    endfor
+
+    for row in a:list
+	let new_row=[]
+	let i=0
+	for el in row
+	    let new_el=el.join(map(range(max([0,max_list[i]-len(el)+get(a:spaces,i,0)])), "' '"), "")
+	    call add(new_row, new_el)
+	    let i+=1
+	endfor
+	call add(new_list, new_row)
+    endfor
+
+    return map(new_list, "join(v:val, '')")
+endfunction 
+function! atplib#FormatListinColumns(list,s)
+    " take a list and reformat it into many columns
+    " a:s is the number of spaces between columns
+    " for example of usage see atplib#PrintTable
+    let max_len=max(map(copy(a:list), 'len(v:val)'))
+    let g:list=a:list
+    let g:max_len=max_len+a:s
+    let new_list=[]
+    let k=&l:columns/(max_len+a:s)
+    let g:k=k
+    let len=len(a:list)
+    let column_len=len/k
+    for i in range(0, column_len)
+	let entry=[]
+	for j in range(0,k)
+	    call add(entry, get(a:list, i+j*(column_len+1), ""))
+	endfor
+	call add(new_list,entry)
+    endfor
+    return new_list
+endfunction 
+" Take list format it with atplib#FormatListinColumns and then with
+" atplib#Table (which makes columns of equal width)
+function! atplib#PrintTable(list, spaces)
+    " a:list 	- list to print
+    " a:spaces 	- nr of spaces between columns 
+
+    let list = atplib#FormatListinColumns(a:list, a:spaces)
+    let nr_of_columns = max(map(copy(list), 'len(v:val)'))
+    let spaces_list = ( nr_of_columns == 1 ? [0] : map(range(1,nr_of_columns-1), 'a:spaces') )
+
+    let g:spaces_list=spaces_list
+    let g:nr_of_columns=nr_of_columns
+    
+    return atplib#Table(list, spaces_list)
+endfunction
+"}}}
+
+" Compilation Call Back Communication: 
+" with some help of D. Munger
+" (Communications with compiler script: both in compiler.vim and the python script.)
+" {{{ Compilation Call Back Communication
+" TexReturnCode {{{
+function! atplib#TexReturnCode(returncode)
+	let b:atp_TexReturnCode=a:returncode
+endfunction "}}}
+" BibtexReturnCode {{{
+function! atplib#BibtexReturnCode(returncode,...)
+	let b:atp_BibtexReturnCode=a:returncode
+	let b:atp_BibtexOutput= ( a:0 >= 1 ? a:1 : "" )
+endfunction
+" }}}
+" Callback {{{
+" a:mode 	= a:verbose 	of s:compiler ( one of 'default', 'silent',
+" 				'debug', 'verbose')
+" a:commnad	= a:commmand 	of s:compiler 
+"		 		( a:commnad = 'AU' if run from background)
+"
+" Uses b:atp_TexReturnCode which is equal to the value returned by tex
+" compiler.
+function! atplib#CallBack(mode,...)
+
+    " If the compiler was called by autocommand.
+    let AU = ( a:0 >= 1 ? a:1 : 'COM' )
+    " Was compiler called to make bibtex
+    let BIBTEX = ( a:0 >= 2 ? a:2 : "False" )
+    let BIBTEX = ( BIBTEX == "True" ? 1 : 0 )
+    if g:atp_debugCB
+	let g:BIBTEX = BIBTEX
+	redir! > /tmp/atp_callback
+" 	silent echo "BIBTEX =".BIBTEX
+    endif
+
+    for cmd in keys(g:CompilerMsg_Dict) 
+    if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
+	    let Compiler 	= g:CompilerMsg_Dict[cmd]
+	    break
+	else
+	    let Compiler 	= b:atp_TexCompiler
+	endif
+    endfor
+    let b:atp_running	= b:atp_running - 1
+
+    " Read the log file
+    cgetfile
+    " /this cgetfile is not working (?)/
+    let error	= len(getqflist()) + (BIBTEX ? b:atp_BibtexReturnCode : 0)
+
+    " If the log file is open re read it / it has 'autoread' opion set /
+    checktime
+
+    " redraw the status line /for the notification to appear as fast as
+    " possible/ 
+    if a:mode != 'verbose'
+	redrawstatus
+    endif
+
+    " redraw has values -0,1 
+    "  1 do  not redraw 
+    "  0 redraw
+    "  i.e. redraw at the end of function (this is done to not redraw twice in
+    "  this function)
+    let l:clist 	= 0
+    let atp_DebugMode = t:atp_DebugMode
+
+    if b:atp_TexReturnCode == 0 && ( a:mode == 'silent' || t:atp_DebugMode == 'silent' ) && g:atp_DebugMode_AU_change_cmdheight 
+	let &l:cmdheight=g:atp_cmdheight
+    endif
+
+    if g:atp_debugCB
+	let g:debugCB 		= 0
+	let g:debugCB_mode 	= a:mode
+	let g:debugCB_error 	= error
+    endif
+
+    let msg_list = []
+    let showed_message = 0
+
+    if a:mode == "silent" && !error
+
+	if t:atp_QuickFixOpen 
+
+	    if g:atp_debugCB
+		let g:debugCB .= 7
+	    endif
+
+	    cclose
+	    call add(msg_list, ["[ATP:] no errors, closing quick fix window.", "Normal"])
+	endif
+    endif
+
+    if a:mode ==? 'debug' && !error
+
+	if g:atp_debugCB
+	    let g:debugCB 	.= 3
+	endif
+
+	cclose
+	call add(msg_list,["[ATP:] ".b:atp_TexCompiler." returened without errors (atp_ErrorFormat=".g:atp_ErrorFormat.")".(g:atp_DefaultDebugMode=='silent'?" going out of debuging mode.","Normal","after": ".")]) 
+	let showed_message 	= 1
+	let t:atp_DebugMode 	= g:atp_DefaultDebugMode
+	if g:atp_DefaultDebugMode == "silent" && t:atp_QuickFixOpen
+	    cclose
+	endif
+	let &l:cmdheight 	= g:atp_cmdheight
+    endif
+
+    " debug mode with errors
+    if a:mode ==? 'debug' && error
+	if len(getqflist())
+
+	    if g:atp_debugCB
+		let g:debugCB .= 4
+	    endif
+
+	    let g:debug		= 1
+	    let &l:cmdheight 	= g:atp_DebugModeCmdHeight
+		let showed_message 	= 1
+		if b:atp_ReloadOnError || b:atp_Viewer !~ '^\s*xpdf\>'
+		    call add(msg_list, ["[ATP:] ".Compiler." returned with exit code " . b:atp_TexReturnCode . ".", "ErrorMsg", "before"])
+		else
+		    call add(msg_list, ["[ATP:] ".Compiler." returned with exit code " . b:atp_TexReturnCode . " output file not reloaded.", "ErrorMsg", "before"])
+		endif
+	    if !t:atp_QuickFixOpen
+		let l:clist		= 1
+	    endif
+	endif
+
+	if BIBTEX && b:atp_BibtexReturnCode
+
+	    if g:atp_debugCB
+		let g:debugCB .= 8
+	    endif
+
+	    let l:clist		= 1
+	    call add(msg_list, [ "[Bib:] BibTeX returned with exit code ".b:atp_BibtexReturnCode .".", "ErrorMsg", "after"])
+	    call add(msg_list, [ "BIBTEX_OUTPUT" , "Normal", "after"])
+
+	endif
+
+	" In debug mode, go to first error. 
+	if a:mode ==# "Debug"
+
+	    if g:atp_debugCB
+		let g:debugCB .= 6
+	    endif
+
+	    cc
+	endif
+    endif
+
+    if msg_list == []
+	return
+    endif
+
+    " Count length of the message:
+    let msg_len		= len(msg_list)
+    if len(map(copy(msg_list), "v:val[0] == 'BIBTEX_OUTPUT'")) 
+	let msg_len += (BIBTEX ? len(split(b:atp_BibtexOutput, "\\n")) - 1 : - 1 )
+    endif
+    let msg_len		+= ((len(getqflist()) <= 7 && !t:atp_QuickFixOpen) ? len(getqflist()) : 0 )
+    let g:msg_len	= msg_len
+
+    " Show messages/clist
+    
+    if g:atp_debugCB
+	let g:msg_list 	= msg_list
+	let g:clist 	= l:clist
+    endif
+
+    let cmdheight = &l:cmdheight
+    let &l:cmdheight	= msg_len+2
+    if l:clist && len(getqflist()) > 7 && !t:atp_QuickFixOpen
+	let winnr = winnr()
+	copen
+	exe winnr."wincmd w"
+    elseif (a:mode ==? "debug") && !t:atp_QuickFixOpen 
+	let l:clist = 1
+    endif
+    redraw
+    let before_msg = filter(copy(msg_list), "v:val[2] == 'before'")
+    let after_msg = filter(copy(msg_list), "v:val[2] == 'after'")
+    for msg in before_msg 
+	exe "echohl " . msg[1]
+	echomsg msg[0]
+    endfor
+    let l:redraw	= 1
+    if l:clist && len(getqflist()) <= 7 && !t:atp_QuickFixOpen
+	let g:debugCB .= "clist"
+	clist
+	let l:redraw	= 0
+    endif
+    for msg in after_msg 
+	exe "echohl " . msg[1]
+	if msg[0] !=# "BIBTEX_OUTPUT"
+	    echomsg msg[0]
+	else
+	    echo "       ".substitute(b:atp_BibtexOutput, "\n", "\n       ", "g")
+	    let g:debugCB .=" BIBTEX_output "
+	endif
+    endfor
+    echohl Normal
+    let &l:cmdheight = cmdheight
+    if g:atp_debugCB
+	redir END
+    endif
+endfunction "}}}
+"{{{ LatexPID
+"Store LatexPIDs in a variable
+function! atplib#LatexPID(pid)
+    call add(b:atp_LatexPIDs, a:pid)
+    call atplib#LatexRunning()
+    let b:atp_LastLatexPID =a:pid
+endfunction "}}}
+"{{{ LatexRunning
+function! atplib#LatexRunning()
+python << EOL
+import psutil, re, sys, vim
+pids = vim.eval("b:atp_LatexPIDs")
+if len(pids) > 0:
+	ps_list=psutil.get_pid_list()
+	rmpids=[]
+	for lp in pids:
+		run=False
+		for p in ps_list: 
+			if str(lp) == str(p):
+				run=True
+				break
+		if not run:
+			rmpids.append(lp)
+	rmpids.sort()
+	rmpids.reverse()
+	for pid in rmpids:
+		    vim.eval("filter(b:atp_LatexPIDs, 'v:val !~ \""+str(pid)+"\"')")
+EOL
+endfunction "}}}
+"{{{ ProgressBar
+function! atplib#ProgressBar(value,pid)
+    unlockvar b:atp_ProgressBar
+    if a:value != 'end'
+	let b:atp_ProgressBar[a:pid]=a:value
+    else
+	call remove(b:atp_ProgressBar, a:pid)
+    endif
+    lockvar b:atp_ProgressBar
+    redrawstatus
+"     redraw
+"     echomsg a:value
+endfunction "}}}
+" }}}
 
 " Toggle On/Off Completion 
 " {{{1 atplib#OnOffComp
@@ -124,7 +414,7 @@ function! atplib#Open(bang, dir, TypeDict, ...)
 	    let file = found[0]
 	else
 	    echohl WarningMsg
-	    echomsg "Nothing found."
+	    echomsg "[ATP:] Nothing found."
 	    echohl None
 	    return
 	endif
@@ -135,7 +425,7 @@ function! atplib#Open(bang, dir, TypeDict, ...)
 
     if viewer == '0'
 	echomsg "\n"
-	echomsg "Filetype: " . ext . " is not supported, add an entry to g:atp_OpenTypeDict" 
+	echomsg "[ATP:] filetype: " . ext . " is not supported, add an entry to g:atp_OpenTypeDict" 
 	return
     endif
     if viewer !~ '^\s*cat\s*$' && viewer !~ '^\s*g\=vim\s*$' && viewer !~ '^\s*edit\s*$' && viewer !~ '^\s*tabe\s*$' && viewer !~ '^\s*split\s*$'
@@ -168,12 +458,12 @@ endfunction
 " just set in okular:
 " 	settings>okular settings>Editor
 " 		Editor		Custom Text Editor
-" 		Command		gvim --servername GVIM --remote-expr "atplib#FindAndOpen('%f','%l')"
+" 		Command		gvim --servername GVIM --remote-expr "atplib#FindAndOpen('%f','%l', '%c')"
 " You can also use this with vim but you should start vim with
 " 		vim --servername VIM
 " and use servername VIM in the Command above.		
 function! atplib#ServerListOfFiles()
-    redir! > /tmp/atpvim_ServerListOfFiles.debug
+    redir! > /tmp/atp_ServerListOfFiles.debug
     let file_list = []
     for nr in range(1, bufnr('$')-1)
 	let files 	= getbufvar(nr, "ListOfFiles")
@@ -190,10 +480,11 @@ function! atplib#ServerListOfFiles()
     redir end
     return file_list
 endfunction
-function! atplib#FindAndOpen(file, line)
+function! atplib#FindAndOpen(file, line, ...)
+    let col		= ( a:0 >= 1 ? a:1 : 1 )
     let file		= ( fnamemodify(a:file, ":e") == "tex" ? a:file : fnamemodify(a:file, ":p:r") . ".tex" )
     let server_list	= split(serverlist(), "\n")
-    redir! > /tmp/atpvim_FindAndOpen.debug
+    redir! > /tmp/atp_FindAndOpen.debug
     echo "server list=".string(server_list)
     if len(server_list) == 0
 	retun 1
@@ -210,10 +501,15 @@ function! atplib#FindAndOpen(file, line)
     if use_server == "no_server"
 	let use_server=server_list[0]
     endif
-    call system("gvim --servername " . use_server . " --remote-wait +" . a:line . " " . fnameescape(file) . " &")
-    echo "file:".file." line:".a:line. " server name:".use_server." hitch-hiking server:".v:servername 
+    echo "file:".file." line:".a:line. " col ".col." server name:".use_server." hitch-hiking server:".v:servername 
+    call system(v:progname." --servername ".use_server." --remote-wait +".a:line." ".fnameescape(file) . " &")
+    call remote_expr(use_server, 'cursor('.a:line.','.col.')')
+    call remote_expr(use_server, 'redraw!')
+"   call system(v:progname." --servername ".use_server." --remote-exprt \"remote_foreground('".use_server."')\"")
+"   This line is not working in DWM, but it might work in KDE (to be tested):
+"     call system(v:progname." --servername ".use_server." --remote-exprt foreground\(\)")
     redir end
-    return "File:".file." line:".a:line. " server name:".use_server." Hitch-hiking server:".v:servername 
+    return "File:".file." line:".a:line." col:".col." server name:".use_server." Hitch-hiking server:".v:servername 
 endfunction
 "}}}1
 
@@ -232,7 +528,7 @@ silent! function! atplib#GrepAuxFile(...)
 	" We should worn the user that there is no aux file
 	" /this is not visible ! only after using the command 'mes'/
 	echohl WarningMsg
-	echomsg "There is no aux file. Run ".b:atp_TexCompiler." first."
+	echomsg "[ATP:] there is no aux file. Run ".b:atp_TexCompiler." first."
 	echohl Normal
 	return []
 	" CALL BACK is not working
@@ -406,7 +702,8 @@ function! atplib#generatelabels(filename, ...)
     let saved_pos	= getpos(".")
     call cursor(1,1)
 
-    let [ TreeofFiles, ListOfFiles, DictOfFiles, LevelDict ] 		= TreeOfFiles(a:filename, '\\\(input\|include\)\s*{')
+    let [ TreeofFiles, ListOfFiles, DictOfFiles, LevelDict ] 		= TreeOfFiles(a:filename)
+    let ListOfFiles_orig = copy(ListOfFiles)
     if count(ListOfFiles, a:filename) == 0
 	call add(ListOfFiles, a:filename)
     endif
@@ -462,7 +759,7 @@ function! atplib#generatelabels(filename, ...)
     endif
     keepjumps call setpos(".", saved_pos)
     if return_ListOfFiles
-	return [ t:atp_labels, ListOfFiles ]
+	return [ t:atp_labels, ListOfFiles_orig ]
     else
 	return t:atp_labels
     endif
@@ -1336,6 +1633,21 @@ function! atplib#showresults(bibresults, flags, pattern)
 endfunction
 "}}}
 "}}}
+" URL query: (by some strange reason this is not working moved to URLquery.py)
+" function! atplib#URLquery(url) "{{{
+" python << EOF
+" import urllib2, tempfile, vim
+" url  = vim.eval("a:url") 
+" print(url)
+" temp = tempfile.mkstemp("", "atp_ams_")
+" 
+" f    = open(temp[1], "w+")
+" data = urllib2.urlopen(url)
+" f.write(data.read())
+" vim.command("return '"+temp[1]+"'")
+" EOF
+" endfunction "}}}
+
 
 " This function sets the window options common for toc and bibsearch windows.
 "{{{1 atplib#setwindow
@@ -1691,7 +2003,7 @@ function! atplib#SearchPackage(name,...)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     if !filereadable(atp_MainFile)
-	silent echomsg "atp_MainFile : " . atp_MainFile . " is not readable "
+	silent echomsg "[ATP:] atp_MainFile : " . atp_MainFile . " is not readable "
 	return
     endif
     let cwd = getcwd()
@@ -1940,7 +2252,6 @@ function! atplib#KpsewhichGlobPath(format, path, name, ...)
 
     let list	= split(globpath(path, a:name),'\n') 
     call map(list, 'fnamemodify(v:val, modifiers)')
-"     echomsg "TIME:" . join(reltime(time), ".")
     return list
 endfunction
 " }}}1
@@ -2013,7 +2324,6 @@ function! atplib#KpsewhichFindFile(format, name, ...)
     elseif l:count < 0 && modifiers != ""
 	call map(result, 'fnamemodify(v:val, modifiers)')
     endif
-"     echomsg "TIME:" . join(reltime(time), ".")
 
     let &l:sua	= saved_sua
     return result
@@ -2249,8 +2559,8 @@ if l:close == "0" || l:close == 'math' && !exists("begin_line")
 endif
 if ( &filetype != "plaintex" && b:atp_TexFlavor != "plaintex" && exists("math_4") && math_4 )
     echohl ErrorMsg
-    echomsg "$$:$$ in LaTeX are deprecated (this breaks some LaTeX packages)" 
-    echomsg "You can set b:atp_TexFlavor = 'plaintex', and ATP will ignore this. "
+    echomsg "[ATP:] $$:$$ in LaTeX are deprecated (this breaks some LaTeX packages)" 
+    echomsg "       You can set b:atp_TexFlavor = 'plaintex', and ATP will ignore this. "
     echohl Normal
     return 
 endif
@@ -2275,7 +2585,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
     if l:close == 'environment'
 	" Info message
 	redraw
-" 	silent echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0]
+" 	silent echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0]
 
 	" Rules:
 	" env & \[ \]: close in the same line 
@@ -2444,32 +2754,32 @@ let l:eindent=atplib#CopyIndentation(l:line)
 				if line(".") <= l:max
 				    if line(".") <= l:end
 					call append(l:max, l:eindent . l:str)
-					echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:end+1  
+					echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:end+1  
 					call setpos(".",[0,l:max+1,len(l:eindent.l:str)+1,0])
 				    else
 					call append(l:end-1, l:eindent . l:str)
-					echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:end+1 
+					echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:end+1 
 					call setpos(".",[0,l:end,len(l:eindent.l:str)+1,0])
 				    endif
 				elseif line(".") < l:end
 				    let [ lineNr, pos_lineNr ]	= getline(".") =~ '^\s*$' ? [ line(".")-1, line(".")] : [ line("."), line(".")+1 ]
 				    call append(lineNr, l:eindent . l:str)
-				    echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . line(".")+1  
+				    echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . line(".")+1  
 				    call setpos(".",[0, pos_lineNr,len(l:eindent.l:str)+1,0])
 				elseif line(".") >= l:end
 				    call append(l:end-1, l:eindent . l:str)
-				    echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:end
+				    echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:end
 				    call setpos(".",[0,l:end,len(l:eindent.l:str)+1,0])
 				endif
 			else
 			    if line(".") >= l:max
 				call append(l:pos_saved[1], l:eindent . l:str)
 				keepjumps call setpos(".",l:pos_saved)
-				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . line(".")+1
+				echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . line(".")+1
 				call setpos(".",[0,l:pos_saved[1]+1,len(l:eindent.l:str)+1,0])
 			    elseif line(".") < l:max
 				call append(l:max, l:eindent . l:str)
-				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:max+1
+				echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:max+1
 				call setpos(".",[0,l:max+1,len(l:eindent.l:str)+1,0])
 			    endif
 			endif
@@ -2485,23 +2795,23 @@ let l:eindent=atplib#CopyIndentation(l:line)
 			let l:iline=searchpair('\\begin{','','\\end{','nW')
 			if l:iline > l:line_nr && l:iline <= l:pos_saved[1]
 			    call append(l:iline-1, l:eindent . l:str)
-			    echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:iline
+			    echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:iline
 			    let l:pos_saved[2]+=len(l:str)
 			    call setpos(".",[0,l:iline,len(l:eindent.l:str)+1,0])
 			else
 			    if l:cline =~ '\\begin{\%('.l:uenv.'\)\@!'
 				call append(l:pos_saved[1]-1, l:eindent . l:str)
-				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:pos_saved[1]
+				echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:pos_saved[1]
 				let l:pos_saved[2]+=len(l:str)
 				call setpos(".",[0,l:pos_saved[1],len(l:eindent.l:str)+1,0])
 			    elseif l:cline =~ '^\s*$'
 				call append(l:pos_saved[1]-1, l:eindent . l:str)
-				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:pos_saved[1]
+				echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:pos_saved[1]
 				let l:pos_saved[2]+=len(l:str)
 				call setpos(".",[0,l:pos_saved[1]+1,len(l:eindent.l:str)+1,0])
 			    else
 				call append(l:pos_saved[1], l:eindent . l:str)
-				echomsg "Closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:pos_saved[1]+1
+				echomsg "[ATP:] closing " . l:env_name . " from line " . l:bpos_env[0] . " at line " . l:pos_saved[1]+1
 				let l:pos_saved[2]+=len(l:str)
 				call setpos(".",[0,l:pos_saved[1]+1,len(l:eindent.l:str)+1,0])
 			    endif
@@ -2523,7 +2833,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
     "{{{2 close math: texMathZoneV, texMathZoneW, texMathZoneX, texMathZoneY 
     else
 	"{{{3 Close math in the current line
-	echomsg "Closing math from line " . l:begin_line
+	echomsg "[ATP:] closing math from line " . l:begin_line
 	if    math_mode == 'texMathZoneV' && l:line !~ '^\s*\\(\s*$' 	||
 	    \ math_mode == 'texMathZoneW' && l:line !~ '^\s*\\\[\s*$' 	||
 	    \ math_mode == 'texMathZoneX' && l:line !~ '^\s*\$\s*$' 	||
@@ -2574,7 +2884,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		    let l:iline-=1
 		endif
 		call append(l:iline, l:eindent . '\]')
-		echomsg "\[ closed in line " . l:iline
+		echomsg "[ATP:] \[ closed in line " . l:iline
 " 		let b:cle_return=2 . " dispalyed math " . l:iline  . " indent " . len(l:eindent) " DEBUG
 	    elseif math_mode == 'texMathZoneV'
 		let l:iline=line(".")
@@ -2583,7 +2893,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		    let l:iline-=1
 		endif
 		call append(l:iline, l:eindent . '\)')
-		echomsg "\( closed in line " . l:iline
+		echomsg "[ATP:] \( closed in line " . l:iline
 " 		let b:cle_return=2 . " inline math " . l:iline . " indent " .len(l:eindent) " DEBUG
 	    elseif math_mode == 'texMathZoneX'
 		let l:iline=line(".")
@@ -2593,7 +2903,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		endif
 		let sindent=atplib#CopyIndentation(getline(search('\$', 'bnW')))
 		call append(l:iline, sindent . '$')
-		echomsg "$ closed in line " . l:iline
+		echomsg "[ATP:] $ closed in line " . l:iline
 	    elseif math_mode == 'texMathZoneY'
 		let l:iline=line(".")
 		" if the current line is empty append before it.
@@ -2602,7 +2912,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		endif
 		let sindent=atplib#CopyIndentation(getline(search('\$\$', 'bnW')))
 		call append(l:iline, sindent . '$$')
-		echomsg "$ closed in line " . l:iline
+		echomsg "[ATP:] $ closed in line " . l:iline
 	    endif
 	endif "}}3
     endif
@@ -2779,7 +3089,7 @@ function! atplib#CloseLastBracket(bracket_dict, ...)
 	    endif
 	endif
 
-	echomsg "Closing " . opening_size . opening_bracket . " from line " . open_line
+	echomsg "[ATP:] closing " . opening_size . opening_bracket . " from line " . open_line
 
 	" DEBUG:
 	if g:atp_debugCLB
@@ -2888,16 +3198,19 @@ function! atplib#TabCompletion(expert_mode,...)
     let o		= strridx(l,'\')
     let s		= strridx(l,' ')
     let p		= strridx(l,'[')
+    let r		= strridx(l,'=')
     let c		= match(l, '\\cite\>\(.*\\cite\>\)\@!') 
     let a		= len(l) - stridx(join(reverse(split(l, '\zs')), ''), "=")
      
     let nr=max([n,m,o,s,p])
+    let color_nr=max([nr, r])
 
     " this matches for =...
     let abegin		= strpart(l, a-1)
 
     " this matches for \...
     let begin		= strpart(l,nr+1)
+    let color_begin	= strpart(l,color_nr+1)
     let cbegin		= strpart(l,nr)
     " and this for '\<\w*$' (beginning of last started word) -- used in
     " tikzpicture completion method 
@@ -2939,7 +3252,7 @@ function! atplib#TabCompletion(expert_mode,...)
 " {{{2 SET COMPLETION METHOD
     " {{{3 --------- command
     if o > n && o > s && 
-	\ pline !~ '\%(input\|include\%(only\)\?\|[^\\]\\\\[^\\]$\)' &&
+	\ pline !~ '\%(input\s*{[^}]*$\|include\%(only\)\=\s*{[^}]*$\|[^\\]\\\\[^\\]$\)' &&
 	\ pline !~ '\\\@<!\\$' &&
 	\ begin !~ '{\|}\|,\|-\|\^\|\$\|(\|)\|&\|-\|+\|=\|#\|:\|;\|\.\|,\||\|?$' &&
 	\ begin !~ '^\[\|\]\|-\|{\|}\|(\|)' &&
@@ -2972,7 +3285,8 @@ function! atplib#TabCompletion(expert_mode,...)
 	    return ''
 	endif
     "{{{3 --------- colors
-    elseif l =~ '\\\%(textcolor\|pagecolor\){[^}]*$'
+    elseif l =~ '\\\%(textcolor\|pagecolor\){[^}]*$\|\<\%(backgroundcolor\|bordercolor\|color\|linecolor\)=\s*\w*$'
+	" this supports todonotes \todo command.
 	let completion_method='colors'
 	" DEBUG:
 	let b:comp_method='colors'
@@ -3062,9 +3376,9 @@ function! atplib#TabCompletion(expert_mode,...)
 	    return ''
 	endif
     "{{{3 --------- inputfiles
-    elseif ((pline =~ '\\input' || begin =~ 'input') ||
-	  \ (pline =~ '\\include' || begin =~ 'include') ||
-	  \ (pline =~ '\\includeonly' || begin =~ 'includeonly') ) && !normal_mode 
+    elseif (l =~ '\\input\%([^{}]*\|\s*{[^}]*\)$'||
+	  \ l =~ '\\include\s*{[^}]*$' ||
+	  \ l =~ '\\includeonly\s*{[^}]*$') && !normal_mode 
 	if begin =~ 'input'
 	    let begin=substitute(begin,'.*\%(input\|include\%(only\)\?\)\s\?','','')
 	endif
@@ -3444,9 +3758,6 @@ function! atplib#TabCompletion(expert_mode,...)
 		call extend(completion_list,g:atp_tikz_library_{lib}_keywords)
 	    endif   
 	endfor
-	if searchpair('\\\@<!{', '', '\\\@<!}', 'bnW', "", max([ 1, (line(".")-g:atp_completion_limits[0])]))
-	    call extend(completion_list, g:atp_Commands)
-	endif
     " {{{3 ------------ COMMANDS
     elseif completion_method == 'command'
 	"{{{4 
@@ -3479,6 +3790,13 @@ function! atplib#TabCompletion(expert_mode,...)
 	if searchpair('\\begin\s*{picture}','','\\end\s*{picture}','bnW',"", max([ 1, (line(".")-g:atp_completion_limits[2])]))
 	    call extend(completion_list,g:atp_picture_commands)
 	endif 
+   	"{{{4 -------------------- hyperref
+	if searchpair('\\\@<!{', '', '\\\@<!}', 'bnW', "", max([ 1, (line(".")-g:atp_completion_limits[0])]))
+	    call extend(completion_list, g:atp_Commands)
+	    if atplib#SearchPackage('herref')
+		call extend(completion_list, g:atp_hyperref_commands)
+	    endif
+	endif
 	" {{{4 -------------------- MATH commands 
 	" if we are in math mode or if we do not check for it.
 	if g:atp_no_math_command_completion != 1 &&  ( !g:atp_MathOpened || math_is_opened )
@@ -3670,6 +3988,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	let completion_list = g:atp_BeamerFontThemes
     "{{{3 ------------ FONT FAMILY
     elseif completion_method == 'font family'
+	let g:debug =1
 	let bpos=searchpos('\\selectfon\zst','bnW',line("."))[1]
 	let epos=searchpos('\\selectfont','nW',line("."))[1]-1
 	if epos == -1
@@ -3869,14 +4188,20 @@ function! atplib#TabCompletion(expert_mode,...)
 		else
 		    let completions	= filter(deepcopy(completion_list),' v:val =~? begin') 
 		endif
-	    " {{{4 --------- environment names, colors, bibfiles 
+	    " {{{4 --------- environment names, bibfiles 
 	    elseif ( completion_method == 'environment_names'	||
-			\ completion_method == 'colors' 	||
 			\ completion_method == 'bibfiles' 	)
 		if a:expert_mode
 		    let completions	= filter(deepcopy(completion_list),' v:val =~# "^".begin') 
 		else
 		    let completions	= filter(deepcopy(completion_list),' v:val =~? begin') 
+		endif
+	    " {{{4 --------- colors
+	    elseif completion_method == 'colors'
+		if a:expert_mode
+		    let completions	= filter(deepcopy(completion_list),' v:val =~# "^".color_begin') 
+		else
+		    let completions	= filter(deepcopy(completion_list),' v:val =~? color_begin') 
 		endif
 	    " {{{4 --------- tikz libraries, inputfiles 
 	    " match not only in the beginning
@@ -3964,7 +4289,6 @@ function! atplib#TabCompletion(expert_mode,...)
 		\ completion_method == 'tikz libraries'    || 
 		\ completion_method == 'environment_names' ||
 		\ completion_method == 'abbreviations' ||
-		\ completion_method == 'colors'	||
 		\ completion_method == 'pagestyle'	||
 		\ completion_method == 'pagenumbering'	||
 		\ completion_method == 'bibfiles' 	|| 
@@ -3979,7 +4303,9 @@ function! atplib#TabCompletion(expert_mode,...)
 		\ completion_method == 'missingfigure options' ||
 		\ completion_method == 'inputfiles' 
 	call complete(nr+2,completions)
-	let b:tc_return="labels,package,tikz libraries,environment_names,bibitems,bibfiles,inputfiles"
+    "{{{3 colors
+    elseif completion_method == 'colors'
+	call complete(color_nr+2,completions)
     " {{{3 bibitems
     elseif !normal_mode && completion_method == 'bibitems'
 	call complete(col+1,completion_dict)
@@ -4140,7 +4466,7 @@ function! atplib#FontSearch(method,...)
     let g:fd_matches=[]
     if len(s:fd_matches) > 0
 	echohl WarningMsg
-	echomsg "Found " . len(s:fd_matches) . " files."
+	echomsg "[ATP:] found " . len(s:fd_matches) . " files."
 	echohl None
 	" wipe out the old buffer and open new one instead
 	if buflisted(fnameescape(l:tmp_dir . "/" . l:fd_bufname))
@@ -4179,9 +4505,9 @@ function! atplib#FontSearch(method,...)
     else
 	echohl WarningMsg
 	if !l:method
-	    echomsg "No fd file found, try :FontSearch!"
+	    echomsg "[ATP:] no fd file found, try :FontSearch!"
 	else
-	    echomsg "No fd file found."
+	    echomsg "[ATP:] no fd file found."
 	endif
 	echohl None
     endif
@@ -4260,6 +4586,7 @@ function! atplib#Preview(fd_files,keep_tex)
 	call mkdir(l:tmp_dir)
     endif
     if a:fd_files == ["buffer"]
+	" WINDOWS NOT COMPATIBLE
 	let l:testfont_file=l:tmp_dir . "/" . fnamemodify(bufname("%"),":t:r") . ".tex"
     else
 	" the name could be taken from the pattern
@@ -4267,7 +4594,8 @@ function! atplib#Preview(fd_files,keep_tex)
 	" though it can be quite a long name.
 	let l:testfont_file=l:tmp_dir . "/" . fnamemodify(a:fd_files[0],":t:r") . ".tex"
     endif
-    call system("touch " . l:testfont_file)
+    " WINDOWS NOT COMPATIBLE
+"     call system("touch " . l:testfont_file)
     
     let l:fd_bufnr=bufnr("%")
 
@@ -4303,6 +4631,7 @@ function! atplib#Preview(fd_files,keep_tex)
 	let l:openbuffer="topleft split!"
     endif
     execute l:openbuffer . " +setlocal\\ ft=tex\\ modifiable\\ noro " . l:testfont_file 
+    let b:atp_ProjectScript = 0
     map <buffer> q :bd!<CR>
 
     call setline(1,'\documentclass{article}')
@@ -4409,6 +4738,7 @@ function! atplib#FontPreview(method, fd_file,...)
 	endif
 
 	let l:fd=atplib#FdSearch(a:fd_file, l:method)
+	let g:fd=l:fd
 	if !empty(l:enc)
 	    call filter(l:fd, "fnamemodify(v:val, ':t') =~ '^' . l:enc")
 	endif

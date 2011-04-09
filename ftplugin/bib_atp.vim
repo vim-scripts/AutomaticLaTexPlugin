@@ -4,7 +4,7 @@
 " URL:	       https://launchpad.net/automatictexplugin	
 " BUG Trucer:  https://bugs.launchpad.net/automatictexplugin
 " Language:    bib
-" Last Change: Sat Mar 12 01:00  2011 W
+" Last Change: Fri Apr 08 07:00  2011 W
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.
 "
@@ -171,12 +171,12 @@ function! <SID>GetAMSRef(what)
     let what = substitute(what, '@',	'%40',	'g')
     let what = substitute(what, ' ',	'+',	'g')
 
-    let tmpdir=tempname()
-    call mkdir(tmpdir, "p")
-    let atpbib_WgetOutputFile = tmpdir . g:atpbib_pathseparator . "amsref.html"
 
-    " Note: Quoting a:what works not as good.
-    let cmd = g:atpbib_wget . " -O " . atpbib_WgetOutputFile . ' "http://www.ams.org/mathscinet-mref?ref='.what.'&dataType=bibtex"'
+    " Get data from AMS web site.
+    let atpbib_WgetOutputFile = tempname()
+    let URLquery_path = globpath(&rtp, 'ftplugin/ATP_files/url_query.py')
+    let url="http://www.ams.org/mathscinet-mref?ref=".what."&dataType=bibtex"
+    let cmd="python ".URLquery_path." ".shellescape(url)." ".shellescape(atpbib_WgetOutputFile)
     call system(cmd)
     let loclist = getloclist(0)
 
@@ -186,7 +186,7 @@ function! <SID>GetAMSRef(what)
     endtry
     if len(getloclist(0))
 	echohl WarningMsg
-	echomsg "No Unique Match Found"
+	echomsg "[ATP:] No Unique Match Found"
 	echohl None
 	return [0]
     endif
@@ -199,7 +199,7 @@ function! <SID>GetAMSRef(what)
     call setloclist(0, loclist)
     if !len(data) 
 	echohl WarningMsg
-	echomsg "Nothing found."
+	echomsg "[ATP:] nothing found."
 	echohl None
 	return [0]
     endif
@@ -242,7 +242,8 @@ function! <SID>GetAMSRef(what)
     let bibdata = extend(bibdata, [''])
     call append(line('.'), bibdata)
     let g:atp_bibdata = bibdata
-    call system("rm -rf " . fnamemodify(atpbib_WgetOutputFile, ":h"))
+
+    call delete(atpbib_WgetOutputFile)
     return bibdata
 endfunction
 catch /E127/
@@ -309,3 +310,4 @@ nnoremap <buffer> <LocalLeader>pr	:call append(line("."), g:atpbib_Proceedings)<
 nnoremap <buffer> <LocalLeader>tr	:call append(line("."), g:atpbib_TechReport)<CR>:call <SID>JMotion("")<CR>
 nnoremap <buffer> <LocalLeader>un	:call append(line("."), g:atpbib_Unpublished)<CR>:call <SID>JMotion("")<CR>
 " }}}
+" vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

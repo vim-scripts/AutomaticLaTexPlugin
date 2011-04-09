@@ -46,7 +46,7 @@ imenu 550.20.1 LaTe&X.&Errors<Tab>:ShowErrors					<Esc>:ShowErrors<CR>
 menu 550.20.1 LaTe&X.&Log.&Open\ Log\ File<Tab>:ShowErrors\ o			:<C-U>ShowErrors\ o<CR>
 cmenu 550.20.1 LaTe&X.&Log.&Open\ Log\ File<Tab>:ShowErrors\ o			<C-U>ShowErrors\ o<CR>
 imenu 550.20.1 LaTe&X.&Log.&Open\ Log\ File<Tab>:ShowErrors\ o			<Esc>:ShowErrors\ o<CR>
-if t:atp_DebugMode == "debug"
+if t:atp_DebugMode ==? "debug"
     menu 550.20.5 LaTe&X.&Log.Toggle\ &Debug\ Mode\ [on]			:<C-U>ToggleDebugMode<CR>
     cmenu 550.20.5 LaTe&X.&Log.Toggle\ &Debug\ Mode\ [on]			<C-U>ToggleDebugMode<CR>
     imenu 550.20.5 LaTe&X.&Log.Toggle\ &Debug\ Mode\ [on]			<Esc>:ToggleDebugMode<CR>a
@@ -104,6 +104,12 @@ imenu 550.30 LaTe&X.L&abels<Tab>:Labels						<Esc>:Labels<CR>
 menu 550.40 LaTe&X.&Go\ to.&GotoFile<Tab>:GotoFile				:GotoFile<CR>
 cmenu 550.40 LaTe&X.&Go\ to.&GotoFile<Tab>:GotoFile				GotoFile<CR>
 imenu 550.40 LaTe&X.&Go\ to.&GotoFile<Tab>:GotoFile				<Esc>:GotoFile<CR>
+menu 550.40 LaTe&X.&Go\ to.&GotoLabel<Tab>:GotoLabel				:GotoLabel<CR>
+cmenu 550.40 LaTe&X.&Go\ to.&GotoLabel<Tab>:GotoLabel				GotoLabel<CR>
+imenu 550.40 LaTe&X.&Go\ to.&GotoLabel<Tab>:GotoLabel				<Esc>:GotoLabel<CR>
+menu 550.40 LaTe&X.&Go\ to.&GotoNamedDest<Tab>(Xpdf\ only)			:GotoNamedDest 
+cmenu 550.40 LaTe&X.&Go\ to.&GotoNamedDest<Tab>(Xpdf\ only)			GotoNamedDest 
+imenu 550.40 LaTe&X.&Go\ to.&GotoNamedDest<Tab>(Xpdf\ only)			<Esc>:GotoNamedDest 
 "
 menu 550.40 LaTe&X.&Go\ to.-Environment- 					:
 menu 550.40 LaTe&X.&Go\ to.Next\ Definition<Tab>:NEnv\ definition		:<C-U>NEnv definition<CR>

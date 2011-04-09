@@ -174,7 +174,6 @@ function! s:SetOutDir(arg, ...)
 			\ || b:atp_OutDir == "" && g:askfortheoutdir == 1 )
 			\ && !exists("$TEXMFOUTPUT")
 		 let b:atp_OutDir=substitute(fnamemodify(resolve(expand("%:p")),":h") . "/", '\\\s', ' ', 'g')
-" 		  echomsg "Output Directory ".b:atp_OutDir
 
 	    elseif exists("$TEXMFOUTPUT")
 		 let b:atp_OutDir=substitute($TEXMFOUTPUT, '\\\s', ' ', 'g') 
@@ -557,8 +556,44 @@ endfunction
 
 " There is a copy of this variable in compiler.vim
 
+function! LatexRunning()
+python << EOL
+import psutil, vim
+if vim.eval("exists('b:atp_LastLatexPID')"):
+	lpid = int(vim.eval("exists('b:atp_LastLatexPID') ? b:atp_LastLatexPID : -1"))
+	if lpid != -1:
+                try:
+			name=psutil.Process(lpid).name
+                except psutil.NoSuchProcess:
+			lpid=0
+	vim.command(":let b:atp_LastLatexPID="+str(lpid))
+else:
+	vim.command(":let b:atp_LastLatexPID=0")
+EOL
+endfunction
+
 function! ATPRunning() "{{{
-    if exists("b:atp_running") && exists("g:atp_callback") && b:atp_running && g:atp_callback
+
+    if !g:atp_statusNotif
+	" Do not put any message if user dosn't want it. 
+	return ""
+    endif
+
+    if g:atp_Compiler == "python" 
+        " For python compiler
+	" This is very fast:
+	call LatexRunning()
+	let atp_running= ( b:atp_LastLatexPID != 0 ? 1 : 0 )
+	" This is slower (so the status line is updated leter)
+" 	call atplib#LatexRunning()
+" 	let atp_running= len(b:atp_LatexPIDs)
+" 	let atp_running= ( b:atp_LastLatexPID != 0 ? 1 : 0 ) * len(b:atp_LatexPIDs)
+    else
+	" For bash compiler 
+	let atp_running=b:atp_running
+    endif
+
+    if exists("b:atp_running") && exists("g:atp_callback") && atp_running && g:atp_callback
 " 	let b:atp_running	= b:atp_running < 0 ? 0 : b:atp_running
 " 	redrawstatus
 
@@ -571,10 +606,17 @@ function! ATPRunning() "{{{
 	    endif
 	endfor
 
-	if b:atp_running >= 2
-	    return b:atp_running." ".Compiler." "
-	elseif b:atp_running >= 1
-	    return Compiler." "
+	if exists("b:atp_ProgressBar") && b:atp_ProgressBar != {}
+	    let max = max(values(b:atp_ProgressBar))
+	    let progress_bar="[".max."]".( g:atp_statusOutDir ? " " : "" )
+	else
+	    let progress_bar=""
+	endif
+
+	if atp_running >= 2
+	    return b:atp_running." ".Compiler." ".progress_bar
+	elseif atp_running >= 1
+	    return Compiler." ".progress_bar
 	else
 	    return ""
 	endif
@@ -669,6 +711,7 @@ endfunction
 " The main status function, it is called via autocommand defined in 'options.vim'.
 let s:errormsg = 0
 function! ATPStatus(bang) "{{{
+
     let g:status_OutDir	= a:bang == "" && g:atp_statusOutDir || a:bang == "!" && !g:atp_statusOutDir ? s:StatusOutDir() : ""
     let status_CTOC	= &filetype =~ '^\(ams\)\=tex' ? CTOC("return") : ''
     if g:atp_statusNotifHi > 9 || g:atp_statusNotifHi < 0
@@ -735,7 +778,8 @@ command! -buffer InputFiles 		:call UpdateMainFile() | :call FindInputFiles(atpl
 command! -buffer SetNotificationColor :call s:SetNotificationColor()
 augroup ATP_SetStatusLineNotificationColor
     au!
-    au BufEnter 	*tex 	:call s:SetNotificationColor()
+    au VimEnter 	*.tex 	:call s:SetNotificationColor()
+    au BufEnter 	*.tex 	:call s:SetNotificationColor()
     au ColorScheme 	* 	:call s:SetNotificationColor()
 augroup END
 "}}}

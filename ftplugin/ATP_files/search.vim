@@ -179,7 +179,6 @@ function! LocalCommands(...)
     let b:atp_LocalCommands		= atp_LocalCommands
     let b:atp_LocalEnvironments		= atp_LocalEnvironments
     let b:atp_LocalColors		= atp_LocalColors
-"     echomsg reltimestr(reltime(time))
     return [ atp_LocalEnvironments, atp_LocalCommands, atp_LocalColors ]
 
 endfunction
@@ -190,30 +189,25 @@ endfunction
 function! DefiSearch(bang,...)
 
     let pattern		= a:0 >= 1 ? a:1 : ''
-    let preambule_only	= a:bang == "!" ? 0 : 1
+    let pattern		= '\%(\\def\|\\\%(re\)\=newcommand\s*{\=\|\\providecommand\s*{\=\|\\\%(re\)\=newenvironment\s*{\|\\\%(re\)\=newtheorem\s*{\)\s*\\\=\w*\zs'.pattern
+    let g:pattern	= pattern
+    let preambule_only	= ( a:bang == "!" ? 0 : 1 )
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
-    let defi_dict	= s:make_defi_dict(a:bang, atp_MainFile, '\\def\|\\newcommand')
-
-    " open new buffer
-    let openbuffer=" +setl\\ buftype=nofile\\ nospell " . fnameescape("DefiSearch")
-    if g:vertical ==1
-	let openbuffer="keepalt vsplit " . openbuffer 
-    else
-	let openbuffer="keepalt split " . openbuffer 
-    endif
+    let defi_dict	= s:make_defi_dict(a:bang, atp_MainFile, pattern)
+    let g:defi_dict	= defi_dict
 
     if len(defi_dict) > 0
 	" wipe out the old buffer and open new one instead
 	if bufloaded("DefiSearch")
 	    exe "silent bd! " . bufnr("DefiSearch") 
 	endif
-	silent exe openbuffer
 	let b:atp_MainFile	= expand("%")
 	let b:atp_ProjectDir	= expand("%:p:h")
 	setl syntax=tex
 
-	map <buffer> q	:bd<CR>
+	let defi_list = []
+	let g:defi_list = defi_list
 
 	for inputfile in keys(defi_dict)
 	    let ifile	= readfile(inputfile)
@@ -222,34 +216,54 @@ function! DefiSearch(bang,...)
 		let case = ( &l:smartcase && &l:ignorecase && pattern =~ '\u' ? 'noignorecase'  : ( &l:ignorecase ? 'ignorecase' : 'noignorecase' )) 
 		let condition = ( case == "noignorecase" ? ifile[l:range[0]-1] =~# pattern : ifile[l:range[0]-1] =~? pattern )
 		if condition
-		    " print the lines into the buffer
+		    " print the lines into defi_list
 		    let i=0
 		    let c=0
 		    " add an empty line if the definition is longer than one line
 		    if l:range[0] != l:range[1]
-			call setline(line('$')+1,'')
+			call add(defi_list, '')
+" 			call setline(line('$')+1,'')
 			let i+=1
 		    endif
 		    while c <= l:range[1]-l:range[0] 
 			let line=l:range[0]+c
-			call setline(line('$')+1,ifile[line-1])
+			call add(defi_list, ifile[line-1])
+" 			call setline(line('$')+1,ifile[line-1])
 			let i+=1
 			let c+=1
 		    endwhile
 		endif
 	    endfor
 	endfor
-	if getbufline("DefiSearch",'1','$') == ['']
-	    :bw
+
+	if len(defi_list) == 0
 	    redraw
 	    echohl ErrorMsg
-	    echomsg "Definition not found."
+	    echomsg "[ATP:] definition not found."
 	    echohl Normal
+	    return
 	endif
+
+	let window_height= min([g:atp_DefiSearchMaxWindowHeight, len(defi_list)])
+	" open new buffer
+	let openbuffer=" +setl\\ buftype=nofile\\ nospell " . fnameescape("DefiSearch")
+	if g:vertical ==1
+	    let openbuffer="keepalt vsplit " . openbuffer 
+	else
+	    let openbuffer="keepalt rightbelow ".window_height."split " . openbuffer 
+	endif
+
+	silent exe openbuffer
+	call setline(1, defi_list)
+	call matchadd('Search', ( &l:ignorecase ? '\c' : '\C' ) .pattern)
+	let @/=pattern
+	setl ft=tex
+	setl readonly
+	map <buffer> q	:bd<CR>
     else
 	redraw
 	echohl ErrorMsg
-	echomsg "Definition not found."
+	echomsg "[ATP:] definition not found."
 	echohl Normal
     endif
 endfunction
@@ -417,7 +431,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	if flags_supplied =~# 'p'
 	    let flags_supplied = substitute(flags_supplied, 'p', '', 'g')
 	    echohl WarningMsg
-	    echomsg "Searching flag 'p' is not supported, filtering it out."
+	    echomsg "[ATP:] searching flag 'p' is not supported, filtering it out."
 	    echohl Normal
 	endif
 
@@ -874,7 +888,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 
 	    if g:ATP_branch == "nobranch"
 		echohl ErrorMsg
-		echomsg "This probably happend while searching for \\input, it is not yet supported, if not it is a bug"
+		echomsg "[ATP:] this probably happend while searching for \\input, it is not yet supported, if not it is a bug"
 		echohl Normal
 
 		silent! echomsg "Tree=" . string(l:tree)
@@ -955,7 +969,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	" when REJECT
 	elseif goto_s == 'REJECT'
 	    echohl ErrorMsg
-	    echomsg "Pattern not found"
+	    echomsg "[ATP:] pattern not found"
 	    echohl Normal
 
 	    if g:atp_debugRS > 1
@@ -988,7 +1002,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	" when ERROR
 	elseif
 	    echohl ErrorMsg
-	    echomsg "This is a bug in ATP."
+	    echomsg "[ATP:] this is a bug in ATP."
 	    echohl
 	    
 	    " restore vim options 
@@ -1037,11 +1051,10 @@ function! Search(Bang, Arg)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let [ pattern, flag ] = s:GetSearchArgs(a:Arg, 'bceswW')
-"   echomsg " pattern " . pattern . " flag " . flag 
 
     if pattern == ""
 	echohl ErrorMsg
-	echomsg "Enclose the pattern with /.../"
+	echomsg "[ATP:] enclose the pattern with /.../"
 	echohl Normal
 	return
     endif
@@ -1068,7 +1081,7 @@ function! ATP_ToggleNn(...) " {{{
 	    nmenu 550.79 &LaTeX.Toggle\ &Nn\ [off]<Tab>:ToggleNn		:ToggleNn<CR>
 	    imenu 550.79 &LaTeX.Toggle\ &Nn\ [off]<Tab>:ToggleNn		<Esc>:ToggleNn<CR>a
 	    tmenu LaTeX.Toggle\ Nn\ [off] atp maps to n,N.
-	    echomsg "vim nN maps"  
+	    echomsg "[ATP:] vim nN maps"  
 	else
 	    silent! nmap <buffer> <silent> n    <Plug>RecursiveSearchn
 	    silent! nmap <buffer> <silent> N    <Plug>RecursiveSearchN
@@ -1077,7 +1090,7 @@ function! ATP_ToggleNn(...) " {{{
 	    nmenu 550.79 &LaTeX.Toggle\ &Nn\ [on]<Tab>:ToggleNn			:ToggleNn<CR>
 	    imenu 550.79 &LaTeX.Toggle\ &Nn\ [on]<Tab>:ToggleNn			<Esc>:ToggleNn<CR>a
 	    tmenu LaTeX.Toggle\ Nn\ [on] n,N vim normal commands.
-	    echomsg "atp nN maps"
+	    echomsg "[ATP:] atp nN maps"
 	endif
 endfunction
 function! SearchHistCompletion(ArgLead, CmdLine, CursorPos)

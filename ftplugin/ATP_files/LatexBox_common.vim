@@ -4,7 +4,7 @@
 " Note:		   This file is a part of Automatic Tex Plugin for Vim.
 " URL:		   https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Sat Mar 12 11:00  2011 W
+" Last Change: Sun Mar 27 02:00  2011 W
 
 let s:sourced = exists("s:sourced") ? 1 : 0
 " Settings {{{
@@ -173,7 +173,7 @@ endfunction
 function! LatexBox_View()
 	let outfile = LatexBox_GetOutputFile()
 	if !filereadable(outfile)
-		echomsg fnamemodify(outfile, ':.') . ' is not readable'
+		echomsg "[ATP:] ".fnamemodify(outfile, ':.') . ' is not readable'
 		return
 	endif
 	let cmd = '!' . g:LatexBox_viewer . ' ' . shellescape(outfile) . ' &>/dev/null &'

@@ -1,34 +1,51 @@
 #!/usr/bin/python
-# This file is a part of ATP plugin to vim.
-# AUTHOR: Marcin Szamotulski
+# Author: Marcin Szamotulski <mszamot[@]gmail[.]com>
+# This script is a part of Automatic TeX Plugin for Vim.
+# It can be destributed seprately under General Public Licence ver.3 or higher.
 
 # SYNTAX:
-# atp_RevSearch.py <file> <line_nr>
+# atp_RevSearch.py <file> <line_nr> [<col_nr>]
 
 # DESRIPTION: 
 # This is a python sctipt which implements reverse searching (okular->vim)
 # it uses atplib#FindAndOpen() function which finds the vimserver which hosts
-# the <file>, then opens it on the <line_nr>. 
+# the <file>, then opens it on the <line_nr> and column <col_nr>.
+# Column number is an optoinal argument if not set on the command line it is 1.
 
 # HOW TO CONFIGURE OKULAR to get Reverse Search
 # Designed to put in okular: 
 # 		Settings>Configure Okular>Editor
 # Choose: Custom Text Edit
-# In the command field type: atp_RevSearch.py '%p' '%l'
+# In the command field type: atp_RevSearch.py '%f' '%l'
 # If it is not in your $PATH put the full path of the script.
 
 # DEBUG:
 # debug file : /tmp/atp_RevSearch.debug
 
-import subprocess, sys
+import subprocess, sys, re
 
-output = subprocess.Popen(["vim", "--serverlist"], stdout=subprocess.PIPE)
-servers = output.stdout.read()
-server_list = str(servers).splitlines()
-server = server_list[0]
-cmd="vim --servername "+server+" --remote-expr \"atplib#FindAndOpen('"+sys.argv[1]+"','"+sys.argv[2]+"')\""
-subprocess.call(cmd, shell=True) 
+# Get list of vim servers.
+output = subprocess.Popen(["gvim", "--serverlist"], stdout=subprocess.PIPE)
+servers = str(output.stdout.read())
+match=re.match('(b\')?(.*)(\\\\n\')?', servers)
+# Get the column (it is an optional argument)
+if (len(sys.argv) >= 4 and int(sys.argv[3]) > 0):
+	column = str(sys.argv[3])
+else:
+	column = str(1)
 
+if match != None:
+	servers=match.group(2)
+	server_list=servers.split('\\n')
+	server = server_list[0]
+	# Call atplib#FindAndOpen()     
+	cmd="gvim --servername "+server+" --remote-expr \"atplib#FindAndOpen('"+sys.argv[1]+"','"+sys.argv[2]+"','"+column+"')\""
+	subprocess.call(cmd, shell=True) 
+# Debug:
 f = open('/tmp/atp_RevSearch.debug', 'w')
-f.write(">>> file        "+sys.argv[1]+"\n>>> line        "+sys.argv[2]+"\n>>> server      "+server+"\n>>> server list "+str(server_list)+"\n>>> cmd         "+cmd+"\n")
+f.write(">>> output      "+str(servers)+"\n")
+if match != None:
+	f.write(">>> file        "+sys.argv[1]+"\n>>> line        "+sys.argv[2]+"\n>>> column      "+column+"\n>>> server      "+server+"\n>>> server list "+str(server_list)+"\n>>> cmd         "+cmd+"\n")
+else:
+	f.write(">>> file        "+sys.argv[1]+"\n>>> line        "+sys.argv[2]+"\n>>> column      "+column+"\n>>> server       not found\n")
 f.close()

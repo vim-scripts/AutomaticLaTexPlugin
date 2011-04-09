@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: 2010 July 9
+" Last Change: Fri Apr 08 07:00  2011 W
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 "{{{ Load Once
@@ -75,3 +75,4 @@ vmap 	<buffer> 	p :Preview <CR>
 map 	<buffer> 	Q :bd!<CR>
 map 	<buffer> 	q :q!<CR>R
 "}}}
+" vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

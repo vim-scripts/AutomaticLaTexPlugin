@@ -1485,6 +1485,7 @@ command, but LaTeX usually does it for you.
 |\newline| 		Break the line prematurely
 |\newpage| 		Start a new page
 |\nolinebreak| 		Don't break the current line
+|\nointerlineskip|	Dont' make a space between lines
 |\nopagebreak| 		Don't make a page break here
 |\pagebreak| 		Please make a page break here
 |\sloppy| 		Be sloppy about line breaking
@@ -1565,6 +1566,15 @@ command, but LaTeX usually does it for you.
 		from a demand to a request. The [number] must be a number from 0
 		to 4. The higher the number, the more insistent the request
 		is.
+
+\nointerlineskip				*\nointerlineskip*
+		Do not make a space between boxes in vertical mode and lines.
+		For example:
+		    \vbox{\hbox{line_1}|\nointerlineskip|\hbox{line_2}} 
+		will place the two horizontal boxes without vertical skip. Can
+		be also used after |\\|, however placing it before |\newline|
+		raise an error. 
+		
 
 \nopagebreak[number]				*\nopagebreak*
 		The |\nopagebreak| command prevents LaTeX from breaking the

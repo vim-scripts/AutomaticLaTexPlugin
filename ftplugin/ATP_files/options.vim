@@ -41,6 +41,10 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
+if !exists("g:atp_debugPythonCompiler")
+    " debug MakeLatex (compiler.vim)
+    let g:atp_debugPythonCompiler = 0
+endif
 if !exists("g:atp_debugML")
     " debug MakeLatex (compiler.vim)
     let g:atp_debugML	= 0
@@ -75,7 +79,7 @@ if !exists("g:atp_debugCompiler")
     " when equal 2 output is more verbose.
     let g:atp_debugCompiler 	= 0
 endif
-if !exists("g:atp_debugST")
+if !exists("g:atp_debugCallBack")
     " Debug <SID>CallBack() function (compiler.vim)
     let g:atp_debugCallBack	= 0
 endif
@@ -211,14 +215,28 @@ let s:optionsDict= {
 		\ "atp_Viewer" 			: has("win26") || has("win32") || has("win64") || has("win95") || has("win32unix") ? "AcroRd32.exe" : "okular" , 
 		\ "atp_TexFlavor" 		: &l:filetype, 
 		\ "atp_XpdfServer" 		: fnamemodify(b:atp_MainFile,":t:r"), 
+		\ "atp_okularOptions"		: "--unique",
 		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
 		\ "atp_TmpDir"			: substitute(b:atp_OutDir . "/.tmp", '\/\/', '\/', 'g'),
 		\ "atp_TexCompiler" 		: &filetype == "plaintex" ? "pdftex" : "pdflatex",	
-		\ "atp_TexCompilerVariable"	: "max_print_line=2000",
 		\ "atp_auruns"			: "1",
 		\ "atp_TruncateStatusSection"	: "40", 
-		\ "atp_LastBibPattern"		: "" }
+		\ "atp_LastBibPattern"		: "",
+		\ "atp_TexCompilerVariable"	: "max_print_line=2000",
+		\ "atp_StarEnvDefault"		: "",
+		\ "atp_StarMathEnvDefault"	: "",
+		\ "atp_LatexPIDs"		: [],
+		\ "atp_LastLatexPID"		: 0,
+		\ "atp_VerboseLatexInteractionMode" : "errorstopmode",
+		\ "atp_BibtexReturnCode"	: 0,
+		\ "atp_ProgressBar"		: {},
+		\ "atp_BibtexOutput"		: ""}
 
+" 		\ "atp_TexCompilerVariable"	: "",
+" 			\.";TEXINPUT="
+" 			\.($TEXINPUTS == "" ? b:atp_OutDir : b:atp_OutDir.":".$TEXINPUTS)
+" 			\.";BIBINPUTS="
+" 			\.($BIBINPUTS == "" ? b:atp_OutDir : b:atp_OutDir.":".$BIBINPUTS),
 let g:optionsDict=deepcopy(s:optionsDict)
 " the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
 " remember what is the default used by s:SetOutDir().
@@ -262,7 +280,7 @@ function! s:SetOptions()
 	    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 	    call TreeOfFiles(atp_MainFile)
 	else
-	    echomsg "b:atp_MainFile " . "doesn't exists."
+	    echomsg "[ATP:] b:atp_MainFile: ".b:atp_MainFile." doesn't exists."
 	endif
     endif
 endfunction
@@ -273,6 +291,47 @@ call s:SetOptions()
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_XpdfSleepTime")
+    let g:atp_XpdfSleepTime = "0.1"
+endif
+if !exists("g:atp_MapCC") || g:atp_reload
+    let g:atp_MapCC = 0
+endif
+if !exists("g:atp_DefaultErrorFormat") || g:atp_reload
+    let g:atp_DefaultErrorFormat = "erc"
+endif
+unlockvar g:atp_ErrorFormat
+let g:atp_ErrorFormat = g:atp_DefaultErrorFormat
+lockvar g:atp_ErrorFormat
+if !exists("g:atp_DefiSearchMaxWindowHeight") || g:atp_reload
+    let g:atp_DefiSearchMaxWindowHeight=15
+endif
+if !exists("g:atp_ProgressBar") || g:atp_reload
+    let g:atp_ProgressBar = 1
+endif
+let g:atp_cmdheight = &l:cmdheight
+if !exists("g:atp_DebugModeQuickFixHeight") || g:atp_reload 
+    let g:atp_DebugModeQuickFixHeight = 8 
+endif
+if !exists("g:atp_DebugModeCmdHeight") || g:atp_reload 
+    let g:atp_DebugModeCmdHeight = &l:cmdheight
+endif
+if !exists("g:atp_DebugMode_AU_change_cmdheight") || g:atp_reload
+    " Background Compilation will change the 'cmdheight' option when the compilation
+    " was without errors. AU - autocommand compilation
+    let g:atp_DebugMode_AU_change_cmdheight = 0
+    " This is the 'stay out of my way' solution. 
+endif
+if !exists("g:atp_Compiler") || g:atp_reload 
+    let g:atp_Compiler = "python"
+endif
+if !exists("g:atp_ReloadViewers") || g:atp_reload
+    " List of viewers which need to be reloaded after output file is updated.
+    let g:atp_ReloadViewers	= [ 'xpdf' ]
+endif
+if !exists("g:atp_PythonCompilerPath") || g:atp_reload
+    let g:atp_PythonCompilerPath=globpath(&rtp, 'ftplugin/ATP_files/compile.py')
+endif
 if !exists("g:atp_cpcmd") || g:atp_reload
     " This will avoid using -i switch which might be defined in an alias file. 
     " This doesn't make much harm, but it might be better. 
@@ -305,16 +364,6 @@ endif
     if !exists("g:atp_EnvNameRemark") || g:atp_reload
 	let g:atp_EnvNameRemark="remark"
     endif
-if !exists("g:atp_StarEnvDefault") || g:atp_reload
-    " Values are "" or "*". 
-    " It will be added to enrionemnt names which support it.
-    let g:atp_StarEnvDefault=""
-endif
-if !exists("g:atp_StarMathEnvDefault") || g:atp_reload
-    " Values are "" or "*". 
-    " It will be added to enrionemnt names which support it.
-    let g:atp_StarMathEnvDefault=""
-endif
 if !exists("g:atp_EnvOptions_enumerate") || g:atp_reload
     " add options to \begin{enumerate} for example [topsep=0pt,noitemsep] Then the
     " enumerate map <Leader>E will put \begin{enumerate}[topsep=0pt,noitemsep] Useful
@@ -401,7 +450,7 @@ endif
 	    else
 		let g:atp_LogSync = !g:atp_LogSync
 	    endif
-	    echomsg "g:atp_LogSync = " . g:atp_LogSync
+	    echomsg "[ATP:] g:atp_LogSync = " . g:atp_LogSync
 	endfunction
 	command! -buffer -nargs=? -complete=customlist,s:SyncComp LogSync :call s:Sync(<f-args>)
 	function! s:SyncComp(ArgLead, CmdLine, CursorPos)
@@ -425,7 +474,6 @@ endif
 	" atplib#CloseLastBracket() (autoload/atplib.vim)
 	lockvar g:atp_closebracket_checkenv
     catch /E741:/
-" 	echomsg "Changing this variable is not supported"
     endtry
 " endif
 " if !exists("g:atp_ProjectScript") || g:atp_reload
@@ -493,8 +541,11 @@ if !exists("g:ViewerMsg_Dict") || g:atp_reload
 endif
 
 "ToDo: to doc.
-if !exists("g:atp_insert_updatetime") || g:atp_reload
-    let g:atp_insert_updatetime = max([ 2000, &l:updatetime])
+if !exists("g:atp_updatetime_insert") || g:atp_reload
+    let g:atp_updatetime_insert = 2000
+endif
+if !exists("g:atp_updatetime_normal") || g:atp_reload
+    let g:atp_updatetime_normal = 1000
 endif
 if !exists("g:atp_DefaultDebugMode") || g:atp_reload
     " recognised values: silent, debug.
@@ -597,7 +648,8 @@ if !exists("g:keep") || g:atp_reload
     let g:keep=[ "log", "aux", "toc", "bbl", "ind", "pdfsync", "synctex.gz" ]
 endif
 if !exists("g:atp_ssh") || g:atp_reload
-    let g:atp_ssh=substitute(system("whoami"),'\n','','') . "@localhost"
+    " WINDOWS NOT COMPATIBLE
+    let g:atp_ssh=$USER . "@localhost"
 endif
 " opens bibsearch results in vertically split window.
 if !exists("g:vertical") || g:atp_reload
@@ -665,12 +717,12 @@ if !exists("g:atp_statusNotif") || g:atp_reload
     endif
 endif
 if !exists("g:atp_statusNotifHi") || g:atp_reload
+    " User<nr>  - highlight status notifications with highlight group User<nr>.
     let g:atp_statusNotifHi	= 0
 endif
 if !exists("g:atp_callback") || g:atp_reload
-    if exists("g:atp_status_notification") && g:atp_status_notification == 1
-	let g:atp_callback	= 1
-    elseif has('clientserver') && !empty(v:servername) 
+    if exists("g:atp_statusNotif") && g:atp_statusNotif == 1 &&
+		\ has('clientserver') && !empty(v:servername)
 	let g:atp_callback	= 1
     else
 	let g:atp_callback	= 0
@@ -682,6 +734,7 @@ endif
 "     let g:atp_complete_math_env_first=0
 " endif
 " }}}
+"
 
 " Project Settings:
 " {{{1
@@ -849,7 +902,7 @@ function! <SID>Babel()
     endif
     let default_language 	= get(languages, '-1', '') 
 	if g:atp_debugBabel
-	    echomsg "Babel : defualt language:" . default_language
+	    echomsg "[Babel:] defualt language:" . default_language
 	endif
     let keymap 			= get(g:atp_keymaps, default_language, '')
 
@@ -988,7 +1041,7 @@ let s:special_space="[off]"
 function! ATP_ToggleSpace(...)
     let on	= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) : maparg('<space>','c') == "" )
     if on
-	echomsg "special space is on"
+	echomsg "[ATP:] special space is on"
 	cmap <Space> \_s\+
 	let s:special_space="[on]"
 	silent! aunmenu LaTeX.Toggle\ Space\ [off]
@@ -998,7 +1051,7 @@ function! ATP_ToggleSpace(...)
 	imenu 550.78 &LaTeX.&Toggle\ Space\ [on]<Tab>cmap\ <space>\ \\_s\\+	<Esc>:ToggleSpace<CR>a
 	tmenu &LaTeX.&Toggle\ Space\ [on] cmap <space> \_s\+ is curently on
     else
-	echomsg "special space is off"
+	echomsg "[ATP:] special space is off"
  	cunmap <Space>
 	let s:special_space="[off]"
 	silent! aunmenu LaTeX.Toggle\ Space\ [on]
@@ -1019,7 +1072,7 @@ function! ATP_ToggleCheckMathOpened(...)
 "     if g:atp_MathOpened
     if !on
 	let g:atp_MathOpened = 0
-	echomsg "check if in math environment is off"
+	echomsg "[ATP:] check if in math environment is off"
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [on]
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
 	menu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [off]<Tab>g:atp_MathOpened			
@@ -1030,7 +1083,7 @@ function! ATP_ToggleCheckMathOpened(...)
 		    \ <Esc>:ToggleCheckMathOpened<CR>a
     else
 	let g:atp_MathOpened = 1
-	echomsg "check if in math environment is on"
+	echomsg "[ATP:] check if in math environment is on"
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
 	silent! aunmenu LaTeX.Toggle\ Check\ if\ in\ Math\ [off]
 	menu 550.79 &LaTeX.Toggle\ &Check\ if\ in\ Math\ [on]<Tab>g:atp_MathOpened
@@ -1047,7 +1100,7 @@ function! ATP_ToggleCallBack(...)
     let on	= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) :  !g:atp_callback )
     if !on
 	let g:atp_callback	= 0
-	echomsg "call back is off"
+	echomsg "[ATP:] call back is off"
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
 	menu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
@@ -1058,7 +1111,7 @@ function! ATP_ToggleCallBack(...)
 		    \ <Esc>:call ToggleCallBack()<CR>a
     else
 	let g:atp_callback	= 1
-	echomsg "call back is on"
+	echomsg "[ATP:] call back is on"
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [off]
 	menu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback
@@ -1075,17 +1128,44 @@ endfunction
 " TODO: it would be nice to have this command (and the map) in quickflist (FileType qf)
 " describe DEBUG MODE in doc properly.
 function! ATP_ToggleDebugMode(...)
-    let on	= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) :  t:atp_DebugMode != "debug" )
+    let new_debugmode	= ""
+    if a:0 >= 1 && a:1 =~ '^on\|off$'
+	let [ on, new_debugmode ]	= ( a:1 == 'on'  ? [ 1, 'Debug' ] : [0, g:atp_DefaultDebugMode] )
+	let set_default=1
+	let copen = 1
+    elseif a:0 >= 1
+	let t:atp_DebugMode	= a:1
+	let new_debugmode 	= a:1
+	let set_default		= 0
+	if a:1 == 'silent'
+	    let on		= 0
+	    let copen		= 0
+	elseif a:1 == 'debug'
+	    let on		= 1 
+	    let copen		= ( a:1 =~# 'Debug' ? 1 : 0 )
+	else
+	    " for verbose mode
+	    let on		= 0
+	    let copen		= 0
+	endif
+    else
+	let set_default = 1
+	let [ on, new_debugmode ] = ( t:atp_DebugMode =~? '^\%(debug\|verbose\)$' ? [ 0, g:atp_DefaultDebugMode ] : [ 1, 'Debug' ] )
+	let copen 		= 1
+    endif
+    let g:set_defualt=set_default
+    let g:on=on
+    let g:copen=copen
     if !on
-	echomsg "debug mode is off"
+	echomsg "[ATP:] debug mode is ".new_debugmode
 
 	silent! aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]
 	silent! aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]
-	menu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>t:atp_DebugMode			
+	menu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>ToggleDebugMode
 		    \ :<C-U>ToggleDebugMode<CR>
-	cmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>t:atp_DebugMode			
+	cmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>ToggleDebugMode
 		    \ <C-U>ToggleDebugMode<CR>
-	imenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>t:atp_DebugMode			
+	imenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [off]<Tab>ToggleDebugMode
 		    \ <Esc>:ToggleDebugMode<CR>a
 
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
@@ -1097,18 +1177,20 @@ function! ATP_ToggleDebugMode(...)
 	imenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [off]<Tab>g:atp_callback	
 		    \ <Esc>:ToggleDebugMode<CR>a
 
-	let t:atp_DebugMode	= g:atp_DefaultDebugMode
+	if set_default
+	    let t:atp_DebugMode	= g:atp_DefaultDebugMode
+	endif
 	silent cclose
     else
-	echomsg "debug mode is on"
+	echomsg "[ATP:] debug mode is ".new_debugmode
 
 	silent! aunmenu 550.20.5 LaTeX.Log.Toggle\ Debug\ Mode\ [off]
 	silent! aunmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]
-	menu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>t:atp_DebugMode
+	menu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>ToggleDebugMode
 		    \ :<C-U>ToggleDebugMode<CR>
-	cmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>t:atp_DebugMode
+	cmenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>ToggleDebugMode
 		    \ <C-U>ToggleDebugMode<CR>
-	imenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>t:atp_DebugMode
+	imenu 550.20.5 &LaTeX.&Log.Toggle\ &Debug\ Mode\ [on]<Tab>ToggleDebugMode
 		    \ <Esc>:ToggleDebugMode<CR>a
 
 	silent! aunmenu LaTeX.Toggle\ Call\ Back\ [on]
@@ -1120,12 +1202,20 @@ function! ATP_ToggleDebugMode(...)
 	imenu 550.80 &LaTeX.Toggle\ &Call\ Back\ [on]<Tab>g:atp_callback	
 		    \ <Esc>:ToggleDebugMode<CR>a
 
-	let g:atp_callback=1
-	let t:atp_DebugMode	= "debug"
+	let g:atp_callback	= 1
+	if set_default
+	    let t:atp_DebugMode	= "Debug"
+	endif
 	let winnr = bufwinnr("%")
-	silent copen
-	exe winnr . " wincmd w"
+	if copen
+	    silent copen
+	    silent! cg
+	    exe winnr . " wincmd w"
+	endif
     endif
+endfunction
+function! ToggleDebugModeCompl(A,B,C)
+    return "silent\ndebug\nDebug\nverbose\non\noff"
 endfunction
 augroup ATP_DebugModeCommandsAndMaps
     au!
@@ -1163,7 +1253,7 @@ nnoremap <silent> <buffer> 	<Plug>ToggleCheckMathOpened	:call ATP_ToggleCheckMat
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleCallBack 		:call ATP_ToggleCallBack(<f-args>)
 nnoremap <silent> <buffer> 	<Plug>ToggleCallBack		:call ATP_ToggleCallBack()<CR>
 
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleDebugMode 	:call ATP_ToggleDebugMode(<f-args>)
+command! -buffer -nargs=? -complete=custom,ToggleDebugModeCompl	ToggleDebugMode 	:call ATP_ToggleDebugMode(<f-args>)
 nnoremap <silent> <buffer> 	<Plug>ToggleDebugMode		:call ATP_ToggleDebugMode()<CR>
 
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleTab	 	:call ATP_ToggleTab(<f-args>)
@@ -1229,7 +1319,7 @@ endif
 		\ 'proof', 'proposition', 'picture', 'theorem', 'tikzpicture',  
 		\ 'tabular', 'table', 'tabbing', 'thebibliography', 'titlepage',
 		\ 'quotation', 'quote',
-		\ 'remark', 'verbatim', 'verse' ]
+		\ 'remark', 'verbatim', 'verse', 'frame' ]
 
 	let g:atp_amsmath_environments=['align', 'alignat', 'equation', 'gather',
 		\ 'multline', 'split', 'substack', 'flalign', 'smallmatrix', 'subeqations',
@@ -1300,9 +1390,9 @@ endif
 	\ "\\bfseries", "\\mdseries", "\\bigskip", "\\bibitem",
 	\ "\\tiny",  "\\scriptsize", "\\footnotesize", "\\small",
 	\ "\\noindent", "\\normalfont", "\normalsize", "\\normalsize", "\\normal", 
-	\ "\\hfill", "\\hspace","\\hline",  
+	\ "\hfil", "\\hfill", "\\hspace","\\hline", 
 	\ "\\large", "\\Large", "\\LARGE", "\\huge", "\\HUGE",
-	\ "\\overline", 
+	\ "\\overline{", "\\underline{", 
 	\ "\\usefont{", "\\fontsize{", "\\selectfont", "\\fontencoding{", "\\fontfamiliy{", "\\fontseries{", "\\fontshape{",
 	\ "\\rmdefault", "\\sfdefault", "\\ttdefault", "\\bfdefault", "\\mddefault", "\\itdefault",
 	\ "\\sldefault", "\\scdefault", "\\updefault",  "\\renewcommand{", "\\newcommand{",
@@ -1310,8 +1400,8 @@ endif
 	\ "\\input", "\\include", "\\includeonly", "\\includegraphics",  
 	\ "\\savebox", "\\sbox", "\\usebox", "\\rule", "\\raisebox{", 
 	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
-	\ "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", 
-	\ "\\hrulefill", "\hfil", "\\dotfill",
+	\ "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", "\\vbox",
+	\ "\\hrulefill", "\\dotfill", "\\hbox",
 	\ "\\thispagestyle{", "\\mathnormal", "\\markright{", "\\markleft{", "\\pagestyle{", "\\pagenumbering{",
 	\ "\\author{", "\\date{", "\\thanks{", "\\title{",
 	\ "\\maketitle",
@@ -1325,7 +1415,7 @@ endif
 	\ "\\newcounter{", "\\refstepcounter{", 
 	\ "\\roman{", "\\Roman{", "\\stepcounter{", "\\setcounter{", 
 	\ "\\usecounter{", "\\value{", 
-	\ "\\newlength{", "\\setlength{", "\\addtolength{", "\\settodepth{", 
+	\ "\\newlength{", "\\setlength{", "\\addtolength{", "\\settodepth{", "\\nointerlineskip", 
 	\ "\\settoheight{", "\\settowidth{", "\\stretch{",
 	\ "\\width", "\\height", "\\depth", "\\totalheight",
 	\ "\\footnote{", "\\footnotemark", "\\footnotetetext", 
@@ -1348,7 +1438,14 @@ endif
 		    \"\\framebox(", "\\line(", "\\linethickness{",
 		    \ "\\makebox(", "\\\multiput(", "\\oval(", "\\put", 
 		    \ "\\shortstack", "\\vector(" ]
-
+	let g:atp_hyperref_commands=[ '\hypersetup{', '\hypertarget{', '\url{', '\nolinkurl{', '\hyperbaseurl{', 
+		    \ '\hyperdef{', '\hyperref', '\hyperlink{', '\phantomsection', '\autoref{', '\autopageref{', 
+		    \ '\ref*{', '\autoref*{', '\autopageref*{', '\pdfstringdef{', '\pdfbookmark', 
+		    \ '\curretnpdfbookmark{', '\subpdfbookmark{', '\subpdfbookmark{', '\belowpdfbookmark{',
+		    \ '\texorpdfstring{', '\hypercalcbp', '\Acrobatmenu{', 
+		    \ '\textField', '\CheckBox', '\ChoiceMenu', '\PushButton', '\Submit', '\Reset',
+		    \ '\LayoutTextField', '\LayoutChoiceField', '\LayoutCheckField', '\MakeRadioField{', 
+		    \ '\MakeCheckField{', '\MakeTextField{', '\MakeChoiceField{', '\MakeButtonField{' ]
 	" ToDo: end writting layout commands. 
 	" ToDo: MAKE COMMANDS FOR PREAMBULE.
 
@@ -1372,7 +1469,7 @@ endif
 	\ "\\dashv", "\\vdash", "\\vDash", "\\Vdash", "\\models", "\\sim", "\\simeq", 
 	\ "\\prec", "\\preceq", "\\preccurlyeq", "\\precapprox", "\\mid",
 	\ "\\succ", "\\succeq", "\\succcurlyeq", "\\succapprox", "\\approx", 
-	\ "\\ldots", "\\cdots", "\\vdots", "\\ddots", "\\circ", 
+	\ "\\ldots", "\\cdot", "\\cdots", "\\vdots", "\\ddots", "\\circ", 
 	\ "\\thickapprox", "\\cong", "\\bullet",
 	\ "\\lhd", "\\unlhd", "\\rhd", "\\unrhd", "\\dagger", "\\ddager", "\\dag", "\\ddag", 
 	\ "\\vartriangleright", "\\vartriangleleft", 
@@ -1582,7 +1679,7 @@ endif
 		    \ 'beamerboxesrounded', 'columns', 'semiverbatim' ]
 
 	let g:atp_BeamerCommands = ["\\alert{", "\\frametitle{", "\\framesubtitle", "\\titlepage", "\\setbeamercolor{", 
-		    \ "\\pauze", "\\onslide", "\\only", "\\uncover", "\\visible", "\\invisible", "\\temporal", "\\alt",
+		    \ "\\pause", "\\onslide", "\\only", "\\uncover", "\\visible", "\\invisible", "\\temporal", "\\alt",
 		    \ "\\usebeamercolor{", "\\usetheme{", "\\includeonlyframes{", "\\againframe", "\\setbeamersize{",
 		    \ "\\action{", "\\inserttocsection", "\\inserttocsectionumber", "\\lecture", "\\AtBeginLecture{",
 		    \ "\\appendix", "\\hypertarget", "\\beamerbutton", "\\beamerskipbutton", "\\beamerreturnbutton", 
@@ -1625,9 +1722,14 @@ endif
 		    \ 'lgathered', 'rgathered' ]
 
 	let g:atp_TodoNotes_commands = [ '\todo{', '\listoftodos', '\missingfigure' ] 
-	let g:atp_TodoNotes_todo_options	= [ 'disable', 'color=', 'backgroundcolor=', 'linecolor=', 'bordercolor=', 
+	let g:atp_TodoNotes_todo_options = 
+		    \ [ 'disable', 'color=', 'backgroundcolor=', 'linecolor=', 'bordercolor=', 
 		    \ 'line', 'noline', 'inline', 'noinline', 'size=', 'list', 'nolist', 
-		    \ 'caption=', 'prepend', 'noprepend', 'fancyline']   
+		    \ 'caption=', 'prepend', 'noprepend', 'fancyline' ]   
+	"Todo: PackageOptions are not yet done.  
+	let g:atp_TodoNotes_packageOptions = [ 'textwidth', 'textsize', 
+			    \ 'prependcaption', 'shadow', 'dvistyle', 'figwidth', 'obeyDraft' ]
+
 	let g:atp_TodoNotes_missingfigure_options = [ 'figwidth=' ]
 if !exists("g:atp_MathOpened") || g:atp_reload
     let g:atp_MathOpened = 1
@@ -1653,20 +1755,47 @@ let g:atp_pagenumbering = [ 'arabic', 'roman', 'Roman', 'alph', 'Alph' ]
 " }}}
 "
 
+" AUTOCOMMANDS:
 " Some of the autocommands (Status Line, LocalCommands, Log File):
 " {{{ Autocommands:
 
 
 if !s:did_options
 
+    augroup ATP_cmdheight
+	" update g:atp_cmdheight when user writes the buffer
+	au!
+	au BufWrite *.tex :let g:atp_cmdheight = &l:cmdheight
+    augroup END
+
+function! <SID>Python_rmdir(dir)
+python << EOF
+import shutil, errno
+dir=vim.eval('a:dir')
+try:
+	shutil.rmtree(dir)
+except OSError, e:
+ 	if errno.errorcode[e.errno] == 'ENOENT':
+		pass
+EOF
+endfunction
+
+    augroup ATP_QuickFixCmds_2
+	au!
+	au FileType qf command! -bang -buffer -nargs=? -complete=custom,DebugComp DebugMode	:call <SID>SetDebugMode(<q-bang>,<f-args>)
+    augroup END
+
     augroup ATP_deltmpdir
-	au VimLeave *.tex :call system("rmdir " . b:atp_TmpDir)
+	" WINDOWS NOT COMPATIBLE
+	au!
+	au VimLeave *.tex :call <SID>Python_rmdir(b:atp_TmpDir)
     augroup END
 
     augroup ATP_updatetime
+	au!
 	au VimEnter if &l:updatetime == 4000 | let &l:updatetime = 800 | endif
-	au InsertEnter *.tex let s:updatetime=&l:updatetime | let &l:updatetime = g:atp_insert_updatetime
-	au InsertLeave *.tex let &l:updatetime=s:updatetime 
+	au InsertEnter *.tex let &l:updatetime=g:atp_updatetime_insert
+	au InsertLeave *.tex let &l:updatetime=g:atp_updatetime_normal
     augroup END
 
     if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
@@ -1738,7 +1867,7 @@ if !exists("g:atp_MathVimOptions") || g:atp_reload
 endif
 
 if !exists("g:atp_MathZones") || g:atp_reload
-let g:atp_MathZones	= &l:filetype == "tex" ? [ 
+let g:atp_MathZones	= ( &l:filetype == "tex" ? [ 
 	    		\ 'texMathZoneV', 	'texMathZoneW', 
 	    		\ 'texMathZoneX', 	'texMathZoneY',
 	    		\ 'texMathZoneA', 	'texMathZoneAS',
@@ -1755,7 +1884,7 @@ let g:atp_MathZones	= &l:filetype == "tex" ? [
 	    		\ 'texMathZoneL', 	'texMathZoneLS',
 			\ 'texMathZoneT'
 			\ ]
-			\ : [ 'plaintexMath' ] 
+			\ : [ 'plaintexMath' ] )
 endif
 
 " a:0 	= 0 check if in math mode
@@ -1859,10 +1988,16 @@ augroup END
 "}}}1
 
 " {{{1 :Viewer, :Compiler, :DebugMode
-function! s:Viewer(viewer) 
+function! <SID>Viewer(...) 
+    if a:0 == 0 || a:1 =~ '^\s*$'
+	echomsg "[ATP:] current viewer: ".b:atp_Viewer
+	return
+    else
+	let new_viewer = a:1
+    endif
     let old_viewer	= b:atp_Viewer
     let oldViewer	= get(g:ViewerMsg_Dict, matchstr(old_viewer, '^\s*\zs\S*'), "")
-    let b:atp_Viewer	= a:viewer
+    let b:atp_Viewer	= new_viewer
     let Viewer		= get(g:ViewerMsg_Dict, matchstr(b:atp_Viewer, '^\s*\zs\S*'), "")
     silent! execute "aunmenu LaTeX.View\\ with\\ ".oldViewer
     silent! execute "aunmenu LaTeX.View\\ Output"
@@ -1876,9 +2011,11 @@ function! s:Viewer(viewer)
 	execute "imenu 550.10 LaTe&X.&View\\ Output\\ <Tab>:ViewOutput 		<Esc>:ViewOutput<CR>a"
     endif
 endfunction
-command! -buffer -nargs=1 -complete=customlist,ViewerComp Viewer	:call <SID>Viewer(<q-args>)
+command! -buffer -nargs=? -complete=customlist,ViewerComp Viewer	:call <SID>Viewer(<q-args>)
 function! ViewerComp(A,L,P)
-    let view = [ 'okular', 'xpdf', 'xdvi', 'evince', 'epdfview', 'kpdf', 'acroread', 'zathura' ]
+    let view = [ 'okular', 'xpdf', 'xdvi', 'evince', 'epdfview', 'kpdf', 'acroread', 'zathura', 'gv',
+		\  'AcroRd32.exe', 'sumatrapdf.exe' ]
+    " The names of Windows programs (second line) might be not right [sumatrapdf.exe (?)].
     call filter(view, "v:val =~ '^' . a:A")
     call filter(view, 'executable(v:val)')
     return view
@@ -1911,11 +2048,109 @@ function! CompilerComp(A,L,P)
     return compilers
 endfunction
 
-command! -buffer -nargs=1 -complete=customlist,DebugComp DebugMode	:let t:atp_DebugMode=<q-args>
+function! <SID>SetDebugMode(bang,...)
+    if a:0 == 0
+	echo t:atp_DebugMode
+	return
+    else
+	if a:1 =~# '^s\%[silent]'
+	    let t:atp_DebugMode= 'silent'
+	elseif a:1 =~# '^d\%[debug]'
+	    let t:atp_DebugMode= 'debug'
+	elseif a:1 =~# '^D\%[debug]'
+	    let t:atp_DebugMode= 'Debug'
+	elseif a:1 =~# '^v\%[erbose]'
+	    let t:atp_DebugMode= 'verbose'
+	else
+	    let t:atp_DebugMode= g:atp_DefaultDebugMode
+	endif
+    endif
+
+    if a:1 =~# 's\%[ilent]'
+	let winnr=winnr()
+	if t:atp_QuickFixOpen
+	    cclose
+	else
+	    try
+		cgetfile
+	    catch /E40/
+		echohl WarningMsg 
+		echo "[ATP:] log file missing."
+		echohl Normal
+	    endtry
+	    if a:bang == "!"
+		exe "cwindow " . (max([1, min([len(getqflist()), g:atp_DebugModeQuickFixHeight-1])])+1)
+		exe winnr . "wincmd w"
+	    endif
+	endif
+    elseif a:1 =~# 'd\%[ebug]'
+	let winnr=winnr()
+	exe "copen " . (max([1, min([len(getqflist()), g:atp_DebugModeQuickFixHeight-1])])+1)
+	exe winnr . "wincmd w"
+	try
+	    cgetfile
+	catch /E40/
+	    echohl WarningMsg 
+	    echo "[ATP:] log file missing."
+	    echohl Normal
+	endtry
+	" DebugMode is not changing when log file is missing!
+    elseif a:1 =~# 'D\%[ebug]'
+	let winnr=winnr()
+	exe "copen " . (max([1, min([len(getqflist()), g:atp_DebugModeQuickFixHeight-1])])+1)
+	exe winnr . "wincmd w"
+	try
+	    cgetfile
+	catch /E40/
+	    echohl WarningMsg 
+	    echo "[ATP:] log file missing."
+	    echohl Normal
+	endtry
+	cc
+    endif
+endfunction
+command! -buffer -bang -nargs=? -complete=custom,DebugComp DebugMode	:call <SID>SetDebugMode(<q-bang>,<f-args>)
 function! DebugComp(A,L,P)
-    let modes = [ 'silent', 'debug', 'verbose']
-    call filter(modes, "v:val =~ '^' . a:A")
-    return modes
+    return "silent\ndebug\nDebug\nverbose"
 endfunction
 "}}}1
+
+" Python test if libraries are present
+function! <SID>TestPythonLibs()
+python << END
+import vim
+try:
+    import psutil
+except ImportError:
+    vim.command('echohl ErrorMsg|echomsg "[ATP:] needs psutil python library."')
+    vim.command('echomsg "You can get it from: http://code.google.com/p/psutil/"')
+    test=vim.eval("has('mac')||has('macunix')||has('unix')")
+    if test:
+	vim.command('echomsg "Falling back to bash"')
+	vim.command("let g:atp_Compiler='bash'")
+    vim.command("echohl Normal")
+    vim.command("echomsg \"If you don't want to see this message (and you are on *nix system)\"") 
+    vim.command("echomsg \"put let g:atp_Compiler='bash' in your vimrc or atprc file.\"")
+    vim.command("sleep 2")
+END
+endfunction
+
+if g:atp_Compiler == "python"
+    if !executable("python")
+	echohl ErrorMsg
+	echomsg "[ATP:] needs python to be installed."
+	echohl Normal
+	if has("mac") || has("macunix") || has("unix")
+	    echohl ErrorMsg
+	    echomsg "I'm falling back to bash (deprecated)."
+	    echohl Normal
+	    let g:atp_Compiler = "bash"
+	    echomsg "If you don't want to see this message"
+	    echomsg "put let g:atp_Compiler='bash' in your vimrc or atprc file."
+	    sleep 2
+	endif
+    else
+	call <SID>TestPythonLibs()
+    endif
+endif
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

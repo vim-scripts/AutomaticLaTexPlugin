@@ -291,8 +291,17 @@ call s:SetOptions()
 
 " Global Variables: (almost all)
 " {{{ global variables 
-if !exists("g:atp_XpdfSleepTime")
-    let g:atp_XpdfSleepTime = "0.1"
+if !exists("g:atp_DeleteWithBang") || g:atp_reload
+    let g:atp_DeleteWithBang = [ 'synctex.gz', 'tex.project.vim']
+endif
+if !exists("g:atp_CommentLeader") || g:atp_reload
+    let g:atp_CommentLeader="% "
+endif
+if !exists("g:atp_MapCommentLines") || g:atp_reload
+    let g:atp_MapCommentLines = 1
+endif
+if !exists("g:atp_XpdfSleepTime") || g:atp_reload
+    let g:atp_XpdfSleepTime = "0.2"
 endif
 if !exists("g:atp_MapCC") || g:atp_reload
     let g:atp_MapCC = 0
@@ -1052,7 +1061,7 @@ function! ATP_ToggleSpace(...)
 	tmenu &LaTeX.&Toggle\ Space\ [on] cmap <space> \_s\+ is curently on
     else
 	echomsg "[ATP:] special space is off"
- 	cunmap <Space>
+	cunmap <Space>
 	let s:special_space="[off]"
 	silent! aunmenu LaTeX.Toggle\ Space\ [on]
 	silent! aunmenu LaTeX.Toggle\ Space\ [off]
@@ -1060,6 +1069,19 @@ function! ATP_ToggleSpace(...)
 	cmenu 550.78 &LaTeX.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+	<C-U>ToggleSpace<CR>
 	imenu 550.78 &LaTeX.&Toggle\ Space\ [off]<Tab>cmap\ <space>\ \\_s\\+	<Esc>:ToggleSpace<CR>a
 	tmenu &LaTeX.&Toggle\ Space\ [off] cmap <space> \_s\+ is curently off
+    endif
+endfunction
+function! ATP_CmdwinToggleSpace(on)
+    let on	= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) : maparg('<space>', 'i') == "" )
+    if on
+	let g:debug = 1
+	imap <space> \_s\+
+    else
+	let g:debug = 0
+" 	try
+	    iunmap <space>
+" 	catch /E31:/
+" 	endtry
     endif
 endfunction
 "}}}
@@ -1153,9 +1175,6 @@ function! ATP_ToggleDebugMode(...)
 	let [ on, new_debugmode ] = ( t:atp_DebugMode =~? '^\%(debug\|verbose\)$' ? [ 0, g:atp_DefaultDebugMode ] : [ 1, 'Debug' ] )
 	let copen 		= 1
     endif
-    let g:set_defualt=set_default
-    let g:on=on
-    let g:copen=copen
     if !on
 	echomsg "[ATP:] debug mode is ".new_debugmode
 
@@ -1245,7 +1264,9 @@ command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleAuTeX 	:ca
 nnoremap <silent> <buffer> 	<Plug>ToggleAuTeX 		:call ATP_ToggleAuTeX()<CR>
 
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleSpace 	:call ATP_ToggleSpace(<f-args>)
-nnoremap <silent> <buffer> 	<Plug>ToggleSpace 	:call ATP_ToggleSpace()<CR>
+nnoremap <silent> <buffer> 	<Plug>ToggleSpace 		:call ATP_ToggleSpace()<CR>
+nnoremap <silent> <buffer> 	<Plug>ToggleSpaceOn 		:call ATP_ToggleSpace('on')<CR>
+nnoremap <silent> <buffer> 	<Plug>ToggleSpaceOff 		:call ATP_ToggleSpace('off')<CR>
 
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleCheckMathOpened 	:call ATP_ToggleCheckMathOpened(<f-args>)
 nnoremap <silent> <buffer> 	<Plug>ToggleCheckMathOpened	:call ATP_ToggleCheckMathOpened()<CR>
@@ -1762,22 +1783,36 @@ let g:atp_pagenumbering = [ 'arabic', 'roman', 'Roman', 'alph', 'Alph' ]
 
 if !s:did_options
 
+    augroup ATP_Cmdwin
+	au!
+	au CmdwinLeave / :call ATP_CmdwinToggleSpace('off')
+	au CmdwinLeave ? :call ATP_CmdwinToggleSpace('off')
+    augroup END
+
     augroup ATP_cmdheight
 	" update g:atp_cmdheight when user writes the buffer
 	au!
 	au BufWrite *.tex :let g:atp_cmdheight = &l:cmdheight
     augroup END
 
-function! <SID>Python_rmdir(dir)
+function! <SID>Rmdir(dir)
+if executable("rmdir")
+    call system("rmdir ".shellescape(a:dir))
+elseif has("python") && executable('python')
 python << EOF
 import shutil, errno
 dir=vim.eval('a:dir')
 try:
 	shutil.rmtree(dir)
 except OSError, e:
- 	if errno.errorcode[e.errno] == 'ENOENT':
+	if errno.errorcode[e.errno] == 'ENOENT':
 		pass
 EOF
+else
+    echohl ErrorMsg
+    echo "[ATP:] the directory ".a:dir." is not removed."
+    echohl Normal
+endif
 endfunction
 
     augroup ATP_QuickFixCmds_2
@@ -1786,9 +1821,8 @@ endfunction
     augroup END
 
     augroup ATP_deltmpdir
-	" WINDOWS NOT COMPATIBLE
 	au!
-	au VimLeave *.tex :call <SID>Python_rmdir(b:atp_TmpDir)
+	au VimLeave *.tex :call <SID>Rmdir(b:atp_TmpDir)
     augroup END
 
     augroup ATP_updatetime
@@ -2021,27 +2055,33 @@ function! ViewerComp(A,L,P)
     return view
 endfunction
 
-function! s:Compiler(compiler) 
-    let old_compiler	= b:atp_TexCompiler
-    let oldCompiler	= get(g:CompilerMsg_Dict, matchstr(old_compiler, '^\s*\zs\S*'), "")
-    let b:atp_TexCompiler	= a:compiler
-    let Compiler		= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\zs\S*'), "")
-    silent! execute "aunmenu LaTeX.".oldCompiler
-    silent! execute "aunmenu LaTeX.".oldCompiler."\\ debug"
-    silent! execute "aunmenu LaTeX.".oldCompiler."\\ twice"
-    execute "menu 550.5 LaTe&X.&".Compiler."<Tab>:TEX				:<C-U>TEX<CR>"
-    execute "cmenu 550.5 LaTe&X.&".Compiler."<Tab>:TEX				<C-U>TEX<CR>"
-    execute "imenu 550.5 LaTe&X.&".Compiler."<Tab>:TEX				<Esc>:TEX<CR>a"
-    execute "menu 550.6 LaTe&X.".Compiler."\\ debug<Tab>:TEX\\ debug		:<C-U>DTEX<CR>"
-    execute "cmenu 550.6 LaTe&X.".Compiler."\\ debug<Tab>:TEX\\ debug		<C-U>DTEX<CR>"
-    execute "imenu 550.6 LaTe&X.".Compiler."\\ debug<Tab>:TEX\\ debug		<Esc>:DTEX<CR>a"
-    execute "menu 550.7 LaTe&X.".Compiler."\\ &twice<Tab>:2TEX			:<C-U>2TEX<CR>"
-    execute "cmenu 550.7 LaTe&X.".Compiler."\\ &twice<Tab>:2TEX			<C-U>2TEX<CR>"
-    execute "imenu 550.7 LaTe&X.".Compiler."\\ &twice<Tab>:2TEX			<Esc>:2TEX<CR>a"
+function! <SID>Compiler(...) 
+    if a:0 == 0
+	echo "[ATP:] b:atp_TexCompiler=".b:atp_TexCompiler
+	return
+    else
+	let compiler		= a:1
+	let old_compiler	= b:atp_TexCompiler
+	let oldCompiler	= get(g:CompilerMsg_Dict, matchstr(old_compiler, '^\s*\zs\S*'), "")
+	let b:atp_TexCompiler	= compiler
+	let Compiler		= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\zs\S*'), "")
+	silent! execute "aunmenu LaTeX.".oldCompiler
+	silent! execute "aunmenu LaTeX.".oldCompiler."\\ debug"
+	silent! execute "aunmenu LaTeX.".oldCompiler."\\ twice"
+	execute "menu 550.5 LaTe&X.&".Compiler."<Tab>:TEX				:<C-U>TEX<CR>"
+	execute "cmenu 550.5 LaTe&X.&".Compiler."<Tab>:TEX				<C-U>TEX<CR>"
+	execute "imenu 550.5 LaTe&X.&".Compiler."<Tab>:TEX				<Esc>:TEX<CR>a"
+	execute "menu 550.6 LaTe&X.".Compiler."\\ debug<Tab>:TEX\\ debug		:<C-U>DTEX<CR>"
+	execute "cmenu 550.6 LaTe&X.".Compiler."\\ debug<Tab>:TEX\\ debug		<C-U>DTEX<CR>"
+	execute "imenu 550.6 LaTe&X.".Compiler."\\ debug<Tab>:TEX\\ debug		<Esc>:DTEX<CR>a"
+	execute "menu 550.7 LaTe&X.".Compiler."\\ &twice<Tab>:2TEX			:<C-U>2TEX<CR>"
+	execute "cmenu 550.7 LaTe&X.".Compiler."\\ &twice<Tab>:2TEX			<C-U>2TEX<CR>"
+	execute "imenu 550.7 LaTe&X.".Compiler."\\ &twice<Tab>:2TEX			<Esc>:2TEX<CR>a"
+    endif
 endfunction
-command! -buffer -nargs=1 -complete=customlist,CompilerComp Compiler	:call <SID>Compiler(<q-args>)
+command! -buffer -nargs=? -complete=customlist,CompilerComp Compiler	:call <SID>Compiler(<f-args>)
 function! CompilerComp(A,L,P)
-    let compilers = [ 'tex', 'pdftex', 'latex', 'pdflatex', 'etex', 'xetex', 'luatex' ]
+    let compilers = [ 'tex', 'pdftex', 'latex', 'pdflatex', 'etex', 'xetex', 'luatex', 'xelatex' ]
 "     let g:compilers = copy(compilers)
     call filter(compilers, "v:val =~ '^' . a:A")
     call filter(compilers, 'executable(v:val)')
@@ -2106,7 +2146,11 @@ function! <SID>SetDebugMode(bang,...)
 	    echo "[ATP:] log file missing."
 	    echohl Normal
 	endtry
-	cc
+	try 
+	    cc
+	catch E42:
+	    echo "[ATP:] no errors."
+	endtry
     endif
 endfunction
 command! -buffer -bang -nargs=? -complete=custom,DebugComp DebugMode	:call <SID>SetDebugMode(<q-bang>,<f-args>)
@@ -2136,9 +2180,9 @@ END
 endfunction
 
 if g:atp_Compiler == "python"
-    if !executable("python")
+    if !executable("python") || !has("python")
 	echohl ErrorMsg
-	echomsg "[ATP:] needs python to be installed."
+	echomsg "[ATP:] needs: python and python support in vim."
 	echohl Normal
 	if has("mac") || has("macunix") || has("unix")
 	    echohl ErrorMsg
@@ -2147,6 +2191,9 @@ if g:atp_Compiler == "python"
 	    let g:atp_Compiler = "bash"
 	    echomsg "If you don't want to see this message"
 	    echomsg "put let g:atp_Compiler='bash' in your vimrc or atprc file."
+	    if !has("python")
+		echomsg "You Vim is compiled without pyhon support, some tools might not work."
+	    endif
 	    sleep 2
 	endif
     else

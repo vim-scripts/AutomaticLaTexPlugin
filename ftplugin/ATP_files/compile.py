@@ -30,15 +30,15 @@ parser.add_option("-v", "--view", "--start", dest="start",      default=0, type=
 parser.add_option("--viewer",           dest="viewer",          default="xpdf", help="output viewer to use")
 parser.add_option("--xpdf-server",      dest="xpdf_server", help="xpdf_server")
 parser.add_option("--viewer-options",   dest="viewer_opt",      default="", help="comma separated list of viewer options")
-parser.add_option("-k", "--keep",       dest="keep", help="comma separated list of extensions (see :help g:keep in vim)", default="aux,toc,bbl,ind,pdfsync,synctex.gz") 
+parser.add_option("-k", "--keep",       dest="keep", help="comma separated list of extensions (see :help g:keep in vim)", default="aux,toc,bbl,ind,pdfsync,synctex.gz")
 parser.add_option("--env",              dest="env", default="default", help="a comma separated list environment variables and its values: var1=val1,var2=val2")
 # Boolean switches:
 parser.add_option("--reload-viewer",    action="store_true",    default=False,  dest="reload_viewer")
 parser.add_option("-b", "--bibtex",     action="store_true",    default=False,  dest="bibtex", help="run bibtex")
 parser.add_option("--reload-on-error",  action="store_true",    default=False,  dest="reload_on_error", help="reload Xpdf if compilation had errors")
 parser.add_option("--bang",             action="store_false",   default=False,  dest="bang", help="force reloading on error (Xpdf only)")
-parser.add_option("--gui-running", "-g", action="store_true",   default=False,  dest="gui_running", help="if vim gui is running (has('gui_running'))") 
-parser.add_option("--no-progress-bar",  action="store_false",   default=True,   dest="progress_bar", help="send progress info back to gvim") 
+parser.add_option("--gui-running", "-g", action="store_true",   default=False,  dest="gui_running", help="if vim gui is running (has('gui_running'))")
+parser.add_option("--no-progress-bar",  action="store_false",   default=True,   dest="progress_bar", help="send progress info back to gvim")
 parser.add_option("--bibliographies",                           default="",     dest="bibliographies", help="command separated list of bibliographies")
 
 (options, args) = parser.parse_args()
@@ -81,11 +81,14 @@ if viewer == "xpdf" and XpdfServer != None:
     viewer_opt.extend(["-remote", XpdfServer])
 verbose         = options.verbose
 keep            = options.keep.split(',')
+keep            = filter(nonempty, keep)
+
 def keep_filter_aux(string):
     if string == 'aux':
         return False
     else:
         return True
+
 def keep_filter_log(string):
     if string == 'log':
         return False
@@ -94,13 +97,14 @@ def keep_filter_log(string):
 
 def mysplit(string):
         return re.split('\s*=\s*', string)
-if options.env != "default":
-    env         = map(mysplit,re.split('\s*;\s*',options.env))
+
+env             = map(mysplit, filter(nonempty, re.split('\s*;\s*',options.env)))
 
 # Boolean options
 reload_viewer   = options.reload_viewer
 bibtex          = options.bibtex
 bibliographies  = options.bibliographies.split(",")
+bibliographies  = filter(nonempty, bibliographies)
 bang            = options.bang
 reload_on_error = options.reload_on_error
 gui_running     = options.gui_running
@@ -123,10 +127,7 @@ debug_file.write("DEBUG MODE (verbose) "+str(verbose)+"\n")
 debug_file.write("KEEP "+str(keep)+"\n")
 debug_file.write("BIBLIOGRAPHIES "+str(bibliographies)+"\n")
 debug_file.write("ENV OPTION "+str(options.env)+"\n")
-if options.env != "default":
-    debug_file.write("ENV "+str(env)+"\n")
-else:
-    debug_file.write("ENV default (NONE)\n")
+debug_file.write("ENV "+str(env)+"\n")
 debug_file.write("*BIBTEX "+str(bibtex)+"\n")
 debug_file.write("*BANG "+str(bang)+"\n")
 debug_file.write("*RELOAD_VIEWER "+str(reload_viewer)+"\n")
@@ -278,10 +279,9 @@ tempdir_list = os.listdir(tmpdir)
 debug_file.write("ls tmpdir "+str(tempdir_list)+"\n")
 
 # Set environment
-if options.env != "default":
-    for var in env:
-        debug_file.write("ENV "+var[0]+"="+var[1]+"\n")
-        os.putenv(var[0], var[1])
+for var in env:
+    debug_file.write("ENV "+var[0]+"="+var[1]+"\n")
+    os.putenv(var[0], var[1])
 
 # Link local bibliographies:
 for bib in bibliographies:

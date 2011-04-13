@@ -1,16 +1,16 @@
-*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 9 April 2011
+*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 13 April 2011
 
-			An Introduction to AUTOMATIC (La)TeX PLUGIN (ver 9.2)
-				by Marcin Szamotulski
-			    mszamot [AT] gmail [DOT] com
-			----------------------------------------
+	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 9.2.7)
+			by Marcin Szamotulski
+		    mszamot [AT] gmail [DOT] com
+		----------------------------------------
 
 If you found this plugin useful or you have any kind of problems with running
 it or some ideas to share, you are cordially invited to write to me:
 mszamot@gmail.com. Voting at Vim site is also welcome ;) .
 
 -----------------------------------------------------------------------------
-					Abstract
+			Abstract
 
 This is a filetype plugin for Vim to comfortably write TeX (LaTeX, PdfLaTeX)
 documents, which provides functionality not met in other such plugins. It
@@ -21,10 +21,11 @@ bib files or to find a macro definition matching a pattern, or even to find
 and preview fonts in your tex distribution. The features include an extended
 tab completion for: commands, environment names, packages, input files, bib
 files, bst files, colours, closing brackets and environments (preserves
-nesting),... etc. To have full functionality you need: pdffonts available in
-the package 'app-text/poppler' (at least in Gentoo). Another good tool is
-texdoc, which is a part of texlive - these days standard TeX distribution for
-Linux, and MikTeX on Windows.
+nesting),... etc. To have full functionality you need: python (with
+nonstandard psutil library, see |atp-python-requirements| how to get it),
+pdffonts available in the package 'app-text/poppler' (at least in Gentoo).
+Another good tool is texdoc, which is a part of TexLive - these days standard
+TeX distribution for Linux, and MikTeX on Windows.
 ------------------------------------------------------------------------------
 
 FEATURES INCLUDE:
@@ -89,11 +90,57 @@ This was quite active time for ATP, there are a lot of nice (I hope useful)
 changes:
 
 >
+  Changes in versions 9.3
+<
+	|g:atp_map_forward_motion_leader|	= '>'
+	|g:atp_map_backward_motion_leader| 	= '<'
+		see |atp-:NSec| and |atp-:PSec| and friends. 
+	(actually nothing changes, there just was a bug in help file)
+
+
+	The command |atp-:WrapSelection| uses |<f-args>| instead of |<args>|.
+
+
+	Q/ and Q? to enter command-line window in which <space> is mapped to
+	'\_s\+'.
+
+	<F2> acts as 'Q/i' (i.e. enters insert mode).
+	If you want Q/ and Q? enter insert mode as well you can set: >
+	    nmap Q/					:call ATP_CmdwinToggleSpace('on')<CR>q/i
+	    nmap Q?					:call ATP_CmdwinToggleSpace('on')<CR>q/i
+<	in your |atprc| file.
+
+							*g:atp_DeleteWithBang*
+	g:atp_DeleteWithBang = ['synctex.gz', 'tex.project.vim']
+	This is list of extensions which will not be removed when
+	|atp-:Delete| is run without bang.
+
+	|atp-gw| back (was gq for very short time (since ver. 9.2), which
+	I found to be not a good idea).
+
+nmap \c	
+nmap \u
+	Comment/Uncomment lines (both in |Normal| and |Visual| modes). 
+
+	Comment leader can be set with the variable g:atp_CommentLeader (by
+	default it is '% '). If you do not want this maps or you want to
+	remap them to something else you can set g:atp_MapCommentLines=0 in
+	your |vimrc| or |atprc| file and use <Plug>CommentLines,
+	<Plug>UnCommentLines (these are normal maps), for example: >
+		nmap <LocalLeader>C 	<Plug>UnCommentLines
+		vmap <LocalLeader>C 	<Plug>UnCommentLines
+<	
+
+>
   Changes in versions 9 & 9.1 & 9.2
 <
+
+SOURCEFORGE						*atp-sourceforge*
+
   - THE PROJECT HAS MOVED FROM Launchpad to SOURCEFORGE!
     http://sourceforge.net/projects/atp-vim/
-    							*atp-donate*
+
+DONATE    						*atp-donate*
     You can DONATE for this project (on the project web page above). This will
     be highly appreciated, and the money will be used to cover some vary basic
     costs (internet access, hardware updates). You can also feel like you are
@@ -118,8 +165,8 @@ changes:
 
 NEW CODE TO COMPILE DOCUMENTS	 			*atp-news-NEW_COMPILER*
 9.2:
-  - This is a very handy change: unified way to goto next section/environment
-    with the commads |atp-:F| (forward) and |atp-:B| (backward).
+  - This is a very handy change: unified way to go to next section/environment
+    with the commands |atp-:F| (forward) and |atp-:B| (backward).
 9.2:							
 							*atp-compile.py*
   - There are two function compile which can compile your tex file: a newly
@@ -154,9 +201,9 @@ NEW CODE TO COMPILE DOCUMENTS	 			*atp-news-NEW_COMPILER*
     script and then run latex). 
 							*b:atp_TexReturnCode*	
     The variable |b:atp_TexReturnCode| stores the return code of compilation.
->
-    REQUIRMENTS:
-< (1)	The script is written in python version 3.1 (and it works in python 2.6).
+
+    REQUIRMENTS						*atp-python-requirements*
+  (1)	The script is written in python version 3.1 (and it works in python 2.6).
 	The only non standard library that it uses is psutil. You can get it from:
 	    http://code.google.com/p/psutil/
 	or (better) use your os specific instalation tools.		
@@ -224,7 +271,7 @@ NEW CODE TO COMPILE DOCUMENTS	 			*atp-news-NEW_COMPILER*
     searching viewer->Vim), and Xpdf (only forward search). Read
     |atp-:SyncTex| and the sections on viewers: |atp-viewers-Okular|,
     |atp-viewers-Xdvi|. For pdf viewers it uses -synctex=1 for dvi
-    -src-specials. 
+    -src-specials is used. 
 9.2:
   - Forward searching for Xpdf works better (finds the horisontal and vertical
     position on the page). The developer of Xpdf said that Xpdf v3.03 will
@@ -273,29 +320,7 @@ NEW CODE TO COMPILE DOCUMENTS	 			*atp-news-NEW_COMPILER*
     Note: if you change |cmdheight| you should also change g:atp_DefaultCmdHeight, 
     unfortunatelly vim has not autocommand group evnet to do that automatically.
 9.2:
-							*g:atp_MapCC*
-  - In vim the key compination CTRL-C (|i_CTRL-C|) in insert mode exists to
-    normal without triggering the InsertLeave autocommands. In this way it
-    doesn't changes the |'updatetime'| from |g:atp_updatetime_insert| to
-    |g:atp_updatetime_normal|. If |g:atp_MapCC|=1 (this recommended but the
-    deafult is 0) then |_CTRL-C| is mapped to |i_CTRL-[| so the InsertLeave
-    autocommands are parsed.
-9.2:    
-							*g:atp_updatetime_insert*
-							*g:atp_updatetime_normal*
->
- g:atp_updatetime_insert = 2000							
- g:atp_updatetime_normal = 1000
-< - These variables sets the value of |'updatetime'| vim option. Seprate
-    settings are for normal and insert mode. You can make
-    g:atp_updatetime_normal even smaller so that the file is proccessed
-    whenever you go out from insert mode to normal mode. These values will
-    overwrite the original value of |'updatetime'| so you should adjust them
-    in order for the change to have an effect.
-
-    If you set g:atp_updatetime_insert = 0 the tex compiler will not be called
-    while the vim is in insert mode.
-
+    See |g:atp_MapCC| and |g:atp_updatetime_insert|.
 9.1:  
   - :SetOkular						*atp-:SetOkular*
     This works the same as |atp-:SetXpdf|. It sets the forward searching
@@ -411,7 +436,7 @@ NEW CODE TO COMPILE DOCUMENTS	 			*atp-news-NEW_COMPILER*
 :UpdateATP[!]
 	With bang update ATP to latest {UNSTABLE} snapshot, without to latest
 	stable release. It makes a check if your version is the latest one. 
-	If you have installed {UNSTABLE} snapshot and the you run :UpdateATP
+	If you have installed {UNSTABLE} snapshot and then you run :UpdateATP
 	without a bang "!", then ATP will ask you if you want to DOWNGRADE to
 	the last stable release.
 
@@ -449,9 +474,9 @@ NEW CODE TO COMPILE DOCUMENTS	 			*atp-news-NEW_COMPILER*
 >
   Changes in version 8.6
 <
-  - <LocalLeader>tx vmap to wrap with \textrm{}:\text{} in normal:math modes.
+  - |<LocalLeader>|tx vmap to wrap with \textrm{}:\text{} in normal:math modes.
     (The leader which is used is defined by g:atp_vmap_text_font_leader, which
-    by default is <LocalLeader>).
+    by default is |<LocalLeader>|).
   - a fix in project file writing function (thanks to a user bug report).
   - motion maps ]], [[, ][ and [] work with \[:\] and $$:$$.
   - New default values for: >
@@ -514,12 +539,12 @@ let g:atp_iabbrev_leader = "="
   Changes in version 8.2
 <
   - vip fixed (|atp-vip|).
-  - The default value of g:atp_vmap_environment_leader is <LocalLeader> (it
+  - The default value of g:atp_vmap_environment_leader is |<LocalLeader>| (it
     used to be an empty string). Thus now there are visual maps:
-    <LocalLeader>C, <LocalLeader>R, <LocalLeader>L, <LocalLeader>A,
-    <LocalLeader>E to wrap with environments: center, flushright, flushleft,
+    |<LocalLeader>|C, |<LocalLeader>|R, |<LocalLeader>|L, |<LocalLeader>|A,
+    |<LocalLeader>|E to wrap with environments: center, flushright, flushleft,
     align and equation respectively.
-  - vMap <LocalLeader>sc  (see |atp-vc|) select comment lines which begin with '^\s*%'. 
+  - vMap |<LocalLeader>|sc  (see |atp-vc|) select comment lines which begin with '^\s*%'. 
   - {m, }m motions to next math environment fixed. See |atp-}m| and |atp-{m|. 
 >
   Changes in version 8.1
@@ -555,20 +580,20 @@ let g:atp_iabbrev_leader = "="
   - There is a new ftplugin for bib files. It only defines a small set of
     useful maps and the AMSRef command. The defined maps are listed below: 
 		MAP KEY			FIELD TYPE: 
-		<LocalLeader>a		article
-		<LocalLeader>b (or bo)	book
-		<LocalLeader>bl		booklet
-		<LocalLeader>c		conference
-		<LocalLeader>ib		inbook
-		<LocalLeader>ic		incollection
-		<LocalLeader>ip		inproceedings
-		<LocalLeader>ma		manual
-		<LocalLeader>mt		mastersthesis
-		<LocalLeader>mi		misc
-		<LocalLeader>phd	phdthesis
-		<LocalLeader>pr		proceedings
-		<LocalLeader>tr		techreport
-		<LocalLeader>un		unpublished
+		|<LocalLeader>|a	  article
+		|<LocalLeader>|b (or bo)  book
+		|<LocalLeader>|bl	  booklet
+		|<LocalLeader>|c	  conference
+		|<LocalLeader>|ib	  inbook
+		|<LocalLeader>|ic	  incollection
+		|<LocalLeader>|ip	  inproceedings
+		|<LocalLeader>|ma	  manual
+		|<LocalLeader>|mt	  mastersthesis
+		|<LocalLeader>|mi	  misc
+		|<LocalLeader>|phd	  phdthesis
+		|<LocalLeader>|pr	  proceedings
+		|<LocalLeader>|tr	  techreport
+		|<LocalLeader>|un	  unpublished
   - vmaps A,E (using g:atp_vmap_environment_leader with default value "")
     which wraps selection into \begin{align}:\end{align} and
     \begin{equation}:\end{equation}
@@ -624,7 +649,46 @@ insert mode the file won't be compiled (and that's all right as you can be in th
 middle of your very long formula). The value of |'updatetime'| which works
 fine is around 1000ms (|'updatetime'| is set in milliseconds). Instead of
 setting |'updatetime'| options directly you should set the variables
-|g:atp_updatetime_insert| and |g:atp_updatetime_normal|.
+|g:atp_updatetime_insert| and |g:atp_updatetime_normal|. Here's an importand
+note on using CTRL-C (|i_CTRL-C|) in Vim:
+
+							*g:atp_MapCC*
+    In vim the key compination CTRL-C (|i_CTRL-C|) in insert mode exists to
+    normal without triggering the InsertLeave autocommands. In this way it
+    doesn't changes the |'updatetime'| from |g:atp_updatetime_insert| to
+    |g:atp_updatetime_normal|. If |g:atp_MapCC|=1 then |_CTRL-C| is mapped to
+    |i_CTRL-[| so the InsertLeave autocommands are parsed. However, it is
+    a good habit to use |i_CTRL-C| while you are writting/editing and |i_CTRL-[| or
+    |i_ESC| when you whish to see what you wrote (then TeX will be run
+    quicker). If you follow this you can even set
+    |g:atp_updatetime_normal|=1 (if you set it to 0 then the the file will not
+    be processed while Vim is in normal mode).
+
+							*g:atp_updatetime_insert*
+							*g:atp_updatetime_normal*
+>
+ g:atp_updatetime_insert = 2000							
+ g:atp_updatetime_normal = 1000
+< - These variables sets the value of |'updatetime'| vim option.
+    Separate settings are for normal and insert mode. You can make
+    g:atp_updatetime_normal even smaller so that the file is processed
+    whenever you go out from insert mode to normal mode. These values will
+    overwrite the original value of |'updatetime'| so you should adjust them
+    in order for the change to have an effect.
+
+    If you set |g:atp_updatetime_insert|=0 the TeX compiler will not be called
+    while Vim is in the insert mode. 
+
+    If you set |g:atp_updatetime_normal|=0 the TeX compiler will not be called
+    while Vim is in the normal mode. 
+
+    Note: this will only work if you set this in your |atprc| or |vimrc| file.
+    Also changing this to non zero will only work after restarting Vim (so
+    this requires changing this in |atprc|/|vimrc| files. Though it is
+    possible (at least theoretically) to make it work on the fly, I found
+    a bug which I could not resolve :(.
+
+Coming back to compilation ...
 
 Tex compiler is run with one options:
 	-output-directory 
@@ -725,9 +789,9 @@ g:atp_DebugModeQuickFixHeight = 8
 	This is the maximal height of |quickfix| window when opened by ATP.
 
 	 						*atp-debug-mode-maps*
-	 You can invoke compiler in the 'debug' mode with '<LocalLeader>d',
-	 '<LocalLeader>D' for 'Debug' mode (jump to first error),
-	 '<LocalLeader>l' uses the default mode.
+	 You can invoke compiler in the 'debug' mode with '|<LocalLeader>|d',
+	 '|<LocalLeader>|D' for 'Debug' mode (jump to first error),
+	 '|<LocalLeader>|l' uses the default mode.
 	 						*g:atp_DefaultDebugMode*
 > 
  let g:atp_DefaultDebugMode = 'silent'
@@ -952,7 +1016,8 @@ map \v,map <F3>, imap <F3>
 	(inverse/reverse searching) in |atp-viewers|. 
 	You can open and sync the viewer with: >
 		:SyncTex
-		<S-LeftMouse>
+		nmap t
+		nmap <S-LeftMouse>
 		:ViewOutput sync
 <
 
@@ -987,6 +1052,8 @@ map t, map <S-LeftMouse>
 	forward searches (Vim->Xdvi) >
 		:SyncTex	(although dvi is using srcspecials rather than synctex)
 		map t
+		nmap <S-LeftMouse>
+		:ViewOutput sync
 <	For inverse searching hold CTRL and click left mouse button on
 	the text in xdvi viewer. It sets: >
 	    let b:atp_TexOptions="-src-specials"
@@ -1141,10 +1208,16 @@ automatically using autocommand group |CursorMoved|.
 :Delete[!]						*atp-:Delete*
 map <F6>d
 	Deletes all files which extension belongs to g:atp_tex_extensions in
-	the directory |b:atp_OutDir|. By default g:atp_tex_extensions does not
-	contain '.tex', '.pdf', '.dvi' so none of your important files will be
-	deleted. When the command is used with bang it also deletes the
-	current output file. 
+	the directory |b:atp_OutDir|. By default |g:atp_tex_extensions| does
+	not contain 'tex', 'pdf', 'dvi' so none of your important files will
+	be deleted. When the command is used without bang the the extensions
+	from |g:atp_DeleteWithBang| are removed from |g:atp_tex_extensions|.
+	The defualt value of |g:atp_DeleteWithBang| contains for exemple
+	'synctex.gz' extensions, thus it won't be removed by :Delete (without
+	bang "!").
+							*g:atp_delete_output*
+	If you set |g:atp_delete_output|=1 the function will delete also the
+	current output file (but not any other!) and 'synctex.gz' file.
 
 :SshPrint [lpr_options]					*atp-:SshPrint*
 	It will run 'lpr' command and append to it the options defined in the
@@ -1232,8 +1305,9 @@ map <F6>d
 	in separate lines (the begin line and end line are split), this is
 	useful for putting text into and environment \begin{}:\end{}. 
 
-	The command arguments should be separated with commas and quoted
-	separately (see |<args>|).
+	Read |<f-args>| on how to pass arguments to this command (arguments
+	are separeted with spaces, white spaces in arguments should be escaped
+	with backslash '\'.
 
 	For the predefined maps which use WrapSelection see below
 	|atp-maps-WrapSelection| or use |atp-:HelpVMaps|.
@@ -1397,30 +1471,30 @@ map \L
 	Go (backward) to {arg}, like above |atp-:F|.
 
 
-							*atp-:NEnv* *atp-}e*
+							*atp-:NEnv* *atp->e*
 :NEnv {environment}
 :F {environment}
-map }e
+map >e
 	Move to next environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
 
-							*atp-}m* *atp-}M*
+							*atp->m* *atp->M*
 	{environment} can be also math or displayedmath. For convenience
 	there are maps: }m and }M respectively.
 
 	If g:atp_mapNn is set to one (see |atp-:ToggleNn|) then this command
 	is using |atp-:S|.
 
-							*atp-:PEnv* *atp-{e*
+							*atp-:PEnv* *atp-<e*
 :PEnv {environment}
 :B {environment}
-map {e
+map <e
 	Move to previous environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
 
-							*atp-{m* *atp-{M*
+							*atp-<m* *atp-<M*
 	{environment} can be also math or displayedmath. For convenience
 	there are maps: {m and {M respectively.
 
@@ -1428,15 +1502,15 @@ map {e
 	is using |atp-:S|.
 
 							*atp-:NextSection*
-							*atp-:NPart*	*atp-}p*
-							*atp-:NChap*	*atp-}c*
-							*atp-:NSec*	*atp-}s*
-							*atp-:NSSec*	*atp-}S*
+							*atp-:NPart*	*atp->p*
+							*atp-:NChap*	*atp->c*
+							*atp-:NSec*	*atp->s*
+							*atp-:NSSec*	*atp->S*
 							*atp-:NSSSec*
 :NPart[!], :NChap[!], :NSec[!], :NSSec[!], :NSSSec[!] [title_pattern]
 :F {section}
- map }p,  map }c,  map }s,  map }S
-vmap }p, vmap }c, vmap }s, vmap }S
+ map >p,  map >c,  map >s,  map >S
+vmap >p, vmap >c, vmap >s, vmap >S
 
 	Go to next part/chapter/section/subsection/subsubsection which title
 	matches optionally given [title_pattern]. With bang "!" the command
@@ -1447,13 +1521,14 @@ vmap }p, vmap }c, vmap }s, vmap }S
 	    part/chapter/section/subsection/subsubsection.
 
 	Map  		Command			Meaning
-	}p		:NPart			go to next part
-	}c		:NChap			go to next chapter
-	}s		:NSec			go to next section	
-	}S		:NSSec			go to next subsection
+	>p		:NPart			go to next part
+	>c		:NChap			go to next chapter
+	>s		:NSec			go to next section	
+	>S		:NSSec			go to next subsection
 
-	The leader } can be changed by setting the variable
-	*g:atp_map_forward_motion_leader* .
+							*g:atp_map_forward_motion_leader*
+	You can set the leader '>' using |g:atp_map_forward_motion_leader|
+	variable.
 
 	Note: the maps work in visual mode and operator pending mode ('d\ns'
 	will delete till the end of the section). You can use |n| and |N| Vim
@@ -1477,24 +1552,26 @@ vmap }p, vmap }c, vmap }s, vmap }S
 	<Plug>GotoNextSection, <Plug>GotoNextChapter, <Plug>GotoNextPart to
 	define new maps.
 
+
 							*atp-:PrevSection*
-							*atp-:PPart*	*atp-{p*
-							*atp-:PChap*	*atp-{c*
-							*atp-:PSec*     *atp-{s*
-							*atp-:PSSec*	*atp-{S*
+							*atp-:PPart*	*atp-<p*
+							*atp-:PChap*	*atp-<c*
+							*atp-:PSec*     *atp-<s*
+							*atp-:PSSec*	*atp-<S*
 							*atp-:PSSSec*
 :PPart[!], :PChap[!], :PSec[!], :PSSec[!], :PSSSec[!] [title_pattern]
 :B {section}
- map {p,  map {c,  map {s,  map {S
-vmap {p, vmap {c, vmap {s, vmap {S
+ map <p,  map <c,  map <s,  map <S
+vmap <p, vmap <c, vmap <s, vmap <S
 
 	Go to previous part/chapter/section/subsection/subsubsection which
 	title matches [title_pattern] (an optional argument). With bang "!"
 	the command doesn't skip commented sections. Maps skip them. The
 	search will wrap around the beginning of a file if 'wrapscan' is set.
 
-	The leader { can be changed by setting the variable
-	*g:atp_map_backward_motion_leader* .
+						*g:atp_map_backward_motion_leader*
+	You can set the leader '<' using |g:atp_map_bacward_motion_leader|
+	variable.
 
 	The {section} argument for :B is one off:
 	    part/chapter/section/subsection/subsubsection.
@@ -1502,10 +1579,10 @@ vmap {p, vmap {c, vmap {s, vmap {S
 	For description of arguments read |atp-:NextSection| just above.
 
 	Map  		Command			Meaning
-	{p		:PPart			go to previous part
-	{c		:PChap			go to previous chapter
-	{s		:PSec			go to previous section	
-	{S		:PSSec			go to previous subsection
+	<p		:PPart			go to previous part
+	<c		:PChap			go to previous chapter
+	<s		:PSec			go to previous section	
+	<S		:PSSec			go to previous subsection
 
 	These commands (and maps) use Vim |search()| function or |atp-:S|
 	command depending on the value of |g:atp_mapNn| (see |atp-:ToggleNn|,
@@ -1531,21 +1608,10 @@ ToDo({keyword}, {stop}, [bufname])		*atp-function-ToDo*
 	stop='\s*%.*\c\<note\>', and the command :Note sets
 	keyword='\c\<note\>' and stop='\s*%.*\c\<todo\>'. This prevent from
 	listing ToDo lines with Notes and vice versa. 
-	 
-:ToggleSpace, map <F2>					*atp-:ToggleSpace*
-	This function (command) sets, if it is undefined or removes if it is
-	defined, the mapping:
->
-		:cmap <Space> \_s\+
-<
-	which is useful when searching by the command '/', especially if
-	|'textwidth'| or |'wrapmargin'| is non zero (and |'formatoptions'|
-	contains one of the flags 't', 'v' or 'b'). Then each <Space> will
-	match for a space or end of line.
 
 							*atp-:ToggleStar*
 :ToggleStar 	 		adds/removes a star from the current 
-map <LocalLeader>s		environment (if it is not one belonging 
+map |<LocalLeader>|s		environment (if it is not one belonging 
 				to the list: >
 					g:atp_no_star_environments
 <				
@@ -3303,10 +3369,8 @@ PROJECT SCRIPT						*atp-ProjectScript*
 >
  let g:atp_tex_extensions=["aux", "log", "bbl", "blg", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "maf", "blg", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync" , "ind"]	
 <
-	 This list is used by the function Delete() (see |apt-Delete()|) which
-	 deletes all the files with the specified extension in the directory
-	 b:atp_OutDir, unless g:rmcommand="" (see |g:rmcommand|) in which case
-	 Delete() deletes only the output files for the current buffer.
+	 This list is used by the |atp-:Delete| command which deletes all the
+	 files with the specified extension in the directory |b:atp_OutDir|.
 							*g:keep*			
 >
  let g:keep	= ["log", "aux", "toc", "bbl", "ind"]	
@@ -3435,12 +3499,12 @@ If one of the imap leaders |g:atp_imap_first_leader|, ...
 ,|g:atp_imap_fourth_leader| is equal to "_" then an imap with left hand side
 __ for _{} (and ^^ for ^{}) is used rather than autex function (which has this
 nice feature that it puts _{} when you type __ disregarding the time between
-first '_' and second '_', which is not the case for imap '__' .  By default
+first '_' and second '_', which is not the case for imap '__'.  By default
 none of imap leaders is equal to '_'.
 
 You can list imaps with |atp-:HelpMathIMaps| and |atp-:HelpEnvIMaps|.
 
-All other mappings (map, vmap, nmap, ...) are using <LocalLeader> which can be
+All other mappings (map, vmap, nmap, ...) are using |<LocalLeader>| which can be
 altered with the option |maplocalleader|. A good alternate solution is to use "_"
 instead of "##".
 
@@ -3457,8 +3521,8 @@ for completion, then completion is mapped to <F7> and <S-F7> (for the non
 expert mode) but there is no map for 'WrapSelection()', you have to provide 
 one by your self).
 
-Note: in all mappings "\" is set to your <LocalLeader> (and thus, in fact, the
-map can differ).
+Note: in all mappings '\' is set to your |<LocalLeader>| (and thus, in fact, the
+maps listed below might differ).
 
 Note: The list of commands might not be complete.
 
@@ -3493,31 +3557,26 @@ map <F6>l, imap <F6>l
 
 :Delete[!]
 map <F6>d
-	Deletes all the files with an extension which belongs to
-	g:atp_tex_extensions in the directory b:atp_OutDir. By default
-	g:atp_tex_extensions does not contain '.tex', '.pdf', '.dvi' so none
-	of your important files will be deleted. If you set
-	g:atp_delete_output=1 the function will delete also the current output
-	file (but not any other!).
+	See |atp-:Delete|.
 
 :TOC[!]
 map \t
-	This is a mapping to the command ':TOC'
+	This is a mapping to the command |atp-:TOC|
 
 
 :Labels[!]
 map \L
-	This is a mapping to the command ':Labels'
+	This is a mapping to the command |atp-:Labels|
 
 :GotoFile, :EditInputFile
 nmap gf
 
-							*atp-]m*
-nmap ]m, nmap [m 					*atp-[m*
+							|atp->m|
+nmap >m, nmap >m 					|atp-<m|
 	Goto the beginning of next/previous math environment.
 
-							*atp-]M*
-nmap ]M, nmap [M 					*atp-[M*
+							|atp-<M|
+nmap ]M, nmap [M 					|atp->M|
 	Goto the beginning of next/previous displayed math environment. 
 							
 							*atp-]]*
@@ -3536,13 +3595,13 @@ nmap ]], vmap ][
 nmap [], vmap []
 	Goto previous \end{
 
-							*atp-[%*
-nmap ]%, vmap ]%
-	Goto begin of next comment group
+							|atp-gc|
+nmap gcl, vmap gc 
+	Goto end of comment group (current or next if not in comment).
 
-							*atp-]%*
-nmap ]%, vmap ]%
-	Goto begin of previous comment group
+							|atp-gC|
+nmap gC, vmap gC
+	Goto begin of comment group (current or previous if not in comment).
 	    
 								*atp-:TexDoc*
 TexDoc:
@@ -3748,7 +3807,7 @@ visual mode: ie, iE, ae, im, am, ip, ap, iS, aS, c
 		filtered out (like 'texDocZone') which not always are
 		synchronised.
 								*atp-vc*
-	<LocalLeader>sc	
+	|<LocalLeader>|sc	
 		select comment lines which begin with '^\s*%'. If not in
 		comment line, end visual mode.
 
@@ -3822,6 +3881,7 @@ Okular
 		:SyncTex
 		map t
 		map <S-LeftMouse>
+		:ViewOutput sync
 <	Here is how to CONFIGURE REVERSE SEARCHING (Okular->Vim): 
 	open Okular and go to >
 		settings>Configure Okular>Editor
@@ -3941,7 +4001,7 @@ y/\\begin{document}/		When standing on 1st line - copy the preambule
 
 vipgq				Format inner paragraph. Or even better:
 m`vipgq``			This is so nice that I added a map: >
-				    nmap gw	m`vipgq``		
+				    nmap gq	m`vipgq``		
 <
 m`vip>``			
 m`vip<``			Indent inner paragraph, they are mapped to: >

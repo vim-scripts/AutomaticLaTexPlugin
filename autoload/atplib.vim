@@ -133,7 +133,7 @@ function! atplib#CallBack(mode,...)
     let AU = ( a:0 >= 1 ? a:1 : 'COM' )
     " Was compiler called to make bibtex
     let BIBTEX = ( a:0 >= 2 ? a:2 : "False" )
-    let BIBTEX = ( BIBTEX == "True" ? 1 : 0 )
+    let BIBTEX = ( BIBTEX == "True" || BIBTEX == 1 ? 1 : 0 )
     if g:atp_debugCB
 	let g:BIBTEX = BIBTEX
 	redir! > /tmp/atp_callback
@@ -172,7 +172,7 @@ function! atplib#CallBack(mode,...)
     let l:clist 	= 0
     let atp_DebugMode = t:atp_DebugMode
 
-    if b:atp_TexReturnCode == 0 && ( a:mode == 'silent' || t:atp_DebugMode == 'silent' ) && g:atp_DebugMode_AU_change_cmdheight 
+    if b:atp_TexReturnCode == 0 && ( a:mode == 'silent' || atp_DebugMode == 'silent' ) && g:atp_DebugMode_AU_change_cmdheight 
 	let &l:cmdheight=g:atp_cmdheight
     endif
 
@@ -205,7 +205,7 @@ function! atplib#CallBack(mode,...)
 	endif
 
 	cclose
-	call add(msg_list,["[ATP:] ".b:atp_TexCompiler." returened without errors (atp_ErrorFormat=".g:atp_ErrorFormat.")".(g:atp_DefaultDebugMode=='silent'?" going out of debuging mode.","Normal","after": ".")]) 
+	call add(msg_list,["[ATP:] ".b:atp_TexCompiler." returned without errors (atp_ErrorFormat=".g:atp_ErrorFormat.")".(g:atp_DefaultDebugMode=='silent'&&atp_DebugMode!='silent'?"\ngoing out of debuging mode.": "."), "Normal", "after"]) 
 	let showed_message 	= 1
 	let t:atp_DebugMode 	= g:atp_DefaultDebugMode
 	if g:atp_DefaultDebugMode == "silent" && t:atp_QuickFixOpen
@@ -291,24 +291,32 @@ function! atplib#CallBack(mode,...)
     let after_msg = filter(copy(msg_list), "v:val[2] == 'after'")
     for msg in before_msg 
 	exe "echohl " . msg[1]
-	echomsg msg[0]
+	echo msg[0]
     endfor
     let l:redraw	= 1
     if l:clist && len(getqflist()) <= 7 && !t:atp_QuickFixOpen
-	let g:debugCB .= "clist"
-	clist
+	if g:atp_debugCB
+	    let g:debugCB .= "clist"
+	endif
+	try
+	    clist
+	catch E42:
+	endtry
 	let l:redraw	= 0
     endif
     for msg in after_msg 
 	exe "echohl " . msg[1]
 	if msg[0] !=# "BIBTEX_OUTPUT"
-	    echomsg msg[0]
+	    echo msg[0]
 	else
 	    echo "       ".substitute(b:atp_BibtexOutput, "\n", "\n       ", "g")
 	    let g:debugCB .=" BIBTEX_output "
 	endif
     endfor
     echohl Normal
+    if len(msg_list)==0
+	redraw
+    endif
     let &l:cmdheight = cmdheight
     if g:atp_debugCB
 	redir END
@@ -487,7 +495,7 @@ function! atplib#FindAndOpen(file, line, ...)
     redir! > /tmp/atp_FindAndOpen.debug
     echo "server list=".string(server_list)
     if len(server_list) == 0
-	retun 1
+	return 1
     endif
     let use_server	= "no_server"
     for server in server_list

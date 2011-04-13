@@ -1556,8 +1556,8 @@ command! -buffer -bang Labels		:call <SID>Labels(<q-bang>)
 command! -buffer -count=1 -nargs=? -complete=customlist,EnvCompletionWithoutStarEnvs Nenv	:call <SID>GotoEnvironment('sW',<q-args>)  | let v:searchforward=1 
 command! -buffer -count=1 -nargs=? -complete=customlist,EnvCompletionWithoutStarEnvs Penv	:call <SID>GotoEnvironment('bsW',<q-args>) | let v:searchforward=0
 "TODO: These two commands should also work with sections.
-command! -buffer -count=1 -nargs=? -complete=customlist,F_compl F	:call <SID>GotoEnvironment('sW',<q-args>)  | let v:searchforward=1 
-command! -buffer -count=1 -nargs=? -complete=customlist,F_compl B	:call <SID>GotoEnvironment('bsW',<q-args>) | let v:searchforward=0
+command! -buffer -count=1 -nargs=? -complete=custom,F_compl F	:call <SID>GotoEnvironment('sW',<q-args>)  | let v:searchforward=1 
+command! -buffer -count=1 -nargs=? -complete=custom,F_compl B	:call <SID>GotoEnvironment('bsW',<q-args>) | let v:searchforward=0
 
 nnoremap <silent> <buffer> <Plug>GotoNextEnvironment			:Nenv <CR>
 nnoremap <silent> <buffer> <Plug>GotoPreviousEnvironment		:Penv <CR>

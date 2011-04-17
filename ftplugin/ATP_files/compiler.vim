@@ -7,7 +7,7 @@
 " Last Change:
 
 " Some options (functions) should be set once:
-let s:sourced	 		= exists("s:sourced") ? 1 : 0
+let s:sourced	 	= exists("s:sourced") ? 1 : 0
 
 " Functions: (source once)
 if !s:sourced || g:atp_reload_functions  "{{{
@@ -17,7 +17,10 @@ if !s:sourced || g:atp_reload_functions  "{{{
 " Note: compile.py script has hardcoded the same value.
 let s:runlimit		= 9
 
-compiler tex
+try
+    compiler tex
+catch E666:
+endtry
 " }}}
 
 " This is the function to view output. It calls compiler if the output is a not
@@ -261,7 +264,7 @@ function! <SID>getpid()
 endfunction
 " The same but using python (it is not used)
 " TODO: end this.
-function! <SID>Pythongetpid() 
+function! <SID>PythonGetPID() 
 python << EOF
 import psutil
 latex = vim.eval("b:atp_TexCompiler")
@@ -711,7 +714,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	echomsg "[MakeLatex:] Updating files [".Compiler."]."
 	if g:atp_Compiler == 'python'
 	    let p_force= (a:force == "!" ? " --force" : " " )
-	    let python_cmd1="python ".shellescape(globpath(&rtp, "ftplugin/ATP_files/compile_ml.py")). 
+	    let python_cmd1=g:atp_Python." ".shellescape(globpath(&rtp, "ftplugin/ATP_files/compile_ml.py")). 
 			\ " --cmd ".shellescape(b:atp_TexCompiler).
 			\ " --file ".shellescape(atplib#FullPath(texfile)).
 			\ " --outdir ".shellescape(b:atp_OutDir).
@@ -828,7 +831,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	  echomsg "[MakeLatex:] " . message
 	  if g:atp_Compiler == 'python'
 	      let p_force= (a:force == "!" ? " --force" : " " )
-	      let python_cmd2="python ".shellescape(globpath(&rtp, "ftplugin/ATP_files/compile_ml.py")).
+	      let python_cmd2=g:atp_Python." ".shellescape(globpath(&rtp, "ftplugin/ATP_files/compile_ml.py")).
 			  \ " --cmd ".shellescape(b:atp_TexCompiler).
 			  \ " --file ".shellescape(atplib#FullPath(texfile)).
 			  \ " --outdir ".shellescape(b:atp_OutDir).
@@ -900,9 +903,45 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 endfunction
 "}}}
 
+" This function kills all running latex processes.
+" a slightly better approach would be to kill compile.py scripts
+"{{{ s:KillAll
+" the argument is a list of pids
+" a:1 if present supresses a message.
+function! <SID>KillAll(pids,...)
+    if g:atp_Compiler != 'python'  
+	echohl WarningMsg
+	echomsg "[ATP:] This works only with python compiler (see :help atp-compile.py)" 
+	echohl Normal
+	return
+    endif
+    if len(a:pids) == 0 && a:0 == 0
+	echo "[ATP:] No instance of ".get(g:CompilerMsg_Dict,b:atp_TexCompiler,'TeX')." is running."
+    endif
+python << END
+import os, signal
+from signal import SIGTERM
+pids=vim.eval("a:pids")
+for pid in pids:
+    os.kill(int(pid),SIGTERM)
+END
+endfunction "}}}
+
 " THE MAIN COMPILER FUNCTIONs:
 " {{{ s:PythonCompiler
 function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, bang)
+
+    if !has('gui') && a:verbose == 'verbose' && len(b:atp_LatexPIDs) > 0
+	redraw!
+	echomsg "[ATP:] please wait until compilation stops."
+	return
+
+	" This is not working: (I should kill compile.py scripts)
+	echomsg "[ATP:] killing all instances of ".get(g:CompilerMsg_Dict,b:atp_TexCompiler,'TeX')
+	call <SID>KillAll(b:atp_LatexPIDs,1)
+	sleep 1
+	PID
+    endif
 
     " Debug varibles
     " On Unix the output of compile.py run by this function is available at
@@ -969,7 +1008,7 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
     let bibliographies 		= join(keys(filter(copy(b:TypeDict), "v:val == 'bib'")), ',')
 
     " Set the command
-    let cmd="python ".g:atp_PythonCompilerPath." --command ".b:atp_TexCompiler
+    let cmd=g:atp_Python." ".g:atp_PythonCompilerPath." --command ".b:atp_TexCompiler
 		\ ." --tex-options ".tex_options
 		\ ." --verbose ".a:verbose
 		\ ." --file ".shellescape(atplib#FullPath(a:filename))
@@ -1013,6 +1052,8 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
 	exe ":!".cmd
     elseif g:atp_debugPythonCompiler && has("unix") 
 	call system(cmd." 2>/tmp/atp_pc.debug &")
+    elseif has("win16") || has("win32") || has("win64")
+	call system(cmd)
     else
 	call system(cmd." &")
     endif
@@ -1813,6 +1854,7 @@ endif "}}}
 
 " Commands: 
 " {{{
+command! -buffer 		KillAll			:call <SID>KillAll(b:atp_LatexPIDs)
 command! -buffer -nargs=? 	ViewOutput		:call <SID>ViewOutput(<f-args>)
 command! -buffer 		SyncTex			:call <SID>SyncTex(0)
 command! -buffer 		PID			:call <SID>GetPID()

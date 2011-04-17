@@ -3,7 +3,7 @@
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Wed Apr 13 05:00  2011 W
+" Last Change: Sat Apr 16 07:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -796,8 +796,8 @@ function! s:TeXdoc_complete(ArgLead, CmdLine, CursorPos)
 
     call filter(aliases, "v:val =~ 'alias'")
     call filter(map(aliases, "matchstr(v:val, '^\\s*alias\\s*\\zs\\S*\\ze\\s*=')"),"v:val !~ '^\\s*$'")
-    if exists("g:atp_latexpackages")
-	call extend(aliases, g:atp_latexpackages)
+    if exists("g:atp_LatexPackages")
+	call extend(aliases, g:atp_LatexPackages)
     endif
 
     return filter(copy(aliases), "v:val =~ '^' . a:ArgLead")
@@ -861,7 +861,7 @@ function! <SID>Search(pattern, flag, ...)
 	let message = a:flag =~# 'b' ? 'previous' : 'next'
 	if a:pattern =~ 'warning'
 	    let type = 'warning'
-	elseif a:pattern =~ '\^!'
+	elseif a:pattern =~ '!$'
 	    let type = 'error'
 	elseif a:pattern =~ 'info'
 	    let type = 'info'
@@ -910,8 +910,8 @@ function! s:OpenLog()
 	nnoremap <silent> <buffer> [c :call <SID>Search('\CLaTeX Warning: Citation', 'bW')<CR>
 	nnoremap <silent> <buffer> ]r :call <SID>Search('\CLaTeX Warning: Reference', 'W')<CR>
 	nnoremap <silent> <buffer> [r :call <SID>Search('\CLaTeX Warning: Reference', 'bW')<CR>
-	nnoremap <silent> <buffer> ]e :call <SID>Search('^!', 'W')<CR>
-	nnoremap <silent> <buffer> [e :call <SID>Search('^!', 'bW')<CR>
+	nnoremap <silent> <buffer> ]e :call <SID>Search('^[^!].*\n\zs!', 'W')<CR>
+	nnoremap <silent> <buffer> [e :call <SID>Search('^[^!].*\n\zs!', 'bW')<CR>
 	nnoremap <silent> <buffer> ]f :call <SID>Search('\CFont \%(Info\\|Warning\)', 'W')<CR>
 	nnoremap <silent> <buffer> [f :call <SID>Search('\CFont \%(Info\\|Warning\)', 'bW')<CR>
 	nnoremap <silent> <buffer> ]p :call <SID>Search('\CPackage', 'W')<CR>
@@ -1470,93 +1470,9 @@ endfunction
 " }}}
 
 " This functions reloads ATP (whole or just a function)
-" {{{  RELOAD
-
-if !exists("g:debug_atp_plugin")
-    let g:debug_atp_plugin=0
-endif
-if g:debug_atp_plugin==1 && !exists("*Reload")
-" Reload() - reload all the tex_apt functions
-" Reload(func1,func2,...) reload list of functions func1 and func2
-" function! Reload(...)
-"     let pos_saved=getpos(".")
-"     let bufname=fnamemodify(expand("%"),":p")
-" 
-"     if a:0 == 0
-" 	let runtime_path=split(&runtimepath,',')
-" 	echo "Searching for atp plugin files"
-" 	let file_list=['ftplugin/tex_atp.vim', 'ftplugin/fd_atp.vim', 
-" 		    \ 'ftplugin/bibsearch_atp.vim', 'ftplugin/toc_atp.vim', 
-" 		    \ 'autoload/atplib.vim', 'ftplugin/atp_LatexBox.vim',
-" 		    \ 'indent/tex_atp.vim' ]
-" 	let file_path=[]
-" 	for file in file_list
-" 		call add(file_path,globpath(&rtp,file))
-" 	endfor
-" " 	if exists("b:atp_debug")
-" " 	    if b:atp_debug == "v" || b:atp_debug == "verbose"
-" " 		echomsg string(file_path)
-" " 	    endif
-" " 	endif
-" 	for file in file_path
-" 	    echomsg "deleting FUNCTIONS and VARIABLES from " . file
-" 	    let atp=readfile(file)
-" 	    for line in atp
-" 		let function_name=matchstr(line,'^\s*fun\%(ction\)\?!\?\s\+\zs\<[^(]*\>\ze(')
-" 		if function_name != "" && function_name != "Reload"
-" 		    if exists("*" . function_name)
-" 			if exists("b:atp_debug")
-" 			    if b:atp_debug == "v" || b:atp_debug == "verbose"
-" 				echomsg "deleting function " . function_name
-" 			    endif
-" 			endif
-" 			execute "delfunction " . function_name
-" 		    endif
-" 		endif
-" 		let variable_name=matchstr(line,'^\s*let\s\+\zsg:[a-zA-Z_^{}]*\ze\>')
-" 		if exists(variable_name)
-" 		    execute "unlet ".variable_name
-" 		    if exists("b:atp_debug")
-" 			if b:atp_debug == "v" || b:atp_debug == "verbose"
-" 			    echomsg "unlet ".variable_name
-" 			endif
-" 		    endif
-" 		endif
-" 	    endfor
-" 	endfor
-"     else
-" 	if a:1 != "maps" && a:1 != "reload"
-" 	    let f_list=split(a:1,',')
-" 	    let g:f_list=f_list
-" 	    for function in f_list
-" 		execute "delfunction " . function
-" 		if exists("b:atp_debug")
-" 		    if b:atp_debug == "v" || b:atp_debug == "verbose"
-" 			echomsg "delfunction " . function
-" 		    endif
-" 		endif
-" 	    endfor
-" 	endif
-"     endif
-"     augroup! ATP_auTeX
-"     " Do not write project script file while saving the file.
-"     let atp_ProjectScript	= ( exists("g:atp_ProjectScript") ? g:atp_ProjectScript : -1 )
-"     let g:atp_ProjectScript	= 0
-"     w
-"     if atp_ProjectScript == -1
-" 	unlet g:atp_ProjectScript
-"     else
-" 	let g:atp_ProjectScript	= atp_ProjectScript
-"     endif
-" "   THIS IS THE SLOW WAY:
-"     bd!
-"     execute "edit " . fnameescape(bufname)
-"     keepjumps call setpos(".",pos_saved)
-" "   This could be faster: but aparently doesn't work.
-" "     execute "source " . file_path[0]
-" endfunction
-
-" Source options.vim
+" {{{  ReloadATP
+" ReloadATP() - reload all the tex_atp functions and delete all autoload functions from
+" autoload/atplib.vim
 try
 function! <SID>ReloadATP(bang)
     " First source the option file
@@ -1604,7 +1520,6 @@ endfunction
 catch /E127:/
     " Cannot redefine function, function is in use.
 endtry
-endif
 " }}}
 
 " This functions prints preambule 
@@ -1660,7 +1575,7 @@ function! <SID>GetAMSRef(what, bibfile)
     else
 	let url="http://www.ams.org/mathscinet-mref?ref=".what."&dataType=tex"
     endif
-    let cmd="python ".URLquery_path." ".shellescape(url)." ".shellescape(atpbib_WgetOutputFile)
+    let cmd=g:atp_Python." ".URLquery_path." ".shellescape(url)." ".shellescape(atpbib_WgetOutputFile)
     call system(cmd)
     let loclist = getloclist(0)
 
@@ -1967,7 +1882,7 @@ function! <SID>UpdateATP(bang)
 	endif
 	let url_tempname=tempname()."_ATP.html"
 " 	let g:url_tempname=url_tempname
-	let cmd="python ".s:URLquery_path." ".shellescape(url)." ".shellescape(url_tempname)
+	let cmd=g:atp_Python." ".s:URLquery_path." ".shellescape(url)." ".shellescape(url_tempname)
 " 	let g:cmd=cmd
 	call system(cmd)
 
@@ -2059,7 +1974,7 @@ function! <SID>UpdateATP(bang)
 	    endif
 	    let s:atp_tempname = tempname()."_ATP.tar.gz"
 	    let g:atp_debugUD_tempname = s:atp_tempname
-	    let cmd="python ".s:URLquery_path." ".shellescape(url)." ".shellescape(s:atp_tempname)
+	    let cmd=g:atp_Python." ".s:URLquery_path." ".shellescape(url)." ".shellescape(s:atp_tempname)
 	    if a:bang == "!"
 		echo "[ATP:] getting latest snapshot (unstable version) ..."
 	    else
@@ -2245,13 +2160,13 @@ function! Comment(arg) "{{{
     endif
 
 endfunction "}}}
-map <Plug>CommentLines		:call CommentLine(1)<CR>
-map <Plug>UnCommentLines 	:call CommentLine(0)<CR>
 endif "}}}
 
 
 " COMMANDS AND MAPS:
 " Maps: "{{{1
+map <buffer> <Plug>CommentLines					:call Comment(1)<CR>
+map <buffer> <Plug>UnCommentLines 				:call Comment(0)<CR>
 vmap <buffer> 	<Plug>WrapSelection				:<C-U>call <SID>WrapSelection('')<CR>i
 vmap <buffer> 	<Plug>InteligentWrapSelection			:<C-U>call <SID>InteligentWrapSelection('')<CR>i
 nnoremap <silent> <buffer> 	<Plug>ToggleStar		:call <SID>ToggleStar()<CR>

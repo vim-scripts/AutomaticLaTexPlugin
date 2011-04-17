@@ -135,7 +135,7 @@ function! atplib#CallBack(mode,...)
     let BIBTEX = ( a:0 >= 2 ? a:2 : "False" )
     let BIBTEX = ( BIBTEX == "True" || BIBTEX == 1 ? 1 : 0 )
     if g:atp_debugCB
-	let g:BIBTEX = BIBTEX
+	" WINDOWS NOT COMPATIBLE:
 	redir! > /tmp/atp_callback
 " 	silent echo "BIBTEX =".BIBTEX
     endif
@@ -226,9 +226,9 @@ function! atplib#CallBack(mode,...)
 	    let &l:cmdheight 	= g:atp_DebugModeCmdHeight
 		let showed_message 	= 1
 		if b:atp_ReloadOnError || b:atp_Viewer !~ '^\s*xpdf\>'
-		    call add(msg_list, ["[ATP:] ".Compiler." returned with exit code " . b:atp_TexReturnCode . ".", "ErrorMsg", "before"])
+		    call add(msg_list, ["[ATP:] ".Compiler." returned with exit code " . b:atp_TexReturnCode . ".", (b:atp_TexReturnCode ? "ErrorMsg" : "Normal"), "before"])
 		else
-		    call add(msg_list, ["[ATP:] ".Compiler." returned with exit code " . b:atp_TexReturnCode . " output file not reloaded.", "ErrorMsg", "before"])
+		    call add(msg_list, ["[ATP:] ".Compiler." returned with exit code " . b:atp_TexReturnCode . " output file not reloaded.", (b:atp_TexReturnCode ? "ErrorMsg" : "Normal"), "before"])
 		endif
 	    if !t:atp_QuickFixOpen
 		let l:clist		= 1
@@ -335,20 +335,20 @@ python << EOL
 import psutil, re, sys, vim
 pids = vim.eval("b:atp_LatexPIDs")
 if len(pids) > 0:
-	ps_list=psutil.get_pid_list()
-	rmpids=[]
-	for lp in pids:
-		run=False
-		for p in ps_list: 
-			if str(lp) == str(p):
-				run=True
-				break
-		if not run:
-			rmpids.append(lp)
-	rmpids.sort()
-	rmpids.reverse()
-	for pid in rmpids:
-		    vim.eval("filter(b:atp_LatexPIDs, 'v:val !~ \""+str(pid)+"\"')")
+    ps_list=psutil.get_pid_list()
+    rmpids=[]
+    for lp in pids:
+	run=False
+	for p in ps_list:
+	    if str(lp) == str(p):
+		run=True
+		break
+	if not run:
+	    rmpids.append(lp)
+    rmpids.sort()
+    rmpids.reverse()
+    for pid in rmpids:
+	vim.eval("filter(b:atp_LatexPIDs, 'v:val !~ \""+str(pid)+"\"')")
 EOL
 endfunction "}}}
 "{{{ ProgressBar
@@ -3710,11 +3710,11 @@ function! atplib#TabCompletion(expert_mode,...)
 	endif
     "{{{3 ------------ PACKAGES
     elseif completion_method == 'package'
-	if exists("g:atp_latexpackages")
-	    let completion_list	= copy(g:atp_latexpackages)
+	if exists("g:atp_LatexPackages")
+	    let completion_list	= copy(g:atp_LatexPackages)
 	else
-	    let g:atp_latexpackages	= atplib#KpsewhichGlobPath("tex", "", "*.sty")
-	    let completion_list	= deepcopy(g:atp_latexpackages)
+	    let g:atp_LatexPackages	= atplib#KpsewhichGlobPath("tex", "", "*.sty")
+	    let completion_list	= deepcopy(g:atp_LatexPackages)
 	endif
     "{{{3 ------------ COLORS
     elseif completion_method == 'colors'
@@ -3969,11 +3969,11 @@ function! atplib#TabCompletion(expert_mode,...)
 	let completion_list=atplib#KpsewhichGlobPath("bst", "", "*.bst")
     "{{{3 ------------ DOCUMENTCLASS
     elseif completion_method == 'documentclass'
-	if exists("g:atp_latexclasses")
-	    let completion_list	= copy(g:atp_latexclasses)
+	if exists("g:atp_LatexClasses")
+	    let completion_list	= copy(g:atp_LatexClasses)
 	else
-	    let g:atp_latexclasses	= atplib#KpsewhichGlobPath("tex", "", "*.cls")
-	    let completion_list	= deepcopy(g:atp_latexclasses)
+	    let g:atp_LatexClasses	= atplib#KpsewhichGlobPath("tex", "", "*.cls")
+	    let completion_list		= deepcopy(g:atp_LatexClasses)
 	endif
 	" \documentclass must be closed right after the name ends:
 	if nchar != "}"

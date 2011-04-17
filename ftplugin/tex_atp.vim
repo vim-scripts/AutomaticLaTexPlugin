@@ -3,10 +3,10 @@
 " URL:			https://sourceforge.net/projects/atp-vim/
 " BUGS:			https://lists.sourceforge.net/lists/listinfo/atp-vim-list
 " The do NOT DELETE the following line, it is used by :UpdateATP (':help atp-:UpdateATP')
-" Time Stamp: 13-04-11_20-33
+" Time Stamp: 17-04-11_13-18
 " (but you can edit, if there is a reason for doing this. The format is dd-mm-yy_HH-MM)
 " Language:	    tex
-" Last Change: Sat Apr 09 12:00  2011 W
+" Last Change: Sat Apr 16 01:00  2011 W
 " GetLatestVimScripts: 2945 62 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
@@ -34,46 +34,43 @@ if !exists("g:atp_reload_functions")
 endif
 
 if &cpoptions =~ '<'
-	echohl WarningMsg
-	echo "ATP is removing < from cpoptions"
-	echohl None
+	echoerr "[ATP:] removing '<' from cpoptions"
 	setl cpoptions-=<
 endif
 
-	" Execute the atprc file.
-	" They override cached variables
-	let s:atprc_file = globpath($HOME, '.atprc.vim', 1)
-	" They override cached variables
-	function! <SID>ReadATPRC()
-		if filereadable(s:atprc_file) && has("unix")
+    " Execute the atprc file.
+    " They override cached variables
+    let s:atprc_file = globpath($HOME, '.atprc.vim', 1)
+    " They override cached variables
+    function! <SID>ReadATPRC()
+	    if filereadable(s:atprc_file) && has("unix")
 
-			" Note: in $HOME/.atprc file the user can set all the local buffer
-			" variables without using autocommands
-			"
-			" Note: it must be sourced at the begining because some options handle
-			" how atp will load (for example if we load history or not)
-			" It also should be run at the end if the user defines mapping that
-			" should be overwrite the ATP settings (this is done via
-			" autocommand).
-			let path = globpath($HOME, '/.atprc.vim', 1)
-			execute 'source ' . fnameescape(path)
+		    " Note: in $HOME/.atprc file the user can set all the local buffer
+		    " variables without using autocommands
+		    "
+		    " Note: it must be sourced at the begining because some options handle
+		    " how atp will load (for example if we load history or not)
+		    " It also should be run at the end if the user defines mapping that
+		    " should be overwrite the ATP settings (this is done via
+		    " autocommand).
+		    let path = globpath($HOME, '/.atprc.vim', 1)
+		    execute 'source ' . fnameescape(path)
 
-		else
-			let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), '\n'), 0, "")
-			if path != ""
-				execute 'source ' . fnameescape(path)
-			endif
-		endif
-	endfunction
+	    else
+		    let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), '\n'), 0, "")
+		    if path != ""
+			    execute 'source ' . fnameescape(path)
+		    endif
+	    endif
+    endfunction
 
-	call <SID>ReadATPRC()
-"   This is not working:
-" 	augroup ATP_atprc
-" 		au! VimEnter * :call <SID>ReadATPRC()
-" 	augroup END
 
 	" Source Project Script
 	runtime ftplugin/ATP_files/project.vim
+
+	" ATPRC file overwrites project settings
+	" (if the user put sth in atprc file, it means that he wants this globbaly) 
+	call <SID>ReadATPRC()
 
 	" Functions needed before setting options.
 	runtime ftplugin/ATP_files/common.vim

@@ -801,7 +801,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	    endif
  
 	    let projectVarDict 	= SaveProjectVariables()
-" 	    let projectScript	= SaveProjectVariables("g:atp_cached_local_variables") 
+" 	    let projectScript	= SaveProjectVariables("g:atp_ProjectLocalVariables") 
 " 	    let atp_ProjectScript 	= [ exists("g:atp_ProjectScript") ? g:atp_ProjectScript : b:atp_ProjectScript, exists("g:atp_ProjectScript") ] 
 " 	    let g:atp_ProjectScript 	= 0
 	    if g:atp_debugRS >= 3
@@ -914,7 +914,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		silent echo "TIME ***goto DOWN before open*** " . reltimestr(reltime(time0))
 	    endif
 	    let projectVarDict 	= SaveProjectVariables()
-" 	    let projectScript	= SaveProjectVariables("g:atp_cached_local_variables")
+" 	    let projectScript	= SaveProjectVariables("g:atp_ProjectLocalVariables")
 " 	    let atp_ProjectScript 	= [ exists("g:atp_ProjectScript") ? g:atp_ProjectScript : b:atp_ProjectScript, exists("g:atp_ProjectScript") ] 
 " 	    let g:atp_ProjectScript 	= 0
 	    if empty(swapfile) || bufexists(next_branch)

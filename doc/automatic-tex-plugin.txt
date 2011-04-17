@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 13 April 2011
+*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 17 April 2011
 
-	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 9.2.7)
+	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 9.3)
 			by Marcin Szamotulski
 		    mszamot [AT] gmail [DOT] com
 		----------------------------------------
@@ -22,7 +22,7 @@ and preview fonts in your tex distribution. The features include an extended
 tab completion for: commands, environment names, packages, input files, bib
 files, bst files, colours, closing brackets and environments (preserves
 nesting),... etc. To have full functionality you need: python (with
-nonstandard psutil library, see |atp-python-requirements| how to get it),
+nonstandard psutil library, see |atp-requirements-python| how to get it),
 pdffonts available in the package 'app-text/poppler' (at least in Gentoo).
 Another good tool is texdoc, which is a part of TexLive - these days standard
 TeX distribution for Linux, and MikTeX on Windows.
@@ -92,6 +92,27 @@ changes:
 >
   Changes in versions 9.3
 <
+	The commands |atp-:F|, |atp-:B|, and the maps |atp->e| and |atp-<e|
+	have count. With count they will be invoked several times, i.e. 3>e go
+	to third environment. The mark ' is set to the starting position (so
+	this is the difference between 3>e and 3 times >e).
+
+	Motion commands, and mappings (like |CTRL-F|, |S-ScrollWheelUp|,
+	|CTRL-D|, etc) will update the highlighted chapter. If you do not want
+	the keys to be remaped set g:atp_MapUpdateToCLine to 0.  The keys |j|,
+	|k|, |gj| and |gk| are also remapped, if you have a defined map from
+	|j| to |gj| (or |k| to |gk|) it will be respected.
+
+	For XeTeX (and XeLaTeX) users the maps ]e, [e (to go to next/previous
+	error message) in a log file (see |atp-maps-log|) will work better.
+
+	|atp-:GotoLabel| - important fix.
+
+	\\D, \\d - maps to swith to: |atp-debug-mode-Debug| and
+	|atp-debug-mode-debug|.
+	The message '[ATP:] pdflatex returned with exit code ' will be
+	highlighted with |hl-ErrorMsg| only if the exit code is non zero.
+
 	|g:atp_map_forward_motion_leader|	= '>'
 	|g:atp_map_backward_motion_leader| 	= '<'
 		see |atp-:NSec| and |atp-:PSec| and friends. 
@@ -106,9 +127,14 @@ changes:
 
 	<F2> acts as 'Q/i' (i.e. enters insert mode).
 	If you want Q/ and Q? enter insert mode as well you can set: >
-	    nmap Q/					:call ATP_CmdwinToggleSpace('on')<CR>q/i
-	    nmap Q?					:call ATP_CmdwinToggleSpace('on')<CR>q/i
-<	in your |atprc| file.
+	    nmap Q/		q/:call ATP_CmdwinToggleSpace('on')<CR>i
+	    nmap Q?		q/:call ATP_CmdwinToggleSpace('on')<CR>i
+<	in your |atprc| or |vimrc| file.
+
+							*atplib-:KillAll*
+	:KillAll
+	Kill all instances of b:atp_LatexPIDs, this only works with
+	|g:atp_Compiler|="python".
 
 							*g:atp_DeleteWithBang*
 	g:atp_DeleteWithBang = ['synctex.gz', 'tex.project.vim']
@@ -118,8 +144,30 @@ changes:
 	|atp-gw| back (was gq for very short time (since ver. 9.2), which
 	I found to be not a good idea).
 
-nmap \c	
-nmap \u
+	Some variables has changed the name |g:atp_LatexPackages| (from
+	g:atp_latexpackages), |g:atp_LatexClasses| (from g:atp_latexclasses),
+	|g:atp_ProjectLocalVariables| (from g:atp_cached_local_variables),
+	|g:atp_ProjectGlobalVariables| (from g:atp_cached_global_variables).
+
+							*atp-map-Gs*
+							*atp-map-Gc*
+							*atp-map-Gp*
+							*atp-:SSec*
+							*atp-:Sec*
+							*atp-:Chap*
+							*atp-:Part*
+:[count]SSec
+:[count]Sec
+nmap [count]Gs
+:[count]Chap
+nmap [count]Gc
+:[count]Part
+nmap [count]Gp
+	Go to subsection/section/chapter/part [count] from beinging. Mark ' is
+	preserved.
+
+nmap \c, vmap \c
+nmap \u, vmap \u
 	Comment/Uncomment lines (both in |Normal| and |Visual| modes). 
 
 	Comment leader can be set with the variable g:atp_CommentLeader (by
@@ -129,8 +177,15 @@ nmap \u
 	<Plug>UnCommentLines (these are normal maps), for example: >
 		nmap <LocalLeader>C 	<Plug>UnCommentLines
 		vmap <LocalLeader>C 	<Plug>UnCommentLines
-<	
+<	A usefull map for uncommenting |atp-sc|.
 
+    |atp-sc|: {s}elect {c}omment in normal mode with <LocalLeader>sc.
+    (there used to be only map in visual mode).
+
+    nunmap K if there is a map to K (the manpageviewPlugin
+ 	http://www.vim.org/scripts/script.php?script_id=489
+    remaps the K, ATP will delete any such map - ATP first tries to delete
+    the local |map-<buffer>|, then the global map).
 >
   Changes in versions 9 & 9.1 & 9.2
 <
@@ -179,9 +234,9 @@ NEW CODE TO COMPILE DOCUMENTS	 			*atp-news-NEW_COMPILER*
     contain all the errors issued by python, and '/tmp/atp_compile.py.debug'
     - debugging info printed by the |compile.py| script.
 
+    							*g:atp_Compiler*
     If for some reason you'd like to use the old 'bash' style script there is
     a variable:
-    							*g:atp_Compiler*
 >
 	g:atp_Compiler = "python"
 <   just switch its value to "bash" (you don't need to restart vim).
@@ -202,12 +257,8 @@ NEW CODE TO COMPILE DOCUMENTS	 			*atp-news-NEW_COMPILER*
 							*b:atp_TexReturnCode*	
     The variable |b:atp_TexReturnCode| stores the return code of compilation.
 
-    REQUIRMENTS						*atp-python-requirements*
-  (1)	The script is written in python version 3.1 (and it works in python 2.6).
-	The only non standard library that it uses is psutil. You can get it from:
-	    http://code.google.com/p/psutil/
-	or (better) use your os specific instalation tools.		
-
+    See |atp-requirements-python| for nonstandard python libraries that are
+    used by ATP.
     							*b:atp_VerboseLatexInteractionMode*
     There is also a small enhacment in verbose debug mode. You can decide what
     it the value of latex '-interaction=' switch. The default now is
@@ -450,153 +501,6 @@ NEW CODE TO COMPILE DOCUMENTS	 			*atp-news-NEW_COMPILER*
 	this version was build. The time stamp is in format 'dd-mm-yy_HH-MM'.
 
     						Chears, Marcin
->
-  Changes in version 8.7
-<
-  							*atp-:WordCount*
-  - Added completion support for packages: BEAMER, MATHTOOLS.
-  - LatexBox 0.9.5 included  
-  - :WordCount[!] - command to compute the number of words. With bang [!] it
-    will show the word count of each input file. It uses 'detex' program
-    (which is present in 'texlive') to remove the latex markups prior to word
-    counting (done by the external 'wc' program).
-  - New variable: |b:atp_TexCompilerVariable| with default value
-    "max_print_line=2000". You can use it to set an environment variables for
-    the compiler. The "max_print_line" sets the maximal length of a line in
-    the log file - the value 2000 is high enough to prevent line breaking.
-  - Highlighting of $:$ and $$:$$ and the move '%' is now switched of inside
-    'texSectionModifier' syntax group (i.e. in \begin{}[..here..]) as the
-    syntax groups of $:$ and $$:$$ are not defined inside
-    'texSectionModifier', and the functions were not working right.
-  - |atp-:SshPrint| and |atp-:Lpr| (new) commands have  syntax as lpr command
-    with a nice completion of its options and values.
-  - Some other small changes and fixes.
->
-  Changes in version 8.6
-<
-  - |<LocalLeader>|tx vmap to wrap with \textrm{}:\text{} in normal:math modes.
-    (The leader which is used is defined by g:atp_vmap_text_font_leader, which
-    by default is |<LocalLeader>|).
-  - a fix in project file writing function (thanks to a user bug report).
-  - motion maps ]], [[, ][ and [] work with \[:\] and $$:$$.
-  - New default values for: >
-	g:atp_map_forward_motion_leader 	= ">"
-	g:atp_map_backward_motion_leader 	= "<"
-<   The old values were "{" and "}" (they were interfering with Vim maps).
-
->
-  Changes in version 8.5
-<
-  - AMSRef[!] without bang it writes and closes the bib buffer, without it
-    leave in bib file (which is not saved).
->
-  Changes in version 8.4
-<
-  - Help file for bibtex filetype plugin: |atp_bibtex|
-  - Abbreviations:
-    +- for \pm
-    +| for \dagger
-    ++ for \ddager
-    =<env_name>= for environments. 
-    Locally defined environments are also supported (the one defined in
-    |b:atp_LocalEnvironments|). If you need something different than
-    abbreviation for
-	\begin{theorem}
-	     <Cursor placed here>
-	\end{theorem}
-    for example:
-	\begin{corollary}<Cursor placed here>
-	\end{corollary}
-    You can set the variable g:atp_abbreviation_{environment_name}. It is list
-    with two values. First is used after \begin{...} and the second after
-    \end{...}. For the above examples:
-    let g:atp_abbreviation_theorem	= [ '<CR>', '<ESC>O' ]
-    let g:atp_abbreviation_corollary	= [ '<CR>', '<ESC><UP>A' ]
-    The first one is the default so you do not need to set it. In the second
-    example the abbreviation command will look like: >
-	abbreviate =corollary= \begin{corollary}<CR>\end{corollary}<ESC><UP>A
-<   This will only work for b:atp_LocalEnvironments, LaTeX and AMS
-    environments are set reasonably.
-    Environment name abbreviations are defined only if there were not defined.
-    So you can override the settings using |atprc| file (or |vimrc| file).
-
-    Furthermore you can change the "=":	    
-    							*g:atp_iabbrev_leader*
-let g:atp_iabbrev_leader = "="
-    It is used  in insert mode abbreviations like: =theorem=. 
-
-							*atp-completion-abbreviations*
-    There is tab completion for insert mode abbreviation names (use <ctrl-y>
-    to choose one from the list and then type <space>, just typing <space>
-    should also work).
-
->
-  Changes in version 8.3
-<
-  - If g:atp_map_forward_motion_leader = "}" then there noremap }} }.
-    Similarly, for backward motion leader.
->
-  Changes in version 8.2
-<
-  - vip fixed (|atp-vip|).
-  - The default value of g:atp_vmap_environment_leader is |<LocalLeader>| (it
-    used to be an empty string). Thus now there are visual maps:
-    |<LocalLeader>|C, |<LocalLeader>|R, |<LocalLeader>|L, |<LocalLeader>|A,
-    |<LocalLeader>|E to wrap with environments: center, flushright, flushleft,
-    align and equation respectively.
-  - vMap |<LocalLeader>|sc  (see |atp-vc|) select comment lines which begin with '^\s*%'. 
-  - {m, }m motions to next math environment fixed. See |atp-}m| and |atp-{m|. 
->
-  Changes in version 8.1
-<
-  - |atp-:GotoFile|, |atp-:EditInputFile| commands have completion.
-  - Some fixes in |atp-:AMSRef| command. Among them: echo the message: 'No
-    Unique Match Found' if the amsref interface returns it.
->
-  Changes in version 8
-<
-  - bib_atp.vim (the ftplugin for bib files) has motions: 
-    ]], }	go to next field (and use zz to redraw the screen)
-    [[, {	go to previous field (and use zz to redraw the screen)
-    ][		go to end of the current bib field
-    []		go to end of the previous bib field
-    <C-j>	(both map and imap) go to next bib entry (after { or ( or " or ').
-    <C-k>	(both map and imap) go to previous bib entry (after { or ( or " or ').
-
-  								*atp-:AMSRef*
-  - :AMSRef[!] {bib_data}  - a command to get bib data from AMSRef:
-		    http://www.ams.org/mathscinet-mref 
-    The bib data will be appended to bibliography of the current document. If
-    there are many bib files will get a choice which one to use. This command
-    is also available in bib files.  Without bang, i.e. "!", it writes and
-    closes the bib buffer. You will be also asked for the bib key, the default
-    choice is to use the AMS bib key.  This command also works when you use
-    \begin{bibliography} environment. But the default is to use a bib file
-    (which might be changed in the future).  The obtained bibliographic
-    reference is copied to the register g:atp_bibrefRegister (the default is
-    "0" so you can paste it using Vim command 'p') and also is stored in the
-    variable g:atp_bibref.
-	
-  - There is a new ftplugin for bib files. It only defines a small set of
-    useful maps and the AMSRef command. The defined maps are listed below: 
-		MAP KEY			FIELD TYPE: 
-		|<LocalLeader>|a	  article
-		|<LocalLeader>|b (or bo)  book
-		|<LocalLeader>|bl	  booklet
-		|<LocalLeader>|c	  conference
-		|<LocalLeader>|ib	  inbook
-		|<LocalLeader>|ic	  incollection
-		|<LocalLeader>|ip	  inproceedings
-		|<LocalLeader>|ma	  manual
-		|<LocalLeader>|mt	  mastersthesis
-		|<LocalLeader>|mi	  misc
-		|<LocalLeader>|phd	  phdthesis
-		|<LocalLeader>|pr	  proceedings
-		|<LocalLeader>|tr	  techreport
-		|<LocalLeader>|un	  unpublished
-  - vmaps A,E (using g:atp_vmap_environment_leader with default value "")
-    which wraps selection into \begin{align}:\end{align} and
-    \begin{equation}:\end{equation}
 
 ================================================================================
 INSTALLATION                               		*atp-installation*
@@ -614,6 +518,7 @@ If you do not like colours you can still set syntax on but clear the highlight
 colours (you should make a simple function which clears all the highlight
 groups, because ':hi clear' will not give you what you want).
 
+See |atp-requirements| for ATP requirements. 
 
 ================================================================================
 COMMANDS	                               		*atp-commands* *atp-:*
@@ -733,56 +638,69 @@ forth between you |b:atp_OutDir| and the temporary directory)
 			vim --servername VIM 
 < 	you have additional functionalities:
 
-	* STATUS LINE NOTIFICATION: status line can show if tex is running >
+							*atp-status-line-notification*
+	
+	* Status Line Notification: status line can show if tex is running >
 		    let g:atp_status_notification = 1
 <		If unset you will get a message when compiler ends.
 		If set the number next to the name of your compiler indicates
-		how many instances are currently running.
-	* The LOG FILE will be automatically read after compilation (|cgetfile|).
-
+		how many instances are currently running. If
+		|g:atp_ProgressBar|=1 then also progress information of TeX
+		compiler  will be shown.
+	
+	* The log file will be automatically read after compilation (|cgetfile|).
+	
+	* Debug mode is set by the value of |t:atp_DebugMode|, you can set or
+	  see its value using |atp-:DebugMode| command (with completion for
+	  debug modes).
+							*t:atp_DebugMode*	
 							*atp-debug-mode-silent*
-	* if t:atp_DebugMode 	= 'silent'
-			   You will not get any message from compilation. 
+							*'silent'*
+	* if |t:atp_DebugMode| 	= 'silent'
+	       You will not get any message from compilation. 
 
 							*atp-debug-mode-debug*
-				= 'debug'
-			   After the end of compilation (invoked by the user
-			   or autocommand) you will get a message with the
-			   return status of the compilation.
+							*'debug'*
+	* if |t:atp_DebugMode| 	= 'debug'
+	       After the end of compilation (invoked by the user or
+	       autocommand) you will get a message with the return status of
+	       the compilation. If the exit code is non zero it will be
+	       highlighted with |hl-ErrorMsg|.
 
-			   If you open the error window with :copen or with
-			   the menu option ToggleDebugMode then it will be
-			   automatically closed after first compilation with
-			   no errors. Quick fix window is closed in both
-			   'silent' and 'debug' debug modes. This depends on
-			   |errorformat| which you can set with
-			   |atp-:SetErrorFormat| and |atp-:ShowErrors| 
-			   - ATP test for 'no errors' is 'len(|getqflist()|)'. If
-			     the debug mode was 'debug' |t:atp_DebugMode| will
-			     fall back to |g:atp_DefaultDebugMode| (i.e.
-			     'silent' mode).
+	       If you open the error window with :copen or with the menu
+	       option ToggleDebugMode then it will be automatically closed
+	       after first compilation with no errors. Quick fix window is
+	       closed in both 'silent' and 'debug' debug modes. This depends
+	       on |errorformat| which you can set with |atp-:SetErrorFormat|
+	       and |atp-:ShowErrors|:
+		    ATP test for 'no errors' is 'len(|getqflist()|)'. If the
+		    debug mode was 'debug' |t:atp_DebugMode| will fall back to
+		    |g:atp_DefaultDebugMode| (by default it is the 'silent'
+		    mode).
 
 							*atp-debug-mode-Debug*
-				= 'Debug'
-			   This mode is the same as 'debug' + after
-			   compilation ATP jumps to first error.	
+							*'Debug'*
+	* if |t:atp_DebugMode| 	= 'Debug'
+	       This mode is the same as 'debug' + after compilation ATP jumps
+	       to first error.	
 
 							*atp-debug-mode-verbose*
-			   	= 'verbose'
-			   Every compilation which is invoked by the user will
-			   be run in verbose mode (this mode is mapped to <F5> key). 
-			   In this mode latex '-interaction=' switch is set
-			   from the variable |b:atp_VerboseLatexInteractionMode|
-			   (the default value is errorstop mode).
+							*'verbose'*
+	* if |t:atp_DebugMode| 	= 'verbose'
+	       Every compilation which is invoked by the user will be run in
+	       verbose mode (this mode is mapped to <F5> key).  In this mode
+	       latex '-interaction=' switch is set from the variable
+	       |b:atp_VerboseLatexInteractionMode| (the default value is
+	       errorstopmode).
 
-	Note: the 'verbose' mode in 'Vim' (in console) needs to be run, when
-	there is no other latex instance running. Now you get a message to
-	wait until compilation ends. In future releases, a better solution
-	will be worked out. Gui version 'gvim' works better (as it doesn't  
+	Note: the 'verbose' mode in 'Vim' (in the console) needs to be run,
+	when there is no other latex instance running. Now you get a message
+	to wait until compilation ends. In future releases, a better solution
+	will be worked out. Gui version 'gvim' works better (as it doesn't
 	suspend the editor).
 
-	 The background compilation is always done in |g:atp_DefaultDebugMode|.
-	 Unless it is set to 'verbose' in which case 'debug' mode is used. 
+	The background compilation is always done in |g:atp_DefaultDebugMode|.
+	Unless it is set to 'verbose' in which case 'debug' mode is used. 
 
 						    	*g:atp_DebugModeQuickFixHeight*
 g:atp_DebugModeQuickFixHeight = 8
@@ -1078,6 +996,23 @@ map t, map <S-LeftMouse>
 	the [flag] argument, see |atp-bibflags|. By default the pattern is
 	case insensitive.
 
+  								*atp-:AMSRef*
+:AMSRef[!] {bib_data}  
+    A command to get bib data from AMSRef:
+		    http://www.ams.org/mathscinet-mref 
+    The bib data will be appended to bibliography of the current document. If
+    there are many bib files will get a choice which one to use. This command
+    is also available in bib files.  Without bang, i.e. "!", it writes and
+    closes the bib buffer with it will leave you in unsaved bib file buffer.
+    You will be also asked for the bib key, the default choice is to use the
+    AMS bib key. 
+
+    This command also works when you use \begin{bibliography} environment. But
+    the default is to use a bib file.  The obtained bibliographic reference is
+    copied to the register g:atp_bibrefRegister (the default is "0" so you can
+    paste it using Vim command 'p'). In addition, it is stored in the variable
+    g:atp_bibref.
+
 :BibChoose						see |atp-:BibChoose|
 map c, map y, map p
 	This function is defined in the buffer with results of BibSearch
@@ -1152,7 +1087,7 @@ nmap gf
 	Found files (all not just matching ones) are stored in the variable
 	g:atp_Library. It is set by |globpath()| on g:atp_LibraryPath and then
 	filtered, only files which extensions are given in g:atp_OpenTypeDict
-	will be stored. This variable is restored by the history common file.
+	will be stored. This variable is restored by the global project script.
 	You can use {bang} "!" to regenerate the library if it has changed.
 	This is particularly useful as by default ATP remembers g:atp_Library in
 	the common project script (see |atp-ProjectScript|).
@@ -1171,7 +1106,7 @@ and the Viewer (currently only Xpdf is supported) with log file:
 |atp-:SyncTex| and |atp-:SyncXpdfLog|) These tools can sync tex file/Xpdf
 automatically using autocommand group |CursorMoved|.
 							*atp-:SyncTex-(log_file)*
-:SyncTex[!]
+:SyncTex[!]	(inside log file)
 :nmap \g
 	If you open log file with ':ShowErrors o' command then you can use
 	this command to move to the place in the source code where the error
@@ -1218,6 +1153,13 @@ map <F6>d
 							*g:atp_delete_output*
 	If you set |g:atp_delete_output|=1 the function will delete also the
 	current output file (but not any other!) and 'synctex.gz' file.
+
+  							
+:WordCount[!] 						*atp-:WordCount*
+	The command to compute the number of words. With bang [!] it will show
+	the word count of each input file. It uses 'detex' program (which is
+	present in 'texlive') to remove the latex markups prior to word
+	counting (done by the external 'wc' program).
 
 :SshPrint [lpr_options]					*atp-:SshPrint*
 	It will run 'lpr' command and append to it the options defined in the
@@ -1327,7 +1269,7 @@ map <F6>d
 	The command arguments should be separated with commas and quoted
 	separately (see |<args>|).
 
-	For the predefined maps which use WrapSelection see below
+	For the predefined maps which use |atp-:WrapSelection| see below
 	|atp-maps-InteligentWrapSelection| or use |atp-:HelpVMaps|.
 
 							*atp-maps-WrapSelection*
@@ -1340,26 +1282,25 @@ map <F6>d
 	    vmap <buffer> \tt	:<C-U>InteligentWrapSelection ['\\texttt{'], 	['\\mathtt{']<CR>
 	    vmap <buffer> \bf	:<C-U>InteligentWrapSelection ['\\textbf{'],	['\\mathbf{']<CR>
 	    vmap <buffer> \bb	:<C-U>InteligentWrapSelection ['\\textbf{'],	['\\mathbb{']<CR>
-	    vmap <buffer> \sl	:<C-U>WrapSelection '\\textsl{'<CR>
-	    vmap <buffer> \sc	:<C-U>WrapSelection '\\textsc{'<CR>
-	    vmap <buffer> \up	:<C-U>WrapSelection '\\textup{'<CR>
-	    vmap <buffer> \md	:<C-U>WrapSelection '\\textmd{'<CR>
-	    vmap <buffer> \un	:<C-U>WrapSelection '\\underline{'<CR>
-	    vmap <buffer> \ov	:<C-U>WrapSelection '\\overline{'<CR>
+	    vmap <buffer> \tx	:<C-U>InteligentWrapSelection ['\\textrm{'],	['\\text{']<CR>
+	    vmap <buffer> \sl	:<C-U>WrapSelection \\textsl{<CR>
+	    vmap <buffer> \sc	:<C-U>WrapSelection \\textsc{<CR>
+	    vmap <buffer> \up	:<C-U>WrapSelection \\textup{<CR>
+	    vmap <buffer> \md	:<C-U>WrapSelection \\textmd{<CR>
+	    vmap <buffer> \un	:<C-U>WrapSelection \\underline{<CR>
+	    vmap <buffer> \ov	:<C-U>WrapSelection \\overline{<CR>
 	    vmap <buffer> \n	:<C-U>InteligentWrapSelection ['\\textnormal{'],['\\mathnormal{']<CR>
 	    vmap <buffer> \cal	:<C-U>InteligentWrapSelection [''],['\\mathcal{']<CR>
-	    vmap <LocalLeader>f	:WrapSelection '{\usefont{'.g:atp_font_encoding.'}{}{}{}\selectfont ', '}',(len(g:atp_font_encoding)+11)<CR>
 
-	    vmap <LocalLeader>mb :WrapSelection '\\mbox{', '}', 'begin'<CR>
+	    vmap <LocalLeader>mb :WrapSelection \\mbox{ } begin<CR>
 <   	Suggested maps: >
 	    vmap <buffer> \tx	:<C-U>InteligentWrapSelection [''],['\\text{']<CR>
 	    vmap <buffer> \in	:<C-U>InteligentWrapSelection [''],['\\intertext{']<CR>"
 <	The leader '\' in above commands is configurable: the value of
-	g:atp_vmap_text_font_leader is used (the default is '\').
+	g:atp_vmap_text_font_leader is used (the default value is <LocalLeader>).
 
-	Another provided wrapper: >
-	    vmap <buffer> \f :WrapSelection 
-	         \ '{\\usefont{".g:atp_font_encoding."}{}{}{}\\selectfont ', '}', '(len(g:atp_font_encoding)+11)'<CR>
+	Another provided font wrapper: >
+	    vmap <LocalLeader>f	:exe ':WrapSelection {\usefont{'.g:atp_font_encoding.'}{}{}{}\selectfont\  }'.(len(g:atp_font_encoding)+11).'<CR>'
 <	Where the variable: >
 	    g:atp_font_encoding
 <	stores the default encoding which is 'OT1', unless you use fontenc
@@ -1368,25 +1309,30 @@ map <F6>d
 	/font user guide/ available on CTAN).
 
 	Other wrappers: >
-	    vmap m			:WrapSelection '\(', 	'\)'<CR>
-	    vmap M			:WrapSelection '\[', 	'\]'<CR>
-	    vmap <LocalLeader>(		:WrapSelection '(', 	')', 	'begin'<CR>
-	    vmap <LocalLeader>[		:WrapSelection '[', 	']', 	'begin'<CR>
-	    vmap <LocalLeader>{		:WrapSelection '{', 	'}', 	'begin'<CR>
-	    vmap <LocalLeader>)		:WrapSelection '(', 	')', 	'end'<CR>
-	    vmap <LocalLeader>]		:WrapSelection '[', 	']', 	'end'<CR>
-	    vmap <LocalLeader>}		:WrapSelection '{', 	'}', 	'end'<CR>
-	    vmap <LocalLeader>b(	:WrapSelection '\left(', '\right)', 'begin'<CR>
-	    vmap <LocalLeader>b[	:WrapSelection '\left[', '\right]', 'begin'<CR>
-	    vmap <LocalLeader>b(	:WrapSelection '\left(', '\right)', 'begin'<CR>
-	    vmap <LocalLeader>b[	:WrapSelection '\left[', '\right]', 'end'<CR>
-	    vmap <LocalLeader>b{	:WrapSelection '\left{', '\right}', 'end'<CR>
-	    vmap <LocalLeader>b{	:WrapSelection '\left{', '\right}', 'end'<CR>
+	    vmap m			:WrapSelection \( \)<CR>
+	    vmap M			:WrapSelection \[ \]<CR>
+	    vmap <LocalLeader>(		:WrapSelection ( ) begin<CR>
+	    vmap <LocalLeader>[		:WrapSelection [ ] begin<CR>
+	    vmap <LocalLeader>{		:WrapSelection { } begin<CR>
+	    vmap <LocalLeader>)		:WrapSelection ( ) end<CR>
+	    vmap <LocalLeader>]		:WrapSelection [ ] end<CR>
+	    vmap <LocalLeader>}		:WrapSelection { } end<CR>
+	    vmap <LocalLeader>b(	:WrapSelection \left( \right) begin<CR>
+	    vmap <LocalLeader>b[	:WrapSelection \left[ \right] begin<CR>
+	    vmap <LocalLeader>b(	:WrapSelection \left( \right) begin<CR>
+	    vmap <LocalLeader>b[	:WrapSelection \left[ \right] end<CR>
+	    vmap <LocalLeader>b{	:WrapSelection \left{ \right} end<CR>
+	    vmap <LocalLeader>b{	:WrapSelection \left{ \right} end<CR>
 < 	And the maps to put the selected text into an environment: >
-	    vmap <LocalLeader>C	:WrapSelection '\begin{center}',	'\end{center}',		'0','1'<CR>
-	    vmap <LocalLeader>R	:WrapSelection '\begin{flushright}',	'\end{flushright}',	'0','1'<CR>
-	    vmap <LocalLeader>L	:WrapSelection '\begin{flushleft}',	'\end{flushleft}',	'0','1'<CR>
-<	(note that the arguments for this command must be put in ':' or ":")
+	    vmap <LocalLeader>A	:WrapSelection \begin{align} \end{align} 0 1<CR>
+	    vmap <LocalLeader>C	:WrapSelection \begin{center} \end{center} 0 1<CR>
+	    vmap <LocalLeader>E	:WrapSelection \begin{equation} \end{equation} 0 1<CR>
+	    vmap <LocalLeader>L	:WrapSelection \begin{flushleft} \end{flushleft} 0 1<CR>
+	    vmap <LocalLeader>R	:WrapSelection \begin{flushright} \end{flushright} 0 1<CR>
+
+<	The leader <LocalLeader> can be changes using the variable *g:atp_vmap_environment_leader* 
+	(its default value is <LocalLeader>).
+	Note: that the arguments for this command must be put in ':' or ":".
    	the highlighted text will put inside \textbf{ }. 
 
 	You can also use a wrapper which was yanked into register 'a': >
@@ -1461,20 +1407,20 @@ map \L
 	quite fast).
 
 							*atp-:F*
-:F {arg}							
+:[count]F {arg}							
 	Go (forward) to {arg}, {arg} might be: part, section, subsection,
 	subsubsection, and defined environment. You can use command completion
 	which uses all the locally defined environments.
 
 							*atp-:B*
-:B {arg}
+:[count]B {arg}
 	Go (backward) to {arg}, like above |atp-:F|.
 
 
 							*atp-:NEnv* *atp->e*
 :NEnv {environment}
-:F {environment}
-map >e
+:[count]F {environment}
+[count]map >e
 	Move to next environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
@@ -1488,8 +1434,8 @@ map >e
 
 							*atp-:PEnv* *atp-<e*
 :PEnv {environment}
-:B {environment}
-map <e
+[count]:B {environment}
+[count]map <e
 	Move to previous environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
@@ -1508,7 +1454,7 @@ map <e
 							*atp-:NSSec*	*atp->S*
 							*atp-:NSSSec*
 :NPart[!], :NChap[!], :NSec[!], :NSSec[!], :NSSSec[!] [title_pattern]
-:F {section}
+[count]:F {section}
  map >p,  map >c,  map >s,  map >S
 vmap >p, vmap >c, vmap >s, vmap >S
 
@@ -1560,7 +1506,7 @@ vmap >p, vmap >c, vmap >s, vmap >S
 							*atp-:PSSec*	*atp-<S*
 							*atp-:PSSSec*
 :PPart[!], :PChap[!], :PSec[!], :PSSec[!], :PSSSec[!] [title_pattern]
-:B {section}
+[count]:B {section}
  map <p,  map <c,  map <s,  map <S
 vmap <p, vmap <c, vmap <s, vmap <S
 
@@ -1657,10 +1603,12 @@ map <F4>		environment name
 							*atp-status-line*
 :Status[!]						*atp-:Status*
 (:ATPStatus[!])						*atp-:ATPStatus*
-	This function (command) sets the status line, which include: the name
-	of currently edited chapter (or section) the value of |b:atp_OutDir|
-	(unless used with bang!) and it will warn you if |b:atp_OutDir|
-	variable is not set. This function is called at startup unless the
+	This comman sets the status line, which include: the name of currently
+	edited chapter (or section) the value of |b:atp_OutDir| (unless used
+	with bang!) and it will warn you if |b:atp_OutDir| variable is not
+	set. The status line will also contain the information about
+	processing compelation: see |atp-status-line-notification|,
+	|g:atp_ProgressBar|. This function is called at startup unless the
 	variable '|g:atp_statusline|=0' is set. The status is set by the
 	autocommand: >
 		au BufWinEnter *.tex :call Status()
@@ -2268,7 +2216,7 @@ will be done during first completion - this is the default, if it is set to
 Note: Completion checks the preambule for definitions of LaTeX packages. If
 a supported package is present (for example: tikz) then the completion will
 contain additional commands. If you add a package or a class you should unlet
-corresponding variable: |g:atp_latexpackages| and |g:atp_latexclasses|.
+corresponding variable: |g:atp_LatexPackages| and |g:atp_LatexClasses|.
 
 							*atp-:ToggleTab*
 :ToggleTab
@@ -2360,12 +2308,10 @@ COMPLETION MODES		                       	*atp-completion-modes*
 		supported but this is just the matter of my time. Normal
 		commands are added if you are inside {:}.
 
-
-	ref/label/cite					*atp-completion-ref*
+							*atp-completion-ref*
 							*atp-completion-label*
 							*atp-completion-cite*
-	Tab Completion for Labels
-
+	ref/label/cite
 		For label completion puts short names, for ref and eqref
 		commands the completions are the labels found in all files
 		associated to the main file (the plugin searches the input
@@ -2422,7 +2368,8 @@ COMPLETION MODES		                       	*atp-completion-modes*
 		working thanks for reporting me (it's enough to email me just
 		the document class).
 
-	brackets					*atp-completion-brackets*
+							*atp-completion-brackets*
+	brackets					
 		Closing of brackets {:},{:},[:],(:) (also closes math modes \(:\) and
 		\[:\]). 
 		Relevant variables are: g:atp_bracket_dict a dictionary of
@@ -2543,7 +2490,14 @@ COMPLETION MODES		                       	*atp-completion-modes*
 		and end of a line this will be preserved. However, there is no
 		support for nested environments then!
 
-	font declarations				*atp-completion-fontdeclaration*
+							*atp-completion-abbreviations*
+	abbreviations						
+		There is tab completion for insert mode abbreviation names
+		(use <ctrl-y> to choose one from the list and then type
+		<space>, just typing <space> should also work).
+
+							*atp-completion-fontdeclaration*
+	font declarations				
 		This is completion for the commands 
 		    \usefont{<encoding>}{<font_familly>}{<font_series>}{<font_shape>},
 		    \fontencoding{<encoding>},
@@ -2567,12 +2521,12 @@ COMPLETION MODES		                       	*atp-completion-modes*
 		If <font_family> and <font_series> are defined then the
 		<font_shape> for this font (in the above encoding) is found.
 		
-
+							*atp-completion-bibstyle*
 	bibstyle
 		Completion for the command '\bibliographystyle{'. Finds all
 		"bst" files available in your tex distribution. 
 
-
+							*atp-completion-documentclass*
 	documentclass
 		Completion for the command '\documentclass'. Returns list of
 		all classes available in your distribution.
@@ -2724,16 +2678,15 @@ put it here).
 				 \ '\Bigl' : '\Bigr', 		'\biggl' : '\biggr' , 
 				 \ '\Biggl' : '\Biggr', 	'\' : '\' }
 <
-							*g:atp_latexpackages*
-							*g:atp_latexclasses*
+							*g:atp_LatexPackages*
+							*g:atp_LatexClasses*
 	The variables: >
-	g:atp_latexpackages
-	g:atp_latexclasses
+	g:atp_LatexPackages
+	g:atp_LatexClasses
 <	stores list of packages and classes in your tex distribution. They are
-	restored when you exit Vim from the common history file (see |atp-history-common|).
-
-	They are used for completion of the LaTeX commands \usepackage and
-	\documentclass.
+	restored when you exit Vim from the global project script (see
+	|atp-ProjectScript_global|).  They are used for completion of the LaTeX
+	commands \usepackage and \documentclass.
 
 	If you reinstall, add or remove tex classes/packages from your tex
 	distribution it is enough to unlet these variables. ATP will find new
@@ -2862,6 +2815,46 @@ Associated settings:
 	|atp-omnicompletion-environments| and commands
 	|atp-omnicompletion-commands|.
 
+
+================================================================================
+ABBREVIATIONS						*atp-abbreviations*
+
+    The following abbreviations are defined:
+	+- for \pm
+	+| for \dagger
+	++ for \ddager
+	=<env_name>= for environments. 
+
+    You can use |atp-completion| (<Tab>) for abbreviation names, see
+    |atp-completion-abbreviations|.
+
+    Locally defined environments are also supported (the one defined in
+    |b:atp_LocalEnvironments|). If you need something different than
+    abbreviation for
+	\begin{theorem}
+	     <Cursor placed here>
+	\end{theorem}
+    for example:
+	\begin{corollary}<Cursor placed here>
+	\end{corollary}
+    You can set the variable g:atp_abbreviation_{environment_name}. It is list
+    with two elements. First is used after \begin{...} and the second after
+    \end{...}. For the above examples:
+	let g:atp_abbreviation_theorem		= [ '<CR>', '<ESC>O' ]
+	let g:atp_abbreviation_corollary	= [ '<CR>', '<ESC><UP>A' ]
+    The first one is the default so you do not need to set it. In the second
+    example the abbreviation command will look like: >
+	abbreviate =corollary= \begin{corollary}<CR>\end{corollary}<ESC><UP>A
+<   This will only work for b:atp_LocalEnvironments, LaTeX and AMS
+    environments are set accordingly.
+    Environment name abbreviations are defined only if there were not defined.
+    So you can override the settings using |atprc| file (or |vimrc| file).
+
+    Furthermore, you can change the "=":
+    							*g:atp_iabbrev_leader*
+    let g:atp_iabbrev_leader = "="
+	It is used  in insert mode abbreviations like: =theorem=. 
+
 ================================================================================
 HOW TO CONFIGURE ATP TO YOUR NEEDS                      *atp-configure*
 							*atp-variables*
@@ -2872,11 +2865,11 @@ bibtex documented above).
 							*atprc*
 $HOME/.atprc.vim (only on Unix/GnuLinux) or ftplugin/ATP_files/atprc.vim					
     A configuration file for ATP. You do not have to use autocommands to set
-    local-buffer variables, just place them here. The settings in atprc file
-    override the values in history files (|atp-history|).
+    local-buffer variables, just place them here. The settings in |atprc| file
+    override the values in the project script (|atp-ProjectScript|).
 
-Tip: If you want to see (almost) all the variables, type ':let g:atp-<CTRL+d>',
-and ':let b:<CTRL+d>'.
+Tip: If you want to see (almost) all the variables, type ':let g:atp_<CTRL_D>',
+and ':let b:atp_<CTRL_D>'.
 
 All buffer variables (see |b:var|), i.e. these which name begins with "b:",
 should be set in your |vimrc| or |atprc| file. If you want to use your vimrc file
@@ -2902,8 +2895,8 @@ let b:atp_TexCompilerVariable = "max_print_line=2000" 	*b:atp_TexCompilerVariabl
 	"max_print_line" sets the maximal length of a line in the log file.
 	The value 2000 is high enough to prevent line breaking.
 
-	The gramar for this variable: it should be a semicolon separated list of
-	variables and values, i.e. 'variable_1=value_1;variable_2=value_2'
+	Note: the gramar for this variable: it should be a semicolon separated
+	list of variables and values, i.e. 'variable_1=value_1;variable_2=value_2'
 
 							*b:atp_TexFlavor*
 let b:atp_TexFlavor	= "tex"	
@@ -2953,14 +2946,13 @@ WRITING PROJECTS					*atp-ProjectFiles*
 	time), start with the main file and use gf (see |atp-gf|) to go to the
 	project file you want to edit. In this way all the project files will
 	have correctly set this variable. The value of this variable is used
-	by compilation functions. This variable is written in the history file
-	(see |atp-ProjectScript|). And when the history is on (see
-	|atp-ProjectScript|,
-	or set b:atp_History=1) it is restored between sessions. In this way,
-	next time, you can open any project file and the b:atp_MainFile
-	variable will be set to the correct value.
+	by compilation functions. This variable is written in the project
+	script (see |atp-ProjectScript|). And when the project script is on (see
+	|atp-ProjectScript|, or set |b:atp_ProjectScript|=1) it is restored between
+	sessions. In this way, next time, you can open any project file and
+	the b:atp_MainFile variable will be set to the correct value.
 
-	The history feature stores more variables: b:TreeOfFiles a dictionary
+	The project feature stores more variables: b:TreeOfFiles a dictionary
 	which contains the tree of input files, b:ListOfFiles - list of input
 	files, b:TypeDict dictionary of types of input files, where the type
 	is one of following: {preambule}, {input}, {bib}. The last variable is
@@ -3054,9 +3046,9 @@ PROJECT SCRIPT						*atp-ProjectScript*
        If the project script is stored locally the it is easier to include it
        in a revision system (bzr, svn, etc.) and share it with collaborators.
 
-       The common history file (which stores two global variables:
-       g:atp_latexpackages, g:atp_latexclasses) is now
-       ~/.vim/ftplugin/ATP_files/common_var.vim 
+       The global project script (which, by default, stores global variables:
+       |g:atp_LatexPackages|, |g:atp_LatexClasses|, |g:atp_Library|) is now
+       '~/.vim/ftplugin/ATP_files/common_var.vim'.
 
        |atprc| file is executed before project script file (with local
        variables) and common_var.vim (with global variables) files are
@@ -3073,27 +3065,26 @@ PROJECT SCRIPT						*atp-ProjectScript*
 	
 	Local and global variables are supported. The local variables which
 	are cached in this way are listed in 
-							*g:atp_cached_local_variables*
+							*g:atp_ProjectLocalVariables*
 >
-		let g:atp_cached_local_variables = [
-		\ 'b:atp_MainFile', 		'b:atp_History',
-		\ 'b:atp_LocalCommands', 	'b:atp_LocalColors',
-		\ 'b:atp_LocalEnvironments', 	'b:TreeOfFiles', 
-		\ 'b:ListOfFiles', 		'b:TypeDict', 
-		\ 'b:LevelDict', 		'b:atp_StarEnvMathDefault'
-		\ 'b:atp_StarEnvDefault', ]
-<	The each file will have separate history file which stores the values
-	of these variables.
-							*atp-ProjectScriptCommon*	
+    let g:atp_ProjectLocalVariables = [
+		\ "b:atp_MainFile", 	"g:atp_mapNn", 		"b:atp_autex", 
+		\ "b:atp_TexCompiler", 	"b:atp_TexFlavor", 	"b:atp_OutDir" , 
+		\ "b:atp_auruns", 	"b:atp_ReloadOnErr", 	"b:atp_OpenViewer", 
+		\ "b:atp_XpdfServer",	"b:atp_ProjectDir", 	"b:atp_Viewer"
+		\ ] 
+<	The each file will have separate project scrips which stores the
+	values of these variables.
+							*atp-ProjectScript_Global*	
 	There is also file for variables for all projects. It stores values of
 	global variables (by default it is "ftplugin/ATP_files/common_var.vim". 
 	The global variables that are written in this file are given in Vim
 	list: 
-    							*g:atp_cached_common_variables*
+    							*g:atp_ProjectGlobalVariables*
 >
-		let g:atp_cached_common_variables = [ 
-			\ 'g:atp_texpackages', 	
-			\ 'g:atp_texclasses', 
+		let g:atp_ProjectGlobalVariables = [ 
+			\ 'g:atp_LatexPackages', 	
+			\ 'g:atp_LatexClasses', 
 			\ 'g:atp_Library' ]
 <
 	If you want to disable this feature for some reason you can set: >
@@ -3101,13 +3092,13 @@ PROJECT SCRIPT						*atp-ProjectScript*
 <	or >
 		let b:atp_ProjectScript = 0
 <	if you want to disable this feature only for a given buffer. 
-	(The value of local variable overrides the value of global one!). 
-	Hint: (if you want to disable loading history for one file): 
+	(The value of local variable overrides the value of global one!).
+	Hint: (if you want to disable loading project script for one file): 
 	    In your .vimrc file you can set the local variable via
 	    autocommand group BufEnter or you can put an if statement in your
 	    |atprc| file: >
 		if expand("%:p") == <path_to_file>
-		    let b:atp_History = 0
+		    let b:atp_ProjectScript = 0
 		endif
 <	    or you can add to the project scrpit: 
 		 (1) write in its first line 'finish', or
@@ -3119,38 +3110,40 @@ PROJECT SCRIPT						*atp-ProjectScript*
 :DeleteProjectScript[!] [local/common]			*atp-:DeleteProjectScript*
 :ToggleProjectScript[!] [on/off]			*atp-:ToggleProjectScript*
 
-	which do the obvious thing (if g:atp_History=0 or b:atp_History=0 they
+	which do the obvious thing (if |g:atp_ProjectScript|=0 or |b:atp_ProjectScript|=0 they
 	will not work). The default value of the optional argument is "local".
-	:DeleteHistory [local] command (with optional argument [local]) deletes
-	the history file for the current buffer (only the local one), with
-	bang "!" it deletes also common history file. The bang of :WriteHistory
-	forces to write to history file even when history is turned off
-	(b:atp_History == 0 or !exists("b:atp_ProjectScript") && g:atp_ProjectScript == 0).
+	:DeleteProjectScript [local] command (with optional argument [local]) deletes
+	the project script file for the current buffer (only the local one), with
+	bang "!" it deletes also globa project scrip. The bang of
+	:WriteProjectScript forces to write to project script even when
+	project script is turned off (|b:atp_ProjectScript|==0 or
+	!exists("|b:atp_ProjectScript|") && |g:atp_ProjectScript|==0).
 
 	The command ':ToggleProjectScript [on/off]' turns on/off the feature
 	for this buffer (it sets |b:atp_ProjectScript|). When no argument is
 	given it will toggle the value. With bang it also sets the global
 	variable.  |b:atp_ProjectScript| is by default in the >
-	    g:atp_cached_local_variables 
+	    g:atp_ProjectLocalVariables 
 <	so it will be restored afterwards. |b:atp_ProjectScript| if defined
-	overrides the value of global variable g:atp_History. So you can set
+	overrides the value of global variable |g:atp_ProjectScript|. So you can set
 	in your atp file g:atp_ProjectScript = 0 and for some files using the
 	if-construction: >
 		let g:atp_ProjectScript = 0
 		if expand("%:t") == "myfile.tex"
-		    let b:atp_History = 1
+		    let b:atp_ProjectScript = 1
 		endif
 <	will turn on the feature only for myfile.tex. Something more elaborate
-	would be to set b:atp_History only for files with modification time
+	would be to set |b:atp_ProjectScript| only for files with modification time
 	less than two days for example.
 
-	Note: If you delete the history file for the current buffer it will be
-	written after exiting Vim, unless you turn off the history feature.
+	Note: If you delete the project script for the current buffer it will be
+	written after exiting Vim, unless you turn off the project feature.
 
 	The project script is disabled for files which full path matches
-	"texmf".  With the optional bang ':LoadProjectScript common' loads the
-	common project script also for them. :WriteHistory command will write
-	the history disregarding if the file is under texmf directory or not.
+	"texmf".  With the optional bang |atp-:LoadProjectScript| loads the
+	common project script also for them. |atp-:WriteProjectScript| command
+	will write the project script disregarding if the file is under texmf
+	directory or not.
 
 	Note: If you use this feature, you might need to use the commands:
 	|atp-:LocalCommands| and |atp-:InputFiles| which will update
@@ -3161,7 +3154,7 @@ PROJECT SCRIPT						*atp-ProjectScript*
 	as well).
 
 	Note: Also when you add a package to tex you should remove the common
-	history file, so that the new packages will be added to completion
+	project scrip, so that the new packages will be added to completion
 	list. 
 
 								*atp-:S*
@@ -3767,7 +3760,8 @@ count.)
 EDITING TOOLS							*atp-editing*
 
 								*atp-visual*
-visual mode: ie, iE, ae, im, am, ip, ap, iS, aS, c
+visual mode: ie, iE, ae, im, am, ip, ap, iS, aS, <LocalLeader>sc 
+normal and mode: <LocalLeader>sc. 
 
 	They select the current environment in two ways: >
 				i 	- inner
@@ -3806,10 +3800,14 @@ visual mode: ie, iE, ae, im, am, ip, ap, iS, aS, c
 		stack (the resulting are will be wide). Some syntax groups are
 		filtered out (like 'texDocZone') which not always are
 		synchronised.
-								*atp-vc*
-	|<LocalLeader>|sc	
+								*atp-sc*
+								*atp-vsc*
+	<LocalLeader>sc	
 		select comment lines which begin with '^\s*%'. If not in
 		comment line, end visual mode.
+		It works both in normal and viaual mode (both |s| and |c|
+		have a meaning in vim in both normal and visual mode, that's
+		why <LocalLeader> is used).
 
 								*atp-gw*	
 nmap gw
@@ -3831,6 +3829,7 @@ you do not like colours on the screen you should set "syntax on". For example,
 the recognition of math mode used by |atp-completion|, and |atp-:TexAlign|
 command (but also some other things).
 
+								*atp-requirements-python*
 ATP uses python 2.7 (also works with 3.0). You need psutil library which you
 can get from here:
     http://code.google.com/p/psutil/
@@ -3846,6 +3845,9 @@ help file.
 
 Another good programs are: texloganalyzer (which is now not used by ATP) and pdffonts
 There is a map to use pdffonts, see: |pdffonts|.
+
+The command |atp-:WordCount| is using detex program. It is included in TexLive
+tex distrubution.
 
 ================================================================================
 NOTES ON VIEWERS                          			*atp-Viewers*

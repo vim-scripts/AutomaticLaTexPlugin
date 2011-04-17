@@ -583,7 +583,8 @@ function! ATPRunning() "{{{
         " For python compiler
 	" This is very fast:
 	call LatexRunning()
-	let atp_running= ( b:atp_LastLatexPID != 0 ? 1 : 0 )
+" 	let atp_running= ( b:atp_LastLatexPID != 0 ? 1 : 0 ) * len(b:atp_LatexPIDs) 
+	let atp_running= len(b:atp_LatexPIDs) 
 	" This is slower (so the status line is updated leter)
 " 	call atplib#LatexRunning()
 " 	let atp_running= len(b:atp_LatexPIDs)
@@ -592,6 +593,8 @@ function! ATPRunning() "{{{
 	" For bash compiler 
 	let atp_running=b:atp_running
     endif
+
+    let g:atp_running = atp_running
 
     if exists("b:atp_running") && exists("g:atp_callback") && atp_running && g:atp_callback
 " 	let b:atp_running	= b:atp_running < 0 ? 0 : b:atp_running
@@ -613,13 +616,15 @@ function! ATPRunning() "{{{
 	    let progress_bar=""
 	endif
 
-	if atp_running >= 2
-	    return b:atp_running." ".Compiler." ".progress_bar
-	elseif atp_running >= 1
-	    return Compiler." ".progress_bar
-	else
-	    return ""
-	endif
+" 	if atp_running
+	    if atp_running >= 2
+		return atp_running." ".Compiler." ".progress_bar
+	    elseif atp_running >= 1
+		return Compiler." ".progress_bar
+	    else
+		return ""
+	    endif
+" 	endif
     endif
     return ''
 endfunction "}}}

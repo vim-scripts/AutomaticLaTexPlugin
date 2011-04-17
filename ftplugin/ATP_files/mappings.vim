@@ -13,23 +13,67 @@ if g:atp_MapCC
     imap <buffer> <c-c> <c-[>
 endif
 
+if g:atp_MapUpdateToCLine
+    nmap <buffer> <silent> <C-F> <C-F>:call UpdateToCLine()<CR>
+    nmap <buffer> <silent> <S-Down> <S-Down>:call UpdateToCLine()<CR>
+    nmap <buffer> <silent> <PageDown> <PageDown>:call UpdateToCLine()<CR>
+    nmap <buffer> <silent> z+	z+:call UpdateToCLine()<CR>
+    nmap <buffer> <silent> <S-ScrollWheelUp> <S-ScrollWheelUp>:call UpdateToCLine()
+    nmap <buffer> <silent> <C-ScrollWheelUp> <C-ScrollWheelUp>:call UpdateToCLine()
+    nmap <buffer> <silent> <ScrollWheelUp> <ScrollWheelUp>:call UpdateToCLine()
+    nmap <buffer> <silent> <C-U> <C-U>:call UpdateToCLine()<CR>
+"     nmap <buffer> <silent> <C-E> <C-E>:call UpdateToCLine()<CR>
+
+    nmap <buffer> <silent> <C-B> <C-B>:call UpdateToCLine()<CR>
+    nmap <buffer> <silent> <S-ScrollWheelDown> <S-ScrollWheelDown>:call UpdateToCLine()
+    nmap <buffer> <silent> <C-ScrollWheelDown> <C-ScrollWheelDown>:call UpdateToCLine()
+    nmap <buffer> <silent> <ScrollWheelDown> <ScrollWheelDown>:call UpdateToCLine()
+    nmap <buffer> <silent> <S-Up> <S-Up>:call UpdateToCLine()<CR>
+    nmap <buffer> <silent> <PageUp> <PageUp>:call UpdateToCLine()<CR>
+    nmap <buffer> <silent> <C-D> <C-D>:call UpdateToCLine()<CR>
+"     nmap <buffer> <silent> <C-Y> <C-Y>:call YpdateToCLine()<CR>
+
+    nmap <buffer> <silent> gj	gj:call UpdateToCLine(1)<CR>
+    nmap <buffer> <silent> gk	gk:call UpdateToCLine(1)<CR>
+
+    if maparg('j', 'n') == ''
+	nmap <buffer> <silent> j	j:call UpdateToCLine(0)<CR>
+    elseif maparg('j', 'n') == 'gj'
+	nmap <buffer> <silent> j	gj:call UpdateToCLine(0)<CR>
+    endif
+
+    if maparg('k', 'n') == ''
+	nmap <buffer> <silent> k	k:call UpdateToCLine(1)<CR>
+    elseif maparg('j', 'n') == 'gj'
+	nmap <buffer> <silent> k	gk:call UpdateToCLine(1)<CR>
+    endif
+endif
+
+
 command! -buffer -bang -nargs=* FontSearch	:call atplib#FontSearch(<q-bang>, <f-args>)
 command! -buffer -bang -nargs=* FontPreview	:call atplib#FontPreview(<q-bang>,<f-args>)
 command! -buffer -nargs=1 -complete=customlist,atplib#Fd_completion OpenFdFile	:call atplib#OpenFdFile(<f-args>) 
 command! -buffer -nargs=* CloseLastEnvironment	:call atplib#CloseLastEnvironment(<f-args>)
 command! -buffer 	  CloseLastBracket	:call atplib#CloseLastBracket()
-let g:atp_map_list	= [ 
-	    \ [ g:atp_map_forward_motion_leader, 'i', 		':NInput<CR>', 			'nmap <buffer>' ],
-	    \ [ g:atp_map_backward_motion_leader, 'i', 		':NPnput<CR>', 			'nmap <buffer>' ],
-	    \ [ g:atp_map_forward_motion_leader, 'gf', 		':NInput<CR>', 			'nmap <buffer>' ],
-	    \ [ g:atp_map_backward_motion_leader, 'gf',		':NPnput<CR>', 			'nmap <buffer>' ],
-	    \ [ g:atp_map_forward_motion_leader, 'S', 		'<Plug>GotoNextSubSection',	'nmap <buffer>' ],
-	    \ [ g:atp_map_backward_motion_leader, 'S', 		'<Plug>vGotoNextSubSection', 	'nmap <buffer>' ],
-	    \ ] 
+" let g:atp_map_list	= [ 
+" 	    \ [ g:atp_map_forward_motion_leader, 'i', 		':NInput<CR>', 			'nmap <buffer>' ],
+" 	    \ [ g:atp_map_backward_motion_leader, 'i', 		':NPnput<CR>', 			'nmap <buffer>' ],
+" 	    \ [ g:atp_map_forward_motion_leader, 'gf', 		':NInput<CR>', 			'nmap <buffer>' ],
+" 	    \ [ g:atp_map_backward_motion_leader, 'gf',		':NPnput<CR>', 			'nmap <buffer>' ],
+" 	    \ [ g:atp_map_forward_motion_leader, 'S', 		'<Plug>GotoNextSubSection',	'nmap <buffer>' ],
+" 	    \ [ g:atp_map_backward_motion_leader, 'S', 		'<Plug>vGotoNextSubSection', 	'nmap <buffer>' ],
+" 	    \ ] 
 
+
+
+" MAPS:
 " Add maps, unless the user didn't want them.
 if ( !exists("g:no_plugin_maps") || exists("g:no_plugin_maps") && g:no_plugin_maps == 0 ) && 
 	    \ ( !exists("g:no_atp_maps") || exists("g:no_plugin_maps") && g:no_atp_maps == 0 ) 
+
+nmap <buffer> <silent>	Gs		:<C-U>keepjumps exe v:count1."Sec"<CR>
+nmap <buffer> <silent>	Gc		:<C-U>keepjumps exe v:count1."Chap"<CR>
+nmap <buffer> <silent>	Gp		:<C-U>keepjumps exe v:count1."Part"<CR>
 
 if g:atp_MapCommentLines    
     nmap <buffer> <silent> <LocalLeader>c	<Plug>CommentLines
@@ -104,10 +148,6 @@ nmap <C-k> <Plug>TexJMotionBackward
 
     execute "map <buffer> ".g:atp_map_forward_motion_leader."e		<Plug>GotoNextEnvironment"
     execute "map <buffer> ".g:atp_map_backward_motion_leader."e		<Plug>GotoPreviousEnvironment"
-"     exe "map <buffer> ".g:atp_map_forward_motion_leader."  <Plug>GotoNextEnvironment"
-"     exe "map <buffer> ".g:atp_map_backward_motion_leader." <Plug>GotoPreviousEnvironment"
-"     map <buffer> ]m			<Plug>GotoNextInlineMath
-"     map <buffer> [m			<Plug>GotoPreviousInlineMath
     execute "map <buffer> ".g:atp_map_forward_motion_leader."m		<Plug>GotoNextMath"
     execute "map <buffer> ".g:atp_map_backward_motion_leader."m		<Plug>GotoPreviousMath"
     execute "map <buffer> ".g:atp_map_forward_motion_leader."M		<Plug>GotoNextDisplayedMath"
@@ -240,17 +280,27 @@ nmap <C-k> <Plug>TexJMotionBackward
     vnoremap <silent><buffer> [% :<C-U>exe "normal! gv"<Bar>call search('\%(^\s*%.*\n\)\%(^\s*%\)\@!', "bW")<CR>
 
     " Select comment
-    vmap <silent><buffer> <LocalLeader>sc	<Plug>vSelectComment
+    vmap <silent><buffer> <LocalLeader>sc		<Plug>vSelectComment
+    nmap <silent><buffer> <LocalLeader>sc		v<Plug>vSelectComment
 
     " Normal mode maps (mostly)
-    nmap  <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput
+    if mapcheck('<LocalLeader>v') == ""
+	nmap  <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput
+    endif
 "     nmap  <buffer> <F2> 			<Plug>ToggleSpace
-    nmap  <buffer> <F2> 			:call ATP_CmdwinToggleSpace('on')<CR>q/i
-    nmap Q/					:call ATP_CmdwinToggleSpace('on')<CR>q/
-    nmap Q?					:call ATP_CmdwinToggleSpace('on')<CR>q/
-    nmap  <buffer> <LocalLeader>s		<Plug>ToggleStar
+    nmap  <buffer> <F2> 			q/:call ATP_CmdwinToggleSpace('on')<CR>i
+    if mapcheck('Q/', 'n') == ""
+	nmap Q/					q/:call ATP_CmdwinToggleSpace('on')<CR>
+    endif
+    if mapcheck('Q?', 'n') == ""
+	nmap Q?					q?:call ATP_CmdwinToggleSpace('on')<CR>
+    endif
+    if mapcheck('<LocalLeader>s') == ""
+	nmap  <buffer> <LocalLeader>s		<Plug>ToggleStar
+    endif
 
-    nmap  <buffer> <LocalLeader><Localleader>d	<Plug>ToggleDebugMode
+    nmap  <buffer> <LocalLeader><Localleader>d	<Plug>ToggledebugMode
+    nmap  <buffer> <LocalLeader><Localleader>D	<Plug>ToggleDebugMode
     vmap  <buffer> <F4>				<Plug>WrapEnvironment
     nmap  <buffer> <F4>				<Plug>ChangeEnv
     nmap  <buffer> <S-F4>			<Plug>ToggleEnvForward

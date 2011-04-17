@@ -4,7 +4,7 @@
 " URL:	       https://launchpad.net/automatictexplugin	
 " BUG Trucer:  https://bugs.launchpad.net/automatictexplugin
 " Language:    bib
-" Last Change: Fri Apr 08 07:00  2011 W
+" Last Change: Sat Apr 16 09:00  2011 W
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.
 "
@@ -176,7 +176,7 @@ function! <SID>GetAMSRef(what)
     let atpbib_WgetOutputFile = tempname()
     let URLquery_path = globpath(&rtp, 'ftplugin/ATP_files/url_query.py')
     let url="http://www.ams.org/mathscinet-mref?ref=".what."&dataType=bibtex"
-    let cmd="python ".URLquery_path." ".shellescape(url)." ".shellescape(atpbib_WgetOutputFile)
+    let cmd=g:atp_Python." ".URLquery_path." ".shellescape(url)." ".shellescape(atpbib_WgetOutputFile)
     call system(cmd)
     let loclist = getloclist(0)
 

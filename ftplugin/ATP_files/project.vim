@@ -58,21 +58,21 @@ endif
 let s:common_project_script	= s:windows ? g:atp_CommonScriptDirectory  . '\common_var.vim' : g:atp_CommonScriptDirectory . '/common_var.vim' 
 
 " These local variables will be saved:
-let g:atp_cached_local_variables = [ 
-	    \ 'b:atp_MainFile',
-	    \ 'b:atp_ProjectScript',
-	    \ 'b:atp_LocalCommands', 		'b:atp_LocalEnvironments', 
-	    \ 'b:atp_LocalColors',
-	    \ 'b:TreeOfFiles', 			'b:ListOfFiles', 
-	    \ 'b:TypeDict', 			'b:LevelDict', 
-	    \ 'b:atp_StarEnvDefault', 		'b:atp_StarMathEnvDefault',
-	    \ ]
+" let g:atp_ProjectGlobalVariable = [ 
+" 	    \ 'b:atp_MainFile',
+" 	    \ 'b:atp_ProjectScript',
+" 	    \ 'b:atp_LocalCommands', 		'b:atp_LocalEnvironments', 
+" 	    \ 'b:atp_LocalColors',
+" 	    \ 'b:TreeOfFiles', 			'b:ListOfFiles', 
+" 	    \ 'b:TypeDict', 			'b:LevelDict', 
+" 	    \ 'b:atp_StarEnvDefault', 		'b:atp_StarMathEnvDefault',
+" 	    \ ]
 " Note: b:atp_ProjectDir is not here by default by the following reason: it is
 " specific to the host, without it sharing the project file is possible.
 " b:atp_PackageList is another variable that could be put into project script.
 
 " This are common variable to all tex files.
-let g:atp_cached_common_variables = ['g:atp_latexpackages', 'g:atp_latexclasses', 'g:atp_Library']
+let g:atp_ProjectGlobalVariables = ['g:atp_LatexPackages', 'g:atp_LatexClasses', 'g:atp_Library']
 " }}}
 
 " Autocommands:
@@ -496,7 +496,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
 	endif
 
 	" step (3a) copy variables from local ones.
-	for var in g:atp_cached_common_variables
+	for var in g:atp_ProjectGlobalVariables
 	    let lvar = "l:" . substitute(var, '^[bg]:', '', '')
 	    if g:atp_debugProject
 		echomsg "(3a) " . var . " exists " . lvar . " " . ( exists(lvar) ? 'exists' : 'nexists' )
@@ -648,7 +648,7 @@ function! <SID>WriteProjectScriptInterface(bang,...)
     endif
 
     let script 	= ( type == 'local' ? b:atp_ProjectScriptFile : s:common_project_script )
-    let variables = ( type == 'local' ? g:atp_cached_local_variables : g:atp_cached_common_variables )
+    let variables = ( type == 'local' ? g:atp_ProjectLocalVariables : g:atp_ProjectGlobalVariables )
     if type == 'local'
 	echomsg "[ATP:] writing to " . b:atp_ProjectScriptFile
     endif
@@ -661,8 +661,8 @@ endfunction
 augroup ATP_WriteProjectScript 
     au!
     " Before it was VimLeave
-    au BufWrite *.tex call s:WriteProjectScript("", b:atp_ProjectScriptFile, g:atp_cached_local_variables, 'local')
-    au BufWrite *.tex call s:WriteProjectScript("", s:common_project_script, g:atp_cached_common_variables, 'global')
+    au BufWrite *.tex call s:WriteProjectScript("", b:atp_ProjectScriptFile, g:atp_ProjectLocalVariables, 'local')
+    au BufWrite *.tex call s:WriteProjectScript("", s:common_project_script, g:atp_ProjectGlobalVariables, 'global')
 augroup END 
 "}}}
 "}}}
@@ -715,7 +715,7 @@ function! <SID>DeleteProjectScript(bang,...)
 	echo "Project Script " . file . " deleted."
     endif
     if file == s:common_project_script
-	for var in g:atp_cached_common_variables
+	for var in g:atp_ProjectGlobalVariables
 	    exe "unlet " . var
 	endfor
     endif

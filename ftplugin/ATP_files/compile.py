@@ -2,11 +2,18 @@
 # Author: Marcin Szamotulski <mszamot[@]gmail[.]com>
 # This file is a part of Automatic TeX Plugin for Vim.
 
-import sys, os.path, shutil, subprocess, psutil, re, tempfile, optparse 
+import sys, os.path, shutil, subprocess, psutil, re, tempfile, optparse, glob
 
-from os import chdir, readlink, mkdir, putenv
+from os import chdir, mkdir, putenv
 from optparse import OptionParser
 from collections import deque
+
+# readlink is not available on Windows.
+readlink=True
+try:
+    from os import readlink
+except ImportError:
+    readlink=False
 
 ####################################
 #
@@ -163,6 +170,7 @@ def latex_progress_bar(cmd):
                 vim_remote_expr(servername, "atplib#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
     child.wait()
     vim_remote_expr(servername, "atplib#ProgressBar('end',"+str(pid)+")")
+    vim_remote_expr(servername, "atplib#LatexRunning()")
     return child
 
 def xpdf_server_file_dict():
@@ -225,8 +233,10 @@ def vim_remote_expr(servername, expr):
 #
 ####################################
 
-if not re.match(os.sep, mainfile_fp):
-    mainfile_fp = os.path.join(os.getcwd(),mainfile_fp)
+# If mainfile_fp is not a full path make it. 
+glob=glob.glob(os.path.join(os.getcwd(),mainfile_fp))
+if len(glob) != 0:
+    mainfile_fp = glob[0]
 mainfile        = os.path.basename(mainfile_fp)
 mainfile_dir    = os.path.dirname(mainfile_fp)
 if mainfile_dir == "":
@@ -234,7 +244,8 @@ if mainfile_dir == "":
     mainfile    = os.path.basename(mainfile_fp)
     mainfile_dir= os.path.dirname(mainfile_fp)
 if os.path.islink(mainfile_fp):
-    mainfile_fp = os.readlink(mainfile_fp)
+    if readlink:
+        mainfile_fp = os.readlink(mainfile_fp)
     # The above line works if the symlink was created with full path. 
     mainfile    = os.path.basename(mainfile_fp)
     mainfile_dir= os.path.dirname(mainfile_fp)
@@ -359,6 +370,7 @@ for i in range(1, int(runs+1)):
                 vim_remote_expr(servername, "atplib#LatexPID("+str(pid)+")")
             debug_file.write("latex pid "+str(pid)+"\n")
             latex.wait()
+            vim_remote_expr(servername, "atplib#LatexRunning()")
         latex_returncode=latex.returncode
         debug_file.write("latex return code "+str(latex_returncode)+"\n")
         tempdir_list = os.listdir(tmpdir)

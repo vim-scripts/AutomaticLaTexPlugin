@@ -13,9 +13,12 @@ The project is developed under GPL v3 or higher.
 
 You can subscribe to the mailing list: 
 https://lists.sourceforge.net/lists/listinfo/atp-vim-list 
-Its for all kind of purposes: help, bug reports, feature request, comments but also for ANNOUCES (of new releases!) so you can stay up to date. 
+Its for all kind of purposes: help, bug reports, feature request, comments.
 
-Project News: https://sourceforge.net/news/?group_id=513143
+You can follow the project on SourceForge to get project news 
+(using watch sourceforge feature, you need to have a SourcForge account) 
+Link for project news: https://sourceforge.net/news/?group_id=513143
+
 
 This plugin includes: vimscript#3109  (LatexBox by David Munger). 
 

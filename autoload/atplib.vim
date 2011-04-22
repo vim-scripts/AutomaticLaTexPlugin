@@ -205,7 +205,7 @@ function! atplib#CallBack(mode,...)
 	endif
 
 	cclose
-	call add(msg_list,["[ATP:] ".b:atp_TexCompiler." returned without errors (atp_ErrorFormat=".g:atp_ErrorFormat.")".(g:atp_DefaultDebugMode=='silent'&&atp_DebugMode!='silent'?"\ngoing out of debuging mode.": "."), "Normal", "after"]) 
+	call add(msg_list,["[ATP:] ".b:atp_TexCompiler." returned without errors [b:atp_ErrorFormat=".b:atp_ErrorFormat."]".(g:atp_DefaultDebugMode=='silent'&&atp_DebugMode!='silent'?"\ngoing out of debuging mode.": "."), "Normal", "after"]) 
 	let showed_message 	= 1
 	let t:atp_DebugMode 	= g:atp_DefaultDebugMode
 	if g:atp_DefaultDebugMode == "silent" && t:atp_QuickFixOpen
@@ -340,11 +340,11 @@ if len(pids) > 0:
     for lp in pids:
 	run=False
 	for p in ps_list:
-	    if str(lp) == str(p):
+            if str(lp) == str(p):
 		run=True
 		break
 	if not run:
-	    rmpids.append(lp)
+            rmpids.append(lp)
     rmpids.sort()
     rmpids.reverse()
     for pid in rmpids:
@@ -1641,7 +1641,7 @@ function! atplib#showresults(bibresults, flags, pattern)
 endfunction
 "}}}
 "}}}
-" URL query: (by some strange reason this is not working moved to URLquery.py)
+" URL query: (by some strange reason this is not working moved to url_query.py)
 " function! atplib#URLquery(url) "{{{
 " python << EOF
 " import urllib2, tempfile, vim
@@ -2021,9 +2021,6 @@ function! atplib#SearchPackage(name,...)
 
     if getbufvar("%", "atp_MainFile") == ""
 	call SetProjectName()
-	let g:PName = 0 . " " . atp_MainFile
-    else
-	let g:PName = 1 . " " . atp_MainFile
     endif
 
 "     let time	= reltime()
@@ -2067,7 +2064,6 @@ function! atplib#SearchPackage(name,...)
 	    keepjumps let ret = search('^[^%]*\\'.com."\s*{[^}]*".a:name,'ncW', stop_line)
 	    keepjump call setpos(".",saved_pos)
 
-" 	    echo reltimestr(reltime(time))
 	    exe "lcd " . fnameescape(cwd)
 	    return ret
 
@@ -2077,7 +2073,6 @@ function! atplib#SearchPackage(name,...)
 	    keepjumps let ret = search('^[^%]*\\'.com."\s*{[^}]*".a:name,'ncW')
 	    keepjump call setpos(".", saved_pos)
 
-" 	    echo reltimestr(reltime(time))
 	    exe "lcd " . fnameescape(cwd)
 	    return ret
 
@@ -2092,7 +2087,6 @@ function! atplib#SearchPackage(name,...)
 		silent! call remove(s:Preambule, stop_line+1, -1)
 	    endif
 	endif
-	let g:preambule = s:Preambule
 	let lnum = 1
 	for line in s:Preambule
 	    if line =~ '^[^%]*\\'.com."\s*{[^}]*".a:name

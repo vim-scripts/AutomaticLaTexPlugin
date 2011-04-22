@@ -14,6 +14,7 @@ parser  = OptionParser(usage=usage)
 debug_file=open("/tmp/atp_mlp", "w+")
 
 parser.add_option("--cmd",              dest="cmd")
+parser.add_option("--bibcmd",           dest="bibcmd")
 parser.add_option("--file",             dest="file_fp")
 parser.add_option("--did_bibtex",       dest="did_bibtex",                              default=0)
 parser.add_option("--nobibtex",         dest="bibtex",        action="store_false",     default=False)
@@ -47,6 +48,7 @@ print("DID_INDEX="+str(did_index)+"\n")
 
 run		= int(options.run)
 cmd		= options.cmd
+bibcmd		= options.bibcmd
 tex_options	= options.tex_options
 outdir		= options.outdir
 progname	= options.progname
@@ -108,9 +110,10 @@ def latex_progress_bar(cmd):
                 stack.popleft()
             match = re.match('\[(\n?\d(\n|\d)*)({|\])',''.join(stack))
             if match:
-                vim_remote_expr(servername, "atplib#ProgressBar("+match.group(1)[match.start():match.end()]+")")
+                vim_remote_expr(servername, "atplib#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
     child.wait()
-    vim_remote_expr(servername, "atplib#ProgressBar('')")
+    vim_remote_expr(servername, "atplib#ProgressBar('end',"+str(pid)+")")
+    vim_remote_expr(servername, "atplib#LatexRunning()")
     return child
 
 cwd=os.getcwd()
@@ -120,8 +123,11 @@ debug_file.write("DIR="+os.getcwd()+"\n")
 # MAKE BIBTEX
 if bibtex:
     did_bibtex  = 1
-    auxfile     = os.path.basename(basename)+".aux"
-    bibtex=subprocess.Popen(['bibtex', auxfile], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if re.search(bibcmd, '^\s*biber'):
+        auxfile = os.path.basename(basename)
+    else:
+        auxfile = os.path.basename(basename)+".aux"
+    bibtex=subprocess.Popen([bibcmd, auxfile], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     bibtex.wait()
     bibtex_returncode=bibtex.returncode
     vim_remote_expr(servername, "atplib#Bibtex('"+str(bibtex_returncode)+"')")

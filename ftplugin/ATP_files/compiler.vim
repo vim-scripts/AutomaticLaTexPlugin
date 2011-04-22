@@ -186,13 +186,13 @@ function! <SID>SyncShow( page_nr, y_coord)
     endif
 endfunction "}}}
 function! <SID>SyncTex(mouse, ...) "{{{
-    let g:debug 	= (exists("g:debug")?g:debug+1:1)
+"     let g:debug 	= (exists("g:debug")?g:debug+1:1)
     let output_check 	= ( a:0 >= 1 && a:1 == 0 ? 0 : 1 )
     let dryrun 		= ( a:0 >= 2 && a:2 == 1 ? 1 : 0 )
     " Mouse click <S-LeftMouse> is mapped to <LeftMouse>... => thus it first changes
     " the cursor position.
     let [ line, col ] 	= [ line("."), col(".") ]
-    let [ g:line, g:col ] 	= [ line, col ]
+"     let [ g:line, g:col ] 	= [ line, col ]
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let ext		= get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf")
     let output_file	= fnamemodify(atp_MainFile,":p:r") . ext
@@ -206,7 +206,7 @@ function! <SID>SyncTex(mouse, ...) "{{{
 	let sync_cmd_y 	= "xpdf -remote " . shellescape(b:atp_XpdfServer) . " -exec 'scrollDown(".y_coord.")'"
         let sync_cmd_x 	= "xpdf -remote " . shellescape(b:atp_XpdfServer) . " -exec 'scrollRight(".x_coord.")'"
 	"There is a bug in xpdf. We need to sleep between sending commands to it.:
-	let sleep	= 'sleep '.string(g:atp_XpdfSleepTime).'s;'
+	let sleep    = ( g:atp_XpdfSleepTime ? 'sleep '.string(g:atp_XpdfSleepTime).'s;' : '' )
 	let sync_cmd = "(".sync_cmd_page.";".sleep.sync_cmd_y.";".sleep.sync_cmd_x.")&"
 " 	let sync_cmd = sync_cmd_page.";".sync_cmd_y.";".sync_cmd_x
 	if !dryrun
@@ -214,10 +214,10 @@ function! <SID>SyncTex(mouse, ...) "{{{
 " 	    redraw!
 	    call <SID>SyncShow(page_nr, y_coord)
 	endif
-	let g:sync_cmd_page 	= sync_cmd_page
-	let g:sync_cmd_y 	= sync_cmd_y
-        let g:sync_cmd_x 	= sync_cmd_x
-	let g:sync_cmd = sync_cmd
+" 	let g:sync_cmd_page 	= sync_cmd_page
+" 	let g:sync_cmd_y 	= sync_cmd_y
+"         let g:sync_cmd_x 	= sync_cmd_x
+" 	let g:sync_cmd = sync_cmd
     elseif b:atp_Viewer == "okular"
 	let [ page_nr, y_coord, x_coord ] = <SID>GetSyncData(line, col)
 	" This will not work in project files. (so where it is mostly needed.) 
@@ -228,7 +228,7 @@ function! <SID>SyncTex(mouse, ...) "{{{
 " 	    redraw!
 	    call <SID>SyncShow(page_nr, y_coord)
 	endif
-	let g:sync_cmd = sync_cmd
+" 	let g:sync_cmd = sync_cmd
 "     elseif b:atp_Viewer == "evince"
 " 	let rev_searchcmd="synctex view -i ".line(".").":".col(".").":".fnameescape(b:atp_MainFile). " -o ".fnameescape(fnamemodify(b:atp_MainFile, ":p:r").".pdf") . " -x 'evince %{output} -i %{page}'"
 "     endif
@@ -243,10 +243,10 @@ function! <SID>SyncTex(mouse, ...) "{{{
 	if !dryrun
 	    call system(sync_cmd)
 	endif
-	let g:sync_cmd = sync_cmd
+" 	let g:sync_cmd = sync_cmd
     else
 	let sync_cmd=""
-	let g:sync_cmd = sync_cmd
+" 	let g:sync_cmd = sync_cmd
     endif
     return
 endfunction 
@@ -396,7 +396,7 @@ endfunction
 " This is very fast (0.002 sec on file with 2500 lines) 
 " but the proble is that vimgrep greps the buffer rather than the file! 
 " so it will not indicate any differences.
-function! NewCompare()
+function! <SID>NewCompare()
     let line 		= getline(".")
     let lineNr		= line(".")
     let saved_loclist 	= getloclist(0)
@@ -531,7 +531,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
     let g:ml_debug 	= ""
 
     let mode 		= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
-    let tex_options	= " -interaction=nonstopmode -output-directory=" . fnameescape(b:atp_OutDir) . " " . b:atp_TexOptions . " "
+    let tex_options	= " -interaction=nonstopmode -output-directory=" . fnameescape(b:atp_OutDir) . " " . substitute(b:atp_TexOptions, ',', ' ', 'g') . " "
 
     " This supports b:atp_OutDir
     let saved_cwd	= getcwd()
@@ -590,11 +590,17 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 
     " Check what to use to make the 'Bibliography':
     let saved_llist	= getloclist(0)
-    execute 'silent! lvimgrep /\\bibdata\s*{/j ' . fnameescape(auxfile)
+    try
+	execute 'silent! lvimgrep /\\bibdata\s*{/j ' . fnameescape(auxfile)
+    catch E480:
+    endtry
     " Note: if the auxfile is not there it returns 0 but this is the best method for
     " looking if we have to use 'bibtex' as the bibliography might be not written in
     " the main file.
     let bibtex		= len(getloclist(0)) == 0 ? 0 : 1
+    if !bibtex
+	let bibtex	= atplib#SearchPackage('biblatex')
+    endif
     call setloclist(0, saved_llist)
 
 	if g:atp_debugML
@@ -716,6 +722,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	    let p_force= (a:force == "!" ? " --force" : " " )
 	    let python_cmd1=g:atp_Python." ".shellescape(globpath(&rtp, "ftplugin/ATP_files/compile_ml.py")). 
 			\ " --cmd ".shellescape(b:atp_TexCompiler).
+			\ " --bibcmd " . shellescape(b:atp_BibCompiler).
 			\ " --file ".shellescape(atplib#FullPath(texfile)).
 			\ " --outdir ".shellescape(b:atp_OutDir).
 			\ " --run ".a:run." ".p_force.
@@ -769,11 +776,11 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 
     if ( condition_force && a:force == "!" ) || ( condition_noforce && a:force == "" )
 	  let cmd	= ''
-	  let bib_cmd 	= 'bibtex ' 	. fnameescape(auxfile) . ' ; '
-	  let idx_cmd 	= 'makeindex ' 	. fnameescape(idxfile) . ' ; '
+	  let bib_cmd 	= b:atp_BibCompiler.' '.fnameescape(auxfile) . ' ; '
+	  let idx_cmd 	= 'makeindex '.fnameescape(idxfile) . ' ; '
 	  let message	=   "Making:"
 	  if ( bib_condition_force && a:force == "!" ) || ( bib_condition_noforce && a:force == "" )
-	      let bib_msg	 = ( bibtex  ? ( did_bibtex == 0 ? " [bibtex,".Compiler."]" : " [".Compiler."]" ) : " [".Compiler."]" )
+	      let bib_msg	 = ( bibtex  ? ( did_bibtex == 0 ? " [".b:atp_BibCompiler.",".Compiler."]" : " [".Compiler."]" ) : " [".Compiler."]" )
 	      let message	.= " references".bib_msg."," 
 	  endif
 	  if toc && a:run <= 2
@@ -833,6 +840,7 @@ function! <SID>MakeLatex(texfile, did_bibtex, did_index, time, did_firstrun, run
 	      let p_force= (a:force == "!" ? " --force" : " " )
 	      let python_cmd2=g:atp_Python." ".shellescape(globpath(&rtp, "ftplugin/ATP_files/compile_ml.py")).
 			  \ " --cmd ".shellescape(b:atp_TexCompiler).
+			  \ " --bibcmd " . shellescape(b:atp_BibCompiler).
 			  \ " --file ".shellescape(atplib#FullPath(texfile)).
 			  \ " --outdir ".shellescape(b:atp_OutDir).
 			  \ " --run ".a:run.
@@ -923,13 +931,37 @@ import os, signal
 from signal import SIGTERM
 pids=vim.eval("a:pids")
 for pid in pids:
-    os.kill(int(pid),SIGTERM)
+    try:
+	os.kill(int(pid),SIGTERM)
+    except OSError, e:
+	if e.errno == 3:
+            # No such process error.
+            pass
+	else:
+            raise
 END
 endfunction "}}}
+
+function! <SID>SetBiberSettings()
+    if b:atp_BibCompiler !~# '^\s*biber\>'
+	return
+    elseif !exists("s:biber_keep_done")
+	let s:biber_keep_done = 1
+	if index(g:keep, "run.xml") == -1
+	    g:keep += [ "run.xml" ]
+	endif
+	if index(g:keep, "bcf") == -1
+	    g:keep += [ "bcf" ]
+	endif
+    endif
+endfunction
 
 " THE MAIN COMPILER FUNCTIONs:
 " {{{ s:PythonCompiler
 function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, bang)
+
+    " Set biber setting on the fly
+    call <SID>SetBiberSettings()
 
     if !has('gui') && a:verbose == 'verbose' && len(b:atp_LatexPIDs) > 0
 	redraw!
@@ -1021,6 +1053,7 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
 		\ ." --viewer-options ".shellescape(viewer_options) 
 		\ ." --keep ". shellescape(join(g:keep, ','))
 		\ ." --progname ".v:progname
+		\ ." --bibcommand ".b:atp_BibCompiler
 		\ ." --bibliographies ".shellescape(bibliographies)
 		\ .(t:atp_DebugMode=='verbose'||a:verbose=='verbose'?' --env ""': " --env ".shellescape(b:atp_TexCompilerVariable))
 		\ . bang . bibtex . reload_viewer . reload_on_error . gui_running . aucommand . progress_bar
@@ -1071,6 +1104,9 @@ endfunction
 " 		2 start viewer and make reverse search
 "
 function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
+    
+    " Set biber setting on the fly
+    call <SID>SetBiberSettings()
 
     if !has('gui') && a:verbose == 'verbose' && b:atp_running > 0
 	redraw!
@@ -1210,8 +1246,8 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 "	SET THE COMMAND 
 	let interaction = ( a:verbose=="verbose" ? b:atp_VerboseLatexInteractionMode : 'nonstopmode' )
 	let variable	= ( a:verbose!="verbose" ? substitute(b:atp_TexCompilerVariable, ';', ' ', 'g') : '' ) 
-	let comp	= variable . " " . b:atp_TexCompiler . " " . b:atp_TexOptions . " -interaction=" . interaction . " -output-directory=" . shellescape(tmpdir) . " " . shellescape(a:filename)
-	let vcomp	= variable . " " . b:atp_TexCompiler . " " . b:atp_TexOptions  . " -interaction=". interaction . " -output-directory=" . shellescape(tmpdir) .  " " . shellescape(a:filename)
+	let comp	= variable . " " . b:atp_TexCompiler . " " . substitute(b:atp_TexOptions, ',', ' ','g') . " -interaction=" . interaction . " -output-directory=" . shellescape(tmpdir) . " " . shellescape(a:filename)
+	let vcomp	= variable . " " . b:atp_TexCompiler . " " . substitute(b:atp_TexOptions, ',', ' ','g')  . " -interaction=". interaction . " -output-directory=" . shellescape(tmpdir) .  " " . shellescape(a:filename)
 	
 	" make function:
 " 	let make	= "vim --servername " . v:servername . " --remote-expr 'MakeLatex\(\"".tmptex."\",1,0\)'"
@@ -1424,7 +1460,7 @@ function! <SID>auTeX()
 	    " nesting (which seems to be high enough).
 	    
 "
-" 	if NewCompare()
+" 	if <SID>NewCompare()
 	    if g:atp_Compiler == 'python'
 		call <SID>PythonCompiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 	    else
@@ -1545,9 +1581,14 @@ inoremap <silent> <Plug>iATP_TeXVerbose		<Esc>:<C-U>call <SID>TeX(v:count1, "", 
 "}}}
 "{{{ Bibtex
 function! <SID>SimpleBibtex()
-    let bibcommand 	= "bibtex "
+    let bibcommand 	= b:atp_BibCompiler." "
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
-    let auxfile		= fnamemodify(resolve(atp_MainFile),":t:r") . ".aux"
+    if b:atp_BibCompiler =~ '^\s*biber\>'
+	let file	= fnamemodify(resolve(atp_MainFile),":t:r")
+    else
+	let file	= fnamemodify(resolve(atp_MainFile),":t:r") . ".aux"
+    endif
+    let auxfile	= fnamemodify(resolve(atp_MainFile),":t:r") . ".aux"
     " When oupen_out = p (in texmf.cnf) bibtex can only open files in the working
     " directory and they should no be given with full path:
     "  		p (paranoid)   : as `r' and disallow going to parent directories, and
@@ -1556,7 +1597,7 @@ function! <SID>SimpleBibtex()
     exe "lcd " . fnameescape(b:atp_OutDir)
     let g:cwd = getcwd()
     if filereadable(auxfile)
-	let command	= bibcommand . shellescape(l:auxfile)
+	let command	= bibcommand . shellescape(file)
 	let b:atp_BibtexOutput=system(command)
 	let b:atp_BibtexReturnCode=v:shell_error
 	echo b:atp_BibtexOutput
@@ -1642,11 +1683,16 @@ nnoremap <silent> <Plug>BibtexVerbose	:call <SID>Bibtex("!", "verbose")<CR>
 " the default is a:1=e /show only error messages/
 function! <SID>SetErrorFormat(...)
 
+    let l:cgetfile = ( a:0 >=2 ? a:2 : 0 )
+    " This l:cgetfile == 1 only if run by the command :ErrorFormat 
+    if l:cgetfile  == 1 && a:1 == ''	
+	echo "[ATP:] current error format: ".b:atp_ErrorFormat 
+	return
+    endif
+
     let carg = ( a:0 == 0 ? g:atp_DefaultErrorFormat : a:1 )
-    unlockvar g:atp_ErrorFormat
-    let g:atp_ErrorFormat = carg
-    lockvar g:atp_ErrorFormat
-"     let l:cgetfile = ( a:0 >=2 ? a:2 : 1 )
+    let b:atp_ErrorFormat = carg
+    let g:carg = carg." a:1=".a:1
 
     let &l:errorformat=""
     if ( carg =~ 'e' || carg =~# 'all' ) 
@@ -1779,9 +1825,12 @@ function! <SID>SetErrorFormat(...)
 " 			    removed after GType
 " 			    \%-G\ ...%.%#,
     endif
-"     if l:cgetfile
-" 	cgetfile
-"     endif
+    if l:cgetfile
+	try
+	    cgetfile
+	catch E40:
+	endtry
+    endif
 endfunction
 "}}}
 "{{{ ShowErrors
@@ -1817,7 +1866,7 @@ function! ShowErrors(...)
     call writefile(log, errorfile)
     
     " set errorformat 
-    let l:arg = ( a:0 >= 1 ? a:1 : g:atp_DefaultErrorFormat )
+    let l:arg = ( a:0 >= 1 ? a:1 : b:atp_ErrorFormat )
 
     if l:arg =~ 'o'
 	OpenLog
@@ -1846,10 +1895,28 @@ endfunction
 "}}}
 if !exists("*ListErrorsFlags")
 function! ListErrorsFlags(A,L,P)
-	return "all\nAll\nc\ne\nF\nf\nfi\no\nr\nw\nb"
+    return "all\nAll\nc\ne\nF\nf\nfi\no\nr\nw\nb"
+endfunction
+endif
+if !exists("*ListErrorsFlags_A")
+function! ListErrorsFlags_A(A,L,P)
+    " This has no o flag.
+    return "all\nAll\nc\ne\nF\nf\nfi\nr\nw\nb"
 endfunction
 endif
 "}}}
+" function! <SID>SetErrorFormat(efm)
+" 
+"     if a:efm == ""
+" 	return
+"     endif
+" 
+"     unlockvar b:atp_ErrorFormat
+"     let b:atp_ErrorFormat = a:efm
+"     cgetfile
+" 
+" endfunction
+
 endif "}}}
 
 " Commands: 
@@ -1858,18 +1925,18 @@ command! -buffer 		KillAll			:call <SID>KillAll(b:atp_LatexPIDs)
 command! -buffer -nargs=? 	ViewOutput		:call <SID>ViewOutput(<f-args>)
 command! -buffer 		SyncTex			:call <SID>SyncTex(0)
 command! -buffer 		PID			:call <SID>GetPID()
-command! -buffer -bang 		MakeLatex		:call <SID>MakeLatex(( g:atp_RelativePath ? globpath(b:atp_ProjectDir, fnamemodify(b:atp_MainFile, ":t")) : b:atp_MainFile ), 0,0, [],1,1,<q-bang>,1)
+command! -buffer -bang 		MakeLatex		:call <SID>SetBiberSettings() | call <SID>MakeLatex(( g:atp_RelativePath ? globpath(b:atp_ProjectDir, fnamemodify(b:atp_MainFile, ":t")) : b:atp_MainFile ), 0,0, [],1,1,<q-bang>,1)
 command! -buffer -nargs=? -bang -count=1 -complete=custom,DebugComp TEX	:call <SID>TeX(<count>, <q-bang>, <f-args>)
 command! -buffer -count=1	DTEX			:call <SID>TeX(<count>, <q-bang>, 'debug') 
 command! -buffer -bang -nargs=? -complete=custom,BibtexComp Bibtex		:call <SID>Bibtex(<q-bang>, <f-args>)
-command! -buffer -nargs=? -complete=custom,ListErrorsFlags SetErrorFormat 	:call <SID>SetErrorFormat(<f-args>)
+command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A SetErrorFormat 	:call <SID>SetErrorFormat(<f-args>,1)
 augroup ATP_QuickFixCmds_1
     au!
-    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags SetErrorFormat :call <SID>SetErrorFormat(<f-args>) | cg
-    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags ShowErrors :call <SID>SetErrorFormat(<f-args>) | cg
-    au FileType qf :call <SID>SetErrorFormat(g:atp_DefaultErrorFormat)
+    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A SetErrorFormat :call <SID>SetErrorFormat(<q-args>,1) | cg
+    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A ErrorFormat :call <SID>SetErrorFormat(<q-args>,1) | cg
+    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A ShowErrors :call <SID>SetErrorFormat(<f-args>) | cg
 augroup END
-command! -buffer -nargs=? 	SetErrorFormat 		:call <SID>SetErrorFormat(<f-args>)
+command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A 	ErrorFormat 	:call <SID>SetErrorFormat(<q-args>,1)
 exe "SetErrorFormat ".g:atp_DefaultErrorFormat
 command! -buffer -nargs=? -complete=custom,ListErrorsFlags 	ShowErrors 	:call ShowErrors(<f-args>)
 " }}}

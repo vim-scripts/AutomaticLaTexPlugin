@@ -1,26 +1,39 @@
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=2945
 
-This is a complete plugin with lots of tools to make editing of TeX/LaTeX file more friendly. Its main features include: background compilation, forward and inverse search for both dvi and pdf (okular), extended completion, AMSRef equry for bibliography references, font preview, support for projects with multiple tex files, and much more. For a detailed list of features see: 
-https://sourceforge.net/apps/mediawiki/atp-vim/index.php?title=Main_Page 
+
+This is a complete plugin with lots of tools to make editing of TeX/LaTeX file more friendly. Its main features include: background compilation, forward and inverse search for both dvi and pdf (okular), extended completion, AMSRef query for bibliography references, font preview, support for projects with multiple tex files, and much much more. For a detailed list of features see: 
+    https://sourceforge.net/apps/mediawiki/atp-vim/index.php?title=Main_Page
 After looking there you can read the complete documentation in vim (:help atp) 
 
-You can get the latest snaphots (stable/unstable releases) on http://sourceforge.net/projects/atp-vim/ or if you have ATP version 9.2 or higher using :UpdateATP command inside vim (check out :help atp-:UpdateATP)
+LATEST SNAPSHOTS
+    You can get the latest snapshots (stable/unstable releases) on 
+        http://sourceforge.net/projects/atp-vim/files/snapshots/ 
+    or if you have ATP version 9.2 or higher using :UpdateATP command 
+    inside vim (check out :help atp-:UpdateATP)
 
-You can DONATE for this project  (on the project web page: http://sourceforge.net/projects/atp-vim/) 
-(see :h atp-donate). 
+DONATE
+    You can SUPPORT this project using PayPal (see :help atp-donate)
+        https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=3NMU7FEEPVG7Q
 
-The project is developed under GPL v3 or higher. 
+LICENCE
+    The project is developed under GPL v3 or higher. 
 
-You can subscribe to the mailing list: 
-https://lists.sourceforge.net/lists/listinfo/atp-vim-list 
-Its for all kind of purposes: help, bug reports, feature request, comments.
+MAILING LIST
+    You can subscribe to the mailing list: 
+        https://lists.sourceforge.net/lists/listinfo/atp-vim-list 
+    Its for all kind of purposes: help, bug reports, feature request, comments.
 
-You can follow the project on SourceForge to get project news 
-(using watch sourceforge feature, you need to have a SourcForge account) 
-Link for project news: https://sourceforge.net/news/?group_id=513143
+PROJECT NEWS
+    You can follow the project on SourceForge to get project news 
+        https://sourceforge.net/news/?group_id=513143
+    (using watch SourceForge feature, i.e. you need to have a SourceForge account) 
 
+LATEX BOX
+    This plugin includes: vimscript#3109  (LatexBox by David Munger). 
 
-This plugin includes: vimscript#3109  (LatexBox by David Munger). 
+BUGS 
+    Send an email to the mailing list: 
+        https://lists.sourceforge.net/lists/listinfo/atp-vim-list
 
-BUG tracker: send a mail to the mailing list: https://lists.sourceforge.net/lists/listinfo/atp-vim-list 
-PROJECT site: http://sourceforge.net/projects/atp-vim/
+PROJECT SITE
+        http://sourceforge.net/projects/atp-vim/

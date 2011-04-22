@@ -25,6 +25,7 @@ usage   = "usage: %prog [options]"
 parser  = OptionParser(usage=usage)
 
 parser.add_option("-c", "--command",    dest="command",         default="pdflatex",     help="tex compiler")
+parser.add_option("--bibcommand",       dest="bibcommand",      default="bibtex",       help="bibtex compiler")
 parser.add_option("--progname",         dest="progname",        default="gvim",         help="vim v:progname")
 parser.add_option("-a", "--aucommand",  dest="aucommand",       default=False, action="store_true", help="if the command was called from an autocommand (background compilation - this sets different option for call back.) ")
 parser.add_option("--tex-options",      dest="tex_options",     default="-synctex=1,-interaction=nonstopmode", help="comma separeted list of tex options")
@@ -54,14 +55,21 @@ parser.add_option("--bibliographies",                           default="",     
 # There should be a switch to get debug info.
 debug_file      = open("/tmp/atp_compile.py.debug", 'w')
 
+def nonempty(string):
+    if str(string) == '':
+        return False
+    else:
+        return True
+
 command         = options.command
+bibcommand      = options.bibcommand
 progname        = options.progname
 aucommand_bool  = options.aucommand
 if aucommand_bool:
     aucommand="AU"
 else:
     aucommand="COM"
-command_opt     = options.tex_options.split(',')
+command_opt     = filter(nonempty,options.tex_options.split(','))
 mainfile_fp     = options.mainfile
 output_format   = options.output_format
 if output_format == "pdf":
@@ -74,11 +82,6 @@ start           = options.start
 viewer          = options.viewer
 XpdfServer      = options.xpdf_server
 viewer_rawopt   = options.viewer_opt.split(',')
-def nonempty(string):
-    if str(string) == '':
-        return False
-    else:
-        return True
 viewer_it       =filter(nonempty,viewer_rawopt)
 viewer_opt      =[]
 for opt in viewer_it:
@@ -118,6 +121,7 @@ gui_running     = options.gui_running
 progress_bar    = options.progress_bar
 
 debug_file.write("COMMAND "+command+"\n")
+debug_file.write("BIBCOMMAND "+bibcommand+"\n")
 debug_file.write("AUCOMMAND "+aucommand+"\n")
 debug_file.write("PROGNAME "+progname+"\n")
 debug_file.write("COMMAND_OPT "+str(command_opt)+"\n")
@@ -314,9 +318,13 @@ for bib in bibliographies:
 # Latex might not run this might happedn with bibtex (?)
 latex_returncode=0
 if bibtex and os.path.exists(tmpaux):
-    debug_file.write("\nBIBTEX1"+str(['bibtex', basename+".aux"])+"\n")
+    if bibcommand == 'biber':
+        bibfname = basename
+    else:
+        bibfname = basename+".aux"
+    debug_file.write("\nBIBTEX1"+str([bibcommand, bibfname])+"\n")
     os.chdir(tmpdir)
-    bibtex_popen=subprocess.Popen(['bibtex', basename+".aux"], stdout=subprocess.PIPE)
+    bibtex_popen=subprocess.Popen([bibcommand, bibfname], stdout=subprocess.PIPE)
     bibtex_popen.wait()
     os.chdir(mainfile_dir)
     bibtex_returncode=bibtex_popen.returncode
@@ -341,10 +349,6 @@ elif bibtex:
 debug_file.write("\nRANGE="+str(range(1,int(runs+1)))+"\n")
 debug_file.write("RUNS="+str(runs)+"\n")
 for i in range(1, int(runs+1)):
-    if verbose == "verbose" and i == 1 and bibtex:
-        print(command+" is running to make aux file ..." )
-    elif verbose == "verbose" and ( i == 2 and options.bibtex or i == 1 and options.bibtex and not bibtex ):
-        print(command+" is running to make bbl file ..." )
     debug_file.write("RUN="+str(i)+"\n")
     debug_file.write("DIR="+str(os.getcwd())+"\n")
     tempdir_list = os.listdir(tmpdir)
@@ -379,12 +383,16 @@ for i in range(1, int(runs+1)):
     if verbose != "verbose":
         vim_remote_expr(servername, "atplib#TexReturnCode('"+str(latex_returncode)+"')")
     if bibtex and i == 1:
-        debug_file.write("BIBTEX2 "+str(['bibtex', basename+".aux"])+"\n")
+        if bibcommand == 'biber':
+            bibfname = basename
+        else:
+            bibfname = basename+".aux"
+        debug_file.write("BIBTEX2 "+str([bibcommand, bibfname])+"\n")
         debug_file.write(os.getcwd()+"\n")
         tempdir_list = os.listdir(tmpdir)
         debug_file.write("ls tmpdir "+str(tempdir_list)+"\n")
         os.chdir(tmpdir)
-        bibtex_popen=subprocess.Popen(['bibtex', basename+".aux"], stdout=subprocess.PIPE)
+        bibtex_popen=subprocess.Popen([bibcommand, bibfname], stdout=subprocess.PIPE)
         bibtex_popen.wait()
         os.chdir(mainfile_dir)
         bibtex_returncode=bibtex_popen.returncode

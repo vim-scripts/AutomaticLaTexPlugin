@@ -681,9 +681,9 @@ function! <SID>ProjectScript(...)
 	:WriteProjectScript!
     endif
     if b:atp_ProjectScript
-	echomsg "[ATP:] project Script is set on."
+	echomsg "[ATP:] Project Script - ON."
     else
-	echomsg "[ATP:] project Script is set off."
+	echomsg "[ATP:] Project Script - OFF."
     endif
     return b:atp_ProjectScript
 endfunction
@@ -708,11 +708,11 @@ function! <SID>DeleteProjectScript(bang,...)
     endif
 
     call delete(file)
-    echo "Project Script " . file . " deleted."
+    echo "[ATP:] Project Script ".file." deleted."
     if type == "local" && a:bang == "!"
 	let file = s:common_project_script
 	call delete(file)
-	echo "Project Script " . file . " deleted."
+	echo "[ATP:] Project Script ".file." deleted."
     endif
     if file == s:common_project_script
 	for var in g:atp_ProjectGlobalVariables

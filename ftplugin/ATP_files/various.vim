@@ -3,7 +3,7 @@
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Sat Apr 16 07:00  2011 W
+" Last Change: Thu Apr 21 08:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -815,26 +815,29 @@ function! <SID>Delete(delete_output)
     let atp_tex_extensions=deepcopy(g:atp_tex_extensions)
 
     if a:delete_output == "!" || g:atp_delete_output == 1
-	if b:atp_TexCompiler == "pdftex" || b:atp_TexCompiler == "pdflatex"
-	    let ext="pdf"
-	else
-	    let ext="dvi"
+	let ext = substitute(get(g:atp_CompilersDict,b:atp_TexCompiler,""), '^\s*\.', '', 'g')
+	if ext != ""
+	    call add(atp_tex_extensions,ext)
 	endif
-	call add(atp_tex_extensions,ext)
     else
 	" filter extensions which should not be deleted
 	call filter(atp_tex_extensions, "index(g:atp_DeleteWithBang, v:val) == -1")
     endif
 
     " Be sure that we are not deleting outputs:
-    for ext in filter(atp_tex_extensions, 
-		\ "v:val != 'tex' && v:val != 'pdf' && v:val != 'dvi' && v:val != 'ps'")
-	let files=split(globpath(fnamemodify(atp_MainFile, ":h"), "*.".ext), "\n")
-	if files != []
-	    echo "Removing *.".ext
-	    for f in files
-		call delete(f)
-	    endfor
+    for ext in atp_tex_extensions
+	if ext != "pdf" && ext != "dvi" && ext != "ps"
+	    let files=split(globpath(fnamemodify(atp_MainFile, ":h"), "*.".ext), "\n")
+	    if files != []
+		echo "Removing *.".ext
+		for f in files
+		    call delete(f)
+		endfor
+	    endif
+	else
+	    let f=fnamemodify(atplib#FullPath(b:atp_MainFile), ":h").".".ext
+	    echo "Removing ".f
+	    call delete(f)
 	endif
     endfor
 endfunction
@@ -1483,7 +1486,7 @@ function! <SID>ReloadATP(bang)
     if a:bang == ""
 	execute "source " . common_file
 	execute "source " . options_file 
-	let g:atp_reload	= 0
+
 	" Then source atprc file
 	if filereadable(globpath($HOME, '/.atprc.vim', 1)) && has("unix")
 
@@ -1499,9 +1502,11 @@ function! <SID>ReloadATP(bang)
 		endif
 	endif
     else
+	" Reload all functions and variables, 
 	let tex_atp_file = globpath(&rtp, 'ftplugin/tex_atp.vim')
 	execute "source " . tex_atp_file
-	" This reloads all functions except autoload/atplib.vim
+
+	" delete functions from autoload/atplib.vim:
 	let atplib_file	= globpath(&rtp, 'autoload/atplib.vim')
 	let saved_loclist = getloclist(0)
 	exe 'lvimgrep /^\s*fun\%[ction]!\=\s\+/gj '.atplib_file
@@ -1513,9 +1518,9 @@ function! <SID>ReloadATP(bang)
 		exe 'delfunction '.fname
 	    endif
 	endfor
-	let g:atp_reload		= 0
-	let g:atp_reload_functions 	= 0
     endif
+    let g:atp_reload		= 0
+    let g:atp_reload_functions 	= 0
 endfunction
 catch /E127:/
     " Cannot redefine function, function is in use.
@@ -2026,8 +2031,7 @@ function! <SID>UpdateATP(bang)
 	call <SID>Tar(s:atp_tempname, dir)
 	call delete(s:atp_tempname)
 
-	" WINDOWS NOT COMPATIBLE (?)
-	exe "helptags " . dir . "/doc"
+	exe "helptags " . finddir("doc", dir)
 	ReloadATP
 	redraw!
 	if a:bang == "!"

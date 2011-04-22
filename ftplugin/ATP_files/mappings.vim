@@ -10,8 +10,15 @@
 " <c-c> in insert mode doesn't trigger InsertLeave autocommands
 " this fixes this.
 if g:atp_MapCC
-    imap <buffer> <c-c> <c-[>
+    imap <silent> <buffer> <c-c> <c-[>
 endif
+
+if has("gui")
+    cmap <silent> <buffer> <C-Space> \_s\+
+else
+    cmap <silent> <buffer> <C-@>	\_s\+
+endif
+cmap <silent> <buffer> <C-_> 	\_s\+
 
 if g:atp_MapUpdateToCLine
     nmap <buffer> <silent> <C-F> <C-F>:call UpdateToCLine()<CR>
@@ -100,10 +107,10 @@ omap <buffer> <silent> [*	:SkipCommentBackward<CR>
 nmap <buffer> <silent> gC	:SkipCommentBackward<CR>
 omap <buffer> <silent> gC	:SkipCommentBackward<CR>
 
-execute "nmap <buffer> ".g:atp_map_forward_motion_leader."i				:NInput<CR>"
-execute "nmap <buffer> ".g:atp_map_backward_motion_leader."i				:PInput<CR>"
-execute "nmap <buffer> ".g:atp_map_forward_motion_leader."gf				:NInput<CR>"
-execute "nmap <buffer> ".g:atp_map_backward_motion_leader."gf				:PInput<CR>"
+execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."i				:NInput<CR>"
+execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."i				:PInput<CR>"
+execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."gf				:NInput<CR>"
+execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."gf				:PInput<CR>"
 
 " Syntax motions:
 " imap <C-j> <Plug>TexSyntaxMotionForward
@@ -117,41 +124,41 @@ nmap <C-j> <Plug>TexJMotionForward
 nmap <C-k> <Plug>TexJMotionBackward
 
     if g:atp_map_forward_motion_leader == "}"
-	noremap <buffer> }} }
+	noremap <silent> <buffer> }} }
     endif
     if g:atp_map_backward_motion_leader == "{"
-	noremap <buffer> {{ {
+	noremap <silent> <buffer> {{ {
     endif
 
     " ToDo to doc. + vmaps!
-    execute "nmap <buffer> ".g:atp_map_forward_motion_leader."S 	<Plug>GotoNextSubSection"
-    execute "vmap <buffer> ".g:atp_map_forward_motion_leader."S		<Plug>vGotoNextSubSection"
-    execute "nmap <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>GotoPreviousSubSection"
-    execute "vmap <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>vGotoPreviousSubSection"
+    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."S 	<Plug>GotoNextSubSection"
+    execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."S		<Plug>vGotoNextSubSection"
+    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>GotoPreviousSubSection"
+    execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>vGotoPreviousSubSection"
     " Toggle this maps on/off!
-    execute "nmap <buffer> ".g:atp_map_forward_motion_leader."s 	<Plug>GotoNextSection"
-    execute "vmap <buffer> ".g:atp_map_forward_motion_leader."s		<Plug>vGotoNextSection"
-    execute "nmap <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>GotoPreviousSection"
-    execute "vmap <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>vGotoPreviousSection"
+    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."s 	<Plug>GotoNextSection"
+    execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."s		<Plug>vGotoNextSection"
+    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>GotoPreviousSection"
+    execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>vGotoPreviousSection"
     if !( g:atp_map_forward_motion_leader == "]" && &l:diff )
-	execute "nmap <buffer> ".g:atp_map_forward_motion_leader."c 	<Plug>GotoNextChapter"
-	execute "vmap <buffer> ".g:atp_map_forward_motion_leader."c 	<Plug>vGotoNextChapter"
+	execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."c 	<Plug>GotoNextChapter"
+	execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."c 	<Plug>vGotoNextChapter"
     endif
     if !( g:atp_map_backward_motion_leader == "]" && &l:diff )
-	execute "nmap <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>GotoPreviousChapter"
-	execute "vmap <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>vGotoPreviousChapter"
+	execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>GotoPreviousChapter"
+	execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>vGotoPreviousChapter"
     endif
-    execute "nmap <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>GotoNextPart"
-    execute "vmap <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>vGotoNextPart"
-    execute "nmap <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>GotoPreviousPart"
-    execute "vmap <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>vGotoPreviousPart"
+    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>GotoNextPart"
+    execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>vGotoNextPart"
+    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>GotoPreviousPart"
+    execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>vGotoPreviousPart"
 
-    execute "map <buffer> ".g:atp_map_forward_motion_leader."e		<Plug>GotoNextEnvironment"
-    execute "map <buffer> ".g:atp_map_backward_motion_leader."e		<Plug>GotoPreviousEnvironment"
-    execute "map <buffer> ".g:atp_map_forward_motion_leader."m		<Plug>GotoNextMath"
-    execute "map <buffer> ".g:atp_map_backward_motion_leader."m		<Plug>GotoPreviousMath"
-    execute "map <buffer> ".g:atp_map_forward_motion_leader."M		<Plug>GotoNextDisplayedMath"
-    execute "map <buffer> ".g:atp_map_backward_motion_leader."M		<Plug>GotoPreviousDisplayedMath"
+    execute "map <silent> <buffer> ".g:atp_map_forward_motion_leader."e		<Plug>GotoNextEnvironment"
+    execute "map <silent> <buffer> ".g:atp_map_backward_motion_leader."e		<Plug>GotoPreviousEnvironment"
+    execute "map <silent> <buffer> ".g:atp_map_forward_motion_leader."m		<Plug>GotoNextMath"
+    execute "map <silent> <buffer> ".g:atp_map_backward_motion_leader."m		<Plug>GotoPreviousMath"
+    execute "map <silent> <buffer> ".g:atp_map_forward_motion_leader."M		<Plug>GotoNextDisplayedMath"
+    execute "map <silent> <buffer> ".g:atp_map_backward_motion_leader."M		<Plug>GotoPreviousDisplayedMath"
 
     " Goto File Map:
     if has("path_extra")
@@ -176,309 +183,310 @@ nmap <C-k> <Plug>TexJMotionBackward
     endif
 
     " Fonts:
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."f		:WrapSelection {\\usefont{".g:atp_font_encoding."}{}{}{}\\selectfont\\  } ".(len(g:atp_font_encoding)+11)."<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."mb	:WrapSelection \\mbox{ } begin<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."f		:WrapSelection {\\usefont{".g:atp_font_encoding."}{}{}{}\\selectfont\\  } ".(len(g:atp_font_encoding)+11)."<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."mb	:WrapSelection \\mbox{ } begin<CR>"
 
 
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."te	:<C-U>InteligentWrapSelection ['\\textrm{'],['\\text{']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."rm	:<C-U>InteligentWrapSelection ['\\textrm{'],['\\mathrm{']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."em	:<C-U>InteligentWrapSelection ['\\emph{'],['\\mathit{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."te	:<C-U>InteligentWrapSelection ['\\textrm{'],['\\text{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."rm	:<C-U>InteligentWrapSelection ['\\textrm{'],['\\mathrm{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."em	:<C-U>InteligentWrapSelection ['\\emph{'],['\\mathit{']<CR>"
 "   Suggested Maps:
-"     execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."tx	:<C-U>InteligentWrapSelection [''],['\\text{']<CR>"
-"     execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."in	:<C-U>InteligentWrapSelection [''],['\\intertext{']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."it	:<C-U>InteligentWrapSelection ['\\textit{'],['\\mathit{']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."sf	:<C-U>InteligentWrapSelection ['\\textsf{'],['\\mathsf{']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."tt	:<C-U>InteligentWrapSelection ['\\texttt{'],['\\mathtt{']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."bf	:<C-U>InteligentWrapSelection ['\\textbf{'],['\\mathbf{']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."bb	:<C-U>InteligentWrapSelection ['\\textbf{'],['\\mathbb{']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."sl	:<C-U>WrapSelection \\textsl{<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."sc	:<C-U>WrapSelection \\textsc{<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."up	:<C-U>WrapSelection \\textup{<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."md	:<C-U>WrapSelection \\textmd{<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."un	:<C-U>WrapSelection \\underline{<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."ov	:<C-U>WrapSelection \\overline{<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."no	:<C-U>InteligentWrapSelection ['\\textnormal{'],['\\mathnormal{']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_text_font_leader."cal	:<C-U>InteligentWrapSelection [''],['\\mathcal{']<CR>"
+"     execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."tx	:<C-U>InteligentWrapSelection [''],['\\text{']<CR>"
+"     execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."in	:<C-U>InteligentWrapSelection [''],['\\intertext{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."it	:<C-U>InteligentWrapSelection ['\\textit{'],['\\mathit{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."sf	:<C-U>InteligentWrapSelection ['\\textsf{'],['\\mathsf{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."tt	:<C-U>InteligentWrapSelection ['\\texttt{'],['\\mathtt{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."bf	:<C-U>InteligentWrapSelection ['\\textbf{'],['\\mathbf{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."bb	:<C-U>InteligentWrapSelection ['\\textbf{'],['\\mathbb{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."sl	:<C-U>WrapSelection \\textsl{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."sc	:<C-U>WrapSelection \\textsc{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."up	:<C-U>WrapSelection \\textup{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."md	:<C-U>WrapSelection \\textmd{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."un	:<C-U>WrapSelection \\underline{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."ov	:<C-U>WrapSelection \\overline{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."no	:<C-U>InteligentWrapSelection ['\\textnormal{'],['\\mathnormal{']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."cal	:<C-U>InteligentWrapSelection [''],['\\mathcal{']<CR>"
 
     " Environments:
-    execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."C   :WrapSelection \\begin{center} \\end{center} 0 1<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."R   :WrapSelection \\begin{flushright} \\end{flushright} 0 1<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."L   :WrapSelection \\begin{flushleft} \\end{flushleft} 0 1<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."E   :WrapSelection \\begin{equation=b:atp_StarMathEnvDefault<CR>} \\end{equation=b:atp_StarMathEnvDefault<CR>} 0 1<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_environment_leader."A   :WrapSelection \\begin{align=b:atp_StarMathEnvDefault<CR>} \\end{align=b:atp_StarMathEnvDefault<CR>} 0 1<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_environment_leader."C   :WrapSelection \\begin{center} \\end{center} 0 1<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_environment_leader."R   :WrapSelection \\begin{flushright} \\end{flushright} 0 1<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_environment_leader."L   :WrapSelection \\begin{flushleft} \\end{flushleft} 0 1<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_environment_leader."E   :WrapSelection \\begin{equation=b:atp_StarMathEnvDefault<CR>} \\end{equation=b:atp_StarMathEnvDefault<CR>} 0 1<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_environment_leader."A   :WrapSelection \\begin{align=b:atp_StarMathEnvDefault<CR>} \\end{align=b:atp_StarMathEnvDefault<CR>} 0 1<CR>"
 
     " Math Modes:
-    vmap <buffer> m						:<C-U>WrapSelection \( \)<CR>
-    vmap <buffer> M						:<C-U>WrapSelection \[ \]<CR>
+    vmap <silent> <buffer> m				:<C-U>WrapSelection \( \)<CR>
+    vmap <silent> <buffer> M				:<C-U>WrapSelection \[ \]<CR>
 
     " Brackets:
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."( 	:WrapSelection ( ) begin<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."[ 	:WrapSelection [ ] begin<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."\\{	:WrapSelection \\{ \\} begin<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."{ 	:WrapSelection { } begin<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."< 	:WrapSelection < > begin<CR>"
-"     execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."{	:<C-U>InteligentWrapSelection ['{', '}'],['\\{', '\\}']<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader.")	:WrapSelection ( ) end<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."]	:WrapSelection [ ] end<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."\\}	:WrapSelection \\{ \\} end<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."}	:WrapSelection { } end<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_bracket_leader."> 	:WrapSelection < > end<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."( 	:WrapSelection ( ) begin<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."[ 	:WrapSelection [ ] begin<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."\\{	:WrapSelection \\{ \\} begin<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."{ 	:WrapSelection { } begin<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."< 	:WrapSelection < > begin<CR>"
+"     execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."{	:<C-U>InteligentWrapSelection ['{', '}'],['\\{', '\\}']<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader.")	:WrapSelection ( ) end<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."]	:WrapSelection [ ] end<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."\\}	:WrapSelection \\{ \\} end<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."}	:WrapSelection { } end<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."> 	:WrapSelection < > end<CR>"
 
-    execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."(	:WrapSelection \\left( \\right) begin<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."[	:WrapSelection \\left[ \\right] begin<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."{	:WrapSelection \\left\\{ \\right\\} begin<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader."(	:WrapSelection \\left( \\right) begin<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader."[	:WrapSelection \\left[ \\right] begin<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader."{	:WrapSelection \\left\\{ \\right\\} begin<CR>"
     " for compatibility:
-    execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."\\{	:WrapSelection \\left\\{ \\right\\} begin<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader.")	:WrapSelection \\left( \\right) end<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."]	:WrapSelection \\left[ \\right] end<CR>"
-    execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."}	:WrapSelection \\left\\{ \\right\\} end<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader."\\{	:WrapSelection \\left\\{ \\right\\} begin<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader.")	:WrapSelection \\left( \\right) end<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader."]	:WrapSelection \\left[ \\right] end<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader."}	:WrapSelection \\left\\{ \\right\\} end<CR>"
     " for compatibility:
-    execute "vnoremap <buffer> ".g:atp_vmap_big_bracket_leader."\\}	:WrapSelection \\left\\{ \\right\\} end<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader."\\}	:WrapSelection \\left\\{ \\right\\} end<CR>"
 
     " Tex Align:
-    nmap <Localleader>a	:TexAlign<CR>
+    nmap <silent> <buffer> <Localleader>a	:TexAlign<CR>
     " Paragraph Selecting:
     vmap <silent> <buffer> ip 	<Plug>ATP_SelectCurrentParagraphInner
     vmap <silent> <buffer> ap 	<Plug>ATP_SelectCurrentParagraphOuter
-    omap <buffer>  ip	:normal vip<CR>
-    omap <buffer>  ap	:normal vap<CR>
+    omap <silent> <buffer>  ip	:normal vip<CR>
+    omap <silent> <buffer>  ap	:normal vap<CR>
 
     " Formating:
-    nmap <buffer> gw		m`vipgq``
+    nmap <silent> <buffer> gw		m`vipgq``
     " Indent:
-    nmap <buffer> g>		m`vip>``
-    nmap <buffer> g<		m`vip<``
-    nmap <buffer> 2g>		m`vip2>``
-    nmap <buffer> 2g<		m`vip2<``
-    nmap <buffer> 3g>		m`vip3>``
-    nmap <buffer> 3g<		m`vip3<``
-    nmap <buffer> 4g>		m`vip4>``
-    nmap <buffer> 4g<		m`vip4<``
-    nmap <buffer> 5g>		m`vip5>``
-    nmap <buffer> 5g<		m`vip5<``
-    nmap <buffer> 6g>		m`vip6>``
-    nmap <buffer> 6g<		m`vip6<``
+    nmap <silent> <buffer> g>		m`vip>``
+    nmap <silent> <buffer> g<		m`vip<``
+    nmap <silent> <buffer> 2g>		m`vip2>``
+    nmap <silent> <buffer> 2g<		m`vip2<``
+    nmap <silent> <buffer> 3g>		m`vip3>``
+    nmap <silent> <buffer> 3g<		m`vip3<``
+    nmap <silent> <buffer> 4g>		m`vip4>``
+    nmap <silent> <buffer> 4g<		m`vip4<``
+    nmap <silent> <buffer> 5g>		m`vip5>``
+    nmap <silent> <buffer> 5g<		m`vip5<``
+    nmap <silent> <buffer> 6g>		m`vip6>``
+    nmap <silent> <buffer> 6g<		m`vip6<``
 
     vmap <buffer> <silent> aS		<Plug>SelectOuterSyntax
     vmap <buffer> <silent> iS		<Plug>SelectInnerSyntax
 
     " From vim.vim plugin (by Bram Mooleaner)
     " Move around functions.
-    nnoremap <silent><buffer> [[ m':call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "bW")<CR>
-    vnoremap <silent><buffer> [[ m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "bW")<CR>
-    nnoremap <silent><buffer> ]] m':call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "W")<CR>
-    vnoremap <silent><buffer> ]] m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "W")<CR>
-    nnoremap <silent><buffer> [] m':call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "bW")<CR>
-    vnoremap <silent><buffer> [] m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "bW")<CR>
-    nnoremap <silent><buffer> ][ m':call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "W")<CR>
-    vnoremap <silent><buffer> ][ m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "W")<CR>
+    nnoremap <silent> <buffer> [[ m':call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "bW")<CR>
+    vnoremap <silent> <buffer> [[ m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "bW")<CR>
+    nnoremap <silent> <buffer> ]] m':call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "W")<CR>
+    vnoremap <silent> <buffer> ]] m':<C-U>exe "normal! gv"<Bar>call search('\\begin\s*{\\|\\\@<!\\\[\\|\\\@<!\$\$', "W")<CR>
+    nnoremap <silent> <buffer> [] m':call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "bW")<CR>
+    vnoremap <silent> <buffer> [] m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "bW")<CR>
+    nnoremap <silent> <buffer> ][ m':call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "W")<CR>
+    vnoremap <silent> <buffer> ][ m':<C-U>exe "normal! gv"<Bar>call search('\\end\s*{\\|\\\@<!\\\]\\|\\\@<!\$\$', "W")<CR>
 
     " Move around comments
-    nnoremap <silent><buffer> ]% :call search('^\(\s*%.*\n\)\@<!\(\s*%\)', "W")<CR>
-    vnoremap <silent><buffer> ]% :<C-U>exe "normal! gv"<Bar>call search('^\(\s*%.*\n\)\@<!\(\s*%\)', "W")<CR>
-    nnoremap <silent><buffer> [% :call search('\%(^\s*%.*\n\)\%(^\s*%\)\@!', "bW")<CR>
-    vnoremap <silent><buffer> [% :<C-U>exe "normal! gv"<Bar>call search('\%(^\s*%.*\n\)\%(^\s*%\)\@!', "bW")<CR>
+    nnoremap <silent> <buffer> ]% :call search('^\(\s*%.*\n\)\@<!\(\s*%\)', "W")<CR>
+    vnoremap <silent> <buffer> ]% :<C-U>exe "normal! gv"<Bar>call search('^\(\s*%.*\n\)\@<!\(\s*%\)', "W")<CR>
+    nnoremap <silent> <buffer> [% :call search('\%(^\s*%.*\n\)\%(^\s*%\)\@!', "bW")<CR>
+    vnoremap <silent> <buffer> [% :<C-U>exe "normal! gv"<Bar>call search('\%(^\s*%.*\n\)\%(^\s*%\)\@!', "bW")<CR>
 
     " Select comment
-    vmap <silent><buffer> <LocalLeader>sc		<Plug>vSelectComment
-    nmap <silent><buffer> <LocalLeader>sc		v<Plug>vSelectComment
+    exe "vmap <silent> <buffer> ".g:atp_MapSelectComment." <Plug>vSelectComment"
+    exe "map <silent> <buffer> ".g:atp_MapSelectComment." v<Plug>vSelectComment"
 
     " Normal mode maps (mostly)
     if mapcheck('<LocalLeader>v') == ""
-	nmap  <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput
+	nmap  <silent> <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput
     endif
-"     nmap  <buffer> <F2> 			<Plug>ToggleSpace
-    nmap  <buffer> <F2> 			q/:call ATP_CmdwinToggleSpace('on')<CR>i
+"     nmap  <silent> <buffer> <F2> 			<Plug>ToggleSpace
+    nmap  <silent> <buffer> <F2> 			q/:call ATP_CmdwinToggleSpace('on')<CR>i
     if mapcheck('Q/', 'n') == ""
-	nmap Q/					q/:call ATP_CmdwinToggleSpace('on')<CR>
+	nmap <silent> <buffer> Q/					q/:call ATP_CmdwinToggleSpace('on')<CR>
     endif
     if mapcheck('Q?', 'n') == ""
-	nmap Q?					q?:call ATP_CmdwinToggleSpace('on')<CR>
+	nmap <silent> <buffer> Q?					q?:call ATP_CmdwinToggleSpace('on')<CR>
     endif
     if mapcheck('<LocalLeader>s') == ""
-	nmap  <buffer> <LocalLeader>s		<Plug>ToggleStar
+	nmap  <silent> <buffer> <LocalLeader>s		<Plug>ToggleStar
     endif
 
-    nmap  <buffer> <LocalLeader><Localleader>d	<Plug>ToggledebugMode
-    nmap  <buffer> <LocalLeader><Localleader>D	<Plug>ToggleDebugMode
-    vmap  <buffer> <F4>				<Plug>WrapEnvironment
-    nmap  <buffer> <F4>				<Plug>ChangeEnv
-    nmap  <buffer> <S-F4>			<Plug>ToggleEnvForward
-"     nmap  <buffer> <S-F4>			<Plug>ToggleEnvBackward
-    nmap  <buffer> <C-S-F4>			<Plug>LatexEnvPrompt
+    nmap  <silent> <buffer> <LocalLeader><Localleader>d	<Plug>ToggledebugMode
+    nmap  <silent> <buffer> <LocalLeader><Localleader>D	<Plug>ToggleDebugMode
+    vmap  <silent> <buffer> <F4>				<Plug>WrapEnvironment
+    nmap  <silent> <buffer> <F4>				<Plug>ChangeEnv
+    nmap  <silent> <buffer> <S-F4>			<Plug>ToggleEnvForward
+"     nmap  <silent> <buffer> <S-F4>			<Plug>ToggleEnvBackward
+    nmap  <silent> <buffer> <C-S-F4>			<Plug>LatexEnvPrompt
 "     ToDo:
 "     if g:atp_LatexBox
-" 	nmap  <buffer> <F3>			:call <Sid>ChangeEnv()<CR>
+" 	nmap <silent> <buffer> <F3>			:call <Sid>ChangeEnv()<CR>
 "     endif
-    nmap  <buffer> <F3>        			<Plug>ATP_ViewOutput
-    imap  <buffer> <F3> 			<Esc><Plug>ATP_ViewOutput
-    nmap  <buffer> <LocalLeader>g 		<Plug>Getpid
-    nmap  <buffer> <LocalLeader>t		<Plug>ATP_TOC
-    nmap  <buffer> <LocalLeader>L		<Plug>ATP_Labels
-    nmap  <buffer> <LocalLeader>l 		<Plug>ATP_TeXCurrent
-    nmap  <buffer> <LocalLeader>d 		<Plug>ATP_TeXdebug
-    nmap  <buffer> <LocalLeader>D 		<Plug>ATP_TeXDebug
+    nmap  <silent> <buffer> <F3>        		<Plug>ATP_ViewOutput
+    imap  <silent> <buffer> <F3> 			<Esc><Plug>ATP_ViewOutput
+    nmap  <silent> <buffer> <LocalLeader>g 		<Plug>Getpid
+    nmap  <silent> <buffer> <LocalLeader>t		<Plug>ATP_TOC
+    nmap  <silent> <buffer> <LocalLeader>L		<Plug>ATP_Labels
+    nmap  <silent> <buffer> <LocalLeader>l 		<Plug>ATP_TeXCurrent
+    nmap  <silent> <buffer> <LocalLeader>d 		<Plug>ATP_TeXdebug
+    nmap  <silent> <buffer> <LocalLeader>D 		<Plug>ATP_TeXDebug
     "ToDo: imaps!
-    nmap  <buffer> <F5> 			<Plug>ATP_TeXVerbose
-    nmap  <buffer> <s-F5> 			<Plug>ToggleAuTeX
-    imap  <buffer> <s-F5> 			<Esc><Plug>ToggleAuTeXa
-    nmap  <buffer> `<Tab>			<Plug>ToggleTab
-    imap  <buffer> `<Tab>			<Plug>ToggleTab
-    nmap  <buffer> <LocalLeader>B		<Plug>SimpleBibtex
-    nmap  <buffer> <LocalLeader>b		<Plug>BibtexDefault
-    nmap  <buffer> <F6>d 			<Plug>Delete
-    imap  <buffer> <F6>d			<Esc><Plug>Deletea
-    nmap  <buffer> <silent> <F6>l 		<Plug>OpenLog
-    imap  <buffer> <silent> <F6>l 		<Esc><Plug>OpenLog
-"     nmap  <buffer<LocalLeader>e 		:cf<CR> 
-    nnoremap  <buffer> <F6> 			:ShowErrors e<CR>
-    inoremap  <buffer> <F6>e 			:ShowErrors e<CR>
-    nnoremap  <buffer> <F6>w 			:ShowErrors w<CR>
-    inoremap  <buffer> <F6>w 			:ShowErrors w<CR>
-    nnoremap  <buffer> <F6>r 			:ShowErrors rc<CR>
-    nnoremap  <buffer> <F6>r 			:ShowErrors rc<CR>
-    nnoremap  <buffer> <F6>f 			:ShowErrors f<CR>
-    inoremap  <buffer> <F6>f 			:ShowErrors f<CR>
-    nnoremap  <buffer> <F6>g 			<Plug>PdfFonts
-    nnoremap  <buffer> <F1>			:TexDoc<space>
-    inoremap  <buffer> <F1> <esc> 		:TexDoc<space>
-"     nmap  <buffer> <LocalLeader>pr 		<Plug>SshPrint
+    nmap  <silent> <buffer> <F5> 			<Plug>ATP_TeXVerbose
+    nmap  <silent> <buffer> <s-F5> 			<Plug>ToggleAuTeX
+    imap  <silent> <buffer> <s-F5> 			<Esc><Plug>ToggleAuTeXa
+    nmap  <silent> <buffer> `<Tab>			<Plug>ToggleTab
+    imap  <silent> <buffer> `<Tab>			<Plug>ToggleTab
+    nmap  <silent> <buffer> <LocalLeader>B		<Plug>SimpleBibtex
+    nmap  <silent> <buffer> <LocalLeader>b		<Plug>BibtexDefault
+    nmap  <silent> <buffer> <F6>d 			<Plug>Delete
+    imap  <silent> <buffer> <F6>d			<Esc><Plug>Deletea
+    nmap  <silent> <buffer> <F6>l 		<Plug>OpenLog
+    imap  <silent> <buffer> <F6>l 		<Esc><Plug>OpenLog
+    nnoremap  <silent> <buffer> <F6> 			:ShowErrors e<CR>
+    inoremap  <silent> <buffer> <F6> 			:ShowErrors e<CR>
+    noremap   <silent> <buffer> <LocalLeader>e		:ShowErrors<CR>
+    nnoremap  <silent> <buffer> <F6>e 			:ShowErrors e<CR>
+    inoremap  <silent> <buffer> <F6>e 			:ShowErrors e<CR>
+    nnoremap  <silent> <buffer> <F6>w 			:ShowErrors w<CR>
+    inoremap  <silent> <buffer> <F6>w 			:ShowErrors w<CR>
+    nnoremap  <silent> <buffer> <F6>r 			:ShowErrors rc<CR>
+    inoremap  <silent> <buffer> <F6>r 			:ShowErrors rc<CR>
+    nnoremap  <silent> <buffer> <F6>f 			:ShowErrors f<CR>
+    inoremap  <silent> <buffer> <F6>f 			:ShowErrors f<CR>
+    nnoremap  <silent> <buffer> <F6>g 			<Plug>PdfFonts
+    nnoremap  <silent> <buffer> <F1>			:TexDoc<space>
+    inoremap  <silent> <buffer> <F1> <esc> 		:TexDoc<space>
 
     " FONT MAPPINGS
     if g:atp_imap_first_leader == "]" || g:atp_imap_second_leader == "]" || g:atp_imap_third_leader == "]" || g:atp_imap_fourth_leader == "]" 
-	inoremap <buffer> ]] ]
+	inoremap <silent> <buffer> ]] ]
     endif
-"     execute 'imap <buffer> '.g:atp_imap_second_leader.'rm \textrm{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'rm <Esc>:call Insert("\\textrm{", "\\mathrm{")<Cr>a'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'up \textup{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'md \textmd{}<Left>'
-"     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'it \textit{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'it <Esc>:call Insert("\\textit{", "\\mathit{")<Cr>a'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'sl \textsl{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'sc \textsc{}<Left>'
-"     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'sf \textsf{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'sf <Esc>:call Insert("\\textsf{", "\\mathsf{")<Cr>a'
-"     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'bf \textbf{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'bf <Esc>:call Insert("\\textbf{", "\\mathbf{")<Cr>a'
-"     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'tt \texttt{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'tt <Esc>:call Insert("\\texttt{", "\\mathtt{")<Cr>a'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'em \emph{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'no <Esc>:call Insert("\\textnormal{", "\\mathnormal{")<Cr>a'
+"     execute 'imap <silent> <buffer> '.g:atp_imap_second_leader.'rm \textrm{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'rm <Esc>:call Insert("\\textrm{", "\\mathrm{")<Cr>a'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'up \textup{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'md \textmd{}<Left>'
+"     execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'it \textit{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'it <Esc>:call Insert("\\textit{", "\\mathit{")<Cr>a'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'sl \textsl{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'sc \textsc{}<Left>'
+"     execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'sf \textsf{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'sf <Esc>:call Insert("\\textsf{", "\\mathsf{")<Cr>a'
+"     execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'bf \textbf{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'bf <Esc>:call Insert("\\textbf{", "\\mathbf{")<Cr>a'
+"     execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'tt \texttt{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'tt <Esc>:call Insert("\\texttt{", "\\mathtt{")<Cr>a'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'em \emph{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'no <Esc>:call Insert("\\textnormal{", "\\mathnormal{")<Cr>a'
 	    
-"     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'mit \mathit{}<Left>'
-"     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'mrm \mathrm{}<Left>'
-"     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'msf \mathsf{}<Left>'
-"     execute 'inoremap <buffer>' .g:atp_imap_second_leader.'mbf \mathbf{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'bb \mathbb{}<Left>'
-"     execute 'imap <buffer>' .g:atp_imap_second_leader.'mtt \mathtt{}<Left>'
-    execute 'inoremap <buffer>' .g:atp_imap_second_leader.'cal \mathcal{}<Left>'
+"     execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'mit \mathit{}<Left>'
+"     execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'mrm \mathrm{}<Left>'
+"     execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'msf \mathsf{}<Left>'
+"     execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'mbf \mathbf{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'bb \mathbb{}<Left>'
+"     execute 'imap <silent> <buffer>' .g:atp_imap_second_leader.'mtt \mathtt{}<Left>'
+    execute 'inoremap <silent> <buffer>' .g:atp_imap_second_leader.'cal \mathcal{}<Left>'
 
     " GREEK LETTERS
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'a \alpha'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'b \beta'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'c \chi'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'d \delta'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'e \epsilon'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'ve \varepsilon'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'f \phi'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'y \psi'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'g \gamma'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'h \eta'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'k \kappa'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'l \lambda'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'i \iota'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'m \mu'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'n \nu'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'p \pi'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'o \theta'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'r \rho'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'s \sigma'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'t \tau'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'u \upsilon'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'vs \varsigma'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'vo \vartheta'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'w \omega'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'x \xi'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'z \zeta'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'a \alpha'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'b \beta'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'c \chi'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'d \delta'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'e \epsilon'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'ve \varepsilon'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'f \phi'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'y \psi'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'g \gamma'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'h \eta'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'k \kappa'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'l \lambda'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'i \iota'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'m \mu'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'n \nu'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'p \pi'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'o \theta'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'r \rho'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'s \sigma'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'t \tau'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'u \upsilon'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'vs \varsigma'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'vo \vartheta'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'w \omega'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'x \xi'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'z \zeta'
 
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'D \Delta'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'Y \Psi'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'F \Phi'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'G \Gamma'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'L \Lambda'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'M \Mu'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'N \Nu'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'P \Pi'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'O \Theta'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'S \Sigma'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'T \Tau'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'U \Upsilon'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'W \Omega'
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'Z \mathrm{Z}'  
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'D \Delta'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'Y \Psi'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'F \Phi'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'G \Gamma'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'L \Lambda'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'M \Mu'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'N \Nu'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'P \Pi'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'O \Theta'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'S \Sigma'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'T \Tau'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'U \Upsilon'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'W \Omega'
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'Z \mathrm{Z}'  
 
     let infty_leader = (g:atp_imap_first_leader == "#" ? "_" : g:atp_imap_first_leader ) 
-    execute 'imap <buffer> '.infty_leader.'8 \infty'  
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'& \wedge'  
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'+ \bigcup' 
-    execute 'imap <buffer> '.g:atp_imap_first_leader.'- \setminus' 
+    execute 'imap <silent> <buffer> '.infty_leader.'8 \infty'  
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'& \wedge'  
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'+ \bigcup' 
+    execute 'imap <silent> <buffer> '.g:atp_imap_first_leader.'- \setminus' 
 
 if g:atp_no_env_maps != 1
     if g:atp_env_maps_old == 1
-execute 'imap <buffer> '.g:atp_imap_third_leader.'b \begin{}<Left>'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'e \end{}<Left>'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'b \begin{}<Left>'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'e \end{}<Left>'
 
-execute 'imap <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_fourth_leader.'c \begin{=g:atp_EnvNameCorollary<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameCorollary<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'d \begin{=g:atp_EnvNameDefinition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameDefinition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_fourth_leader.'u \begin{enumerate}'.g:atp_EnvOptions_enumerate.'<CR>\end{enumerate}<Esc>O\item'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'a \begin{align=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<CR>\end{align=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'i \item'
-execute 'imap <buffer> '.g:atp_imap_fourth_leader.'i \begin{itemize}'.g:atp_EnvOptions_itemize.'<CR>\end{itemize}<Esc>O\item'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'l \begin{=g:atp_EnvNameLemma<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameLemma<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_fourth_leader.'p \begin{proof}<CR>\end{proof}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'p \begin{=g:atp_EnvNameProposition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameProposition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'t \begin{=g:atp_EnvNameTheorem<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameTheorem<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_fourth_leader.'t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_fourth_leader.'c \begin{=g:atp_EnvNameCorollary<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameCorollary<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'d \begin{=g:atp_EnvNameDefinition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameDefinition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_fourth_leader.'u \begin{enumerate}'.g:atp_EnvOptions_enumerate.'<CR>\end{enumerate}<Esc>O\item'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'a \begin{align=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<CR>\end{align=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'i \item'
+execute 'imap <silent> <buffer> '.g:atp_imap_fourth_leader.'i \begin{itemize}'.g:atp_EnvOptions_itemize.'<CR>\end{itemize}<Esc>O\item'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'l \begin{=g:atp_EnvNameLemma<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameLemma<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_fourth_leader.'p \begin{proof}<CR>\end{proof}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'p \begin{=g:atp_EnvNameProposition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameProposition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'t \begin{=g:atp_EnvNameTheorem<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameTheorem<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_fourth_leader.'t \begin{center}<CR>\begin{tikzpicture}<CR><CR>\end{tikzpicture}<CR>\end{center}<Up><Up>'
 
 	if g:atp_extra_env_maps == 1
-execute 'imap <buffer> '.g:atp_imap_third_leader.'r \begin{=g:atp_EnvNameRemark<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameRemark<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_fourth_leader.'l \begin{flushleft}<CR>\end{flushleft}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'r \begin{flushright}<CR>\end{flushright}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'f \begin{frame}<CR>\end{frame}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_fourth_leader.'q \begin{equation=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<CR>\end{equation=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'n \begin{=g:atp_EnvNameNote<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameNote<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'o \begin{=g:atp_EnvNameObservation<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameObservation<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'x \begin{example=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{example=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'r \begin{=g:atp_EnvNameRemark<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameRemark<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_fourth_leader.'l \begin{flushleft}<CR>\end{flushleft}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'r \begin{flushright}<CR>\end{flushright}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'f \begin{frame}<CR>\end{frame}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_fourth_leader.'q \begin{equation=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<CR>\end{equation=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'n \begin{=g:atp_EnvNameNote<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameNote<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'o \begin{=g:atp_EnvNameObservation<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameObservation<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'x \begin{example=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{example=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
 	endif
     else
     " New mapping for the insert mode. 
-execute 'imap <buffer> '.g:atp_imap_third_leader.'b \begin{}<Left>'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'e \end{}<Left>'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'b \begin{}<Left>'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'e \end{}<Left>'
 
-execute 'imap <buffer> '.g:atp_imap_third_leader.'t \begin{=g:atp_EnvNameTheorem<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameTheorem<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'d \begin{=g:atp_EnvNameDefinition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameDefinition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'P \begin{=g:atp_EnvNameProposition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameProposition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'l \begin{=g:atp_EnvNameLemma<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameLemma<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'r \begin{=g:atp_EnvNameRemark<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameRemark<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'C \begin{=g:atp_EnvNameCorollary<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameCorollary<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'p \begin{proof}<CR>\end{proof}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'x \begin{example=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{example=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'n \begin{=g:atp_EnvNameNote<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameNote<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'t \begin{=g:atp_EnvNameTheorem<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameTheorem<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'d \begin{=g:atp_EnvNameDefinition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameDefinition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer>  '.g:atp_imap_third_leader.'P \begin{=g:atp_EnvNameProposition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameProposition<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'l \begin{=g:atp_EnvNameLemma<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameLemma<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'r \begin{=g:atp_EnvNameRemark<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameRemark<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'C \begin{=g:atp_EnvNameCorollary<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameCorollary<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'p \begin{proof}<CR>\end{proof}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'x \begin{example=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{example=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'n \begin{=g:atp_EnvNameNote<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{=g:atp_EnvNameNote<CR>=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
 
-execute 'imap <buffer> '.g:atp_imap_third_leader.'E \begin{enumerate}'.g:atp_EnvOptions_enumerate.'<CR>\end{enumerate}<Esc>O\item'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'I \begin{itemize}'.g:atp_EnvOptions_itemize.'<CR>\end{itemize}<Esc>O\item'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'i 	<Esc>:call InsertItem()<CR>a'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'E \begin{enumerate}'.g:atp_EnvOptions_enumerate.'<CR>\end{enumerate}<Esc>O\item'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'I \begin{itemize}'.g:atp_EnvOptions_itemize.'<CR>\end{itemize}<Esc>O\item'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'i 	<Esc>:call InsertItem()<CR>a'
 
 
-execute 'imap <buffer> '.g:atp_imap_third_leader.'a \begin{align=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<CR>\end{align=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'q \begin{equation=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{equation=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'a \begin{align=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<CR>\end{align=(getline(".")[col(".")-2]=="*"?"":b:atp_StarMathEnvDefault)<CR>}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'q \begin{equation=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<CR>\end{equation=(getline(".")[col(".")-2]=="*"?"":b:atp_StarEnvDefault)<CR>}<Esc>O'
 
-execute 'imap <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'L \begin{flushleft}<CR>\end{flushleft}<Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'R \begin{flushright}<CR>\end{flushright}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'c \begin{center}<CR>\end{center}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'L \begin{flushleft}<CR>\end{flushleft}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'R \begin{flushright}<CR>\end{flushright}<Esc>O'
 
-execute 'imap <buffer> '.g:atp_imap_third_leader.'T \begin{center}<CR>\begin{tikzpicture}<CR>\end{tikzpicture}<CR>\end{center}<Up><Esc>O'
-execute 'imap <buffer> '.g:atp_imap_third_leader.'f \begin{frame}<CR>\end{frame}<Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'T \begin{center}<CR>\begin{tikzpicture}<CR>\end{tikzpicture}<CR>\end{center}<Up><Esc>O'
+execute 'imap <silent> <buffer> '.g:atp_imap_third_leader.'f \begin{frame}<CR>\end{frame}<Esc>O'
 endif
 
 	" imap }c \begin{corollary*}<CR>\end{corollary*}<Esc>O
@@ -505,7 +513,7 @@ endif
     endfunction
     if g:atp_imap_first_leader == "_" || g:atp_imap_first_leader == "_" || 
 		\ g:atp_imap_third_leader == "_" || g:atp_imap_fourth_leader == "_"   
-	imap <buffer> __ _{}<Left>
+	imap <silent> <buffer> __ _{}<Left>
     else
 	inoremap <silent> <buffer> _ <C-R>=<SID>SubBracket()<CR>
     endif
@@ -522,7 +530,7 @@ endif
     endfunction
     if g:atp_imap_first_leader == "_" || g:atp_imap_first_leader == "_" || 
 		\ g:atp_imap_third_leader == "_" || g:atp_imap_fourth_leader == "_"   
-	imap <buffer> ^^ ^{}<Left>
+	imap <silent> <buffer> ^^ ^{}<Left>
     else
 	inoremap <silent> <buffer> ^ <C-R>=<SID>SuperBracket()<CR>
     endif
@@ -541,10 +549,10 @@ endif
 " 	echomsg "col:" . col(".") . " insert:" . g:insert . " left:" . g:left
 " 	return g:insert
 "     endfunction
-"     execute "inoremap <buffer> 8 <ESC>:call <SID>Infty()<CR>"
+"     execute "inoremap <silent> <buffer> 8 <ESC>:call <SID>Infty()<CR>"
 
-    execute "imap <buffer> ".g:atp_imap_third_leader."m \\(\\)<Left><Left>"
-    execute "imap <buffer> ".g:atp_imap_third_leader."M \\[\\]<Left><Left>"
+    execute "imap <silent> <buffer> ".g:atp_imap_third_leader."m \\(\\)<Left><Left>"
+    execute "imap <silent> <buffer> ".g:atp_imap_third_leader."M \\[\\]<Left><Left>"
 endif
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

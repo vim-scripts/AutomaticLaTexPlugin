@@ -279,11 +279,28 @@ function! TreeOfFiles(main_file,...)
 	return [ {}, [], {}, {} ]
     endif
     let run_nr		= a:0 >= 3	? a:3 : 1 
+    let biblatex	= 0
 
-    let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
-    if run_nr == 1 && '\subfile{' !~ g:atp_inputfile_pattern && atplib#SearchPackage('subfiles')
-	let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|bibliography\s*{\|subfile\s*{\)'
+    " Adjust g:atp_inputfile_pattern if it is not set right 
+    if run_nr == 1 
+	let pattern = '^[^%]*\\\(input\s*{\=\|include\s*{'
+	if '\subfile{' !~ g:atp_inputfile_pattern && atplib#SearchPackage('subfiles')
+	    let pattern .= '\|subfiles\s*{'
+	endif
+	let biblatex = atplib#SearchPackage('biblatex')
+	if biblatex
+	    " If biblatex is present, search for bibliography files only in the
+	    " preambule.
+	    if '\addbibresource' =~ g:atp_inputfile_pattern || '\addglobalbib' =~ g:atp_inputfile_pattern || '\addsectionbib' =~ g:atp_inputfile_pattern || '\bibliography' =~ g:atp_inputfile_pattern
+		echo "[ATP:] You might remove biblatex patterns from g:atp_inputfile_pattern if you use biblatex package."
+	    endif
+	    let biblatex_pattern = '^[^%]*\\\%(bibliography\s*{\|addbibresource\s*\%(\[[^]]*\]\)\?\s*{\|addglobalbib\s*\%(\[[^]]*\]\)\?\s*{\|addsectionbib\s*\%(\[[^]]*\]\)\?\s*{\)'
+	else
+	    let pattern .= '\|bibliography\s*{'
+	endif
+	let pattern .= '\)'
     endif
+    let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
 
 	if g:atp_debugToF
 	    if run_nr == 1
@@ -316,18 +333,27 @@ function! TreeOfFiles(main_file,...)
 	catch /E480:/
 	endtry
 	let end_preamb	= get(get(getloclist(0), 0, {}), 'lnum', 0)
+	call setloclist(0,[])
+	if biblatex
+	    try
+		silent execute 'lvimgrep /'.biblatex_pattern.'\%<'.end_preamb.'l/j ' . fnameescape(a:main_file)
+	    catch /E480:/
+	    endtry
+	endif
     else
 	let end_preamb	= 0
+	call setloclist(0,[])
     endif
 
     try
-	silent execute "lvimgrep /".pattern."/jg " . fnameescape(a:main_file)
+	silent execute "lvimgrepadd /".pattern."/jg " . fnameescape(a:main_file)
     catch /E480:/
-    catch /E683:/ 
+"     catch /E683:/ 
 " 	let g:pattern = pattern
 " 	let g:filename = fnameescape(a:main_file)
     endtry
     let loclist	= getloclist(0)
+    let g:loclist1 = loclist
     call setloclist(0, saved_llist)
     let lines	= map(loclist, "[ v:val['text'], v:val['lnum'], v:val['col'] ]")
 
@@ -340,6 +366,9 @@ function! TreeOfFiles(main_file,...)
 	    let [ line, lnum, cnum ] = entry
 	    " input name (iname) as appeared in the source file
 	    let iname	= substitute(matchstr(line, pattern . '\(''\|"\)\=\zs\f\%(\f\|\s\)*\ze\1\='), '\s*$', '', '') 
+	    if iname == ""  
+		let iname	= substitute(matchstr(line, biblatex_pattern . '\(''\|"\)\=\zs\f\%(\f\|\s\)*\ze\1\='), '\s*$', '', '') 
+	    endif
 	    if g:atp_debugToF
 		silent echo run_nr . ") iname=".iname
 	    endif
@@ -366,10 +395,10 @@ function! TreeOfFiles(main_file,...)
 	    endif
 
 	    " type: preambule,bib,input.
-	    if lnum < end_preamb && run_nr == 1
-		let type	= "preambule"
-	    elseif strpart(line, cnum-1)  =~ '^\s*\\bibliography'
+	    if strpart(line, cnum-1)  =~ '^\s*\(\\bibliography\>\|\\addglobalbib\>\|\\addsectionbib\>\|\\addbibresource\>\)'
 		let type	= "bib"
+	    elseif lnum < end_preamb && run_nr == 1
+		let type	= "preambule"
 	    else
 		let type	= "input"
 	    endif
@@ -584,7 +613,11 @@ function! ATPRunning() "{{{
 	" This is very fast:
 	call LatexRunning()
 " 	let atp_running= ( b:atp_LastLatexPID != 0 ? 1 : 0 ) * len(b:atp_LatexPIDs) 
-	let atp_running= len(b:atp_LatexPIDs) 
+	if exists("b:atp_LatexPIDs")
+	    let atp_running= len(b:atp_LatexPIDs) 
+	else
+	    return ''
+	endif
 	" This is slower (so the status line is updated leter)
 " 	call atplib#LatexRunning()
 " 	let atp_running= len(b:atp_LatexPIDs)
@@ -758,15 +791,21 @@ call SetProjectName()
 " and shouldn't use \zs:\ze. 
 if !exists("g:atp_inputfile_pattern") || g:atp_reload
     if &filetype == 'plaintex'
-	let g:atp_inputfile_pattern = '^[^%]*\\input\s*'
+	let g:atp_inputfile_pattern = '^[^%]*\\input\>\s*'
     else
 	if atplib#SearchPackage("subfiles")
-	    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|bibliography\s*{\|subfile\s*{\)'
+	    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|subfile\s*{'
 	else
-	    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|bibliography\s*{\)'
+	    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{'
+	endif
+	if atplib#SearchPackage("biblatex")
+	    let g:atp_inputfile_pattern .= '\)'
+	else
+	    let g:atp_inputfile_pattern .= '\|bibliography\s*{\)'
 	endif
     endif
 endif
+
 
 call s:SetOutDir(0, 1)
 if expand("%:e") == "tex"

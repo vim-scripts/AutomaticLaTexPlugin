@@ -40,8 +40,12 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
+if !exists("g:atp_debugSyncTex")
+    " debug SyncTex (compiler.vim)
+    let g:atp_debugSyncTex = 0
+endif
 if !exists("g:atp_debugInsertItem")
-    " debug UpdateATP (various.vim)
+    " debug SyncTex (various.vim)
     let g:atp_debugInsertItem = 0
 endif
 if !exists("g:atp_debugUpdateATP")
@@ -569,8 +573,8 @@ if !exists("g:atp_Python") || g:atp_reload_variables
 	let g:atp_Python = "python"
     endif
 endif
-if !exists("g:atp_MapUpdateToCLine") || g:atp_reload_variables
-    let g:atp_MapUpdateToCLine = 1
+if !exists("g:atp_UpdateToCLine") || g:atp_reload_variables
+    let g:atp_UpdateToCLine = 1
 endif
 if !exists("g:atp_DeleteWithBang") || g:atp_reload_variables
     let g:atp_DeleteWithBang = [ 'synctex.gz', 'tex.project.vim']
@@ -1571,7 +1575,7 @@ function! ATP_ToggleDebugMode(mode,...)
 	    exe "ErrorFormat ".efm
 	    silent! cg
 	    if len(getqflist()) > 0
-		exe "silent copen ".min([atplb#qflength(), g:atp_DebugModeQuickFixHeight])
+		exe "silent copen ".min([atplib#qflength(), g:atp_DebugModeQuickFixHeight])
 		exe winnr . " wincmd w"
 	    else
 		echo "[ATP:] no errors for b:atp_ErrorFormat=".efm
@@ -2169,6 +2173,11 @@ let g:atp_pagenumbering = [ 'arabic', 'roman', 'Roman', 'alph', 'Alph' ]
 
 
 if !s:did_options
+
+    augroup ATP_UpdateToCLine
+	au!
+	au CursorHold *.tex nested :call UpdateToCLine()
+    augroup END
 
     let g:atp_eventignore		= &l:eventignore
     let g:atp_eventignoreInsertEnter 	= 0

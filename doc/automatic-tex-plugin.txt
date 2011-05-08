@@ -1,6 +1,6 @@
 *automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 08 May 2011
 
-	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 9.4.1)
+	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 9.4.2)
 			by Marcin Szamotulski
 		    mszamot [AT] gmail [DOT] com
 		----------------------------------------
@@ -327,9 +327,11 @@ you can always read the svn logs at |atp-sourceforge|.
 
 	Motion commands, and mappings (like |CTRL-F|, |S-ScrollWheelUp|,
 	|CTRL-D|, etc) will update the highlighted chapter. If you do not want
-	the keys to be remapped set g:atp_MapUpdateToCLine to 0.  The keys |j|,
-	|k|, |gj| and |gk| are also remapped, if you have a defined map from
-	|j| to |gj| (or |k| to |gk|) it will be respected.
+	the keys to be remapped set g:atp_MapUpdateToCLine (this was changed
+	in ver 9.4.2, the keys are not remapped, instead an autocommand is
+	used) to 0.  The keys |j|, |k|, |gj| and |gk| are also
+	remapped, if you have a defined map from |j| to |gj| (or |k| to |gk|)
+	it will be respected.
 
 	For XeTeX (and XeLaTeX) users the maps ]e, [e (to go to next/previous
 	error message) in a log file (see |atp-maps-log|) will work better.

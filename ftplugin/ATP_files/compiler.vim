@@ -186,17 +186,23 @@ function! <SID>SyncShow( page_nr, y_coord)
     endif
 endfunction "}}}
 function! <SID>SyncTex(mouse, ...) "{{{
+    if g:atp_debugSyncTex
+	exe "redir! > ".g:atp_TempDir."/SyncTex.log"
+    endif
     let output_check 	= ( a:0 >= 1 && a:1 == 0 ? 0 : 1 )
     let dryrun 		= ( a:0 >= 2 && a:2 == 1 ? 1 : 0 )
     " Mouse click <S-LeftMouse> is mapped to <LeftMouse>... => thus it first changes
     " the cursor position.
     let [ line, col ] 	= [ line("."), col(".") ]
-"     let [ g:line, g:col ] 	= [ line, col ]
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let ext		= get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf")
     let output_file	= fnamemodify(atp_MainFile,":p:r") . ext
     if !filereadable(output_file) && output_check
        ViewOutput sync
+       if g:atp_debugSyncTex
+	   silent echo "ViewOutput sync"
+	   redir END
+       endif
        return 2
     endif
     if b:atp_Viewer == "xpdf"
@@ -207,16 +213,13 @@ function! <SID>SyncTex(mouse, ...) "{{{
 	"There is a bug in xpdf. We need to sleep between sending commands to it.:
 	let sleep    = ( g:atp_XpdfSleepTime ? 'sleep '.string(g:atp_XpdfSleepTime).'s;' : '' )
 	let sync_cmd = "(".sync_cmd_page.";".sleep.sync_cmd_y.";".sleep.sync_cmd_x.")&"
-" 	let sync_cmd = sync_cmd_page.";".sync_cmd_y.";".sync_cmd_x
 	if !dryrun
 	    call system(sync_cmd)
-" 	    redraw!
 	    call <SID>SyncShow(page_nr, y_coord)
 	endif
-" 	let g:sync_cmd_page 	= sync_cmd_page
-" 	let g:sync_cmd_y 	= sync_cmd_y
-"         let g:sync_cmd_x 	= sync_cmd_x
-" 	let g:sync_cmd = sync_cmd
+	if g:atp_debugSyncTex
+	    silent echo "sync_cmd=".sync_cmd
+	endif
     elseif b:atp_Viewer == "okular"
 	let [ page_nr, y_coord, x_coord ] = <SID>GetSyncData(line, col)
 	" This will not work in project files. (so where it is mostly needed.) 
@@ -224,15 +227,16 @@ function! <SID>SyncTex(mouse, ...) "{{{
 	let sync_args = " ".shellescape(expand("%:p:r")).".pdf\\#src:".line.shellescape(expand("%:p"))." "
 	if !dryrun
 	    call system(sync_cmd)
-" 	    redraw!
 	    call <SID>SyncShow(page_nr, y_coord)
 	endif
-" 	let g:sync_cmd = sync_cmd
+	if g:atp_debugSyncTex
+	    silent echo "sync_cmd=".sync_cmd
+	endif
 "     elseif b:atp_Viewer == "evince"
 " 	let rev_searchcmd="synctex view -i ".line(".").":".col(".").":".fnameescape(b:atp_MainFile). " -o ".fnameescape(fnamemodify(b:atp_MainFile, ":p:r").".pdf") . " -x 'evince %{output} -i %{page}'"
 "     endif
     elseif b:atp_Viewer =~ '^\s*xdvi\>'
-	let options = (exists("g:atp_xdviOptions") ? g:atp_xdviOptions : "" ) . getbufvar(bufnr(""), "atp_xdviOptions")
+	let options = (exists("g:atp_xdviOptions") ? " ".join(g:atp_xdviOptions, " ") : " " ) ." ".join(getbufvar(bufnr(""), "atp_xdviOptions"), " ")
 	let sync_cmd = "xdvi ".options.
 		\ " -editor '".v:progname." --servername ".v:servername.
 		\ " --remote-wait +%l %f' -sourceposition ". 
@@ -242,11 +246,18 @@ function! <SID>SyncTex(mouse, ...) "{{{
 	if !dryrun
 	    call system(sync_cmd)
 	endif
-" 	let g:sync_cmd = sync_cmd
+	if g:atp_debugSyncTex
+	    silent echo "sync_cmd=".sync_cmd
+	endif
     else
 	let sync_cmd=""
-" 	let g:sync_cmd = sync_cmd
+	if g:atp_debugSyncTex
+	    silent echo "sync_cmd=EMPTY"
+	endif
     endif
+   if g:atp_debugSyncTex
+       redir END
+   endif
     return
 endfunction 
 nmap <buffer> <Plug>SyncTexKeyStroke		:call <SID>SyncTex(0)<CR>

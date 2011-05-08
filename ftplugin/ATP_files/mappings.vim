@@ -31,69 +31,6 @@ else
 endif
 cmap <buffer> <C-_> \_s\+
 
-if g:atp_MapUpdateToCLine
-    nmap <buffer> <silent> <C-F> <C-F>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <S-Down> <S-Down>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <PageDown> <PageDown>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> z+	z+:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <S-ScrollWheelUp> <S-ScrollWheelUp>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <C-ScrollWheelUp> <C-ScrollWheelUp>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <ScrollWheelUp> <ScrollWheelUp>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <C-U> <C-U>:call UpdateToCLine()<CR>
-"     nmap <buffer> <silent> <C-E> <C-E>:call UpdateToCLine()<CR>
-
-    nmap <buffer> <silent> <C-B> <C-B>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <S-ScrollWheelDown> <S-ScrollWheelDown>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <C-ScrollWheelDown> <C-ScrollWheelDown>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <ScrollWheelDown> <ScrollWheelDown>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <S-Up> <S-Up>:call UpdateToCLine()<CR>
-    nmap <buffer> <silent> <PageUp> <PageUp>:call UpdateToCLine()<CR>
-    map <buffer> <silent> <C-D> <C-D>:call UpdateToCLine()<CR>
-"     nmap <buffer> <silent> <C-Y> <C-Y>:call UpdateToCLine()<CR>
-
-    function! ATP_GJ(i, count)
-	exe "normal! ".a:count."j"
-	let g:count=a:count
-	call UpdateToCLine(a:i)
-    endfunction
-    nnoremap <buffer> <silent> gj	:<C-U>call ATP_GJ(0, v:count1)<CR>
-
-    function! ATP_GK(i, count)
-	exe "normal! ".a:count."gk"
-	let g:count=a:count
-	call UpdateToCLine(a:i)
-    endfunction
-    nnoremap <buffer> <silent> gk	:<C-U>call ATP_GK(0, v:count1)<CR>
-
-    function! ATP_J(i, count)
-	exe "normal! ".a:count."j"
-	let g:count=a:count
-	call UpdateToCLine(a:i)
-    endfunction
-    function! ATP_K(i, count)
-	exe "normal! ".a:count."k"
-	let g:count=a:count
-	call UpdateToCLine(a:i)
-    endfunction
-
-    nmap <buffer> <silent> gj	:<C-U>call ATP_GJ(1, v:count1)<CR>
-    nmap <buffer> <silent> gk	:<C-U>call ATP_GK(1, v:count1)<CR>
-
-    if maparg('j', 'n') == ''
-	nnoremap <buffer> <silent> j	:<C-U>call ATP_J(0, v:count1)<CR>
-    elseif maparg('j', 'n') == 'gj'
-	nmap <buffer> <silent> j	:<C-U>call ATP_GJ(0, v:count1)<CR>
-    endif
-
-    if maparg('k', 'n') == ''
-	nnoremap <buffer> <silent> k	:<C-U>call ATP_K(1, v:count1)<CR>
-    elseif maparg('j', 'n') == 'gj'
-	nnoremap <buffer> <silent> k	:<C-U>call ATP_GK(1, v:count1)<CR>
-    endif
-
-endif
-
-
 command! -buffer -bang -nargs=* FontSearch	:call atplib#FontSearch(<q-bang>, <f-args>)
 command! -buffer -bang -nargs=* FontPreview	:call atplib#FontPreview(<q-bang>,<f-args>)
 command! -buffer -nargs=1 -complete=customlist,atplib#Fd_completion OpenFdFile	:call atplib#OpenFdFile(<f-args>) 

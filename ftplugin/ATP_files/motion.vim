@@ -490,6 +490,9 @@ function! <SID>ToCbufnr()
 endfunction
 " {{{3 UpdateToCLine
 function! UpdateToCLine(...)
+    if !g:atp_UpdateToCLine
+	return
+    endif
     let toc_bufnr	= <SID>ToCbufnr()
     let check_line 	= (a:0>=1 ? a:1 : -1) 
     if toc_bufnr == -1 || check_line != -1 && 
@@ -510,7 +513,7 @@ function! UpdateToCLine(...)
 	if cline>=line
 	    let num+=1
 	endif
-    keepjumps call setpos('.',[bufnr(""),num,1,0])
+	keepjumps call setpos('.',[bufnr(""),num,1,0])
     endfor
     exe cwinnr."wincmd w"
 endfunction
@@ -988,7 +991,7 @@ function! <SID>JumptoEnvironment(backward)
 	endif
 	call search('^\%([^%]\|\\%\)*\zs\\begin\>', 'W')
     else
-	let found =  search('^\%([^%]\|\\%\)*\\end\>', 'bW')
+	let found =  search('^\%([^%]\|\\%\)*\\end\>', 'bcW')
 	if getline(line(".")) !~ '^\%([^%]\|\\%\)*\\end\s*{\s*document\s*}' && found
 	    exe "normal %"
 	elseif !found

@@ -3,7 +3,7 @@
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Thu Apr 21 08:00  2011 W
+" Last Change: Sun May 08 07:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -13,7 +13,6 @@ if !s:sourced || g:atp_reload_functions "{{{
 " {{{ WrapSelection
 function! s:WrapSelection(wrapper,...)
 
-    let g:args=[a:wrapper]+a:000
     let l:end_wrapper 	= ( a:0 >= 1 ? a:1 : '}' )
     let l:cursor_pos	= ( a:0 >= 2 ? a:2 : 'end' )
     let l:new_line	= ( a:0 >= 3 ? a:3 : 0 )
@@ -373,6 +372,7 @@ function! Insert(text, math)
     let new_line	= strpart(line, 0, col) . insert . strpart(line, col)
     call setline(line("."), new_line)
     call cursor(line("."), col(".")+len(insert))
+
     return ""
 endfunction
 " }}}
@@ -380,23 +380,23 @@ endfunction
 " {{{ InsertItem()
 " ToDo: indent
 function! InsertItem()
-    let begin_line	= searchpair( '\\begin\s*{\s*\%(enumerate\|itemize\)\s*}', '', '\\end\s*{\s*\%(enumerate\|itemize\)\s*}', 'bnW')
+    let begin_line	= searchpair( '\\begin\s*{\s*\%(enumerate\|itemize\|thebibliography\)\s*}', '', '\\end\s*{\s*\%(enumerate\|itemize\|thebibliography\)\s*}', 'bnW')
     let saved_pos	= getpos(".")
     call cursor(line("."), 1)
 
-    " This will work with \item [[1]], but not with \item [1]]
-    let [ bline, bcol]	= searchpos('\\item\s*\zs\[', 'b', begin_line) 
-    if bline == 0
-	keepjumps call setpos(".", saved_pos)
-	if search('\\item\>', 'nb', begin_line)
-	    let new_line	= strpart(getline("."), 0, col(".")) . '\item '. strpart(getline("."), col("."))
-	else
-	    let new_line	= strpart(getline("."), 0, col(".")) . '\item'. strpart(getline("."), col("."))
-	endif
+    if g:atp_debugInsertItem
+	let g:debugInsertItem_redir= "redir! > ".g:atp_TempDir."/InsertItem.log"
+	exe "redir! > ".g:atp_TempDir."/InsertItem.log"
+    endif
+
+    if getline(begin_line) =~ '\\begin\s*{\s*thebibliography\s*}'
+	call cursor(saved_pos[1], saved_pos[2])
+	let new_line	= strpart(getline("."), 0, col(".")) . '\bibitem' . strpart(getline("."), col("."))
 	call setline(line("."), new_line)
 
 	" Indent the line:
 	if &l:indentexpr != ""
+	    let v:lnum=saved_pos[1]
 	    execute "let indent = " . &l:indentexpr
 	    let i 	= 1
 	    let ind 	= ""
@@ -409,15 +409,65 @@ function! InsertItem()
 	    ind 	=  matchstr(getline("."), '^\s*')
 	endif
 	call setline(line("."), ind . substitute(getline("."), '^\s*', '', ''))
+	let saved_pos[2]	+= len('\bibitem') + indent
+	call cursor(saved_pos[1], saved_pos[2])
+
+	if g:atp_debugInsertItem
+	    let g:InsertIntem_return = 0
+	    silent echo "0] return"
+	    redir END
+	endif
+	return
+    endif
+
+    " This will work with \item [[1]], but not with \item [1]]
+    let [ bline, bcol]	= searchpos('\\item\s*\zs\[', 'b', begin_line) 
+    if bline == 0
+	call cursor(saved_pos[1], saved_pos[2])
+	if search('\\item\>', 'nb', begin_line)
+	    let new_line	= strpart(getline("."), 0, col(".")) . '\item '. strpart(getline("."), col("."))
+	else
+	    let new_line	= strpart(getline("."), 0, col(".")) . '\item'. strpart(getline("."), col("."))
+	endif
+	call setline(line("."), new_line)
+
+	" Indent the line:
+	if &l:indentexpr != ""
+	    let v:lnum=saved_pos[1]
+	    execute "let indent = " . &l:indentexpr
+	    let i 	= 1
+	    let ind 	= ""
+	    while i <= indent
+		let ind	.= " "
+		let i	+= 1
+	    endwhile
+	else
+	    indent	= -1
+	    ind 	=  matchstr(getline("."), '^\s*')
+	endif
+	if g:atp_debugInsertItem
+	    silent echo "1] indent=".len(ind)
+	endif
+	call setline(line("."), ind . substitute(getline("."), '^\s*', '', ''))
 
 	" Set the cursor position
 	let saved_pos[2]	+= len('\item') + indent
 	keepjumps call setpos(".", saved_pos)
 
+	if g:atp_debugInsertItem
+	    let g:debugInsertItem_return = 1
+	    silent echo "1] return"
+	    redir END
+	endif
 	return ""
     endif
     let [ eline, ecol]	= searchpairpos('\[', '', '\]', 'nr', '', line("."))
     if eline != bline
+	if g:atp_debugInsertItem
+	    let g:debugInsertItem_return = 2
+	    silent echo "2] return"
+	    redir END
+	endif
 	return ""
     endif
 
@@ -429,32 +479,51 @@ function! InsertItem()
     let space		= matchstr(getline("."), '\\item\zs\s*\ze\[')
     if nr2char(number) != "" && subNr == "" 
 	let new_item	= substitute(item, number, number + 1, '')
+	if g:atp_debugInsertItem
+	    silent echo "(1) new_item=".new_item
+	endif
     elseif item =~ '\%('.bpat.'\)\=\s*\%(i\|ii\|iii\|iv\|v\|vi\|vii\|viii\|ix\)\%('.epat.'\)\=$'
 	let numbers	= [ 'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x' ]
 	let roman	= matchstr(item, '\%('.bpat.'\)\=\s*\zs\w\+\ze\s*\%('.epat.'\)\=$')
 	let new_roman	= get(numbers, index(numbers, roman) + 1, 'xi') 
 	let new_item	= substitute(item,  '^\%('.bpat.'\)\=\s*\zs\a\+\ze\s*\%('.epat.'\)\=$', new_roman, 'g') 
+	if g:atp_debugInsertItem
+	    silent echo "(2) new_item=".new_item
+	endif
     elseif nr2char(number) != "" && subNr != ""
 	let alphabet 	= [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y', 'z' ] 
 	let char	= matchstr(item, '^\%('.bpat.'\)\=\s*\d\+\zs\a\ze\s*\%('.epat.'\)\=$')
 	let new_char	= get(alphabet, index(alphabet, char) + 1, 'z')
 	let new_item	= substitute(item, '^\%('.bpat.'\)\=\s*\d\+\zs\a\ze\s*\%('.epat.'\)\=$', new_char, 'g')
+	if g:atp_debugInsertItem
+	    silent echo "(3) new_item=".new_item
+	endif
     elseif item =~ '\%('.bpat.'\)\=\s*\w\s*\%('.epat.'\)\='
 	let alphabet 	= [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y', 'z' ] 
 	let char	= matchstr(item, '^\%('.bpat.'\)\=\s*\zs\w\ze\s*\%('.epat.'\)\=$')
 	let new_char	= get(alphabet, index(alphabet, char) + 1, 'a')
 	let new_item	= substitute(item, '^\%('.bpat.'\)\=\s*\zs\w\ze\s*\%('.epat.'\)\=$', new_char, 'g')
+	if g:atp_debugInsertItem
+	    silent echo "(4) new_item=".new_item
+	endif
     else
 	let new_item	= item
+	if g:atp_debugInsertItem
+	    silent echo "(5) new_item=".item
+	endif
     endif
 
     keepjumps call setpos(".", saved_pos)
 
     let new_line	= strpart(getline("."), 0, col(".")) . '\item' . space . '[' . new_item . '] ' . strpart(getline("."), col("."))
+    if g:atp_debugInsertItem
+	silent echo "new_line=".new_line
+    endif
     call setline(line("."), new_line)
 
     " Indent the line:
     if &l:indentexpr != ""
+	let v:lnum=saved_pos[1]
 	execute "let indent = " . &l:indentexpr
 	let i 	= 1
 	let ind 	= ""
@@ -465,6 +534,9 @@ function! InsertItem()
     else
 	ind 	= matchstr(getline("."), '^\s*')
     endif
+    if g:atp_debugInsertItem
+	silent echo "indent=".len(ind)
+    endif
     call setline(line("."), ind . substitute(getline("."), '^\s*', '', ''))
 
     " Set the cursor position
@@ -472,6 +544,11 @@ function! InsertItem()
     keepjumps call setpos(".", saved_pos)
 
 
+    if g:atp_debugInsertItem
+	let g:debugInsertItem_return = 3
+	silent echo "3] return"
+	redir END
+    endif
     return ""
 endfunction
 " }}}
@@ -835,7 +912,8 @@ function! <SID>Delete(delete_output)
 		endfor
 	    endif
 	else
-	    let f=fnamemodify(atplib#FullPath(b:atp_MainFile), ":h").".".ext
+	    " Delete output file (pdf|dvi|ps) (though ps is not supported by ATP).
+	    let f=fnamemodify(atplib#FullPath(b:atp_MainFile), ":r").".".ext
 	    echo "Removing ".f
 	    call delete(f)
 	endif
@@ -900,8 +978,10 @@ function! s:OpenLog()
 
 	let projectVarDict = SaveProjectVariables()
 	let g:projectVarDict = projectVarDict
-	let s:winnr		= bufwinnr("")
+	let s:winnr	= bufwinnr("")
+	let atp_TempDir	= b:atp_TempDir
 	exe "rightbelow split +setl\\ nospell\\ ruler\\ syn=log_atp\\ autoread " . fnameescape(&l:errorfile)
+	let b:atp_TempDir = atp_TempDir
 	call RestoreProjectVariables(projectVarDict)
 
 	map <buffer> q :bd!<CR>
@@ -986,20 +1066,22 @@ function! s:OpenLog()
 	    let nr	= 0
 	    " There should be a finer way to get the file name if it is split in two
 	    " lines.
+	    if g:atp_debugST
+		let g:fname_list = []
+	    endif
 	    while !test
 		" Some times in the lof file there is a '(' from the source tex file
 		" which might be not closed, then this while loop is used to find
 		" readable file name.
 		let [ startline, startcol ] = searchpairpos('(', '', ')', 'bW') 
 		if g:atp_debugST
-		    redir! >> /tmp/SyncTex_log
+		    exe "redir! > ".g:atp_TempDir."/SyncTex.log"
 		    let g:startline = startline
 		    silent! echomsg " [ startline, startcol ] " . string([ startline, startcol ])
 		endif
 " THIS CODE IS NOT WORKING:
 " 		if nr >= 1 && [ startline, startcol ] == [ startline_o, startcol_o ] && !test
 " 		    keepjumps call setpos(".", saved_pos)
-" 		    let g:debug = "return " . nr
 " 		    break
 " 		endif
 		if !startline
@@ -1029,8 +1111,10 @@ function! s:OpenLog()
 		    let end = get(StrIdx, idx, "")
 		    let fname .= strpart(getline(startline+1), 0, idx + len(end) + 1)
 		endif
+		let fname=substitute(fname, escape(fnamemodify(b:atp_TempDir, ":t"), '.').'\/[^\/]*\/', '', '')
 		if g:atp_debugST
-		    let g:fname = fnamemodify(fname, ":t")
+		    call add(g:fname_list, fname)
+		    let g:fname = fname
 		    let g:dir	= fnamemodify(g:fname, ":p:h")
 		    let g:pat	= pat
 " 		    if g:fname =~# '^' .  escape(fnamemodify(tempname(), ":h"), '\/')
@@ -1043,7 +1127,7 @@ function! s:OpenLog()
 	    endwhile
 	    keepjumps call setpos(".", saved_pos)
 		if g:atp_debugST
-		    let g:fname = fname
+		    let g:fname_post = fname
 		endif
 
 	    " if the file is under texmf directory return unless g:atp_developer = 1
@@ -1482,7 +1566,7 @@ function! <SID>ReloadATP(bang)
     let common_file	= globpath(&rtp, 'ftplugin/ATP_files/common.vim')
     let options_file	= globpath(&rtp, 'ftplugin/ATP_files/options.vim')
     let g:atp_reload_functions = ( a:bang == "!" ? 1 : 0 ) 
-    let g:atp_reload	= 1
+    let g:atp_reload_variables = 0
     if a:bang == ""
 	execute "source " . common_file
 	execute "source " . options_file 
@@ -1519,8 +1603,8 @@ function! <SID>ReloadATP(bang)
 	    endif
 	endfor
     endif
-    let g:atp_reload		= 0
     let g:atp_reload_functions 	= 0
+    let g:atp_reload_variables  = 0
 endfunction
 catch /E127:/
     " Cannot redefine function, function is in use.
@@ -1872,6 +1956,9 @@ function! <SID>UpdateATP(bang)
     "DONE: check if the current version is newer than the available one
     "		if not do not download and install (this saves time).
 
+	if g:atp_debugUpdateATP
+	    exe "redir! > ".g:atp_TempDir."/UpdateATP.log"
+	endif
 	let s:ext = "tar.gz"
 	if a:bang == "!"
 	    echo "[ATP:] getting list of available snapshots ..."
@@ -1886,25 +1973,36 @@ function! <SID>UpdateATP(bang)
 	    let url = "http://sourceforge.net/projects/atp-vim/files/releases/"
 	endif
 	let url_tempname=tempname()."_ATP.html"
-" 	let g:url_tempname=url_tempname
 	let cmd=g:atp_Python." ".s:URLquery_path." ".shellescape(url)." ".shellescape(url_tempname)
-" 	let g:cmd=cmd
+	if g:atp_debugUpdateATP
+	    let g:cmd=cmd
+	    silent echo "url_tempname=".url_tempname
+	    silent echo "cmd=".cmd
+	endif
 	call system(cmd)
 
 	let saved_loclist = getloclist(0)
 	exe 'lvimgrep /\C<a\s\+href=".*AutomaticTexPlugin_\d\+\%(\.\d\+\)*\.'.escape(s:ext, '.').'/jg '.url_tempname
 	call delete(url_tempname)
 	let list = map(getloclist(0), 'v:val["text"]')
-" 	let g:list = copy(list)
+	if g:atp_debugUpdateATP
+	    silent echo "list=".string(list)
+	endif
 	if a:bang == "!"
 	    call filter(list, 'v:val =~ ''\.tar\.gz\.\d\+-\d\+-\d\+_\d\+-\d\+''')
 	endif
 	call map(list, 'matchstr(v:val, ''<a\s\+href="\zshttp[^"]*download\ze"'')')
 	call setloclist(0,saved_loclist)
 	call filter(list, "v:val != ''")
-" 	let g:atp_versionlist = list
+	if g:atp_debugUpdateATP
+	    silent echo "atp_versionlist=".string(list)
+	endif
+
 	if !len(list)
 	    echoerr "No snapshot is available." 
+	    if g:atp_debugUpdateATP
+		redir END
+	    endif
 	    return
 	endif
 	let dict = {}
@@ -1924,14 +2022,19 @@ function! <SID>UpdateATP(bang)
 	else
 	    let sorted_list = sort(keys(dict), "<SID>CompareVersions")
 	endif
-	let g:atp_debugUD_sorted_list = sorted_list
-	let g:atp_debugUD_dict = dict
+	if g:atp_debugUpdateATP
+	    silent echo "dict=".string(dict)
+	    silent echo "sorted_list=".string(sorted_list)
+	endif
 	"NOTE: this list might contain one item two times (I'm not filtering well the
 	" html sourcefore web page, but this is faster)
 
 	let dir = fnamemodify(globpath(&rtp, "ftplugin/tex_atp.vim"), ":h:h")
 	if dir == ""
 	    echoerr "[ATP:] Cannot find local .vim directory."
+	    if g:atp_debugUpdateATP
+		redir END
+	    endif
 	    return
 	endif
 
@@ -1956,41 +2059,41 @@ function! <SID>UpdateATP(bang)
 		let old_stamp="0.0"
 	    endtry
 	endif
-	let g:atp_debugUD_old_stamp = old_stamp
-
-	" a:bang == ""
-	    " Get latest snapshot, get time stamp from the tar.gz file, compare time
-	    " stamps
-	" a:bang == "!"
-	"   " latest snaphot time stamp is sorted_list[0]
+	if g:atp_debugUpdateATP
+	    silent echo "old_stamp=".old_stamp
+	endif
 
 	function! <SID>GetLatestSnapshot(bang,url)
 	    " Get latest snapshot/version
 	    let url = a:url
-" 	    let s:ext = "tar.gz"
-	    " 	let g:url = url
 
 	    let s:ATPversion = matchstr(url, 'AutomaticTexPlugin_\zs\d\+\%(\.\d\+\)*\ze\.'.escape(s:ext, '.'))
-	    let g:atp_debugUD_version = s:ATPversion
 	    if a:bang == "!"
 		let ATPdate = matchstr(url, 'AutomaticTexPlugin_\d\+\%(\.\d\+\)*.'.escape(s:ext, '.').'.\zs[0-9-_]*\ze')
 	    else
 		let ATPdate = ""
 	    endif
 	    let s:atp_tempname = tempname()."_ATP.tar.gz"
-	    let g:atp_debugUD_tempname = s:atp_tempname
+	    if g:atp_debugUpdateATP
+		silent echo "tempname=".s:atp_tempname
+	    endif
 	    let cmd=g:atp_Python." ".s:URLquery_path." ".shellescape(url)." ".shellescape(s:atp_tempname)
+	    let g:get_cmd=cmd
 	    if a:bang == "!"
 		echo "[ATP:] getting latest snapshot (unstable version) ..."
 	    else
 		echo "[ATP:] getting latest stable version ..."
 	    endif
-	    let g:atp_debugUD_cmd_get = cmd
+	    if g:atp_debugUpdateATP
+		silent echo "cmd=".cmd
+	    endif
 	    call system(cmd)
 	endfunction
 
 	let new_stamp = sorted_list[0]
-	let g:atp_debugUD_new_stamp = new_stamp
+	if g:atp_debugUpdateATP
+	    silent echo "new_stamp=".new_stamp
+	endif
 	 
 	"Compare stamps:
 	" stamp format day-month-year_hour-minute
@@ -2005,6 +2108,9 @@ function! <SID>UpdateATP(bang)
 	    if  compare == 1 || compare == 0
 		redraw
 		echomsg "You have the latest UNSTABLE version of ATP."
+		if g:atp_debugUpdateATP
+		    redir END
+		endif
 		return
 	    endif
 	else
@@ -2015,12 +2121,18 @@ function! <SID>UpdateATP(bang)
 		if l:return
 		    call delete(s:atp_tempname)
 		    redraw
+		    if g:atp_debugUpdateATP
+			redir END
+		    endif
 		    return
 		endif
 	    elseif compare == 0
 		redraw
 		echomsg "You have the latest STABLE version of ATP."
 		call delete(s:atp_tempname)
+		if g:atp_debugUpdateATP
+		    redir END
+		endif
 		return
 	    endif
 	endif
@@ -2164,6 +2276,34 @@ function! Comment(arg) "{{{
     endif
 
 endfunction "}}}
+
+" DebugPrint
+" cat files under g:atp_TempDir (with ATP debug info)
+" {{{
+if has("unix") && g:atp_atpdev
+    function! <SID>DebugPrint(file)
+	if a:file == ""
+	    return
+	endif
+	let dir = getcwd()
+	exe "lcd ".g:atp_TempDir
+	if filereadable(a:file)
+	    echo join(readfile(a:file), "\n")
+	else
+	    echomsg "No such file."
+	endif
+	exe "lcd ".dir
+    endfunction
+    function! <SID>DebugPrintComp(A,C,L)
+	let list = split(globpath(g:atp_TempDir, "*"), "\n")
+	let dir = getcwd()
+	exe "lcd ".g:atp_TempDir
+	call map(list, "fnamemodify(v:val, ':.')")
+	exe "lcd ".dir
+	return join(list, "\n")
+    endfunction
+    command! -nargs=? -complete=custom,<SID>DebugPrintComp DebugPrint	:call <SID>DebugPrint(<q-args>)
+endif "}}}
 endif "}}}
 
 

@@ -28,23 +28,23 @@ f = open('/tmp/atp_RevSearch.debug', 'w')
 
 # Get list of vim servers.
 output = subprocess.Popen(["gvim", "--serverlist"], stdout=subprocess.PIPE)
-servers = str(output.stdout.read())
-match=re.match('(b\')?(.*)(\\\\n\')?', servers)
+servers = output.stdout.read().decode()
+match=re.match('(.*)(\\\\n)?', servers)
 # Get the column (it is an optional argument)
 if (len(sys.argv) >= 4 and int(sys.argv[3]) > 0):
 	column = str(sys.argv[3])
 else:
 	column = str(1)
 
-f.write(">>> args "+sys.argv[1]+":"+sys.argv[2]+":"+column+"\n") 
+f.write(">>> args "+sys.argv[1]+":"+sys.argv[2]+":"+column+"\n")
 
 if match != None:
-	servers=match.group(2)
+	servers=match.group(1)
 	server_list=servers.split('\\n')
 	server = server_list[0]
 	# Call atplib#FindAndOpen()     
 	cmd="gvim --servername "+server+" --remote-expr \"atplib#FindAndOpen('"+sys.argv[1]+"','"+sys.argv[2]+"','"+column+"')\""
-	subprocess.call(cmd, shell=True) 
+	subprocess.call(cmd, shell=True)
 # Debug:
 f.write(">>> output      "+str(servers)+"\n")
 if match != None:

@@ -7,7 +7,7 @@
 " Last Change:
 
 let s:sourced = exists("s:sourced") ? 1 : 0
-if s:sourced
+if s:sourced && !g:atp_reload_functions
     finish
 endif
 

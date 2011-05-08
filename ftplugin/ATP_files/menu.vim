@@ -196,9 +196,12 @@ imenu 550.70 LaTe&X.&Options.Set\ Runs<Tab>b:atp_auruns				<Esc>:let b:atp_aurun
 menu 550.70 LaTe&X.&Options.Set\ Viewer<Tab>:Viewer\ {viewer}			:<C-U>Viewer 
 cmenu 550.70 LaTe&X.&Options.Set\ Viewer<Tab>:Viewer\ {viewer}			<C-U>Viewer 
 imenu 550.70 LaTe&X.&Options.Set\ Viewer<Tab>:Viewer\ {viewer}			<Esc>:Viewer 
-menu 550.70 LaTe&X.&Options.Set\ Output\ Directory<Tab>b:atp_OutDir		:<C-U>let b:atp_ViewerOptions="
-cmenu 550.70 LaTe&X.&Options.Set\ Output\ Directory<Tab>b:atp_OutDir		<C-U>let b:atp_ViewerOptions="
-imenu 550.70 LaTe&X.&Options.Set\ Output\ Directory<Tab>b:atp_OutDir		<Esc>:let b:atp_ViewerOptions="
+menu 550.70 LaTe&X.&Options.Set\ Output\ Directory<Tab>b:atp_OutDir		:<C-U>let b:atp_OutDir="
+cmenu 550.70 LaTe&X.&Options.Set\ Output\ Directory<Tab>b:atp_OutDir		<C-U>let b:atp_OutDir="
+imenu 550.70 LaTe&X.&Options.Set\ Output\ Directory<Tab>b:atp_OutDir		<Esc>:let b:atp_OutDir="
+menu 550.70 LaTe&X.&Options.Set\ Viewer\ Options				:<C-U>let b:atp_{matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')}Options=
+cmenu 550.70 LaTe&X.&Options.Set\ Viewer\ Options 				<C-U>let b:atp_{matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')}Options=
+imenu 550.70 LaTe&X.&Options.Set\ Viewer\ Options				<Esc>:let b:atp_{matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')}Options=
 menu 550.70 LaTe&X.&Options.Set\ Output\ Directory\ to\ the\ default\ value<Tab>:SetOutDir	:<C-U>SetOutDir<CR> 
 cmenu 550.70 LaTe&X.&Options.Set\ Output\ Directory\ to\ the\ default\ value<Tab>:SetOutDir	<C-U>SetOutDir<CR> 
 imenu 550.70 LaTe&X.&Options.Set\ Output\ Directory\ to\ the\ default\ value<Tab>:SetOutDir	<Esc>:SetOutDir<CR> 

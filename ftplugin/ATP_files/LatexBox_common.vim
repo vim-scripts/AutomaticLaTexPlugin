@@ -4,7 +4,7 @@
 " Note:		   This file is a part of Automatic Tex Plugin for Vim.
 " URL:		   https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Sun Mar 27 02:00  2011 W
+" Last Change: Sat Apr 30 07:00  2011 W
 
 let s:sourced = exists("s:sourced") ? 1 : 0
 " Settings {{{
@@ -215,7 +215,11 @@ function! LatexBox_GetCurrentEnvironment(...)
 	let saved_pos = getpos('.')
 
 	" move to the left until on a backslash
+	" getpos(".") in visual mode returns getpos("'<") this makes a problem
+	" here, simple change of mode here doesn't help, because mode() returns
+	" 'n' here.  
 	let [bufnum, lnum, cnum, off] = getpos('.')
+	let g:pos = [bufnum, lnum, cnum, off]
 	let line = getline(lnum)
 	while cnum > 1 && line[cnum - 1] != '\'
 		let cnum -= 1

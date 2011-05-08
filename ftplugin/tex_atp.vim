@@ -3,10 +3,10 @@
 " URL:			https://sourceforge.net/projects/atp-vim/
 " BUGS:			https://lists.sourceforge.net/lists/listinfo/atp-vim-list
 " Do NOT DELETE the line just below, it is used by :UpdateATP (':help atp-:UpdateATP')
-" Time Stamp: 22-04-11_09-09
+" Time Stamp: 08-05-11_07-40
 " (but you can edit, if there is a reason for doing this. The format is dd-mm-yy_HH-MM)
 " Language:	    tex
-" Last Change: Sun Apr 17 06:00  2011 W
+" Last Change: Sun May 01 07:00  2011 W
 " GetLatestVimScripts: 2945 62 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
@@ -32,6 +32,9 @@ let b:did_ftplugin	= 1
 if !exists("g:atp_reload_functions")
 	let g:atp_reload_functions = 0
 endif
+if !exists("g:atp_reload_variables")
+	let g:atp_reload_variables = 0
+endif
 
 if &cpoptions =~ '<'
 	echoerr "[ATP:] removing '<' from cpoptions"
@@ -43,7 +46,7 @@ endif
     let s:atprc_file = globpath($HOME, '.atprc.vim', 1)
     " They override cached variables
     function! <SID>ReadATPRC()
-	    if filereadable(s:atprc_file) && has("unix")
+	    if filereadable(s:atprc_file) && ( has("unix") || has("max") || has("macunix") )
 
 		    " Note: in $HOME/.atprc file the user can set all the local buffer
 		    " variables without using autocommands
@@ -53,7 +56,7 @@ endif
 		    " It also should be run at the end if the user defines mapping that
 		    " should be overwrite the ATP settings (this is done via
 		    " autocommand).
-		    let path = globpath($HOME, '/.atprc.vim', 1)
+		    let path = globpath($HOME, '.atprc.vim', 1)
 		    execute 'source ' . fnameescape(path)
 
 	    else
@@ -63,7 +66,6 @@ endif
 		    endif
 	    endif
     endfunction
-
 
 	" Source Project Script
 	runtime ftplugin/ATP_files/project.vim
@@ -122,6 +124,7 @@ endif
 	" Help functions.
 	runtime ftplugin/ATP_files/helpfunctions.vim
 
-	" Execute the atprc file.
+	" Read ATPRC once again (to set mapps).
+	call <SID>ReadATPRC()
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

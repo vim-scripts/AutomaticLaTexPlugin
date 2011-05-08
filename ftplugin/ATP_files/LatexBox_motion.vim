@@ -9,7 +9,7 @@
 " Some things is enough to source once
 let s:sourced = exists("s:sourced") ? 1 : 0
 
-if !s:sourced
+if !s:sourced || g:atp_reload_functions
 " HasSyntax {{{
 " s:HasSyntax(syntaxName, [line], [col])
 function! s:HasSyntax(syntaxName, ...)
@@ -668,7 +668,7 @@ function! s:SelectCurrentParagraph(seltype)
 	if g:atp_debugSCP
 	    echomsg 'B End of Match: ' . string([bline, bcol])
 	endif
-	call cursor(cline, ccolumn)
+	call cursor(bline, len(line(bline)))
 
 	" Find end position (iterate over math zones).
 	let [ eline, ecol ] = s:InnerSearchPos(0, line("."), col("."), 1)

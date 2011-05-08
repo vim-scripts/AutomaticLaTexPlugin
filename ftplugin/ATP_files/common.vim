@@ -9,12 +9,8 @@
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
-if !exists("g:atp_reload")
-    let g:atp_reload 	= 0
-endif
-
 " {{{ Variables
-if !exists("g:askfortheoutdir") || g:atp_reload
+if !exists("g:askfortheoutdir") || g:atp_reload_variables
     let g:askfortheoutdir = 0
 endif
 if !exists("g:atp_raw_texinputs")
@@ -23,7 +19,7 @@ if !exists("g:atp_raw_texinputs")
 endif
 
 " atp tex and bib inputs directories (kpsewhich)
-if !exists("g:atp_texinputs") || g:atp_reload
+if !exists("g:atp_texinputs") || g:atp_reload_variables
     let path_list	= split(g:atp_raw_texinputs, ',')
     let idx		= index(path_list, '.')
     if idx != -1
@@ -37,14 +33,14 @@ if !exists("g:atp_texinputs") || g:atp_reload
 endif
 " a list where tex looks for bib files
 " It must be defined before SetProjectName function.
-if !exists("g:atp_raw_bibinputs") || g:atp_reload
+if !exists("g:atp_raw_bibinputs") || g:atp_reload_variables
     let g:atp_raw_bibinputs=substitute(substitute(substitute(
 		\ system("kpsewhich -show-path bib"),
 		\ '\/\/\+',	'\/',	'g'),	
 		\ '!\|\n',	'',	'g'),
 		\ ':',		',' ,	'g')
 endif
-if !exists("g:atp_bibinputs") || g:atp_reload
+if !exists("g:atp_bibinputs") || g:atp_reload_variables
     let path_list	= split(g:atp_raw_bibinputs, ',')
     let idx		= index(path_list, '.')
     if idx != -1
@@ -114,9 +110,10 @@ function! SetProjectName(...)
     " this is not done here
 
     " Now we can run things that needs the project name: 
-    if !exists("b:atp_PackageList")
-	let b:atp_PackageList	= atplib#GrepPackageList()
-    endif
+    " b:atp_PackageList is not used
+"     if !exists("b:atp_PackageList")
+" 	let b:atp_PackageList	= atplib#GrepPackageList()
+"     endif
 
     if !exists("b:atp_ProjectDir")
 	let b:atp_ProjectDir = ( exists("b:atp_ProjectScriptFile") ? fnamemodify(b:atp_ProjectScriptFile, ":h") : fnamemodify(resolve(expand("%:p")), ":h") )
@@ -181,6 +178,7 @@ function! s:SetOutDir(arg, ...)
 
 	    " if arg != 0 then set errorfile option accordingly to b:atp_OutDir
 	    if bufname("") =~ ".tex$" && a:arg != 0
+" 			\ &&  ( !exists("t:atp_QuickFixOpen") || exists("t:atp_QuickFixOpen") && !t:atp_QuickFixOpen )
 		 call s:SetErrorFile()
 	    endif
 
@@ -275,7 +273,6 @@ function! TreeOfFiles(main_file,...)
     " This prevents from long runs on package files
     " for example babel.sty has lots of input files.
     if expand("%:e") != 'tex'
-	redir END
 	return [ {}, [], {}, {} ]
     endif
     let run_nr		= a:0 >= 3	? a:3 : 1 
@@ -303,10 +300,12 @@ function! TreeOfFiles(main_file,...)
     let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
 
 	if g:atp_debugToF
-	    if run_nr == 1
-		redir! > /tmp/tof_log
-	    else
-		redir! >> /tmp/tof_log
+	    if exists("g:atp_TempDir")
+		if run_nr == 1
+		    exe "redir! > ".g:atp_TempDir."/TreeOfFiles.log"
+		else
+		    exe "redir! >> ".g:atp_TempDir."/TreeOfFiles.log"
+		endif
 	    endif
 	endif
 
@@ -366,7 +365,7 @@ function! TreeOfFiles(main_file,...)
 	    let [ line, lnum, cnum ] = entry
 	    " input name (iname) as appeared in the source file
 	    let iname	= substitute(matchstr(line, pattern . '\(''\|"\)\=\zs\f\%(\f\|\s\)*\ze\1\='), '\s*$', '', '') 
-	    if iname == ""  
+	    if iname == "" && biblatex 
 		let iname	= substitute(matchstr(line, biblatex_pattern . '\(''\|"\)\=\zs\f\%(\f\|\s\)*\ze\1\='), '\s*$', '', '') 
 	    endif
 	    if g:atp_debugToF
@@ -482,9 +481,7 @@ function! TreeOfFiles(main_file,...)
 	exe "lcd " . fnameescape(cwd)
     endif
 
-    redir END
     if g:atp_debugToF && run_nr == 1
-	redir! >> /tmp/tof_log
 	silent! echo "========TreeOfFiles========================"
 	silent! echo "TreeOfFiles b:ListOfFiles=" . string(b:ListOfFiles)
 	redir END
@@ -585,21 +582,21 @@ endfunction
 
 " There is a copy of this variable in compiler.vim
 
-function! LatexRunning()
-python << EOL
-import psutil, vim
-if vim.eval("exists('b:atp_LastLatexPID')"):
-	lpid = int(vim.eval("exists('b:atp_LastLatexPID') ? b:atp_LastLatexPID : -1"))
-	if lpid != -1:
-                try:
-			name=psutil.Process(lpid).name
-                except psutil.NoSuchProcess:
-			lpid=0
-	vim.command(":let b:atp_LastLatexPID="+str(lpid))
-else:
-	vim.command(":let b:atp_LastLatexPID=0")
-EOL
-endfunction
+" function! LatexRunning()
+" python << EOL
+" import psutil, vim
+" if vim.eval("exists('b:atp_LastLatexPID')"):
+" 	lpid = int(vim.eval("exists('b:atp_LastLatexPID') ? b:atp_LastLatexPID : -1"))
+" 	if lpid != -1:
+"                 try:
+" 			name=psutil.Process(lpid).name
+"                 except psutil.NoSuchProcess:
+" 			lpid=0
+" 	vim.command(":let b:atp_LastLatexPID="+str(lpid))
+" else:
+" 	vim.command(":let b:atp_LastLatexPID=0")
+" EOL
+" endfunction
 
 function! ATPRunning() "{{{
 
@@ -610,28 +607,22 @@ function! ATPRunning() "{{{
 
     if g:atp_Compiler == "python" 
         " For python compiler
-	" This is very fast:
-	call LatexRunning()
-" 	let atp_running= ( b:atp_LastLatexPID != 0 ? 1 : 0 ) * len(b:atp_LatexPIDs) 
-	if exists("b:atp_LatexPIDs")
+        for var in [ "Latex", "Bibtex", "Python" ] 
+	    if !exists("b:atp_".var."PIDs")
+		let b:atp_{var}PIDs = []
+	    endif
+	    call atplib#PIDsRunning("b:atp_".var."PIDs")
+	endfor
+	if len(b:atp_LatexPIDs) > 0
 	    let atp_running= len(b:atp_LatexPIDs) 
+	elseif len(b:atp_BibtexPIDs) > 0
+	    let atp_running= len(b:atp_BibtexPIDs)
 	else
 	    return ''
 	endif
-	" This is slower (so the status line is updated leter)
-" 	call atplib#LatexRunning()
-" 	let atp_running= len(b:atp_LatexPIDs)
-" 	let atp_running= ( b:atp_LastLatexPID != 0 ? 1 : 0 ) * len(b:atp_LatexPIDs)
     else
-	" For bash compiler 
+	" for g:atp_Compiler='bash' 
 	let atp_running=b:atp_running
-    endif
-
-    let g:atp_running = atp_running
-
-    if exists("b:atp_running") && exists("g:atp_callback") && atp_running && g:atp_callback
-" 	let b:atp_running	= b:atp_running < 0 ? 0 : b:atp_running
-" 	redrawstatus
 
 	for cmd in keys(g:CompilerMsg_Dict) 
 	    if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
@@ -641,15 +632,35 @@ function! ATPRunning() "{{{
 		let Compiler = b:atp_TexCompiler
 	    endif
 	endfor
-
-	if exists("b:atp_ProgressBar") && b:atp_ProgressBar != {}
-	    let max = max(values(b:atp_ProgressBar))
-	    let progress_bar="[".max."]".( g:atp_statusOutDir ? " " : "" )
+	if atp_running >= 2
+	    return atp_running." ".Compiler
+	elseif atp_running >= 1
+	    return Compiler
 	else
-	    let progress_bar=""
+	    return ""
 	endif
+    endif
 
-" 	if atp_running
+    " For g:atp_Compiler='python'
+    if exists("g:atp_callback") && g:atp_callback
+	if exists("b:atp_LatexPIDs") && len(b:atp_LatexPIDs)>0  
+
+	    for cmd in keys(g:CompilerMsg_Dict) 
+		if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
+		    let Compiler = g:CompilerMsg_Dict[cmd]
+		    break
+		else
+		    let Compiler = b:atp_TexCompiler
+		endif
+	    endfor
+
+	    if exists("b:atp_ProgressBar") && b:atp_ProgressBar != {}
+		let max = max(values(b:atp_ProgressBar))
+		let progress_bar="[".max."]".( g:atp_statusOutDir ? " " : "" )
+	    else
+		let progress_bar=""
+	    endif
+
 	    if atp_running >= 2
 		return atp_running." ".Compiler." ".progress_bar
 	    elseif atp_running >= 1
@@ -657,9 +668,13 @@ function! ATPRunning() "{{{
 	    else
 		return ""
 	    endif
-" 	endif
+	elseif exists("b:atp_BibtexPIDs") && len(b:atp_BibtexPIDs)>0
+	    return b:atp_BibCompiler
+	elseif exists("b:atp_MakeindexPIDs") && len(b:atp_MakeindexPIDs)>0
+	    return "makeindex"
+	endif
     endif
-    return ''
+    return ""
 endfunction "}}}
 
 " {{{ Syntax and Hilighting
@@ -750,8 +765,13 @@ endfunction
 let s:errormsg = 0
 function! ATPStatus(bang) "{{{
 
+    if expand("%") == "[Command Line]" || &l:filetype == "qf"
+	" If one uses q/ or q? this status function should not be used.
+	return
+    endif
+
     let g:status_OutDir	= a:bang == "" && g:atp_statusOutDir || a:bang == "!" && !g:atp_statusOutDir ? s:StatusOutDir() : ""
-    let status_CTOC	= &filetype =~ '^\(ams\)\=tex' ? CTOC("return") : ''
+    let status_CTOC	= &filetype =~ '^\(ams\)\=tex' ? 'CTOC("return")' : ''
     if g:atp_statusNotifHi > 9 || g:atp_statusNotifHi < 0
 	let g:atp_statusNotifHi = 9
 	if !s:errormsg
@@ -767,8 +787,9 @@ function! ATPStatus(bang) "{{{
     let status_KeyMap	= ( has("keymap") && g:atp_babel && exists("b:keymap_name") 	
 								\ ? b:keymap_name 	: '' )
 
-    let g:atp_StatusLine= '%<%f '.status_KeyMap.'%(%h%m%r%) %='.status_CTOC." ".status_NotifHi.status_Notif.status_NotifHiPost.'%{g:status_OutDir} %-14.16(%l,%c%V%)%P'
+    let g:atp_StatusLine= '%<%f '.status_KeyMap.'%(%h%m%r%) %=%{'.status_CTOC."} ".status_NotifHi.status_Notif.status_NotifHiPost.'%{g:status_OutDir} %-14.16(%l,%c%V%)%P'
     set statusline=%!g:atp_StatusLine
+
 endfunction
 
     try
@@ -789,7 +810,7 @@ call SetProjectName()
 
 " The pattern g:atp_inputfile_pattern should match till the begining of the file name
 " and shouldn't use \zs:\ze. 
-if !exists("g:atp_inputfile_pattern") || g:atp_reload
+if !exists("g:atp_inputfile_pattern") || g:atp_reload_variables
     if &filetype == 'plaintex'
 	let g:atp_inputfile_pattern = '^[^%]*\\input\>\s*'
     else

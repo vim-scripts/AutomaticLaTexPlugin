@@ -10,6 +10,7 @@ if exists("g:atp_noabbreviations") && g:atp_noabbreviations == 1
 endif
 
 iabbrev <buffer> +- 	\pm
+iabbrev <buffer> -+ 	\mp
 iabbrev <buffer> +\| 	\dagger
 iabbrev <buffer> ++ 	\ddagger
 

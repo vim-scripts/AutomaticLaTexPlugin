@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Fri Apr 08 07:00  2011 W
+" Last Change: Tue May 03 11:00  2011 W
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 
@@ -536,9 +536,14 @@ if expand("%") == "__ToC__"
 	endif
 
 	execute 'normal '.register.'y'
-" 	call cursor(saved_pos[1:2])
 	call winrestview(winview)
 	execute toc_winnr . "wincmd w"
+	execute "let yanked_section=@".register
+	let yanked_section_list= split(yanked_section, '\n')
+	if yanked_section_list[0] !~ '^\s*$' 
+	    call extend(yanked_section_list, [' '], 0)  
+	endif
+	call extend(t:atp_SectionStack, [[title, type, yanked_section_list, section_nr]],0)
     endfunction
     command! -buffer -nargs=? YankSection	:call <SID>YankSection(<f-args>)
 
@@ -683,12 +688,8 @@ if expand("%") == "__ToC__"
 
     "     if a:after 
 	if a:type ==# "P" || line(".") == 1
-	    let g:debug =1
-	    let g:line = line(".")
 	    let begin_line	= s:getlinenr((line(".")))
 	else
-	    let g:debug =2
-	    let g:line = line(".")+1
 	    let begin_line	= s:getlinenr((line(".")+1))
 	    if begin_line	== ""
 		let begin_line	= "last_line"
@@ -714,7 +715,6 @@ if expand("%") == "__ToC__"
 		keepjumps exe "normal $"
 		keepjumps call search('\n.*\\end\s*{\s*document\s*}', 'bW')
 		let begin_line = line(".")
-		let g:linenr = line(".")
 	    endif
 	elseif &l:filetype != 'plaintex'
 	    keepjumps let begin_line	= search('\\end\s*{\s*document\s*}', 'nw')

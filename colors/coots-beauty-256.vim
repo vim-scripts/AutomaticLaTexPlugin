@@ -260,3 +260,7 @@ highlight ywtxt_comment guifg=honeydew4
 
 " vim
 highlight vimCommentTitle	cterm=bold	ctermfg=white
+
+" Easy Motion
+highlight EasyMotionTarge	cterm=bold ctermfg=red guifg=red 
+highlight EasyMotionShade	ctermbg=232 guibg=gray17

@@ -40,9 +40,9 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
-if !exists("g:atp_debugUpdateInsertItem")
+if !exists("g:atp_debugInsertItem")
     " debug UpdateATP (various.vim)
-    let g:atp_debugUpdateInsertItem = 0
+    let g:atp_debugInsertItem = 0
 endif
 if !exists("g:atp_debugUpdateATP")
     " debug UpdateATP (various.vim)
@@ -2240,9 +2240,12 @@ endfunction
 
     function! <SID>BufEnterCgetfile()
 	if g:atp_cgetfile 
-	    cgetfile
-	    " cgetfile needs:
-	    exe "ErrorFormat ".b:atp_ErrorFormat
+	    try
+		cgetfile
+		" cgetfile needs:
+		exe "ErrorFormat ".b:atp_ErrorFormat
+	    catch /E40:/ 
+	    endtry
 	endif
     endfunction
     augroup ATP_QuickFix_cgetfile

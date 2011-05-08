@@ -1362,10 +1362,9 @@ function! <SID>SetErrorFormat(...)
 	    let carg_list[i]="fi"
 	endif
     endfor
+
     " Get the bufnr of tex file corresponding to the &l:errorfile
     let bufnr = bufnr(fnamemodify(&l:errorfile, ":r").".tex")
-"     let g:quickfix_title=( exists("w:quickfix_title") ? w:quickfix_title : "NO" )
-"     let g:quickfix_open=t:atp_QuickFixOpen
     let carg= !exists("w:quickfix_title") && exists("b:atp_ErrorFormat")
 		\ ? b:atp_ErrorFormat 
 		\ : getbufvar((bufnr), "atp_ErrorFormat")
@@ -1641,9 +1640,9 @@ command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A SetErrorFormat 	:ca
 
 augroup ATP_QuickFix_1
     au!
-    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A SetErrorFormat :call <SID>SetErrorFormat(<q-args>,1) | cg
-    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A ErrorFormat :call <SID>SetErrorFormat(<q-args>,1) | cg
-    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A ShowErrors :call <SID>SetErrorFormat(<f-args>) | cg
+    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A SetErrorFormat :call <SID>SetErrorFormat(<q-args>,1)
+    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A ErrorFormat :call <SID>SetErrorFormat(<q-args>,1)
+    au FileType qf command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A ShowErrors :call <SID>SetErrorFormat(<f-args>)
 augroup END
 
 command! -buffer -nargs=? -complete=custom,ListErrorsFlags_A 	ErrorFormat 	:call <SID>SetErrorFormat(<q-args>,1)

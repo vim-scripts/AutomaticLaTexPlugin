@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 08 May 2011
+*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 10 May 2011
 
-	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 9.4.2)
+	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 9.4.3)
 			by Marcin Szamotulski
 		    mszamot [AT] gmail [DOT] com
 		----------------------------------------
@@ -3676,10 +3676,10 @@ s:allbibfiles
 s:notreadablebibfiles
 	For more on bib flags see |atp-bibflags|.
 >
- let t:toc_window_width=30
-<	g:toc_window_width (by default not set, if set overrides
-	t:toc_window_width)
-	Configures the initial width of the window with table of contents.
+ let t:toc_window_width=g:atp_toc_window_width
+<	t:toc_window with is set to g:atp_toc_window_width (by default is 30)
+	The globale variable configures the initial width of the window with
+	table of contents.
 >
  let t:labels_window_width=30
 <	g:labels_window_width (by default not set, if set overrides
@@ -4099,13 +4099,6 @@ nmap, imap '<Tab>
     It is a command to toggle the impas off/on by imaps defined in the vim
     lists g:atp_imap_math and g:atp_imap_math_misc. These are the maps above
     plus _ for  _{} and ^ for ^{}. 
-
-    Note: the imap '<Tab> works slightly different than nmap and the command:
-    it disables the imaps only for the current |Insert-mode| session, i.e.
-    when you exit from |Insert-mode| and you enter |Insert-mode| again
-    the maps will be defined. When you use any imap which contains <Esc> and
-    returns to insert mode the imaps will be defined. |i_CTRL-O| is not
-    bringing the imaps back. 
     
 ============
 LOG FILE MAPS						*atp-maps-log*

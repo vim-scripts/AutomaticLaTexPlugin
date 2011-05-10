@@ -11,16 +11,6 @@ let s:sourced = ( !exists("s:sourced") ? 0 : 1 )
 if !s:sourced || g:atp_reload_functions "{{{1
 " All table  of contents stuff: variables, functions and commands. 
 " {{{2 Table Of Contents
-" {{{3 Variabels
-let g:atp_sections={
-    \	'chapter' 	: [           '\m^\s*\(\\chapter\*\?\s*{\)',	'\m\\chapter\*'],	
-    \	'section' 	: [           '\m^\s*\(\\section\*\?\s*{\)',	'\m\\section\*'],
-    \ 	'subsection' 	: [	   '\m^\s*\(\\subsection\*\?\s*{\)',	'\m\\subsection\*'],
-    \	'subsubsection' : [ 	'\m^\s*\(\\subsubsection\*\?\s*{\)',	'\m\\subsubsection\*'],
-    \	'bibliography' 	: ['\m^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
-    \	'abstract' 	: ['\m^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
-    \   'part'		: [ 		 '\m^\s*\(\\part\*\?\s*{\)',	'\m\\part\*']}
-
 "--Make TOC -----------------------------
 " This makes sense only for latex documents.
 "
@@ -215,43 +205,78 @@ function! s:maketoc(filename)
 	    endif
 	endfor
     endfor
-    if exists("t:atp_toc")
-	call extend(t:atp_toc, { a:filename : toc }, "force")
-    else
-	let t:atp_toc = { a:filename : toc }
-    endif
-    return t:atp_toc
+"     if exists("t:atp_toc")
+" 	call extend(t:atp_toc, { a:filename : toc }, "force")
+"     else
+" 	let t:atp_toc = { a:filename : toc }
+"     endif
+"     return t:atp_toc
+    return { a:filename : toc }
 endfunction
 " {{{3 s:buflist
-if !exists("t:buflist")
-    let t:buflist=[]
+if !exists("t:atp_toc_buflist")
+    let t:atp_toc_buflist=[]
 endif
 function! s:buflist()
     " this names are used in TOC and passed to s:maketoc, which
     " makes a dictionary whose keys are the values of name defined
     " just below:
-    if !exists("t:buflist")
-	let t:buflist = []
+    if !exists("t:atp_toc_buflist")
+	let t:atp_toc_buflist = []
     endif
-    let name=resolve(fnamemodify(bufname("%"),":p"))
-    " add an entry to the list t:buflist if it is not there.
-    if bufname("") =~ ".tex" && index(t:buflist,name) == -1
-	call add(t:buflist,name)
+    let name=resolve(fnamemodify(bufname("%"),":p")) " add an entry to the list t:atp_toc_buflist if it is not there.
+    if bufname("") =~ ".tex" && index(t:atp_toc_buflist,name) == -1
+	call add(t:atp_toc_buflist,name)
     endif
-    return t:buflist
+    return t:atp_toc_buflist
 endfunction
 " {{{3 RemoveFromBufList
-" function! RemoveFromBufList()
-"     let i=1
-"     for f in t:buflist
-" 	echo "(" . i . ") " . f
-" 	let i+=1
-"     endfor
-"     let which=input("Which file to remove (press <Enter> for none)")
-"     if which != "" && which =~ '\d\+'
-" 	call remove(t:buflist,f-1)
-"     endif
-" endfunction
+function! RemoveFromToC(file)
+    if a:file == ""
+	let g:debug = 1
+	if exists("b:atp_MainFile")
+	    let list = filter(copy(t:atp_toc_buflist), "v:val != fnamemodify(b:atp_MainFile, ':p')")
+	else
+	    let list = copy(t:atp_toc_buflist)
+	endif
+	if len(list) >= 2
+	    let i=1
+	    for f in list
+		echo "(" . i . ") " . f
+		let i+=1
+	    endfor
+	    let which=input("Which file to remove (press <Enter> for none)")
+	    if which == ""
+		let g:debug=3
+		return
+	    endif
+	    let which=t:atp_toc_buflist[which-1]
+	elseif exists("b:atp_MainFile") && len(list) == 1
+	    let which=get(list,0,"")
+	else
+	    return
+	endif
+    else
+	let which = fnamemodify(a:file, ":p")
+    endif
+    let g:which = which
+
+    if which != ""
+	silent! call remove(t:atp_toc_buflist,index(t:atp_toc_buflist, which))
+	silent! call remove(t:atp_toc,which)
+    endif
+    let winnr=winnr()
+    call <SID>TOC("!", 0)
+    exe winnr."wincmd w"
+endfunction
+function! RemoveFromToCComp(A, B, C)
+    if exists("b:atp_MainFile")
+	let list = filter(copy(t:atp_toc_buflist), "v:val != fnamemodify(b:atp_MainFile, ':p')")
+    else
+	let list = copy(t:atp_toc_buflist)
+    endif
+    return join(list,"\n")
+endfunction
 " {{{3 s:showtoc
 function! s:showtoc(toc)
 
@@ -271,10 +296,9 @@ function! s:showtoc(toc)
 	" Open new window if its width is defined (if it is not the code below
 	" will put toc in the current buffer so it is better to return.
 	if !exists("t:toc_window_width")
-	    echoerr "t:toc_window_width not set"
-	    return
+	    let t:toc_window_width = g:atp_toc_window_width
 	endif
-	let openbuffer="keepalt " . t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
+	let openbuffer="keepalt " . t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ nobuflisted\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
 	keepalt silent exe  openbuffer
 	" We are setting the address from which we have come.
 	silent call atplib#setwindow()
@@ -454,7 +478,7 @@ function! s:showtoc(toc)
 " 	t:atp_bufname is the full path to the current buffer.
     let num = get(numberdict, t:atp_bufname, 'no_number')
     if num == 'no_number'
-	call s:TOC("")
+" 	call s:TOC("")
 	return
     endif
     let sorted		= sort(keys(a:toc[t:atp_bufname]), "atplib#CompareNumbers")
@@ -519,21 +543,26 @@ function! UpdateToCLine(...)
 endfunction
 " This is User Front End Function 
 "{{{3 TOC
-function! <SID>TOC(bang)
+function! <SID>TOC(bang,...)
     " skip generating t:atp_toc list if it exists and if a:0 != 0
     if &l:filetype != 'tex' && &l:filetype != 'toc_atp'   
 	echoerr "Wrong 'filetype'. This command works only for latex documents."
 	return
     endif
-    " for each buffer in t:buflist (set by s:buflist)
+    if a:0 == 0 
+	call s:buflist()
+    endif
+    " for each buffer in t:atp_toc_buflist (set by s:buflist)
     if ( a:bang == "!" || !exists("t:atp_toc") )
-	for buffer in t:buflist 
-	    let t:atp_toc=s:maketoc(buffer)
+	let t:atp_toc = {}
+	for buffer in t:atp_toc_buflist 
+" 	    let t:atp_toc=s:maketoc(buffer)
+	    call extend(t:atp_toc, s:maketoc(buffer))
 	endfor
     endif
     call s:showtoc(t:atp_toc)
 endfunction
-nnoremap <Plug>ATP_TOC			:call <SID>TOC(1)<CR>
+nnoremap <Plug>ATP_TOC			:call <SID>TOC("")<CR>
 
 " This finds the name of currently eddited section/chapter units. 
 " {{{3 Current TOC
@@ -580,8 +609,11 @@ function! <SID>ctoc()
     let t:atp_bufname=resolve(fnamemodify(bufname("%"),":p"))
     
     " if t:atp_toc(t:atp_bufname) exists use it otherwise make it 
-    if !exists("t:atp_toc") || !has_key(t:atp_toc,t:atp_bufname) 
-	silent let t:atp_toc=s:maketoc(t:atp_bufname)
+    if !exists("t:atp_toc") || !has_key(t:atp_toc, t:atp_bufname) 
+	if !exists("t:atp_toc")
+	    let t:atp_toc={}
+	endif
+	silent call extend(t:atp_toc, s:maketoc(t:atp_bufname))
     endif
 
     " l:count where the preambule ends
@@ -698,7 +730,7 @@ function! CTOC(...)
 	    return substitute(strpart(subsection_name,0,b:atp_TruncateStatusSection), '\_s*$', '','')
 	endif
     endif
-endfunction
+endfunction "}}}3
 
 " Labels Front End Finction. The search engine/show function are in autoload/atplib.vim script
 " library.
@@ -1048,6 +1080,15 @@ function! <SID>GotoSection(bang, count, flag, secname, ...)
     call UpdateToCLine()
     call histadd("search", pattern)
     let @/	= pattern
+
+    " If ToC is shown jump to and come back
+    let toc_winnr=bufwinnr(bufnr("__ToC__"))
+    if toc_winnr != -1
+	let cwin=winnr()
+	exe toc_winnr." wincmd w"
+	redraw
+	exe cwin." wincmd w" 
+    endif
 endfunction
 function! Env_compl(A,P,L) 
     let envlist=sort(['algorithm', 'algorithmic', 'abstract', 'definition', 'equation', 'proposition', 
@@ -1658,12 +1699,16 @@ function! JMotion(flag)
     endif
 endfunction
 endif
-" Add newly opened files to t:buflist.
-call s:buflist()
 " }}}1
 
 " Commands And Maps:
+augroup ATP_BufList
+    " Add opened files to t:atp_toc_buflist.
+    au!
+    au BufEnter *.tex call s:buflist()
+augroup END
 " {{{1
+command! -nargs=? -complete=custom,RemoveFromToCComp RemoveFromToC	:call RemoveFromToC(<q-args>)
 map	<buffer> <silent> <Plug>JumptoPreviousEnvironment		:call <SID>JumptoEnvironment(1)<CR>
 map	<buffer> <silent> <Plug>JumptoNextEnvironment			:call <SID>JumptoEnvironment(0)<CR>
 command! -buffer -count=1 Part		:call <SID>ggGotoSection(<q-count>, 'part')
@@ -1709,48 +1754,48 @@ nnoremap <silent> <buffer> <Plug>GotoPreviousInlineMath		:<C-U>call <SID>GotoEnv
 nnoremap <silent> <buffer> <Plug>GotoNextDisplayedMath	 	:<C-U>call <SID>GotoEnvironment('sW',v:count1,'displayedmath')<CR>
 nnoremap <silent> <buffer> <Plug>GotoPreviousDisplayedMath	:<C-U>call <SID>GotoEnvironment('bsW',v:count1,'displayedmath')<CR>
 
-nnoremap <silent> <Plug>GotoNextSubSection	:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\*\\=\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', '')<CR>
-onoremap <silent> <Plug>GotoNextSubSection	:<C-U>call <SID>GotoSection("", v:count1, "s","\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\*\\=\\s*{", 'vim')<CR>
-vnoremap <silent> <Plug>vGotoNextSubSection	m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\\|\\\@<!\\%\)*\\\%(subsection\\|section\\|chapter\\|part\)\*\=\s*{\\|\\end\s*{\s*document\s*}', 'W')<Bar>exe "normal! b"<CR>
+nnoremap <silent> <Plug>GotoNextSubSection	:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\*\\=\\>", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', '')<CR>
+onoremap <silent> <Plug>GotoNextSubSection	:<C-U>call <SID>GotoSection("", v:count1, "s","\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\*\\=\\>", 'vim')<CR>
+vnoremap <silent> <Plug>vGotoNextSubSection	m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\\|\\\@<!\\%\)*\\\%(subsection\\|section\\|chapter\\|part\)\*\=\>\\|\\end\s*{\s*document\s*}', 'W')<Bar>exe "normal! b"<CR>
 
-nnoremap <silent> <Plug>GotoNextSection		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\*\\=\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', '')<CR>
-onoremap <silent> <Plug>GotoNextSection		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\*\\=\\s*{", 'vim')<CR>
-vnoremap <silent> <Plug>vGotoNextSection	m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\\|\\\@<!\\%\)*\\\%(section\\|chapter\\|part\)\*\=\s*{\\|\\end\s*{\s*document\s*}', 'W')<Bar>exe "normal! b"<CR>
+nnoremap <silent> <Plug>GotoNextSection		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\*\\=\\>", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', '')<CR>
+onoremap <silent> <Plug>GotoNextSection		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\*\\=\\>", 'vim')<CR>
+vnoremap <silent> <Plug>vGotoNextSection	m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\\|\\\@<!\\%\)*\\\%(section\\|chapter\\|part\)\*\=\>\\|\\end\s*{\s*document\s*}', 'W')<Bar>exe "normal! b"<CR>
 
-nnoremap <silent> <Plug>GotoNextChapter		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(chapter\\\\|part\\)\\*\\=\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
-onoremap <silent> <Plug>GotoNextChapter		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(chapter\\\\|part\\)\\*\\=\\s*{", 'vim')<CR>
-vnoremap <silent> <Plug>vGotoNextChapter	m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\\|\\\@<!\\%\)*\\\%(chapter\\|part\)\*\=\s*{\\|\\end\s*{\s*document\s*}', 'W')<Bar>exe "normal! b"<CR>
+nnoremap <silent> <Plug>GotoNextChapter		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(chapter\\\\|part\\)\\*\\=\\>", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
+onoremap <silent> <Plug>GotoNextChapter		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\\\%(chapter\\\\|part\\)\\*\\=\\>", 'vim')<CR>
+vnoremap <silent> <Plug>vGotoNextChapter	m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\\|\\\@<!\\%\)*\\\%(chapter\\|part\)\*\=\>\\|\\end\s*{\s*document\s*}', 'W')<Bar>exe "normal! b"<CR>
 
-nnoremap <silent> <Plug>GotoNextPart		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\part\\*\\=\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
-onoremap <silent> <Plug>GotoNextPart		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\part\\*\\=\\s*{", 'vim', 'n')<CR>
-vnoremap <silent> <Plug>vGotoNextPart		m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\\|\\\@<!\\%\)*\\\%(part\*\=\\|\\end\s*{\s*document\s*}\)\s*{', 'W')<Bar>exe "normal! b"<CR>
+nnoremap <silent> <Plug>GotoNextPart		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\part\\*\\=\\>", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
+onoremap <silent> <Plug>GotoNextPart		:<C-U>call <SID>GotoSection("", v:count1, "s", "\\\\part\\*\\=\\>", 'vim', 'n')<CR>
+vnoremap <silent> <Plug>vGotoNextPart		m':<C-U>exe "normal! gv"<Bar>exe "normal! w"<Bar>call search('^\([^%]\\|\\\@<!\\%\)*\\\%(part\*\=\>\\|\\end\s*{\s*document\s*}\)', 'W')<Bar>exe "normal! b"<CR>
 
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSSSec		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\\%(subsubsection\|subsection\|section\|chapter\|part\)\*\=\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSSec		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\\%(subsection\|section\|chapter\|part\)\*\=\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSec		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\\%(section\|chapter\|part\)\*\=\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NChap		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\\%(chapter\|part\)\*\=\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NPart		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\part\*\=\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-nnoremap <silent> <Plug>GotoPreviousSubSection	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\*\\=\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
-onoremap <silent> <Plug>GotoPreviousSubSection	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\*\\=\\s*{", 'vim')<CR>
-vnoremap <silent> <Plug>vGotoPreviousSubSection	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(subsection\\|section\\|chapter\\|part\)\*\=\s*{\\|\\begin\s*{\s*document\s*}', 'bW')<CR>
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSSSec		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\\%(subsubsection\|subsection\|section\|chapter\|part\)\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSSec		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\\%(subsection\|section\|chapter\|part\)\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NSec		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\\%(section\|chapter\|part\)\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NChap		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\\%(chapter\|part\)\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl NPart		:call <SID>GotoSection(<q-bang>, <q-count>, "s", '\\part\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+nnoremap <silent> <Plug>GotoPreviousSubSection	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\*\\>", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
+onoremap <silent> <Plug>GotoPreviousSubSection	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(subsection\\\\|section\\\\|chapter\\\\|part\\)\\*\\>", 'vim')<CR>
+vnoremap <silent> <Plug>vGotoPreviousSubSection	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(subsection\\|section\\|chapter\\|part\)\*\=\>\\|\\begin\s*{\s*document\s*}', 'bW')<CR>
 
-nnoremap <silent> <Plug>GotoPreviousSection	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\*\\=\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
-onoremap <silent> <Plug>GotoPreviousSection	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\*\\=\\s*{", 'vim')<CR>
-vnoremap <silent> <Plug>vGotoPreviousSection	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(section\\|chapter\\|part\)\*\=\s*{\\|\\begin\s*{\s*document\s*}', 'bW')<CR>
+nnoremap <silent> <Plug>GotoPreviousSection	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\*\\>", ( g:atp_mapNn ? 'atp' : 'vim' ), 'n')<CR>
+onoremap <silent> <Plug>GotoPreviousSection	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(section\\\\|chapter\\\\|part\\)\\*\\>", 'vim')<CR>
+vnoremap <silent> <Plug>vGotoPreviousSection	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(section\\|chapter\\|part\)\*\=\>\\|\\begin\s*{\s*document\s*}', 'bW')<CR>
 
-nnoremap <silent> <Plug>GotoPreviousChapter	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(chapter\\\\|part\\)\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
-onoremap <silent> <Plug>GotoPreviousChapter	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(chapter\\\\|part\\)\\s*{", 'vim')<CR
-vnoremap <silent> <Plug>vGotoPreviousChapter	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(chapter\\|part\)\*\=\s*{\\|\\begin\s*{\s*document\s*}', 'bW')<CR>
+nnoremap <silent> <Plug>GotoPreviousChapter	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(chapter\\\\|part\\)\\>", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
+onoremap <silent> <Plug>GotoPreviousChapter	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\\\%(chapter\\\\|part\\)\\>", 'vim')<CR
+vnoremap <silent> <Plug>vGotoPreviousChapter	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(chapter\\|part\)\*\=\>\\|\\begin\s*{\s*document\s*}', 'bW')<CR>
 
-nnoremap <silent> <Plug>GotoPreviousPart	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\part\\*\\=\\s*{", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
-onoremap <silent> <Plug>GotoPreviousPart	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\part\\*\\=\\s*{", 'vim')<CR>
-vnoremap <silent> <Plug>vGotoPreviousPart	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(part\*\=\)\s*{', 'bW')<CR>
+nnoremap <silent> <Plug>GotoPreviousPart	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\part\\*\\=\\>", ( g:atp_mapNn ? 'atp' : 'vim' ))<CR>
+onoremap <silent> <Plug>GotoPreviousPart	:<C-U>call <SID>GotoSection("", v:count1, "sb", "\\\\part\\*\\=\\>", 'vim')<CR>
+vnoremap <silent> <Plug>vGotoPreviousPart	m':<C-U>exe "normal! gv"<Bar>call search('\\\%(part\*\=\)\>', 'bW')<CR>
 
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSSSec		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\\%(\%(sub\)\{1,2}section\|section\|chapter\|part\)\*\=', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSSec		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\\%(subsection\|section\|chapter\|part\)\*\=', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSec		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\\%(section\|chapter\|part\)\*\=', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PChap		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\\%(chapter\|part\)\*\=', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
-command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\part\*\=\s*{', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSSSec		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\\%(\%(sub\)\{1,2}section\|section\|chapter\|part\)\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSSec		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\\%(subsection\|section\|chapter\|part\)\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PSec		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\\%(section\|chapter\|part\)\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PChap		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\\%(chapter\|part\)\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
+command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\part\*\=\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
 command! -buffer NInput				:<C-U>call <SID>Input("w") 	| let v:searchforward = 1
 command! -buffer PInput 			:<C-U>call <SID>Input("bw")	| let v:searchforward = 0
 command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete GotoFile	:call GotoFile(<q-bang>,<q-args>, 0)

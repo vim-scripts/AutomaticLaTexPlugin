@@ -1375,13 +1375,14 @@ function! <SID>SetErrorFormat(...)
     endfor
 
     " Get the bufnr of tex file corresponding to the &l:errorfile
-    let bufnr = bufnr(fnamemodify(&l:errorfile, ":r").".tex")
-    let carg= !exists("w:quickfix_title") && exists("b:atp_ErrorFormat")
+    let bufnr 	= bufnr(fnamemodify(&l:errorfile, ":r").".tex")
+    let carg	= !exists("w:quickfix_title") && exists("b:atp_ErrorFormat")
 		\ ? b:atp_ErrorFormat 
 		\ : getbufvar((bufnr), "atp_ErrorFormat")
+    let atp_ErrorFormat = ( exists("b:atp_ErrorFormat") ? b:atp_ErrorFormat : getbufvar((bufnr), "atp_ErrorFormat") )
     if carg_raw =~ '^+'
 	for flag in carg_list
-	    if flag != 'f' && b:atp_ErrorFormat !~ flag || flag == 'f' && b:atp_ErrorFormat !~ 'fi\@!'
+	    if flag != 'f' && atp_ErrorFormat !~ flag || flag == 'f' && atp_ErrorFormat !~ 'fi\@!'
 		let carg .= flag
 	    endif
 	endfor

@@ -102,9 +102,9 @@ if !exists("g:atp_debugST")
     " Debug SyncTex() (various.vim) function
     let g:atp_debugST 		= 0
 endif
-if !exists("g:atp_debugCLE")
+if !exists("g:atp_debugCloseLastEnvironment")
     " Debug atplib#CloseLastEnvironment()
-    let g:atp_debugCLE 		= 0
+    let g:atp_debugCloseLastEnvironment	= 0
 endif
 if !exists("g:atp_debugMainScript")
     " loading times of scripts sources by main script file: ftpluing/tex_atp.vim
@@ -118,15 +118,15 @@ if !exists("g:atp_debugProject")
     " The value that is set in history file matters!
     let g:atp_debugProject 	= 0
 endif
-if !exists("g:atp_debugCB")
+if !exists("g:atp_debugChekBracket")
     " atplib#CheckBracket()
-    let g:atp_debugCB 		= 0
+    let g:atp_debugCheckBracket 		= 0
 endif
-if !exists("g:atp_debugCLB")
+if !exists("g:atp_debugClostLastBracket")
     " atplib#CloseLastBracket()
-    let g:atp_debugCLB 		= 0
+    let g:atp_debugCloseLastBracket 		= 0
 endif
-if !exists("g:atp_debugTC")
+if !exists("g:atp_debugTabCompletion")
     " atplib#TabCompletion()
     let g:atp_debugTC 		= 0
 endif
@@ -333,13 +333,28 @@ lockvar b:atp_autex_wait
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_sections")
+    " Used by :TOC command (s:maketoc in motion.vim)
+    let g:atp_sections={
+	\	'chapter' 	: [           '\m^\s*\(\\chapter\*\?\>\)',	'\m\\chapter\*'],	
+	\	'section' 	: [           '\m^\s*\(\\section\*\?\>\)',	'\m\\section\*'],
+	\ 	'subsection' 	: [	   '\m^\s*\(\\subsection\*\?\>\)',	'\m\\subsection\*'],
+	\	'subsubsection' : [ 	'\m^\s*\(\\subsubsection\*\?\>\)',	'\m\\subsubsection\*'],
+	\	'bibliography' 	: ['\m^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
+	\	'abstract' 	: ['\m^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
+	\   'part'		: [ 		 '\m^\s*\(\\part\*\?\>\)',	'\m\\part\*']}
+endif
 if !exists("g:atp_cgetfile") || g:atp_reload_variables
     let g:atp_cgetfile = 1
 endif
 if !exists("g:atp_atpdev") || g:atp_reload_variables
+    " if 1 defines DebugPrint command to print log files from g:atp_Temp directory.
     let g:atp_atpdev = 0
 endif
 if !exists("g:atp_imap_ShortEnvIMaps") || g:atp_reload_variables
+    " By default 1, then one letter (+leader) mappings for environments are defined,
+    " for example ]t -> \begin{theorem}\end{theorem}
+    " if 0 three letter maps are defined: ]the -> \begin{theorem}\end{theorem}
     let g:atp_imap_ShortEnvIMaps = 1
 endif
 if !exists("g:atp_imap_over_leader") || g:atp_reload_variables
@@ -970,12 +985,11 @@ if !exists("g:atp_compare_double_empty_lines") || g:atp_reload_variables || g:at
     let g:atp_compare_double_empty_lines = 1
 endif
 "TODO: put toc_window_with and labels_window_width into DOC file
+if !exists("g:atp_toc_window_width") || g:atp_reload_variables
+    let g:atp_toc_window_width 	= 30
+endif
 if !exists("t:toc_window_width") || g:atp_reload_variables
-    if exists("g:toc_window_width")
-	let t:toc_window_width	= g:toc_window_width
-    else
-	let t:toc_window_width	= 30
-    endif
+    let t:toc_window_width	= g:atp_toc_window_width
 endif
 if !exists("t:atp_labels_window_width") || g:atp_reload_variables
     if exists("g:labels_window_width")
@@ -1634,12 +1648,14 @@ function! ATP_ToggleMathIMaps(insert_enter, bang,...)
 	call atplib#MakeMaps(g:atp_imap_math_misc)
 	echo '[ATP:] imaps ON'
     endif
-    if a:insert_enter
-	let g:atp_eventignore=&l:eventignore
-	let g:atp_eventignoreInsertEnter=1
-	set eventignore+=InsertEnter
-" 	" This doesn't work because startinsert runs after function ends.
-    endif
+" Setting eventignore is not a good idea 
+" (this might break specific user settings)
+"     if a:insert_enter
+" 	let g:atp_eventignore=&l:eventignore
+" 	let g:atp_eventignoreInsertEnter=1
+" 	set eventignore+=InsertEnter
+" " 	" This doesn't work because startinsert runs after function ends.
+"     endif
 endfunction
 " }}}
 endif
@@ -1647,7 +1663,8 @@ endif
 "  Commands And Maps:
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleMathIMaps	 	:call ATP_ToggleMathIMaps(0, "!", <f-args>)
 nnoremap <silent> <buffer> 	<Plug>ToggleMathIMaps		:call ATP_ToggleMathIMaps(0, "!")<CR>
-inoremap <silent> <buffer> 	<Plug>ToggleMathIMaps		<Esc>:call ATP_ToggleMathIMaps(1, "")<CR>
+inoremap <silent> <buffer> 	<Plug>ToggleMathIMaps		<Esc>:call ATP_ToggleMathIMaps(0, "!")<CR>
+" inoremap <silent> <buffer> 	<Plug>ToggleMathIMaps		<Esc>:call ATP_ToggleMathIMaps(1, "")<CR>
 
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleAuTeX 	:call ATP_ToggleAuTeX(<f-args>)
 nnoremap <silent> <buffer> 	<Plug>ToggleAuTeX 		:call ATP_ToggleAuTeX()<CR>
@@ -2179,6 +2196,19 @@ if !s:did_options
 	au CursorHold *.tex nested :call UpdateToCLine()
     augroup END
 
+    function! RedrawToC()
+	if bufwinnr(bufnr("__ToC__")) != -1
+	    let winnr = winnr()
+	    TOC
+	    exe winnr." wincmd w"
+	endif
+    endfunction
+
+    augroup ATP_TOC_tab
+	au!
+	au TabEnter *.tex	:call RedrawToC()
+    augroup END
+
     let g:atp_eventignore		= &l:eventignore
     let g:atp_eventignoreInsertEnter 	= 0
     function! <SID>InsertLeave_InsertEnter()
@@ -2239,12 +2269,7 @@ endfunction
 	au FileType qf command! -bang -buffer -nargs=? -complete=custom,DebugComp DebugMode	:call <SID>SetDebugMode(<q-bang>,<f-args>)
 	au FileType qf let w:atp_qf_errorfile=&l:errorfile
 	au FileType qf setl statusline=%{w:atp_qf_errorfile}%=\ %#WarnningMsg#%{ErrorMsg('W')}\ %#ErrorMsg#%{ErrorMsg('E')}
-	"There are %{len(getqflist())} messages"
-	au FileType qf "resize ".min([atplib#qflength(), g:atp_DebugModeQuickFixHeight])
-" 	THIS IS NOT WORKING this might be considered as a vim bug.
-" 	when there are two files it loads the errors from the window which we leave
-" 	rather than we get into.
-" 	au WinEnter *.tex cgetfile
+	au FileType qf exe "resize ".min([atplib#qflength(), g:atp_DebugModeQuickFixHeight])
     augroup END
 
     function! <SID>BufEnterCgetfile()

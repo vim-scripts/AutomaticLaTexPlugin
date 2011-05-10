@@ -5,6 +5,16 @@
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 
+" Log:
+function! atplib#Log(file, string, ...) "{{{1
+    if a:0 >= 1
+	call delete(g:atp_TempDir."/".a:file)
+    else
+	exe "redir >> ".g:atp_TempDir."/".a:file 
+	silent echo a:string
+	redir END
+    endif
+endfunction "}}}1
 " Outdir: append to '/' to b:atp_OutDir if it is not present. 
 function! atplib#outdir() "{{{1
     if has("win16") || has("win32") || has("win64") || has("win95")
@@ -152,7 +162,7 @@ function! atplib#IsLeft(lchar,...)
 	    return 0
 	endif
 endfunction
-try
+" try
 function! atplib#ToggleMathIMaps(var, augroup)
     if atplib#IsInMath() 
 	call atplib#MakeMaps(a:var, a:augroup)
@@ -160,8 +170,8 @@ function! atplib#ToggleMathIMaps(var, augroup)
 	call atplib#DelMaps(a:var)
     endif
 endfunction
-catch E127
-endtry "}}}
+" catch E127
+" endtry "}}}
 
 " Compilation Call Back Communication: 
 " with some help of D. Munger
@@ -192,10 +202,8 @@ function! atplib#CallBack(mode,...)
     " Was compiler called to make bibtex
     let BIBTEX = ( a:0 >= 2 ? a:2 : "False" )
     let BIBTEX = ( BIBTEX == "True" || BIBTEX == 1 ? 1 : 0 )
-    if g:atp_debugCB
-	" WINDOWS NOT COMPATIBLE:
-	exe "redir! > " . g:atp_Temp."/CallBack.log"
-" 	silent echo "BIBTEX =".BIBTEX
+    if g:atp_debugCallBack
+	call atplib#Log("CallBack.log","","init")
     endif
 
     for cmd in keys(g:CompilerMsg_Dict) 
@@ -234,10 +242,11 @@ function! atplib#CallBack(mode,...)
 	let &l:cmdheight=g:atp_cmdheight
     endif
 
-    if g:atp_debugCB
+    if g:atp_debugCallBack
 	let g:debugCB 		= 0
 	let g:debugCB_mode 	= a:mode
 	let g:debugCB_error 	= error
+	call atplib#Log("CallBack.log","mode=".a:mode."\nerror=".error")
     endif
 
     let msg_list = []
@@ -247,7 +256,7 @@ function! atplib#CallBack(mode,...)
 
 	if t:atp_QuickFixOpen 
 
-	    if g:atp_debugCB
+	    if g:atp_debugCallBack
 		let g:debugCB .= 7
 	    endif
 
@@ -258,7 +267,7 @@ function! atplib#CallBack(mode,...)
 
     if a:mode ==? 'debug' && !error
 
-	if g:atp_debugCB
+	if g:atp_debugCallBack
 	    let g:debugCB 	.= 3
 	endif
 
@@ -276,7 +285,7 @@ function! atplib#CallBack(mode,...)
     if a:mode ==? 'debug' && error
 	if len(getqflist())
 
-	    if g:atp_debugCB
+	    if g:atp_debugCallBack
 		let g:debugCB .= 4
 	    endif
 
@@ -294,7 +303,7 @@ function! atplib#CallBack(mode,...)
 
 	if BIBTEX && b:atp_BibtexReturnCode
 
-	    if g:atp_debugCB
+	    if g:atp_debugCallBack
 		let g:debugCB .= 8
 	    endif
 
@@ -307,7 +316,7 @@ function! atplib#CallBack(mode,...)
 	" In debug mode, go to first error. 
 	if a:mode ==# "Debug"
 
-	    if g:atp_debugCB
+	    if g:atp_debugCallBack
 		let g:debugCB .= 6
 	    endif
 
@@ -328,7 +337,7 @@ function! atplib#CallBack(mode,...)
 
     " Show messages/clist
     
-    if g:atp_debugCB
+    if g:atp_debugCallBack
 	let g:msg_list 	= msg_list
 	let g:clist 	= l:clist
     endif
@@ -351,7 +360,7 @@ function! atplib#CallBack(mode,...)
     endfor
     let l:redraw	= 1
     if l:clist && len(getqflist()) <= 7 && !t:atp_QuickFixOpen
-	if g:atp_debugCB
+	if g:atp_debugCallBack
 	    let g:debugCB .= "clist"
 	endif
 	try
@@ -374,7 +383,7 @@ function! atplib#CallBack(mode,...)
 	redraw
     endif
     let &l:cmdheight = cmdheight
-    if g:atp_debugCB
+    if g:atp_debugCallBack
 	redir END
     endif
 endfunction "}}}
@@ -574,7 +583,7 @@ endfunction
 " 		vim --servername VIM
 " and use servername VIM in the Command above.		
 function! atplib#ServerListOfFiles()
-    exe "redir! > " . g:atp_Temp."/ServerListOfFiles.log"
+    exe "redir! > " . g:atp_TempDir."/ServerListOfFiles.log"
     let file_list = []
     for nr in range(1, bufnr('$')-1)
 	let files 	= getbufvar(nr, "ListOfFiles")
@@ -2464,7 +2473,7 @@ function! atplib#CloseLastEnvironment(...)
     endif
     let l:bpos_env	= a:0 >= 4 ? a:4 : [0, 0]
 
-    if g:atp_debugCLE
+    if g:atp_debugCloseLastEnvironment
 	exe "redir! > " . g:atp_TempDir."/CloseLastEnvironment.log"
 	let g:CLEargs 	= l:com . " " . l:close . " " . l:env_name . " " . string(l:bpos_env)
 	silent echo "args=".g:CLEargs
@@ -2507,7 +2516,7 @@ function! atplib#CloseLastEnvironment(...)
 	" file. If it is fined the starting position.
 
 	let synstack		= map(synstack(line("."),max([1, col(".")-1])), 'synIDattr(v:val, "name")')
-	if g:atp_debugCLE
+	if g:atp_debugCloseLastEnvironment
 	    let g:synstackCLE	= deepcopy(synstack)
 	    let g:openCLE	= getline(".")[col(".")-1] . getline(".")[col(".")]
 	    silent echo "synstack=".string(synstack)
@@ -2560,7 +2569,7 @@ function! atplib#CloseLastEnvironment(...)
 		let l:begin_line= bpos_math_4[0]
 		let math_mode	= "texMathZoneY"
 	    endif
-	if g:atp_debugCLE
+	if g:atp_debugCloseLastEnvironment
 	    let g:math 	= []
 	    let g:bound = []
 	    for i in [1,2,3,4]
@@ -2604,7 +2613,7 @@ function! atplib#CloseLastEnvironment(...)
 	    let math_mode	= "texMathZoneY"
 	endif
 	call cursor([ saved_pos[1], saved_pos[2] ]) 
-	if g:atp_debugCLE
+	if g:atp_debugCloseLastEnvironment
 	    if exists("math_mode")
 		let g:math_mode  	= math_mode
 		silent echo "math_mode=".math_mode
@@ -2621,13 +2630,13 @@ function! atplib#CloseLastEnvironment(...)
 	endif
 	if exists("math_mode")
 	    let l:begin_line 	= l:bpos_env[0]
-	    if g:atp_debugCLE
+	    if g:atp_debugCloseLastEnvironment
 		silent echo "math_mode=".math_mode
 		silent echo "l:begin_line=".l:begin_line
 		redir END
 	    endif
 	else
-	    if g:atp_debugCLE
+	    if g:atp_debugCloseLastEnvironment
 		silent echo "Given coordinates are closed."
 		redir END
 	    endif
@@ -2646,14 +2655,14 @@ if a:0 <= 1
     elseif l:env_name
 	let l:close = 'environment'
     else
-	if g:atp_debugCLE
+	if g:atp_debugCloseLastEnvironment
 	    silent echo "return: l:env_name=".string(l:env_name)." && math_1+...+math_4=".string(math_1+math_2+math_3+math_4)
 	    redir END
 	endif
 	return
     endif
 endif
-if g:atp_debugCLE
+if g:atp_debugCloseLastEnvironment
     let g:close = l:close
     silent echo "g:close=".string(l:close)
     silent echo "l:env_name=".l:env_name
@@ -2662,7 +2671,7 @@ let l:env=l:env_name
 "}}}2
 
 if l:close == "0" || l:close == 'math' && !exists("begin_line")
-    if g:atp_debugCLE
+    if g:atp_debugCloseLastEnvironment
 	silent echo "there was nothing to close"
 	redir END
     endif
@@ -2673,14 +2682,14 @@ if ( &filetype != "plaintex" && b:atp_TexFlavor != "plaintex" && exists("math_4"
     echomsg "[ATP:] $$:$$ in LaTeX are deprecated (this breaks some LaTeX packages)" 
     echomsg "       You can set b:atp_TexFlavor = 'plaintex', and ATP will ignore this. "
     echohl Normal
-    if g:atp_debugCLE
+    if g:atp_debugCloseLastEnvironment
 	silent echo "return A"
 	redir END
     endif
     return 
 endif
 if l:env_name =~ '^\s*document\s*$'
-    if g:atp_debugCLE
+    if g:atp_debugCloseLastEnvironment
 	silent echo "return B"
 	redir END
     endif
@@ -2694,7 +2703,7 @@ elseif l:close == "environment"
     let l:line	= getline(l:bpos_env[0])
 endif
 
-    if g:atp_debugCLE
+    if g:atp_debugCloseLastEnvironment
 	let g:line = exists("l:line") ? l:line : 0
 	silent echo "g:line=".g:line
     endif
@@ -2779,7 +2788,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 
 		let l:pos=getpos(".")
 		let l:pos_saved=deepcopy(l:pos)
-		if g:atp_debugCLE
+		if g:atp_debugCloseLastEnvironment
 		    let g:pos_saved0 = copy(l:pos_saved)
 		endif
 
@@ -2810,7 +2819,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 			
 		if getline(l:line_nr) =~ '\%(%.*\)\@<!\%(\\def\|\%(re\)\?newcommand\)' && l:line_nr != line(".")
 " 		    let b:cle_return="def"
-		    if g:atp_debugCLE
+		    if g:atp_debugCloseLastEnvironment
 			silent echo "return C"
 			redir END
 		    endif
@@ -2865,7 +2874,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 		    " Do not append empty lines (l:str is empty if all l:uenv
 		    " belongs to the g:atp_no_complete list.
 		    if len(l:str) == 0
-			if g:atp_debugCLE
+			if g:atp_debugCloseLastEnvironment
 			    silent echo "return D"
 			    redir END
 			endif
@@ -2881,7 +2890,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 			" pair (below l:pos[1]). (I assume every env is in
 			" a seprate line!
 			let l:end=atplib#CheckClosed('\%(%.*\)\@<!\\begin\s*{','\%(%.*\)\@<!\\end\s*{',l:line_nr,g:atp_completion_limits[2],1)
-			if g:atp_debugCLE
+			if g:atp_debugCloseLastEnvironment
 			    let g:info= " l:max=".l:max." l:end=".l:end." line('.')=".line(".")." l:line_nr=".l:line_nr
 			endif
 			" if the line was found append just befor it.
@@ -2925,7 +2934,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 			" found
 			keepjumps call setpos(".",[0,l:line_nr,len(getline(l:line_nr)),0])
 			let l:cline	= getline(l:pos_saved[1])
-			if g:atp_debugCLE
+			if g:atp_debugCloseLastEnvironment
 			    let g:cline		= l:cline
 			    let g:pos_saved 	= copy(l:pos_saved)
 			    let g:line		= l:pos_saved[1]
@@ -2959,14 +2968,14 @@ let l:eindent=atplib#CopyIndentation(l:line)
 				endif
 			    endif
 			endif 
-			if g:atp_debugCLE
+			if g:atp_debugCloseLastEnvironment
 			    silent echo "return E"
 			    redir END
 			endif
 			return 1
 		    endif
 		else
-		    if g:atp_debugCLE
+		    if g:atp_debugCloseLastEnvironment
 			silent echo "return F"
 			redir END
 		    endif
@@ -3067,7 +3076,7 @@ let l:eindent=atplib#CopyIndentation(l:line)
 	    endif
 	endif "}}3
     endif
-    if g:atp_debugCLE
+    if g:atp_debugCloseLastEnvironment
 	silent echo "return G"
 	redir END
     endif
@@ -3100,7 +3109,8 @@ function! atplib#CheckBracket(bracket_dict)
    " want to close closed bracket and delete the old one.
    
    let check_list = []
-   if g:atp_debugCB
+   if g:atp_debugCheckBracket
+       call atplib#Log("CheckBracket.log","", "init")
        let g:check_list	= check_list
    endif
 
@@ -3112,7 +3122,7 @@ function! atplib#CheckBracket(bracket_dict)
 	let pos		= deepcopy(pos_saved)
 	let pair_{i}	= searchpairpos(escape(ket,'\[]'),'', escape(a:bracket_dict[ket], '\[]'). 
 		    \ ( ket_pattern != "" ? '\|'.ket_pattern.'\.' : '' ) ,'bnW',"",limit_line)
-	if g:atp_debugCB >= 2
+	if g:atp_debugCheckBracket >= 2
 	    echomsg escape(ket,'\[]') . " pair_".i."=".string(pair_{i}) . " limit_line=" . limit_line
 	endif
 	let pos[1]	= pair_{i}[0]
@@ -3121,7 +3131,7 @@ function! atplib#CheckBracket(bracket_dict)
 	let check_{i}	= atplib#CheckClosed(escape(ket, '\[]'), escape(a:bracket_dict[ket], '\[]'), line("."), g:atp_completion_limits[0],1) == '0'
 	" check_dot_{i} is 1 if the bracket is closed with a dot (\right.) . 
 	let check_dot_{i} = atplib#CheckClosed(escape(ket, '\'), '\\\%(right\|\cb\Cig\{1,2}\%(g\|l\)\@!r\=\)\s*\.',line("."),g:atp_completion_limits[0],1) == '0'
-	if g:atp_debugCB >= 2
+	if g:atp_debugCheckBracket >= 2
 	    echomsg escape(ket,'\[]') . " check_".i."=".string(check_{i}) . " check_dot_".i."=".string(check_dot_{i})
 	endif
 	let check_{i}	= min([check_{i}, check_dot_{i}])
@@ -3136,13 +3146,12 @@ function! atplib#CheckBracket(bracket_dict)
     let g:check_list = check_list
     let [ open_line, open_col, open_bracket_nr ] 	= check_list[0]
     let [ s:open_line, s:open_col, s:opening_bracket ] 	= [ open_line, open_col, bracket_list[open_bracket_nr] ]
-    if g:atp_debugCLB
+    if g:atp_debugCheckBracket
 	let [ g:open_lineCB, g:open_colCB, g:opening_bracketCB ] = [ open_line, open_col, bracket_list[open_bracket_nr] ]
-	silent echo "return:"
-	silent echo "open_line=".open_line
-	silent echo "open_col=".open_col
-	silent echo "opening_bracketCB=".g:opening_bracketCB
-	redir END
+	call atplib#Log("CheckBracket.log", "return:")
+	call atplib#Log("CheckBracket.log", "open_line=".open_line)
+	call atplib#Log("CheckBracket.log", "open_col=".open_col)
+	call atplib#Log("CheckBracket.log", "opening_bracketCB=".g:opening_bracketCB)
     endif
     return [ open_line, open_col, bracket_list[open_bracket_nr] ]
 endfunction
@@ -3177,12 +3186,12 @@ function! atplib#CloseLastBracket(bracket_dict, ...)
     let pattern_b	= '\C\%('.join(size_patterns,'\|').'\)'
     let pattern_o	= '\%('.join(map(keys(a:bracket_dict),'escape(v:val,"\\[]")'),'\|').'\)'
 
-    if g:atp_debugCLB
-	exe "redir! > ".g:atp_TempDir."/CloseLastBracket.log"
+    if g:atp_debugCloseLastBracket
+	call atplib#Log("CloseLastBracket.log","","init")
 	let g:pattern_b	= pattern_b
 	let g:pattern_o	= pattern_o
-	silent echo "pattern_b=".pattern_b
-	silent echo "pattern_o=".pattern_o
+	call atplib#Log("CloseLastBracket.log", "pattern_b=".pattern_b)
+	call atplib#Log("CloseLastBracket.log", "pattern_o=".pattern_o)
     endif
 
     let limit_line	= max([1,(line(".")-g:atp_completion_limits[1])])
@@ -3204,19 +3213,16 @@ function! atplib#CloseLastBracket(bracket_dict, ...)
 	    let env_name 	= matchstr(strpart(getline(open_env[0]),open_env[1]-1), '\\begin\s*{\s*\zs[^}]*\ze*\s*}')
 	    if open_env[0] && atplib#CompareCoordinates([(exists("open_line") ? open_line : 0),(exists("open_line") ? open_col : 0)], open_env)
 		call atplib#CloseLastEnvironment('i', 'environment', env_name, open_env)
-		if g:atp_debugCLB
-		    redir END
-		endif
 		return 'closeing ' . env_name . ' at ' . string(open_env) 
 	    endif
 	endfor
 
    " Debug:
-   if g:atp_debugCLB
+   if g:atp_debugCloseLastBracket
        let g:open_line	= open_line
        let g:open_col	= open_col 
-       silent echo "open_line=".open_line
-       silent echo "open_col=".open_col
+       call atplib#Log("CloseLastBracket.log", "open_line=".open_line)
+       call atplib#Log("CloseLastBracket.log", "open_col=".open_col)
    endif
 
     "}}}3
@@ -3224,26 +3230,22 @@ function! atplib#CloseLastBracket(bracket_dict, ...)
 
    if getline(open_line)[open_col-3] . getline(open_line)[open_col-2] . getline(open_line)[open_col-1] =~ '\\\@<!\\\%((\|\[\)$'
        call atplib#CloseLastEnvironment('i', 'math', '', [ open_line, open_col ])
-       if g:atp_debugCLB
+       if g:atp_debugCloseLastBracket
 	   let b:atp_debugCLB = "call atplib#CloseLastEnvironment('i', 'math', '', [ ".open_line.", ".open_col." ])"
-	   silent echo "calling atplib#CloseLastEnvironment('i', 'math', '', [ ".open_line.", ".open_col." ])"
+	   call atplib#Log("CloseLastBracket.log", "calling atplib#CloseLastEnvironment('i', 'math', '', [ ".open_line.", ".open_col." ])")
        endif
-	if g:atp_debugCLB
-	    redir END
-	endif
        return
    endif
 
    if open_col 
 	let line	= getline(open_line)
-
 	let bline	= strpart(line,0,(open_col-1))
 	let eline	= strpart(line,open_col-1,2)
-	if g:atp_debugCLB
+	if g:atp_debugCloseLastBracket
 	    let g:bline = bline
 	    let g:eline = eline
-	    silent echo "bline=".bline
-	    silent echo "eline=".eline
+	    call atplib#Log("CloseLastBracket.log", "bline=".bline)
+	    call atplib#Log("CloseLastBracket.log", "eline=".eline)
 	endif
 
 	let opening_size=matchstr(bline,'\zs'.pattern_b.'\ze\s*$')
@@ -3258,34 +3260,34 @@ function! atplib#CloseLastBracket(bracket_dict, ...)
 	    let closing_size	= closing_size2.closing_size
 
 	    " DEBUG
-	    if g:atp_debugCLB
+	    if g:atp_debugCloseLastBracket
 		let g:bbline		= bbline
 		let g:opening_size2	= opening_size2
 		let g:closing_size2	= closing_size2
-		silent echo "bbline=".bbline
-		silent echo "opening_size2=".opening_size2
-		silent echo "closing_size2=".closing_size2
+		call atplib#Log("CloseLastBracket.log", "bbline=".bbline)
+		call atplib#Log("CloseLastBracket.log", "opening_size2=".opening_size2)
+		call atplib#Log("CloseLastBracket.log", "closing_size2=".closing_size2)
 	    endif
 	endif
 
 	echomsg "[ATP:] closing " . opening_size . opening_bracket . " from line " . open_line
 
 	" DEBUG:
-	if g:atp_debugCLB
+	if g:atp_debugCloseLastBracket
 	    let g:o_bra		= opening_bracket
-	    silen echo "opening_bracket=".opening_bracket
+	    call atplib#Log("CloseLastBracket.log", "opening_bracket=".opening_bracket)
 	    let g:o_size	= opening_size
-	    silen echo "opening_size=".opening_size
+	    call atplib#Log("CloseLastBracket.log", "opening_size=".opening_size)
 	    let g:bline		= bline
-	    silent echo "bline=".bline
+	    call atplib#Log("CloseLastBracket.log", "bline=".bline)
 	    let g:line		= line
-	    silent echo "line=".line
+	    call atplib#Log("CloseLastBracket.log", "line=".line)
 	    let g:eline		= eline
-	    silent echo "eline=".eline
+	    call atplib#Log("CloseLastBracket.log", "eline=".eline)
 	    let g:opening_size	= opening_size
-	    silent echo "opening_size=".opening_size
+	    call atplib#Log("CloseLastBracket.log", "opening_size=".opening_size)
 	    let g:closing_size	= closing_size
-	    silent echo "closing_size=".closing_size
+	    call atplib#Log("CloseLastBracket.log", "closing_size=".closing_size)
 	endif
 
 	let cline=getline(line("."))
@@ -3308,9 +3310,6 @@ function! atplib#CloseLastBracket(bracket_dict, ...)
 	let pos[2]+=len(closing_size.get(a:bracket_dict, opening_bracket))
 	keepjumps call setpos(".", pos)
 
-	if g:atp_debugCLB
-	    redir END
-	endif
 	return l:return
    endif
    " }}}3
@@ -3363,6 +3362,11 @@ endfunction
 try
 " Main tab completion function
 function! atplib#TabCompletion(expert_mode,...)
+
+    if g:atp_debugTabCompletion
+	call atplib#Log("TabCompletion.log", "", "init")
+    endif
+
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     " {{{2 Match the completed word 
     let normal_mode=0
@@ -3415,26 +3419,43 @@ function! atplib#TabCompletion(expert_mode,...)
 
     let limit_line=max([1,(pos[1]-g:atp_completion_limits[1])])
 
-    if g:atp_debugTC
+    if g:atp_debugTabCompletion
 	let g:nchar	= nchar
+	call atplib#Log("TabCompletion.log", "nchar=".nchar)
 	let g:l		= l
+	call atplib#Log("TabCompletion.log", "l=".l)
 	let g:n		= n
+	call atplib#Log("TabCompletion.log", "n=".n)
 	let g:o		= o
+	call atplib#Log("TabCompletion.log", "o=".o)
 	let g:s		= s
+	call atplib#Log("TabCompletion.log", "s=".s)
 	let g:p		= p
+	call atplib#Log("TabCompletion.log", "p=".p)
 	let g:a		= a
+	call atplib#Log("TabCompletion.log", "a=".a)
 	let g:nr	= nr
+	call atplib#Log("TabCompletion.log", "nr=".nr)
 
 	let g:line	= line    
+	call atplib#Log("TabCompletion.log", "line=".line)
 	let g:abegin	= abegin
+	call atplib#Log("TabCompletion.log", "abegin=".abegin)
 	let g:tbegin	= tbegin
+	call atplib#Log("TabCompletion.log", "tbegin=".tbegin)
 	let g:cbegin	= cbegin
+	call atplib#Log("TabCompletion.log", "cbegin=".cbegin)
 	let g:obegin	= obegin
+	call atplib#Log("TabCompletion.log", "obegin=".obegin)
 	let g:begin	= begin 
+	call atplib#Log("TabCompletion.log", "begin=".begin)
 	let g:pline	= pline
+	call atplib#Log("TabCompletion.log", "pline=".pline)
 	let g:ppline	= ppline
+	call atplib#Log("TabCompletion.log", "ppline=".ppline)
 
 	let g:limit_line= limit_line
+	call atplib#Log("TabCompletion.log", "limit_line=".limit_line)
     endif
 
 
@@ -3460,6 +3481,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let completion_method='command'
 	    " DEBUG:
 	    let b:comp_method='command'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 " 	    let b:comp_method='command fast return'
 	    return ''
@@ -3470,6 +3492,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let completion_method='environment_names'
 	    " DEBUG:
 	    let b:comp_method='environment_names'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 " 	    let b:comp_method='environment_names fast return'
 	    return ''
@@ -3480,14 +3503,17 @@ function! atplib#TabCompletion(expert_mode,...)
 	let completion_method='colors'
 	" DEBUG:
 	let b:comp_method='colors'
+	call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
     "{{{3 --------- label
     elseif l =~ '\\\%(eq\)\?ref\s*{[^}]*$' && !normal_mode
 	if index(g:atp_completion_active_modes, 'labels') != -1 
 	    let completion_method='labels'
 	    " DEBUG:
 	    let b:comp_method='labels'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='labels fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- pagestyle
@@ -3495,19 +3521,23 @@ function! atplib#TabCompletion(expert_mode,...)
 	let completion_method='pagestyle'
 	" DEBUG:
 	let b:comp_method='pagestyle'
+	call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
     "{{{3 --------- pagenumbering
     elseif l =~ '\\pagenumbering{\s*$'
 	let completion_method='pagenumbering'
 	" DEBUG:
 	let b:comp_method='pagenumbering'
+	call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
     "{{{3 --------- bibitems
     elseif ppline =~ '\\\%(no\)\?cite\(\s*\[[^]]*\]\s*\)\={[^}]*$' && !normal_mode
 	if index(g:atp_completion_active_modes, 'bibitems') != -1
 	    let completion_method='bibitems'
 	    " DEBUG:
 	    let b:comp_method='bibitems'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='bibitems fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- tikzpicture
@@ -3519,9 +3549,11 @@ function! atplib#TabCompletion(expert_mode,...)
 	    if index(g:atp_completion_active_modes, 'tikzpicture keywords') != -1 
 		" DEBUG:
 		let b:comp_method='tikzpicture keywords'
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		let completion_method="tikzpicture keywords"
 	    else
 		let b:comp_method='tikzpicture keywords fast return'
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		return ''
 	    endif
 	"{{{4 ----------- tikzpicture commands
@@ -3529,9 +3561,11 @@ function! atplib#TabCompletion(expert_mode,...)
 	    if index(g:atp_completion_active_modes, 'tikzpicture commands') != -1
 		" DEBUG:
 		let b:comp_method='tikzpicture commands'
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		let completion_method="tikzpicture commands"
 	    else
 		let b:comp_method='tikzpicture commands fast return'
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		return ''
 	    endif
 	"{{{4 ----------- close_env tikzpicture
@@ -3544,9 +3578,11 @@ function! atplib#TabCompletion(expert_mode,...)
 			\ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'close environments') != -1 )
 		" DEBUG:
 		let b:comp_method='close_env tikzpicture'
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		let completion_method="close_env"
 	    else
 		let b:comp_method='close_env tikzpicture fast return'
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		return ''
 	    endif
 	endif
@@ -3556,8 +3592,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let completion_method='package'
 	    " DEBUG:
 	    let b:comp_method='package'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='package fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- tikz libraries
@@ -3566,8 +3604,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let completion_method='tikz libraries'
 	    " DEBUG:
 	    let b:comp_method='tikz libraries'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='tikz libraries fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- inputfiles
@@ -3581,8 +3621,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let completion_method='inputfiles'
 	    " DEBUG:
 	    let b:comp_method='inputfiles'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='inputfiles fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- bibfiles
@@ -3591,8 +3633,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	    let completion_method='bibfiles'
 	    " DEBUG:
 	    let b:comp_method='bibfiles'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='bibfiles fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- bibstyles
@@ -3600,8 +3644,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if ( index(g:atp_completion_active_modes, 'bibstyles') != -1 ) 
 	    let completion_method='bibstyles'
 	    let b:comp_method='bibstyles'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='bibstyles fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- todo & missingfigure options
@@ -3609,16 +3655,20 @@ function! atplib#TabCompletion(expert_mode,...)
 	if ( index(g:atp_completion_active_modes, 'todonotes') != -1 ) 
 	    let completion_method='todo options'
 	    let b:comp_method='todo options'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='todo options fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     elseif obegin =~ '\\missingfigure\[[^\]]*'
 	if ( index(g:atp_completion_active_modes, 'todonotes') != -1 ) 
 	    let completion_method='missingfigure options'
 	    let b:comp_method='missingfigure options'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='missingfigure options fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- documentclass
@@ -3626,8 +3676,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'documentclass') != -1
 	    let completion_method='documentclass'
 	    let b:comp_method='documentclass'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='documentclass fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- Beamer Themes
@@ -3635,8 +3687,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'beamerthemes') != -1
 	    let completion_method='beamerthemes'
 	    let b:comp_method='beamerthemes'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='beamerthemes fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- Beamer Inner Themes
@@ -3644,8 +3698,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'beamerinnerthemes') != -1
 	    let completion_method='beamerinnerthemes'
 	    let b:comp_method='beamerinnerthemes'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='beamerinnerthemes fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- Beamer Outer Themes
@@ -3653,8 +3709,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'beamerouterthemes') != -1
 	    let completion_method='beamerouterthemes'
 	    let b:comp_method='beamerouterthemes'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='beamerouterthemes fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- Beamer Color Themes
@@ -3662,8 +3720,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'beamercolorthemes') != -1
 	    let completion_method='beamercolorthemes'
 	    let b:comp_method='beamercolorthemes'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='beamercolorthemes fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- Beamer Font Themes
@@ -3671,8 +3731,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'beamerfontthemes') != -1
 	    let completion_method='beamerfontthemes'
 	    let b:comp_method='beamerfontthemes'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='beamerfontthemes fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- font family
@@ -3680,8 +3742,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'font family') != -1
 	    let completion_method='font family'
 	    let b:comp_method='font family'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='font family fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- font series
@@ -3689,8 +3753,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'font series') != -1
 	    let completion_method='font series'
 	    let b:comp_method='font series'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='font series fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- font shape
@@ -3698,8 +3764,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'font shape') != -1
 	    let completion_method='font shape'
 	    let b:comp_method='font shape'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='font shape fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- font encoding
@@ -3707,8 +3775,10 @@ function! atplib#TabCompletion(expert_mode,...)
 	if index(g:atp_completion_active_modes, 'font encoding') != -1
 	    let completion_method='font encoding'
 	    let b:comp_method='font encoding'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	else
 	    let b:comp_method='font encoding fast return'
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    return ''
 	endif
     "{{{3 --------- brackets
@@ -3719,6 +3789,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	    if (!normal_mode &&  index(g:atp_completion_active_modes, 'brackets') != -1 ) ||
 		    \ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'brackets') != -1 )
 		let b:comp_method='brackets'
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		if atplib#CheckSyntaxGroups(['texMathZoneV'])
 		    let pattern = '\\\@!\\('
 		elseif atplib#CheckSyntaxGroups(['texMathZoneW'])
@@ -3745,6 +3816,7 @@ function! atplib#TabCompletion(expert_mode,...)
 		return '' 
 	    else
 		let b:comp_method='brackets fast return'
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		return ''
 	    endif
     "{{{3 --------- algorithmic
@@ -3754,16 +3826,19 @@ function! atplib#TabCompletion(expert_mode,...)
 			\ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'algorithmic') != -1 )
 			\ )
 		    let b:comp_method='algorithmic'
+		    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		    call atplib#CloseLastBracket(g:atp_algorithmic_dict, 0, 1)
 		    return '' 
 		else
 		    let b:comp_method='algorithmic fast return'
+		    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		    return ''
 		endif
     "{{{3 --------- abbreviations
     elseif l =~ '=\w\+\*\=$'
 	let completion_method='abbreviations' 
 	let b:comp_method='abbreviations'
+	call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
     "{{{3 --------- close environments
 	else
 	    if (!normal_mode &&  index(g:atp_completion_active_modes, 'close environments') != '-1' ) ||
@@ -3771,8 +3846,10 @@ function! atplib#TabCompletion(expert_mode,...)
 		let completion_method='close_env'
 		" DEBUG:
 		let b:comp_method='close_env a' 
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    else
 		let b:comp_method='close_env a fast return' 
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 		return ''
 	    endif
 	endif
@@ -3898,8 +3975,15 @@ function! atplib#TabCompletion(expert_mode,...)
 	if exists("g:atp_LatexPackages")
 	    let completion_list	= copy(g:atp_LatexPackages)
 	else
+	    if g:atp_debugTabCompletion
+		let debugTabCompletion_LatexPackages_TimeStart=reltime()
+	    endif
 	    let g:atp_LatexPackages	= atplib#KpsewhichGlobPath("tex", "", "*.sty")
 	    let completion_list	= deepcopy(g:atp_LatexPackages)
+	    if g:atp_debugTabCompletion
+		let g:debugTabCompletion_LatexPackages_Time=reltimestr(reltime(debugTabCompletion_LatexPackages_TimeStart))
+		call atplib#Log("TabCompletion.log", "LatexPackages Time: ".g:debugTabCompletion_LatexPackages_Time)
+	    endif
 	endif
     "{{{3 ------------ COLORS
     elseif completion_method == 'colors'
@@ -4157,7 +4241,14 @@ function! atplib#TabCompletion(expert_mode,...)
 	if exists("g:atp_LatexClasses")
 	    let completion_list	= copy(g:atp_LatexClasses)
 	else
+	    if g:atp_debugTabCompletion
+		let debugTabCompletion_LatexClasses_TimeStart=reltime()
+	    endif
 	    let g:atp_LatexClasses	= atplib#KpsewhichGlobPath("tex", "", "*.cls")
+	    if g:atp_debugTabCompletion
+		let g:debugTabCompletion_LatexClasses_Time=reltimestr(reltime(debugTabCompletion_LatexClasses_TimeStart))
+		call atplib#Log("TabCompletion.log", "LatexClasses Time: ".g:debugTabCompletion_LatexClasses_Time)
+	    endif
 	    let completion_list		= deepcopy(g:atp_LatexClasses)
 	endif
 	" \documentclass must be closed right after the name ends:
@@ -4275,7 +4366,7 @@ function! atplib#TabCompletion(expert_mode,...)
 	let pat=strpart(l,col)
 	let g:pat=pat
 	let bibitems_list=values(atplib#searchbib(pat))
-	if g:atp_debugTC
+	if g:atp_debugTabCompletion
 	    let g:pat = pat
 	endif
 	let pre_completion_list=[]
@@ -4533,7 +4624,7 @@ function! atplib#TabCompletion(expert_mode,...)
 
 	    " Check Brackets 
 	    let cl_return 	= atplib#CloseLastBracket(g:atp_bracket_dict)
-	    if g:atp_debugTC
+	    if g:atp_debugTabCompletion
 		let g:return	= cl_return
 	    endif
 	    " If the bracket was closed return
@@ -4562,9 +4653,11 @@ function! atplib#TabCompletion(expert_mode,...)
 	    if exists("zone")
 		let b:tc_return.=" close_env end " . zone
 		let b:comp_method.=' close_env end ' . zone
+		call atplib#Log("TabCompletion.log", "b:comp_method.=".b:comp_method)
 	    else
 		let b:tc_return.=" close_env end"
 		let b:comp_method.=' close_env end'
+		call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	    endif
 	elseif completion_method == 'package' || 
 		    \  completion_method == 'bibstyles' || 

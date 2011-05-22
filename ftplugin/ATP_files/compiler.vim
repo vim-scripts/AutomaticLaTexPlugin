@@ -61,9 +61,9 @@ function! <SID>ViewOutput(...)
     let sync_args 	= ( fwd_search ?  <SID>SyncTex(0,1) : "" )
     if g:atp_debugV
 	let g:global_options = global_options
-	let g:local_options = local_options
-	let g:sync_args	= sync_args
-	let g:viewer	= viewer
+	let g:local_options  = local_options
+	let g:sync_args      = sync_args
+	let g:viewer         = viewer
     endif
     if b:atp_Viewer =~ '\<okular\>' && fwd_search
 	let view_cmd	= "(".viewer." ".global_options." ".local_options." ".sync_args.")&"
@@ -74,6 +74,7 @@ function! <SID>ViewOutput(...)
 " 	let SyncTex	= s:SidWrap('SyncTex')
 " 	let sync_cmd 	= (fwd_search ? "vim "." --servername ".v:servername." --remote-expr "."'".SyncTex."()';" : "" ) 
 " 	let g:sync_cmd=sync_cmd
+
 	let view_cmd	= viewer." ".global_options." ".local_options." ".shellescape(outfile)."&"
     endif
 
@@ -198,7 +199,10 @@ function! <SID>SyncTex(mouse, ...) "{{{
     let ext		= get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf")
     let output_file	= fnamemodify(atp_MainFile,":p:r") . ext
     if !filereadable(output_file) && output_check
-       ViewOutput sync
+	" Here should be a test if viewer is running, this can be made with python.
+	" this is way viewer starts not well when using :SyncTex command while Viewer
+	" is not running.
+       call <SID>ViewOutput("sync")
        if g:atp_debugSyncTex
 	   silent echo "ViewOutput sync"
 	   redir END
@@ -475,7 +479,7 @@ function! <SID>MakeLatex(bang, verbose, start)
 		\ " --bibcmd ".b:atp_BibCompiler.
 		\ " --bibliographies ".shellescape(bibliographies).
 		\ " --outdir ".b:atp_OutDir.
-		\ " --keep ". shellescape(join(g:keep, ',')).
+		\ " --keep ". shellescape(join(g:atp_keep, ',')).
 		\ " --tex-options ".tex_options.
 		\ " --servername ".v:servername.
 		\ " --viewer ".shellescape(b:atp_Viewer).
@@ -558,11 +562,11 @@ function! <SID>SetBiberSettings()
 	return
     elseif !exists("s:biber_keep_done")
 	let s:biber_keep_done = 1
-	if index(g:keep, "run.xml") == -1
-	    g:keep += [ "run.xml" ]
+	if index(g:atp_keep, "run.xml") == -1
+	    g:atp_keep += [ "run.xml" ]
 	endif
-	if index(g:keep, "bcf") == -1
-	    g:keep += [ "bcf" ]
+	if index(g:atp_keep, "bcf") == -1
+	    g:atp_keep += [ "bcf" ]
 	endif
     endif
 endfunction
@@ -590,13 +594,14 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
     " On Unix the output of compile.py run by this function is available at
     " g:atp_TempDir/compiler.py.log
     if g:atp_debugPythonCompiler
-	let g:debugPC_bibtex	=a:bibtex
-	let g:debugPC_start	=a:start
-	let g:debugPC_runs	=a:runs
-	let g:debugPC_verbose	=a:verbose
-	let g:debugPC_command	=a:command
-	let g:debugPC_filename	=a:filename
-	let g:debugPC_bang	=a:bang
+	call atplib#Log("PythonCompiler.log", "", "init")
+	call atplib#Log("PythonCompiler.log", "a:bibtex=".a:bibtex)
+	call atplib#Log("PythonCompiler.log", "a:start=".a:start)
+	call atplib#Log("PythonCompiler.log", "a:runs=".a:runs)
+	call atplib#Log("PythonCompiler.log", "a:verbose=".a:verbose)
+	call atplib#Log("PythonCompiler.log", "a:command=".a:command)
+	call atplib#Log("PythonCompiler.log", "a:filename=".a:filename)
+	call atplib#Log("PythonCompiler.log", "a:bang=".a:bang)
     endif
 
     if !exists("t:atp_DebugMode")
@@ -667,7 +672,7 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
 		\ ." --viewer ".shellescape(b:atp_Viewer)
 		\ ." --xpdf-server ".shellescape(b:atp_XpdfServer)
 		\ ." --viewer-options ".shellescape(viewer_options) 
-		\ ." --keep ". shellescape(join(g:keep, ','))
+		\ ." --keep ". shellescape(join(g:atp_keep, ','))
 		\ ." --progname ".v:progname
 		\ ." --bibcommand ".b:atp_BibCompiler
 		\ ." --bibliographies ".shellescape(bibliographies)
@@ -685,13 +690,22 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
     endif
 
     " Disable WriteProjectScript
-    let eventignore 		= &l:eventignore
-    setl eventignore+=BufWrite
-    silent! w
-    let &l:eventignore 		= eventignore
+    let project=b:atp_ProjectScript
+    let b:atp_ProjectScript=0
+
+    if g:atp_debugPythonCompiler
+	call atplib#Log("PythonCompiler.log", "PRE WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
+    endif
+
+    silent! write
+
+    let b:atp_ProjectScript=project
     if a:command == "AU"  
 	let &l:backup		= backup 
 	let &l:writebackup 	= writebackup 
+    endif
+    if g:atp_debugPythonCompiler
+	call atplib#Log("PythonCompiler.log", "POST WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
     endif
     unlockvar g:atp_TexCommand
     let g:atp_TexCommand	= cmd
@@ -707,6 +721,9 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
 	call system(cmd)
     else
 	call system(cmd." &")
+    endif
+    if g:atp_debugPythonCompiler
+	call atplib#Log("PythonCompiler.log", "END b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
     endif
 endfunction
 " }}}
@@ -810,7 +827,7 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 
 "	COPY IMPORTANT FILES TO TEMP DIRECTORY WITH CORRECT NAME 
 "	except log and aux files.
-	let list	= copy(g:keep)
+	let list	= copy(g:atp_keep)
 	call filter(list, 'v:val != "log"')
 	for i in list
 	    let ftc	= b:atp_OutDir . fnamemodify(basename,":t:r") . "." . i
@@ -957,10 +974,10 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	silent echomsg "command=" . command
     endif
 
-	" Preserve files with extension belonging to the g:keep list variable.
+	" Preserve files with extension belonging to the g:atp_keep list variable.
 	let copy_cmd=""
 	let j=1
-	for i in filter(copy(g:keep), 'v:val != "aux"') 
+	for i in filter(copy(g:atp_keep), 'v:val != "aux"') 
 " ToDo: this can be done using internal vim functions.
 	    let copycmd=g:atp_cpcmd." ".cpoptions." ".shellescape(atplib#append(tmpdir,"/")).
 			\ "*.".i." ".shellescape(atplib#append(b:atp_OutDir,"/")) 
@@ -1005,19 +1022,20 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	    if &backup || &writebackup | setlocal nobackup | setlocal nowritebackup | endif
 	endif
 " This takes lots of time! 0.049s (more than 1/3)	
-    if g:atp_debugCompiler
-	silent echomsg "BEFORE WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
-    endif
+	if g:atp_debugCompiler
+	    silent echomsg "BEFORE WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
+	endif
 
 	" disable WriteProjectScript
-	let eventignore = &l:eventignore
-	setl eventignore+=BufWrite
+	let project=b:atp_ProjectScript
+	let b:atp_ProjectScript=0
+
 	silent! w
-	let &l:eventignore = eventignore
-" 	let b:atp_changedtick += 1
-    if g:atp_debugCompiler
-	silent echomsg "AFTER WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
-    endif
+
+	let b:atp_ProjectScript=project
+	if g:atp_debugCompiler
+	    silent echomsg "AFTER WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
+	endif
 
 	if a:command == "AU"  
 	    let &l:backup=backup 
@@ -1056,44 +1074,52 @@ augroup END
 
 function! <SID>auTeX(...)
 
-    if mode()=='i' && g:atp_updatetime_insert == 0 ||
+    if g:atp_debugauTeX
+	echomsg "*****************"
+	echomsg "b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick
+    endif
+
+    if mode() == 'i' && g:atp_updatetime_insert == 0 ||
 		\ mode()=='n' && g:atp_updatetime_normal == 0
+	if g:atp_debugauTeX
+	    echomsg "autex is off for the mode: ".mode()
+	endif
 	return "autex is off for the mode: ".mode()." (see :help mode())"
     endif
 
     " Wait if the compiler is running. The problem is that CursorHoldI autocommands
     " are not triggered more than once after 'updatetime'.
-"     echomsg "***"
-"     echomsg "b:atp_autex_wait=".b:atp_autex_wait
-"     echomsg "mode=".mode()
-    if index(split(g:atp_autex_wait, ','), mode()) != -1
-" 	\ !b:atp_autex_wait
-	if g:atp_Compiler == "python"
-	    call atplib#PIDsRunning("b:atp_PythonPIDs")
-	    echomsg string(b:atp_PythonPIDs)
-	else
-	    call atplib#PIDsRunning("b:atp_LatexPIDs")
-	endif
-	call atplib#PIDsRunning("b:atp_BibtexPIDs")
-	echo string(b:atp_BibtexPIDs)
-	if g:atp_Compiler == "python" && len(b:atp_PythonPIDs) ||
-	    \ g:atp_Compiler == "bash" && len(b:atp_LatexPIDs) ||
-	    \ len(b:atp_BibtexPIDs)
-" 	    unlockvar b:atp_autex_wait
-" 	    let b:atp_autex_wait=1
-" 	    lockvar b:atp_autex_wait
-	    return
-	endif
-"     else
-" 	unlockvar b:atp_autex_wait
-" 	let b:atp_autex_wait=0
-" 	lockvar b:atp_autex_wait
-    endif
+"     if index(split(g:atp_autex_wait, ','), mode()) != -1
+" " 	\ !b:atp_autex_wait
+" 	if g:atp_Compiler == "python"
+" 	    call atplib#PIDsRunning("b:atp_PythonPIDs")
+" 	else
+" 	    call atplib#PIDsRunning("b:atp_LatexPIDs")
+" 	endif
+" 	call atplib#PIDsRunning("b:atp_BibtexPIDs")
+" 	echo string(b:atp_BibtexPIDs)
+" 	if g:atp_Compiler == "python" && len(b:atp_PythonPIDs) ||
+" 	    \ g:atp_Compiler == "bash" && len(b:atp_LatexPIDs) ||
+" 	    \ len(b:atp_BibtexPIDs)
+" " 	    unlockvar b:atp_autex_wait
+" " 	    let b:atp_autex_wait=1
+" " 	    lockvar b:atp_autex_wait
+" 	    if g:atp_debugauTeX
+" 		echomsg "autex wait"
+" 	    endif
+" 	    return
+" 	endif
+" "     else
+" " 	unlockvar b:atp_autex_wait
+" " 	let b:atp_autex_wait=0
+" " 	lockvar b:atp_autex_wait
+"     endif
 
 
     " Using vcscommand plugin the diff window ends with .tex thus the autocommand
     " applies but the filetype is 'diff' thus we can switch tex processing by:
     if &l:filetype !~ "tex$"
+	echo "wrong file type"
 	return "wrong file type"
     endif
 
@@ -1102,7 +1128,10 @@ function! <SID>auTeX(...)
     let mode 	= ( g:atp_DefaultDebugMode == 'verbose' ? 'debug' : g:atp_DefaultDebugMode )
 
     if !b:atp_autex
-       return "autex is off"
+	if g:atp_debugauTeX
+	   echomsg "autex is off"
+	endif
+	return "autex is off"
     endif
 
     " if the file (or input file is modified) compile the document 
@@ -1110,12 +1139,17 @@ function! <SID>auTeX(...)
 " 	if !exists("b:atp_changedtick")
 " 	    let b:atp_changedtick = b:changedtick
 " 	endif
-	if g:atp_Compare == "changedtick"
+	if g:atp_Compare ==? "changedtick"
 	    let cond = ( b:changedtick != b:atp_changedtick )
 	else
 	    let cond = ( <SID>compare(readfile(expand("%"))) )
 	endif
-	let g:cond=cond
+	if g:atp_debugauTeX
+	    let g:cond=cond
+	    if g:atp_debugauTeX
+		echomsg  "COND=".cond
+	    endif
+	endif
 	if cond
 	    " This is for changedtick only
 	    let b:atp_changedtick = b:changedtick + 1
@@ -1134,6 +1168,9 @@ function! <SID>auTeX(...)
 		call <SID>Compiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 	    endif
 	    redraw
+	    if g:atp_debugauTeX
+		echomsg "compile" 
+	    endif
 	    return "compile" 
 	endif
     " if compiling for the first time
@@ -1150,11 +1187,19 @@ function! <SID>auTeX(...)
 	    endif
 	catch /E212:/
 	    echohl ErrorMsg
-	    echomsg expand("%") . "E212: Cannon open file for writing"
+	    if g:atp_debugauTeX
+		echomsg expand("%") . "E212: Cannon open file for writing"
+	    endif
 	    echohl Normal
+	    if g:atp_debugauTeX
+		echomsg " E212"
+	    endif
 	    return " E212"
 	catch /E382:/
 	    " This option can be set by VCSCommand plugin using VCSVimDiff command
+	    if g:atp_debugauTeX
+		echomsg " E382"
+	    endif
 	    return " E382"
 	endtry
 	if g:atp_Compiler == 'python'
@@ -1163,7 +1208,13 @@ function! <SID>auTeX(...)
 	    call <SID>Compiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 	endif
 	redraw
+	if g:atp_debugauTeX
+	    echomsg "compile for the first time"
+	endif
 	return "compile for the first time"
+    endif
+    if g:atp_debugauTeX
+	echomsg "files does not differ"
     endif
     return "files does not differ"
 endfunction
@@ -1639,6 +1690,8 @@ endif "}}}
 
 " Commands And Autocommands: 
 " {{{
+command! -buffer		HighlightErrors		:call atplib#HighlightErrors()
+command! -buffer		ClearHighlightErrors	:call atplib#ClearHighlightErrors()
 command! -buffer -bang 		Kill			:call <SID>Kill(<q-bang>)
 command! -buffer -nargs=? 	ViewOutput		:call <SID>ViewOutput(<f-args>)
 command! -buffer 		SyncTex			:call <SID>SyncTex(0)

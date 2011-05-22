@@ -211,9 +211,9 @@ imenu 550.70 LaTe&X.&Options.Set\ Output\ Directory\ to\ the\ default\ value<Tab
 menu 550.70 LaTe&X.&Options.Set\ Error\ File<Tab>:SetErrorFile			:<C-U>SetErrorFile<CR> 
 cmenu 550.70 LaTe&X.&Options.Set\ Error\ File<Tab>:SetErrorFile			<C-U>SetErrorFile<CR> 
 imenu 550.70 LaTe&X.&Options.Set\ Error\ File<Tab>:SetErrorFile			<Esc>:SetErrorFile<CR> 
-menu 550.70 LaTe&X.&Options.Which\ TeX\ files\ to\ copy<Tab>g:keep		:<C-U>let g:keep="
-cmenu 550.70 LaTe&X.&Options.Which\ TeX\ files\ to\ copy<Tab>g:keep		<C-U>let g:keep="
-imenu 550.70 LaTe&X.&Options.Which\ TeX\ files\ to\ copy<Tab>g:keep		<Esc>:let g:keep="
+menu 550.70 LaTe&X.&Options.Which\ TeX\ files\ to\ copy<Tab>g:atp_keep		:<C-U>let g:atp_keep="
+cmenu 550.70 LaTe&X.&Options.Which\ TeX\ files\ to\ copy<Tab>g:atp_keep		<C-U>let g:atp_keep="
+imenu 550.70 LaTe&X.&Options.Which\ TeX\ files\ to\ copy<Tab>g:atp_keep		<Esc>:let g:atp_keep="
 menu 550.70 LaTe&X.&Options.Tex\ extensions<Tab>g:atp_tex_extensions		:<C-U>let g:atp_tex_extensions="
 cmenu 550.70 LaTe&X.&Options.Tex\ extensions<Tab>g:atp_tex_extensions		<C-U>let g:atp_tex_extensions="
 imenu 550.70 LaTe&X.&Options.Tex\ extensions<Tab>g:atp_tex_extensions		<Esc>:let g:atp_tex_extensions="

@@ -570,8 +570,12 @@ function! s:InnerSearchPos(begin, line, col, run)
 			\ '\|\\closing{' .
 			\ '\|\\\@<!\$\$\s*$' . 
 			\ '\|\\\\\*\=' . 
-			\ '\|\%^\|\%$\)'
+			\ '\|\%^\|\%$\)' 
+" 			\ '\|^\s*%\)'
 	    let [ line, column ] = searchpos(pattern, flag)
+" 	    if getline(line) =~ '^\s*%'
+" 		let [ line, column ] = [ line+1, 1 ]
+" 	    endif
 	else
 	    let pattern = '\%(^\s*$' . 
 			\ '\|\\\@<!\\\]\zs' .
@@ -599,7 +603,7 @@ function! s:InnerSearchPos(begin, line, col, run)
 	call cursor(cline, ccol)
 	return [ line, column ] 
 endfunction
-if g:atp_debugSCP
+if g:atp_debugSelectCurrentParagraph
     command! EchoInnerBegin :echo s:InnerSearchPos(1, line("."), col("."), 1)
     command! EchoInnerEnd :echo s:InnerSearchPos(0, line("."), col("."), 1)
 endif
@@ -619,35 +623,41 @@ function! s:SelectCurrentParagraph(seltype)
 	let true = 1
 	let [ bline, bcol, eline, ecol ] = copy([ line("."), col("."), line("."), col(".") ])
 	let i =1
-	if g:atp_debugSCP
-	    echomsg " B pos:" . string([line("."), col(".")]) . " e-pos:" . string([bline, bcol]) 
+	if g:atp_debugSelectCurrentParagraph
+	    call atplib#Log("SelectCurrentParagraph.log", "", "init")
+	    call atplib#Log("SelectCurrentParagraph.log", " B pos:" . string([line("."), col(".")]) . " e-pos:" . string([bline, bcol])) 
 	endif
 	while true
 	    let [ bline, bcol ] = s:InnerSearchPos(1, bline, bcol, i)
-	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, bline, bcol) && strpart(getline(bline), bcol-1) !~ '^\\\['
-	    if g:atp_debugSCP
-		echomsg i . ") " . string([bline, bcol]) . " pos:" . string([line("."), col(".")]) . " true: " . true 
+	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, bline, bcol) && strpart(getline(bline), bcol-1) !~ '^\\\[\|^\\begin\>'
+	    if g:atp_debugSelectCurrentParagraph
+		call atplib#Log("SelectCurrentParagraph.log",i . ") " . string([bline, bcol]) . " pos:" . string([line("."), col(".")]) . " true: " . true)
 	    endif
 	    let i+=1
 	endwhile
-	if g:atp_debugSCP
+	if g:atp_debugSelectCurrentParagraph
 	    let [ g:bline0, g:bcol0]	= deepcopy([ bline, bcol])
+	    let bline_str = strpart(getline(bline), bcol-1)
+	    call atplib#Log("SelectCurrentParagraph.log", "[bline, bcol]=".string([ bline, bcol]))
+	    call atplib#Log("SelectCurrentParagraph.log", "getline(bline)=".getline(bline))
+	    call atplib#Log("SelectCurrentParagraph.log", "bline condition=".(getline(bline) !~ '^\s*$' && getline(bline) !~ '\\begin\s*{\s*\(equation\|align\|inlinemath\|dispayedmath\)\s*}' && bline_str !~ '^\%(\\\[\|\\item\>\|\\begin\>\)'))
 	endif
 	" Move to the end of match
 	let [ cline, ccolumn ] = [ line("."), col(".") ]
 	call cursor(bline, bcol)
 	let bline_str = strpart(getline(bline), bcol-1)
 	if getline(bline) !~ '^\s*$' && bline_str !~ '^\%(\\\[\|\\item\>\)'
+" 	if getline(bline) !~ '^\s*$' && getline(bline) !~ '\\begin\s*{\s*\(equation\|align\|inlinemath\|dispayedmath\)\s*}' && bline_str !~ '^\%(\\\[\|\\item\>\)'
 	    let pattern = '\%(^\s*$' . 
 			\ '\|^[^%]*\%(\\\zepar\>' . 
 			    \ '\|\\\zenewline\>' . 
 			    \ '\|\\end\s*{[^}]*}\s*' . 
 			    \ '\|\\begin\s*{[^}]*}\s*\%(\%({' . 
 				\ '\|\[\)[^]}]*\%(\]' . 
-				\ '\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\label\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n' . 
+				\ '\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\\%(label\|hypertarget\s*{[^}]*}\s*\)\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n' . 
 					\ '\|[^}]\)*}\)\=' . 
 				    \ '\|\s*\%(\\footnote\s*\%(\n' . 
-				\ '\|[^}]\)*}\)\s*\%(\\label\s*{[^}]*}\)\=\)\=\)' . 
+				\ '\|[^}]\)*}\)\s*\%(\\\%(label\|hypertarget\s*{[^}]*}\s*\)\s*{[^}]*}\)\=\)\=\)' . 
 			\ '\|\\item\%(\s*\[[^\]]*\]\)\=' . 
 			\ '\|\\\%(part\*\=' . 
 			\ '\|chapter\*\=' . 
@@ -662,58 +672,75 @@ function! s:SelectCurrentParagraph(seltype)
 			\ '\|\\\@<!\$\$\s*$' . 
 			\ '\|\\\\\*\=\)'
 	    let [ bline, bcol ] = searchpos(pattern, 'ecnW')
-	elseif bline_str =~ '^\\item\>' && bcol > 1
+	elseif bline_str =~ '^\\item\>\|^\\begin\>' && bcol > 1
 	    let bcol -= 1 
 	endif
-	if g:atp_debugSCP
-	    echomsg 'B End of Match: ' . string([bline, bcol])
+	if g:atp_debugSelectCurrentParagraph
+	    call atplib#Log("SelectCurrentParagraph.log",' [bline, bcol]=' . string([bline, bcol]) . " len bline=".len(getline(bline)))
 	endif
-	call cursor(bline, len(line(bline)))
 
 	" Find end position (iterate over math zones).
-	let [ eline, ecol ] = s:InnerSearchPos(0, line("."), col("."), 1)
+	call cursor(bline, len(line(bline)))
+	if strpart(getline(bline), bcol-1) =~ '\\begin\>'
+	    let [ eline, ecol ] = s:InnerSearchPos(0, bline, len(getline(bline)), 1)
+	else
+	    let [ eline, ecol ] = s:InnerSearchPos(0, bline, bcol, 1)
+	endif
+	if g:atp_debugSelectCurrentParagraph
+	    call atplib#Log("SelectCurrentParagraph.log", "eline=".eline." ecol=".ecol)
+	endif
 	let line = strpart(getline(eline), ecol-1)
-	let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\\\['
+	let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\s*\\\]\|^\s*\\end\>\|^\s*\\begin\>\>'
+" 	let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\s*\\\]\|^\s*\\end\>'
 	let i = 2
-	if g:atp_debugSCP
-	    echomsg " E pos:" . string([line("."), col(".")]) . " e-pos:" . string([eline, ecol]) . " true: " . true
+	if g:atp_debugSelectCurrentParagraph
+	    call atplib#Log("SelectCurrentParagraph.log", " E pos:" . string([line("."), col(".")]) . " e-pos:" . string([eline, ecol]) . " true: " . true)
 	endif
 	while true
 	    let line	= strpart(getline(eline), ecol-1)
+	    if g:atp_debugSelectCurrentParagraph
+		call atplib#Log("SelectCurrentParagraph.log", i . ") E line=" . line)
+	    endif
 	    if line =~ '^\\\@<!\%(\\)\|\\\]\|\\\[\|\\\@<!\$\$\)'
-		if g:atp_debugSCP
-		    echomsg i . ") E line break " . eline . " line=" . line
-		    let g:line 	= line
-		    let g:pat	= '^\\\@<!\%(\\)\|\\\]\|\\\[\)'
+		if g:atp_debugSelectCurrentParagraph
+		    call atplib#Log("SelectCurrentParagraph.log", i . ") E line break " . eline . " line=" . line)
 		endif
 		break
 	    endif
 	    let [ eline, ecol ] = s:InnerSearchPos(0, eline, ecol, i)
-	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol)
-	    if g:atp_debugSCP
-		echomsg i . ") " . string([eline, ecol]) . " pos:" . string([line("."), col(".")]) . " true: " . true
+	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\s*\\\]\|^\s*\\end\>\|^\s*\\begin\>\>'
+" 	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol)
+	    if g:atp_debugSelectCurrentParagraph
+		call atplib#Log("SelectCurrentParagraph.log", i . ") " . string([eline, ecol]) . " pos:" . string([line("."), col(".")]) . " true: " . true)
 	    endif
 	    let i+=1
 	endwhile
-	let emove	= "ge"
+	if line !~ '\\end\>'
+	    let emove	= ""
+	endif
     else
 	let [ bline, bcol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>\|\\begin\s*{\s*\%(document\|letter\)\s*}', 'bcnW')
 	let [ eline, ecol ] = searchpos('^\s*$\|^[^%]*\zs\\par\>\|\\end\s*{\s*\%(document\|letter\)\s*}\zs', 'nW')
     endif
     
-    if g:atp_debugSCP
+    if g:atp_debugSelectCurrentParagraph
 	let [ g:bline, g:bcol]	= deepcopy([ bline, bcol])
 	let [ g:eline, g:ecol]	= deepcopy([ eline, ecol])
+	call atplib#Log("SelectCurrentParagraph.log", "[bline, bcol]=".string([ bline, bcol]))
+	call atplib#Log("SelectCurrentParagraph.log", "[eline, ecol]=".string([ eline, ecol]))
     endif
 
     let bline_str = strpart(getline(bline), bcol-1)
     let eline_str = strpart(getline(eline), 0, ecol)
     let eeline_str  = strpart(getline(eline), ecol-1)
 
-    if g:atp_debugSCP
+    if g:atp_debugSelectCurrentParagraph
 	let g:bline_str = bline_str
 	let g:eline_str = eline_str
 	let g:eeline_str = eeline_str
+	call atplib#Log("SelectCurrentParagraph.log", "bline_str=".bline_str)
+	call atplib#Log("SelectCurrentParagraph.log", "eline_str=".eline_str)
+	call atplib#Log("SelectCurrentParagraph.log", "eeline_str=".eeline_str)
     endif
 
     if getline(bline) =~ '\\par\|\\newline\|\\begin\s*{\s*\%(document\|letter\)\s*}' || bline_str =~ '^\%(\\\[\|\\item\>\)'
@@ -729,20 +756,19 @@ function! s:SelectCurrentParagraph(seltype)
 	let emove	= 'gE'
     elseif eline_str  =~ '\\@<!\\\]'
 	let emove	= ''
-    elseif eeline_str =~ '^\\end\s*{\s*\%(align\%(at\)\=\|equation\|display\%(ed\)\=math'
+    elseif eeline_str =~ '^\s*\\end\s*{\s*\%(align\%(at\)\=\|equation\|display\%(ed\)\=math'
 		\ . '\|array\|eqnarray\|inlinemath\|math\)\*\=\s*}'
 	let emove	= 'E'
     elseif eeline_str =~ '^\\closing'
 	let emove	= 'ge'
-    elseif eline_str  =~ '\\$'
-	let emove	= 'h'
     else
 	let emove	= 'ge'
     endif
 
-    if g:atp_debugSCP
+    if g:atp_debugSelectCurrentParagraph
 	let g:bmove = bmove
 	let g:emove = emove
+	call atplib#Log("SelectCurrentParagraph.log", "bmove=".bmove." emove=".emove)
     endif
 
     call cursor(bline, bcol)

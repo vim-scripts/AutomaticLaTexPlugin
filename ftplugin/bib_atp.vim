@@ -4,7 +4,7 @@
 " URL:	       https://launchpad.net/automatictexplugin	
 " BUG Trucer:  https://bugs.launchpad.net/automatictexplugin
 " Language:    bib
-" Last Change: Sat Apr 16 09:00  2011 W
+" Last Change: Sat May 21 06:00  2011 W
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.
 "

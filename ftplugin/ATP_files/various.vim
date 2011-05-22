@@ -3,7 +3,7 @@
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Sun May 08 07:00  2011 W
+" Last Change: Sat May 21 01:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -347,16 +347,20 @@ endfunction
 " imap <lhs> 	<Esc>:call Insert(text, math)<CR>a
 " a:text	= text to insert in text mode
 " a:math	= text to insert in math mode	
-function! Insert(text, math)
+" a:1		= how much to move cursor to the left after inserti
+function! Insert(text, math, ...)
 
-    let MathZones = copy(g:atp_MathZones)
-    if b:atp_TexFlavor == 'plaintex'
-	call add(MathZones, 'texMathZoneY')
+    let move = ( a:0 >= 1 ? a:1 : 0 )
+
+    if b:atp_TexFlavor == 'plaintex' && index(g:atp_MathZones, 'texMathZoneY') == -1
+	call add(g:atp_MathZones, 'texMathZoneY')
     endif
+    let MathZones = copy(g:atp_MathZones)
 
     " select the correct wrapper
     if atplib#CheckSyntaxGroups(MathZones, line("."), col("."))
 	let insert	= a:math
+	let move	-= 1
     else
 	let insert	= a:text
     endif
@@ -371,7 +375,7 @@ function! Insert(text, math)
 
     let new_line	= strpart(line, 0, col) . insert . strpart(line, col)
     call setline(line("."), new_line)
-    call cursor(line("."), col(".")+len(insert))
+    call cursor(line("."), col(".")+len(insert)-move)
 
     return ""
 endfunction
@@ -711,6 +715,7 @@ function! s:ToggleEnvironment(ask, ...)
 	if l:add == 1
 	    let l:new_env_name=input("What is the new name for " . l:env_name . "? type and hit <Enter> ", "", "customlist,EnvCompletion" )
 	    if l:new_env_name == ""
+		redraw
 		echomsg "[ATP:] environment name not changed"
 		return
 	    endif
@@ -732,6 +737,7 @@ function! s:ToggleEnvironment(ask, ...)
 	call setline(l:open_pos[0],substitute(getline(l:open_pos[0]),'\(\\begin\s*{\)'.l:env_name.'}','\1'.l:new_env_name.'}',''))
 	call setline(l:close_pos[0],substitute(getline(l:close_pos[0]),
 		    \ '\(\\end\s*{\)'.l:env_name.'}','\1'.l:new_env_name.'}',''))
+	redraw
 	echomsg "[ATP:] environment toggeled at lines: " .l:open_pos[0]." and ".l:close_pos[0]
     endif
 
@@ -783,6 +789,7 @@ function! s:ToggleEnvironment(ask, ...)
 	    keepjumps call setpos(".", pos_save)
 	    let &hidden = hidden
 	elseif n != 0 && l:new_label != l:label
+	    redraw
 	    echohl WarningMsg
 	    echomsg "[ATP:] labels not changed, new label: ".l:new_label." is in use!"
 	    echohl Normal
@@ -1016,7 +1023,7 @@ function! s:OpenLog()
 	function! <SID>SyncTex(bang,...)
 
 	    let cwd = getcwd()
-	    exe "lcd " . fnameescape(b:atp_ProjectDir )
+	    exe "lcd " . fnameescape(b:atp_ProjectDir)
 
 	    let g:debugST	= 0
 
@@ -2292,14 +2299,14 @@ if has("unix") && g:atp_atpdev
 	else
 	    echomsg "No such file."
 	endif
-	exe "lcd ".dir
+	exe "lcd ".escape(dir, ' ')
     endfunction
     function! <SID>DebugPrintComp(A,C,L)
 	let list = split(globpath(g:atp_TempDir, "*"), "\n")
 	let dir = getcwd()
 	exe "lcd ".g:atp_TempDir
 	call map(list, "fnamemodify(v:val, ':.')")
-	exe "lcd ".dir
+	exe "lcd ".escape(dir, ' ')
 	return join(list, "\n")
     endfunction
     command! -nargs=? -complete=custom,<SID>DebugPrintComp DebugPrint	:call <SID>DebugPrint(<q-args>)
@@ -2337,15 +2344,20 @@ nnoremap <silent> <buffer> <Plug>TexLog				:call <SID>TexLog()<CR>
 command! -buffer 	PdfFonts				:call <SID>PdfFonts()
 nnoremap <silent> <buffer> <Plug>PdfFonts			:call <SID>PdfFonts()<CR>
 command! -complete=custom,s:Complete_lpr  -buffer -nargs=* SshPrint 	:call <SID>SshPrint("", <f-args>)
-command! -complete=custom,s:CompleteLocal_lpr  -buffer -nargs=* Lpr		:call <SID>Lpr(<f-args>)
+command! -complete=custom,s:CompleteLocal_lpr  -buffer -nargs=* Lpr	:call <SID>Lpr(<f-args>)
 nnoremap <buffer> 	<Plug>SshPrint				:SshPrint 
 command! -buffer 	Lpstat					:call <SID>Lpstat()
 nnoremap <silent> <buffer> <Plug>Lpstat				:call <SID>Lpstat()<CR>
 command! -buffer 	ListPrinters				:echo <SID>ListPrinters("", "", "")
 " List Packages:
 command! -buffer 	ShowPackages				:let b:atp_PackageList = atplib#GrepPackageList() | echo join(b:atp_PackageList, "\n")
-command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
-command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
+if &l:cpoptions =~# 'B'
+    command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
+    command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
+else
+    command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\\c\\<to\\s*do\\>','\\s*%\\c.*\\<note\\>',<f-args>)
+    command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\\c\\<note\\>','\\s*%\\c.*\\<to\\s*do\\>',<f-args>)
+endif
 command! -buffer ReloadATP					:call <SID>ReloadATP("!")
 command! -bang -buffer -nargs=1 AMSRef				:call AMSRef(<q-bang>, <q-args>)
 command! -buffer	Preambule				:call Preambule()

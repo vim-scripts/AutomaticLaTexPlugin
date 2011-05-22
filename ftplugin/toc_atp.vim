@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Tue May 03 11:00  2011 W
+" Last Change: Mon May 16 02:00  2011 W
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 
@@ -16,23 +16,13 @@ endfunction
 setlocal statusline=%{ATP_TOC_StatusLine()}
 " }}}
 
-" {{{ s:getlinenr(...)
+" {{{ Getlinenr(...)
 " a:1 	line number to get, if not given the current line
 " a:2	0/1 	0 (default) return linenr as for toc/labels
 function! Getlinenr(...)
     let line 	=  a:0 >= 1 ? a:1 : line('.')
     let labels 	=  a:0 >= 2 ? a:2 : expand("%") == "__Labels__" ? 1 : 0
     let g:line	= line 
-
-    if labels == 0
-	return get(b:atp_Toc, line, ["", ""])[1]
-    else
-	return get(b:atp_Labels, line, ["", ""])[1]
-    endif
-endfunction
-function! s:getlinenr(...)
-    let line 	=  a:0 >= 1 ? a:1 : line('.')
-    let labels 	=  a:0 >= 2 ? a:2 : expand("%") == "__Labels__" ? 1 : 0
 
     if labels == 0
 	return get(b:atp_Toc, line, ["", ""])[1]
@@ -84,7 +74,7 @@ function! s:gotowinnr()
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
 
     " This is the line number to which we will go.
-    let l:nr=s:getlinenr(line("."), labels_window)
+    let l:nr=atplib#getlinenr(line("."), labels_window)
     " t:atp_bufname
     " t:atp_winnr		were set by TOC(), they should also be set by
     " 			autocommands
@@ -140,7 +130,7 @@ function! GotoLine(closebuffer) "{{{
     let tocbufnr= bufnr("")
 
     " line to go to
-    let nr	= s:getlinenr(line("."), labels_window)
+    let nr	= atplib#getlinenr(line("."), labels_window)
 
     " window to go to
     let gotowinnr= s:gotowinnr()
@@ -185,11 +175,11 @@ function! <SID>yank(arg) " {{{
 	    call atplib#generatelabels(getbufvar(s:file(), 'atp_MainFile'), 0)
 	endif
 
-	let line	= s:getlinenr(line("."), labels_window)
+	let line	= atplib#getlinenr(line("."), labels_window)
 	let choice	= get(get(filter(get(deepcopy(t:atp_labels), file_name, []), 'v:val[0] ==  line'), 0, []), 1 , 'nokey')
     else
 	if exists("t:atp_labels") || get(t:atp_labels, file_name, "nofile") != "nofile"
-	    let line_nr		= s:getlinenr(line("."), labels_window)
+	    let line_nr		= atplib#getlinenr(line("."), labels_window)
 	    let choice_list	= filter(get(deepcopy(t:atp_labels), file_name), "v:val[0] == line_nr" )
 	    " There should be just one element in the choice list
 	    " unless there are two labels in the same line.
@@ -325,7 +315,7 @@ function! ShowLabelContext()
     let win_nr		= bufwinnr(buf_name)
     let g:buf_name	= buf_name
     let g:win_nr	= win_nr
-    let line		= s:getlinenr(line("."), labels_window)
+    let line		= atplib#getlinenr(line("."), labels_window)
     if !exists("t:atp_labels")
 	let t:atp_labels=UpdateLabels(buf_name)
     endif
@@ -345,7 +335,7 @@ function! EchoLine()
 
     " If we are not on a toc/label line 
     " return
-    if !s:getlinenr(line("."))
+    if !atplib#getlinenr(line("."))
 	return 0
     endif
 
@@ -362,7 +352,7 @@ function! EchoLine()
     if !exists("t:atp_labels")
 	let t:atp_labels[buf_name]	= UpdateLabels(buf_name)[buf_name]
     endif
-    let line		= s:getlinenr(line("."), labels_window)
+    let line		= atplib#getlinenr(line("."), labels_window)
     let sec_line	= join(getbufline(buf_name,line))
     	let g:sec_line	= sec_line
     let sec_type	= ""
@@ -459,7 +449,7 @@ if expand("%") == "__ToC__"
 	" to operato on
 	let file_name	= s:file()
 
-	let begin_line	= s:getlinenr()
+	let begin_line	= atplib#getlinenr()
 	let section_nr	= s:getsectionnr()
 	let toc		= deepcopy(t:atp_toc[file_name]) 
 	let type	= toc[begin_line][0]
@@ -563,7 +553,7 @@ if expand("%") == "__ToC__"
 	" to operato on
 	let file_name	= s:file()
 
-	let begin_line	= s:getlinenr()
+	let begin_line	= atplib#getlinenr()
 	let section_nr	= s:getsectionnr()
 	let toc		= deepcopy(t:atp_toc[file_name]) 
 	let type	= toc[begin_line][0]
@@ -688,9 +678,9 @@ if expand("%") == "__ToC__"
 
     "     if a:after 
 	if a:type ==# "P" || line(".") == 1
-	    let begin_line	= s:getlinenr((line(".")))
+	    let begin_line	= atplib#getlinenr((line(".")))
 	else
-	    let begin_line	= s:getlinenr((line(".")+1))
+	    let begin_line	= atplib#getlinenr((line(".")+1))
 	    if begin_line	== ""
 		let begin_line	= "last_line"
 	    endif
@@ -790,19 +780,16 @@ function! Help() " {{{1
 	echo ":Undo			Undo"
     endif
     echo "<F1>			this help message"
-endfunction
+endfunction " }}}1
 
-function! s:CursorLine() "{{{1
-    if s:getlinenr(line(".")) && !&l:cursorline
-	setl cursorline
-    elseif !s:getlinenr(line(".")) && &l:cursorline 
-	setl nocursorline
-    endif
-endfunction
+" ATP_CursorLine autocommand:
+" {{{1
+
 augroup ATP_CursorLine
-    au CursorMoved,CursorMovedI __ToC__ call s:CursorLine()
-augroup END
+    au CursorMoved,CursorMovedI __ToC__ call atplib#CursorLine()
+augroup END " }}}1
 
+" Mappings:
 " MAPPINGS {{{1
 if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
     map <silent> <buffer> q 		:bdelete<CR>

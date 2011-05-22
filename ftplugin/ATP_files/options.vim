@@ -40,13 +40,25 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
+if !exists("g:atp_debugMapFile")
+    " debug mappings.vim file (show which maps will not be defined).
+    let g:atp_debugMapFile	= 0
+endif
+if !exists("g:atp_debugLatexTags")
+    " debug <SID>LatexTags() function (motion.vim)
+    let g:atp_debugLatexTags	= 0
+endif
+if !exists("g:atp_debugaaTeX")
+    " debug <SID>auTeX() function (compiler.vim)
+    let g:atp_debugauTeX	= 0
+endif
 if !exists("g:atp_debugSyncTex")
     " debug SyncTex (compiler.vim)
-    let g:atp_debugSyncTex = 0
+    let g:atp_debugSyncTex 	= 0
 endif
 if !exists("g:atp_debugInsertItem")
     " debug SyncTex (various.vim)
-    let g:atp_debugInsertItem = 0
+    let g:atp_debugInsertItem 	= 0
 endif
 if !exists("g:atp_debugUpdateATP")
     " debug UpdateATP (various.vim)
@@ -64,9 +76,9 @@ if !exists("g:atp_debugGAF")
     " debug aptlib#GrepAuxFile
     let g:atp_debugGAF		= 0
 endif
-if !exists("g:atp_debugSCP")
+if !exists("g:atp_debugSelectCurrentParagraph")
     " debug s:SelectCurrentParapgrahp (LatexBox_motion.vim)
-    let g:atp_debugSCP		= 0
+    let g:atp_debugSelectCurrentParagraph	= 0
 endif
 if !exists("g:atp_debugSIT")
     " debug <SID>SearchInTree (search.vim)
@@ -141,11 +153,6 @@ if !exists("g:atp_debugToF")
     " TreeOfFiles() ATP_files/common.vim
     let g:atp_debugToF 		= 0
 endif
-if !exists("g:atp_debgTOF")
-    " TreeOfFiles() redirect only the output to
-    " /tmp/ATP_log
-    let g:atp_debugTOF 		= 0
-endif
 if !exists("g:atp_debugBabel")
     " echo msg if  babel language is not supported.
     let g:atp_debugBabel 	= 0
@@ -176,6 +183,8 @@ endif
 " }}}
 
 setl nrformats=alpha
+" The vim option 'iskeyword' is adjust just after g:atp_separator and
+" g:atp_no_separator variables are defined.
 setl keywordprg=texdoc\ -m
 if maparg("K", "n") != ""
     try
@@ -191,30 +200,35 @@ exe "setlocal complete+=".
 	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/SIunits")
 " The ams_dictionary is added after g:atp_amsmath variable is defined.
 
-setlocal suffixes+=pdf
+" setlocal iskeyword+=\
+let suffixes = split(&suffixes, ",")
+if index(suffixes, ".pdf") == -1
+    setlocal suffixes+=.pdf
+elseif index(suffixes, ".dvi") == -1
+    setlocal suffixes+=.dvi
+endif
 " As a base we use the standard value defined in 
 " The suffixes option is also set after g:atp_tex_extensions is set.
 
 " Borrowed from tex.vim written by Benji Fisher:
     " Set 'comments' to format dashed lists in comments
-    setlocal com=sO:%\ -,mO:%\ \ ,eO:%%,:%
+    setlocal comments=sO:%\ -,mO:%\ \ ,eO:%%,:%
 
     " Set 'commentstring' to recognize the % comment character:
     " (Thanks to Ajit Thakkar.)
-    setlocal cms=%%s
+    setlocal commentstring=%%s
 
     " Allow "[d" to be used to find a macro definition:
     " Recognize plain TeX \def as well as LaTeX \newcommand and \renewcommand .
     " I may as well add the AMS-LaTeX DeclareMathOperator as well.
-    let &l:define='\\\([egx]\|char\|mathchar\|count\|dimen\|muskip\|skip\|toks\)\='
-	    \ .	'def\|\\font\|\\\(future\)\=let'
-	    \ . '\|\\new\(count\|dimen\|skip\|muskip\|box\|toks\|read\|write'
-	    \ .	'\|fam\|insert\)'
+    let &l:define='\\\([egx]\|char\|mathchar\|count\|dimen\|muskip\|skip\|toks\)\=def'
+	    \ .	'\|\\font\|\\\(future\)\=let'
+	    \ . '\|\\new\(count\|dimen\|skip\|muskip\|box\|toks\|read\|write\|fam\|insert\)'
+	    \ .	'\|\\definecolor{'
 	    \ . '\|\\\(re\)\=new\(boolean\|command\|counter\|environment\|font'
 	    \ . '\|if\|length\|savebox\|theorem\(style\)\=\)\s*\*\=\s*{\='
 	    \ . '\|DeclareMathOperator\s*{\=\s*'
 	    \ . '\|DeclareFixedFont\s*{\s*'
-    let g:filetype = &l:filetype
     if &l:filetype != "plaintex"
 	setlocal include=^[^%]*\\%(\\\\input\\(\\s*{\\)\\=\\\\|\\\\include\\s*{\\)
     else
@@ -239,6 +253,22 @@ setlocal suffixes+=pdf
 let b:atp_running	= 0
 
 " these are all buffer related variables:
+function! <SID>TexCompiler()
+    if buflisted(atplib#FullPath(b:atp_MainFile))
+	let line = getbufline(atplib#FullPath(b:atp_MainFile), 1)[0]
+	if line =~ '^%&\w*tex\>'
+	    return matchstr(line, '^%&\zs\w\+')
+	endif
+    else
+	let line = readfile(atplib#FullPath(b:atp_MainFile))[0] 
+	if line =~ '^%&\w*tex\>'
+	    return matchstr(line, '^%&\zs\w\+')
+	endif
+    endif
+    return (&filetype == "plaintex" ? "pdftex" : "pdflatex")
+endfunction
+let s:TexCompiler = <SID>TexCompiler()
+    
 let s:optionsDict= { 	
 		\ "atp_TexOptions" 		: "-synctex=1", 
 	        \ "atp_ReloadOnError" 		: "1", 
@@ -252,7 +282,7 @@ let s:optionsDict= {
 		\ "atp_okularOptions"		: ["--unique"],
 		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
 		\ "atp_TempDir"			: substitute(b:atp_OutDir . "/.tmp", '\/\/', '\/', 'g'),
-		\ "atp_TexCompiler" 		: &filetype == "plaintex" ? "pdftex" : "pdflatex",	
+		\ "atp_TexCompiler" 		: s:TexCompiler,
 		\ "atp_BibCompiler"		: ( getline(atplib#SearchPackage('biblatex')) =~ '\<backend\s*=\s*biber\>' ? 'biber' : "bibtex" ),
 		\ "atp_auruns"			: "1",
 		\ "atp_TruncateStatusSection"	: "40", 
@@ -277,7 +307,6 @@ let s:optionsDict= {
 " 			\.($TEXINPUTS == "" ? b:atp_OutDir : b:atp_OutDir.":".$TEXINPUTS)
 " 			\.";BIBINPUTS="
 " 			\.($BIBINPUTS == "" ? b:atp_OutDir : b:atp_OutDir.":".$BIBINPUTS),
-let g:optionsDict=deepcopy(s:optionsDict)
 " the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
 " remember what is the default used by s:SetOutDir().
 
@@ -288,13 +317,13 @@ let s:ask = { "ask" : "0" }
 function! s:SetOptions()
 
     let s:optionsKeys		= keys(s:optionsDict)
-    let g:optionsKeys		= copy(s:optionsKeys)
     let s:optionsinuseDict	= getbufvar(bufname("%"),"")
 
     "for each key in s:optionsKeys set the corresponding variable to its default
     "value unless it was already set in .vimrc file.
     for key in s:optionsKeys
-	if string(get(s:optionsinuseDict,key, "optionnotset")) == string("optionnotset") && key != "atp_OutDir" && key != "atp_autex" || key == "atp_TexCompiler"
+" 	echomsg key
+	if string(get(s:optionsinuseDict,key, "optionnotset")) == string("optionnotset") && key != "atp_OutDir" && key != "atp_autex"
 	    call setbufvar(bufname("%"), key, s:optionsDict[key])
 	elseif key == "atp_OutDir"
 
@@ -333,16 +362,34 @@ lockvar b:atp_autex_wait
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_HighlightErrors")
+    let g:atp_HighlightErrors = 0
+endif
+if !exists("g:atp_Highlight_ErrorGroup")
+    let g:atp_Highlight_ErrorGroup = "Error"
+endif
+if !exists("g:atp_Highlight_WarningGroup")
+"     let g:atp_Highlight_WarningGroup = "WarningMsg"
+    let g:atp_Highlight_WarningGroup = ""
+endif
+if !exists("maplocalleader")
+    if &l:cpoptions =~# "B"
+	let maplocalleader="\\"
+    else
+	let maplocalleader="\\\\"
+    endif
+endif
 if !exists("g:atp_sections")
     " Used by :TOC command (s:maketoc in motion.vim)
     let g:atp_sections={
-	\	'chapter' 	: [           '\m^\s*\(\\chapter\*\?\>\)',	'\m\\chapter\*'],	
-	\	'section' 	: [           '\m^\s*\(\\section\*\?\>\)',	'\m\\section\*'],
-	\ 	'subsection' 	: [	   '\m^\s*\(\\subsection\*\?\>\)',	'\m\\subsection\*'],
-	\	'subsubsection' : [ 	'\m^\s*\(\\subsubsection\*\?\>\)',	'\m\\subsubsection\*'],
-	\	'bibliography' 	: ['\m^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
-	\	'abstract' 	: ['\m^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'],
-	\   'part'		: [ 		 '\m^\s*\(\\part\*\?\>\)',	'\m\\part\*']}
+	\	'chapter' 	: [ '\m^\s*\(\\chapter\*\?\>\)',			'\m\\chapter\*'		],	
+	\	'section' 	: [ '\m^\s*\(\\section\*\?\>\)',			'\m\\section\*'		],
+	\ 	'subsection' 	: [ '\m^\s*\(\\subsection\*\?\>\)',			'\m\\subsection\*'	],
+	\	'subsubsection' : [ '\m^\s*\(\\subsubsection\*\?\>\)',			'\m\\subsubsection\*'	],
+	\	'bibliography' 	: [ '\m^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
+	\	'abstract' 	: [ '\m^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'		],
+	\   	'part'		: [ '\m^\s*\(\\part\*\?\>\)',				'\m\\part\*'		]
+	\ }
 endif
 if !exists("g:atp_cgetfile") || g:atp_reload_variables
     let g:atp_cgetfile = 1
@@ -358,16 +405,16 @@ if !exists("g:atp_imap_ShortEnvIMaps") || g:atp_reload_variables
     let g:atp_imap_ShortEnvIMaps = 1
 endif
 if !exists("g:atp_imap_over_leader") || g:atp_reload_variables
-    let g:atp_imap_over_leader="`"
+    let g:atp_imap_over_leader	= "`"
 endif
 if !exists("g:atp_imap_subscript") || g:atp_reload_variables
-    let g:atp_imap_subscript="__"
+    let g:atp_imap_subscript 	= "__"
 endif
 if !exists("g:atp_imap_supscript") || g:atp_reload_variables
-    let g:atp_imap_supscript="^"
+    let g:atp_imap_supscript	= "^"
 endif
 if !exists("g:atp_imap_define_math") || g:atp_reload_variables
-    let g:atp_imap_define_math=1
+    let g:atp_imap_define_math	= 1
 endif
 if !exists("g:atp_imap_define_environments") || g:atp_reload_variables
     let g:atp_imap_define_environments = 1
@@ -379,13 +426,13 @@ if !exists("g:atp_imap_define_greek_letters") || g:atp_reload_variables
     let g:atp_imap_define_greek_letters = 1
 endif
 if !exists("g:atp_imap_wide") || g:atp_reload_variables
-    let g:atp_imap_wide=0
+    let g:atp_imap_wide		= 0
 endif
 if !exists("g:atp_letter_opening") || g:atp_reload_variables
-    let g:atp_letter_opening=""
+    let g:atp_letter_opening	= ""
 endif
 if !exists("g:atp_letter_closing") || g:atp_reload_variables
-    let g:atp_letter_closing=""
+    let g:atp_letter_closing	= ""
 endif
 if !exists("g:atp_imap_bibiliography") || g:atp_reload_variables
     if g:atp_imap_ShortEnvIMaps
@@ -603,15 +650,15 @@ endif
 if !exists("g:atp_XpdfSleepTime") || g:atp_reload_variables
     let g:atp_XpdfSleepTime = "0.2"
 endif
-if !exists("g:atp_MapCC") || g:atp_reload_variables
-    let g:atp_MapCC = 0
+if !exists("g:atp_IMapCC") || g:atp_reload_variables
+    let g:atp_IMapCC = 0
 endif
 if !exists("g:atp_DefaultErrorFormat") || g:atp_reload_variables
     let g:atp_DefaultErrorFormat = "erc"
 endif
 let b:atp_ErrorFormat = g:atp_DefaultErrorFormat
-if !exists("g:atp_DefiSearchMaxWindowHeight") || g:atp_reload_variables
-    let g:atp_DefiSearchMaxWindowHeight=15
+if !exists("g:atp_DsearchMaxWindowHeight") || g:atp_reload_variables
+    let g:atp_DsearchMaxWindowHeight=15
 endif
 if !exists("g:atp_ProgressBar") || g:atp_reload_variables
     let g:atp_ProgressBar = 1
@@ -949,19 +996,21 @@ if !exists("g:atp_tex_extensions") || g:atp_reload_variables
 endif
 for ext in g:atp_tex_extensions
     let suffixes = split(&suffixes, ",")
-    if index(suffixes, ".".ext) == -1
+    if index(suffixes, ".".ext) == -1 && ext !~ 'mtc'
 	exe "setlocal suffixes+=.".ext
     endif
 endfor
 if !exists("g:atp_delete_output") || g:atp_reload_variables
     let g:atp_delete_output	= 0
 endif
-if !exists("g:keep") || g:atp_reload_variables
-    let g:keep=[ "log", "aux", "toc", "bbl", "ind", "synctex.gz", "blg", "loa", "toc", "lot", "lof", "thm" ]
+if !exists("g:atp_keep") || g:atp_reload_variables
+    " Files with this extensions will be compied back and forth to/from temporary
+    " directory in which compelation happens.
+    let g:atp_keep=[ "log", "aux", "toc", "bbl", "ind", "synctex.gz", "blg", "loa", "toc", "lot", "lof", "thm", "out" ]
     " biber stuff is added before compelation, this makes it possible to change 
     " to biber on the fly
     if b:atp_BibCompiler =~ '^\s*biber\>'
-	let g:keep += [ "run.xml", "bcf" ]
+	let g:atp_keep += [ "run.xml", "bcf" ]
     endif
 endif
 if !exists("g:atp_ssh") || g:atp_reload_variables
@@ -1145,7 +1194,7 @@ function! s:ShowOptions(bang,...)
 	    endfor
 	    if var_name =~ pattern && var_name !~ '_command\|_amsfonts\|ams_negations\|tikz_\|keywords'
 " 		if patn != '' && var_name !~ patn
-		if index(["g:atp_LatexPackages", "g:atp_LatexClasses", "g:optionsDict", "g:optionsKeys", "g:atp_completion_modes", "g:atp_completion_modes_normal_mode", "g:atp_Environments", "g:atp_shortname_dict", "g:atp_MathTools_environments", "g:atp_keymaps", "g:atp_CupsOptions", "g:atp_CompilerMsg_Dict", "g:ViewerMsg_Dict", "g:CompilerMsg_Dict", "g:atp_amsmath_environments"], var_name) == -1 && var_name !~# '^g:atp_Beamer' && var_name !~# '^g:atp_TodoNotes'
+		if index(["g:atp_LatexPackages", "g:atp_LatexClasses", "g:atp_completion_modes", "g:atp_completion_modes_normal_mode", "g:atp_Environments", "g:atp_shortname_dict", "g:atp_MathTools_environments", "g:atp_keymaps", "g:atp_CupsOptions", "g:atp_CompilerMsg_Dict", "g:ViewerMsg_Dict", "g:CompilerMsg_Dict", "g:atp_amsmath_environments"], var_name) == -1 && var_name !~# '^g:atp_Beamer' && var_name !~# '^g:atp_TodoNotes'
 		    echo var_name.space.string({var_name})
 		    if len(var_name.space.string({var_name})) > &l:columns
 			echo "\n"
@@ -1267,6 +1316,27 @@ endif
 " {{{ SetXdvi
 function! <SID>SetXdvi()
 
+    if buflisted(atplib#FullPath(b:atp_MainFile))
+	let line = getbufline(atplib#FullPath(b:atp_MainFile), 1)[0]
+	if line =~ '^%&\w*tex\>'
+	    let compiler = matchstr(line, '^%&\zs\w\+')
+	else
+	    let compiler = ""
+	endif
+    else
+	let line = readfile(atplib#FullPath(b:atp_MainFile))[0] 
+	if line =~ '^%&\w*tex\>'
+	    let compiler = matchstr(line, '^%&\zs\w\+')
+	else
+	    let compiler = ""
+	endif
+    endif
+    if compiler != "" && compiler !~ '\(la\)\=tex'
+	echohl Error
+	echomsg "[SetXdvi:] You need to change the first line of your project!"
+	echohl Normal
+    endif
+
     " Remove menu entries
     let Compiler		= get(g:CompilerMsg_Dict, matchstr(b:atp_TexCompiler, '^\s*\S*'), 'Compiler')
     let Viewer			= get(g:ViewerMsg_Dict, matchstr(b:atp_Viewer, '^\s*\S*'), 'View\ Output')
@@ -1324,6 +1394,27 @@ function! <SID>SetPdf(viewer)
 	execute "aunmenu LaTeX.View\\ with\\ ".Viewer
     catch /E329:/
     endtry
+
+    if buflisted(atplib#FullPath(b:atp_MainFile))
+	let line = getbufline(atplib#FullPath(b:atp_MainFile), 1)[0]
+	if line =~ '^%&\w*tex>'
+	    let compiler = matchstr(line, '^%&\zs\w\+')
+	else
+	    let compiler = ""
+	endif
+    else
+	let line = readfile(atplib#FullPath(b:atp_MainFile))[0] 
+	if line =~ '^%&\w*tex\>'
+	    let compiler = matchstr(line, '^%&\zs\w\+')
+	else
+	    let compiler = ""
+	endif
+    endif
+    if compiler != "" && compiler !~ 'pdf\(la\)\=tex'
+	echohl Error
+	echomsg "[SetPdf:] You need to change the first line of your project!"
+	echohl Normal
+    endif
 
     let b:atp_TexCompiler	= "pdflatex"
     " We have to clear tex options (for example -src-specials set by :SetXdvi)
@@ -1406,11 +1497,11 @@ function! ATP_ToggleSpace(...)
     endif
 endfunction
 function! ATP_CmdwinToggleSpace(on)
-    let on	= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) : maparg('<space>', 'i') == "" )
-    let g:on	= on
+    let on		= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) : maparg('<space>', 'i') == "" )
     if on
 	echomsg "space ON"
-	imap <space> \_s\+
+	let backslash 	= ( &l:cpoptions =~# "B" ? "\\" : "\\\\" ) 
+	exe "imap <space> ".backslash."_s".backslash."+"
     else
 	echomsg "space OFF"
 	iunmap <space>
@@ -1707,7 +1798,8 @@ let g:atp_completion_modes=[
 	    \ 'font shape',		'algorithmic',
 	    \ 'beamerthemes', 		'beamerinnerthemes',
 	    \ 'beamerouterthemes', 	'beamercolorthemes',
-	    \ 'beamerfontthemes',	'todonotes' ]
+	    \ 'beamerfontthemes',	'todonotes',
+	    \ 'siunits' ]
 lockvar 2 g:atp_completion_modes
 catch /E741:/
 endtry
@@ -1791,6 +1883,9 @@ endif
 	endif
 	if !exists("g:atp_no_separator") || g:atp_reload_variables
 	    let g:atp_no_separator = 0
+	endif
+	if !g:atp_no_separator
+	    exe "setl iskeyword+=".g:atp_separator
 	endif
 	if !exists("g:atp_no_short_names") || g:atp_reload_variables
 	    let g:atp_env_short_names = 1
@@ -2181,8 +2276,55 @@ let g:atp_fancyhdr_pagestyles = [ 'fancy' ]
 
 " Completion variable for \pagenumbering{} LaTeX command.
 let g:atp_pagenumbering = [ 'arabic', 'roman', 'Roman', 'alph', 'Alph' ]
-" }}}
-"
+
+" SIunits
+let g:atp_siuinits= [
+ \ '\addprefix', '\addunit', '\ampere', '\amperemetresecond', '\amperepermetre', '\amperepermetrenp',
+ \ '\amperepersquaremetre', '\amperepersquaremetrenp', '\angstrom', '\arad', '\arcminute', '\arcsecond',
+ \ '\are', '\atomicmass', '\atto', '\attod', '\barn', '\bbar',
+ \ '\becquerel', '\becquerelbase', '\bel', '\candela', '\candelapersquaremetre', '\candelapersquaremetrenp',
+ \ '\celsius', '\Celsius', '\celsiusbase', '\centi', '\centid', '\coulomb',
+ \ '\coulombbase', '\coulombpercubicmetre', '\coulombpercubicmetrenp', '\coulombperkilogram', '\coulombperkilogramnp', '\coulombpermol',
+ \ '\coulombpermolnp', '\coulombpersquaremetre', '\coulombpersquaremetrenp', '\cubed', '\cubic', '\cubicmetre',
+ \ '\cubicmetreperkilogram', '\cubicmetrepersecond', '\curie', '\dday', '\deca', '\decad',
+ \ '\deci', '\decid', '\degree', '\degreecelsius', '\deka', '\dekad',
+ \ '\derbecquerel', '\dercelsius', '\dercoulomb', '\derfarad', '\dergray', '\derhenry',
+ \ '\derhertz', '\derjoule', '\derkatal', '\derlumen', '\derlux', '\dernewton',
+ \ '\derohm', '\derpascal', '\derradian', '\dersiemens', '\dersievert', '\dersteradian',
+ \ '\dertesla', '\dervolt', '\derwatt', '\derweber', '\electronvolt', '\exa',
+ \ '\exad', '\farad', '\faradbase', '\faradpermetre', '\faradpermetrenp', '\femto',
+ \ '\femtod', '\fourth', '\gal', '\giga', '\gigad', '\gram',
+ \ '\graybase', '\graypersecond', '\graypersecondnp', '\hectare', '\hecto', '\hectod',
+ \ '\henry', '\henrybase', '\henrypermetre', '\henrypermetrenp', '\hertz', '\hertzbase',
+ \ '\hour', '\joule', '\joulebase', '\joulepercubicmetre', '\joulepercubicmetrenp', '\jouleperkelvin',
+ \ '\jouleperkelvinnp', '\jouleperkilogram', '\jouleperkilogramkelvin', '\jouleperkilogramkelvinnp', '\jouleperkilogramnp', '\joulepermole',
+ \ '\joulepermolekelvin', '\joulepermolekelvinnp', '\joulepermolenp', '\joulepersquaremetre', '\joulepersquaremetrenp', '\joulepertesla',
+ \ '\jouleperteslanp', '\katal', '\katalbase', '\katalpercubicmetre', '\katalpercubicmetrenp', '\kelvin',
+ \ '\kilo', '\kilod', '\kilogram', '\kilogrammetrepersecond', '\kilogrammetrepersecondnp', '\kilogrammetrepersquaresecond', '\kilogrammetrepersquaresecondnp', '\kilogrampercubicmetre', '\kilogrampercubicmetrecoulomb', '\kilogrampercubicmetrecoulombnp', '\kilogrampercubicmetrenp',
+ \ '\kilogramperkilomole', '\kilogramperkilomolenp', '\kilogrampermetre', '\kilogrampermetrenp', '\kilogrampersecond', '\kilogrampersecondcubicmetre',
+ \ '\kilogrampersecondcubicmetrenp', '\kilogrampersecondnp', '\kilogrampersquaremetre', '\kilogrampersquaremetrenp', '\kilogrampersquaremetresecond', '\kilogrampersquaremetresecondnp',
+ \ '\kilogramsquaremetre', '\kilogramsquaremetrenp', '\kilogramsquaremetrepersecond', '\kilogramsquaremetrepersecondnp', '\kilowatthour', '\liter',
+ \ '\litre', '\lumen', '\lumenbase', '\lux', '\luxbase', '\mega',
+ \ '\megad', '\meter', '\metre', '\metrepersecond', '\metrepersecondnp', '\metrepersquaresecond',
+ \ '\metrepersquaresecondnp', '\micro', '\microd', '\milli', '\millid', '\minute',
+ \ '\mole', '\molepercubicmetre', '\molepercubicmetrenp', '\nano', '\nanod', '\neper',
+ \ '\newton', '\newtonbase', '\newtonmetre', '\newtonpercubicmetre', '\newtonpercubicmetrenp', '\newtonperkilogram', '\newtonperkilogramnp', '\newtonpermetre', '\newtonpermetrenp', '\newtonpersquaremetre', '\newtonpersquaremetrenp', '\NoAMS', '\no@qsk', '\ohm', '\ohmbase', '\ohmmetre',
+ \ '\one', '\paminute', '\pascal', '\pascalbase', '\pascalsecond', '\pasecond',
+ \ '\per', '\period@active', '\persquaremetresecond', '\persquaremetresecondnp', '\peta', '\petad',
+ \ '\pico', '\picod', '\power', '\@qsk', '\quantityskip', '\rad',
+ \  '\radian', '\radianbase', '\radianpersecond', '\radianpersecondnp', '\radianpersquaresecond', '\radianpersquaresecondnp', '\reciprocal', '\rem', '\roentgen', '\rp', '\rpcubed',
+ \ '\rpcubic', '\rpcubicmetreperkilogram', '\rpcubicmetrepersecond', '\rperminute', '\rpersecond', '\rpfourth',
+ \ '\rpsquare', '\rpsquared', '\rpsquaremetreperkilogram', '\second', '\siemens', '\siemensbase',
+ \ '\sievert', '\sievertbase', '\square', '\squared', '\squaremetre', '\squaremetrepercubicmetre',
+ \ '\squaremetrepercubicmetrenp', '\squaremetrepercubicsecond', '\squaremetrepercubicsecondnp', '\squaremetreperkilogram', '\squaremetrepernewtonsecond', '\squaremetrepernewtonsecondnp',
+ \ '\squaremetrepersecond', '\squaremetrepersecondnp', '\squaremetrepersquaresecond', '\squaremetrepersquaresecondnp', '\steradian', '\steradianbase',
+ \ '\tera', '\terad', '\tesla', '\teslabase', '\ton', '\tonne',
+ \ '\unit', '\unitskip', '\usk', '\volt', '\voltbase', '\voltpermetre',
+ \ '\voltpermetrenp', '\watt', '\wattbase', '\wattpercubicmetre', '\wattpercubicmetrenp', '\wattperkilogram',
+ \ '\wattperkilogramnp', '\wattpermetrekelvin', '\wattpermetrekelvinnp', '\wattpersquaremetre', '\wattpersquaremetrenp', '\wattpersquaremetresteradian',
+ \ '\wattpersquaremetresteradiannp', '\weber', '\weberbase', '\yocto', '\yoctod', '\yotta',
+ \ '\yottad', '\zepto', '\zeptod', '\zetta', '\zettad' ]
+ " }}}
 
 " AUTOCOMMANDS:
 " Some of the autocommands (Status Line, LocalCommands, Log File):
@@ -2314,7 +2456,7 @@ endfunction
     if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
 	augroup ATP_Status
 	    au!
-	    au BufWinEnter *.tex 	call ATPStatus("")
+	    au BufWinEnter 	*.tex 	call ATPStatus()
 	augroup END
     endif
 

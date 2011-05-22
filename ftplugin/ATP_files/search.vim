@@ -189,12 +189,11 @@ function! DefiSearch(bang,...)
 
     let pattern		= a:0 >= 1 ? a:1 : ''
     let pattern		= '\%(\\def\|\\\%(re\)\=newcommand\s*{\=\|\\providecommand\s*{\=\|\\\%(re\)\=newenvironment\s*{\|\\\%(re\)\=newtheorem\s*{\)\s*\\\=\w*\zs'.pattern
-    let g:pattern	= pattern
     let preambule_only	= ( a:bang == "!" ? 0 : 1 )
+    let g:bang= a:bang
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     let defi_dict	= s:make_defi_dict(a:bang, atp_MainFile, pattern)
-    let g:defi_dict	= defi_dict
 
     if len(defi_dict) > 0
 	" wipe out the old buffer and open new one instead
@@ -238,12 +237,16 @@ function! DefiSearch(bang,...)
 	if len(defi_list) == 0
 	    redraw
 	    echohl ErrorMsg
-	    echomsg "[ATP:] definition not found."
+	    if a:bang == "!"
+		echomsg "[ATP:] definition not found."
+	    else
+		echomsg "[ATP:] definition not found in the preambule, try with a bang ! to search beyond."
+	    endif
 	    echohl Normal
 	    return
 	endif
 
-	let window_height= min([g:atp_DefiSearchMaxWindowHeight, len(defi_list)])
+	let window_height= min([g:atp_DsearchMaxWindowHeight, len(defi_list)])
 	" open new buffer
 	let openbuffer=" +setl\\ buftype=nofile\\ nospell " . fnameescape("DefiSearch")
 	if g:vertical ==1
@@ -262,7 +265,11 @@ function! DefiSearch(bang,...)
     else
 	redraw
 	echohl ErrorMsg
-	echomsg "[ATP:] definition not found."
+	if a:bang == "!"
+	    echomsg "[ATP:] definition not found."
+	else
+	    echomsg "[ATP:] definition not found in the preambule, try with a bang ! to search beyond."
+	endif
 	echohl Normal
     endif
 endfunction
@@ -1195,10 +1202,11 @@ if g:atp_mapNn
     " Note: the final step if the mapps n and N are made is in s:LoadHistory 
 endif
 
-command! -buffer -bang 		LocalCommands		:call LocalCommands("",<q-bang>)
-command! -buffer -bang -nargs=* DefiSearch		:call DefiSearch(<q-bang>, <q-args>)
+command! -buffer -bang 		LocalCommands					:call LocalCommands("",<q-bang>)
+" command! -buffer -bang -nargs=* DefiSearch					:call DefiSearch(<q-bang>, <q-args>)
+command! -buffer -bang -nargs=* Dsearch						:call DefiSearch(<q-bang>, <q-args>)
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleNn	:call ATP_ToggleNn(<f-args>)
-command! -buffer -bang -nargs=* BibSearch		:call BibSearch(<q-bang>, <q-args>)
+command! -buffer -bang -nargs=* BibSearch					:call BibSearch(<q-bang>, <q-args>)
 
 " Hilighlting:
 hi link BibResultsFileNames 	Title	

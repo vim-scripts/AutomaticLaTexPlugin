@@ -256,7 +256,7 @@ command! -buffer SetErrorFile		:call s:SetErrorFile()
 " TreeOfFiles({main_file}, [{pattern}, {flat}, {run_nr}])
 " debug file - /tmp/tof_log
 " a:main_file	is the main file to start with
-function! TreeOfFiles(main_file,...)
+function! TreeOfFiles_vim(main_file,...)
 " let time	= reltime()
 
     let atp_MainFile = atplib#FullPath(b:atp_MainFile)
@@ -352,7 +352,6 @@ function! TreeOfFiles(main_file,...)
 " 	let g:filename = fnameescape(a:main_file)
     endtry
     let loclist	= getloclist(0)
-    let g:loclist1 = loclist
     call setloclist(0, saved_llist)
     let lines	= map(loclist, "[ v:val['text'], v:val['lnum'], v:val['col'] ]")
 
@@ -455,7 +454,7 @@ function! TreeOfFiles(main_file,...)
     if !flat || flat <= -1
     for [ifile, line] in ifiles	
 	if type_dict[ifile] == "input" && flat <= 0 || ( type_dict[ifile] == "preambule" && flat <= -1 )
-	     let [ ntree, nlist, ntype_dict, nlevel_dict ] = TreeOfFiles(ifile, pattern, flat, run_nr+1)
+	     let [ ntree, nlist, ntype_dict, nlevel_dict ] = TreeOfFiles_vim(ifile, pattern, flat, run_nr+1)
 
 	     call extend(tree, 		{ ifile : [ ntree, line ] } )
 	     call extend(list, nlist, index(list, ifile)+1)  
@@ -490,8 +489,214 @@ function! TreeOfFiles(main_file,...)
 
     return [ tree, list, type_dict, level_dict ]
 
+endfunction "}}}
+" TreeOfFiles_py "{{{
+function! TreeOfFiles_py(main_file)
+let time=reltime()
+python << END_PYTHON
+
+import vim, re, subprocess, os, glob
+
+filename=vim.eval('a:main_file')
+
+def vim_remote_expr(servername, expr):
+# Send <expr> to vim server,
+
+# expr must be well quoted:
+#       vim_remote_expr('GVIM', "atplib#TexReturnCode()")
+    cmd=[options.progname, '--servername', servername, '--remote-expr', expr]
+    subprocess.Popen(cmd, stdout=subprocess.PIPE).wait()
+
+def isnonempty(string):
+    if str(string) == "":
+        return False
+    else:
+        return True
+
+def scan_preambule(file, pattern):
+# scan_preambule for a pattern
+
+# file is list of lines
+    for line in file:
+        ret=re.search(pattern, line)
+        if ret:
+            return ret
+        elif re.search('\\\\begin\s*{\s*document\s*}', line):
+            return ret
+    return False
+
+def preambule_end(file):
+# find linenr where preambule ends,
+
+# file is list of lines
+    nr=1
+    for line in file:
+        if re.search('\\\\begin\s*{\s*document\s*}', line):
+            return nr
+        nr+=1
+    return 0
+
+def addext(string, ext):
+# the pattern is not matching .tex extension read from file.
+    if not re.search("\."+ext+"$", string):
+        return string+"."+ext
+    else:
+        return string
+
+def kpsewhich_path(format):
+# find fname of format in path given by kpsewhich,
+
+    kpsewhich=subprocess.Popen(['kpsewhich', '-show-path', format], stdout=subprocess.PIPE)
+    kpsewhich.wait()
+    path=kpsewhich.stdout.read()
+    path=re.sub("!!", "",path)
+    path=re.sub("\/\/+", "/", path)
+    path=re.sub("\n", "",path)
+    path_list=path.split(":")
+    return path_list
+
+def kpsewhich_find(file, path_list):
+    results=[]
+    for path in path_list:
+        found=glob.glob(os.path.join(path, "*"+os.sep+file))
+        results.extend(found)
+        found=glob.glob(os.path.join(path, file))
+        results.extend(found)
+    return results
+
+
+def scan_file(file, fname, pattern, bibpattern):
+# scan file for a pattern, return all groups,
+
+# file is a list of lines, 
+    matches={}
+    nr = 0
+    for line in file:
+        nr+=1
+        match_all=re.findall(pattern, line)
+        if len(match_all) > 0:
+            for match in match_all:
+                for m in match:
+#                     print("m="+str(m))
+                    if str(m) != "":
+                        m=addext(m, "tex")
+                        if not os.access(m, os.F_OK):
+                            m=kpsewhich_find(m, tex_path)[0]
+#                         print("fname="+fname+" nr="+str(nr)+" p_end="+str(preambule_end))
+                        if fname == filename and nr < preambule_end:
+                            matches[m]=[fname, nr, 'preambule']
+                        else:
+                            matches[m]=[fname, nr, 'input']
+        match_all=re.findall(bibpattern, line)
+        if len(match_all) > 0:
+            for match in match_all:
+                if str(match) != "":
+                    for m in  match.split(','):
+                        m=addext(m, "bib")
+                        if not os.access(m, os.F_OK):
+                            m=kpsewhich_find(m, bib_path)[0]
+                        matches[m]=[fname,  nr, 'bib']
+    return matches
+
+def tree(file, level, pattern, bibpattern):
+# files - list of file names to scan, 
+
+    try:
+        file_ob = open(file, 'r')
+    except IOError:
+        if re.search('\.bib$', file):
+            path=bib_path
+        else:
+            path=tex_path
+        file=kpsewhich_find(file, path)[0]
+#         print("KPSEWHICH="+file)
+        file_ob = open(file, 'r')
+# if file is not found kpsewhich search should be done, as in original TreeOfFiles() function.
+    file_l  = file_ob.read().split("\n")
+    file_ob.close()
+    found=scan_file(file_l, file, pattern, bibpattern)
+#         print("found="+str(found))
+    t_list=[]
+    t_level={}
+    t_type={}
+    t_tree={}
+    for item in iter(found):
+        t_list.append(item)
+        t_level[item]=level
+        t_type[item]=found[item][2]
+    i_list=[]
+    for file in t_list:
+#         if not os.access(file, os.F_OK):
+#             if re.search('\.bib$', file):
+#                 path=bib_path
+#             else:
+#                 path=tex_path
+#             file=kpsewhich_find(file, path)[0]
+#             print("I2 "+file)
+        if found[file][2]=="input":
+#             print("INPUT="+file)
+            i_list.append(file)
+    for file in i_list:
+        [ n_tree, n_list, n_type, n_level ] = tree(file, level+1, pattern, bibpattern)
+        for f in n_list:
+            t_list.append(f)
+            t_type[f]   =n_type[f]
+            t_level[f]  =n_level[f]
+        t_tree[file]    = [ n_tree, found[file][1] ]
+    return [ t_tree, t_list, t_type, t_level ]
+
+try:
+    mainfile_ob = open(filename, 'r')
+    mainfile    = mainfile_ob.read().split("\n")
+    mainfile_ob.close()
+    if scan_preambule(mainfile, re.compile('\\\\usepackage\s*\[.*\]\s*{\s*subfiles\s*}')):
+	pat_str='(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?|subfiles)\s*{([^}]*)})'
+	pattern=re.compile(pat_str)
+#     print(pat_str)
+    else:
+	pat_str='(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?)\s*{([^}]*)})'
+	pattern=re.compile(pat_str)
+#     print(pat_str)
+
+    bibpattern=re.compile('^[^%]*\\\\(?:bibliography|addbibresource|addsectionbib(?:\s*\[.*\])?|addglobalbib(?:\s*\[.*\])?)\s*{([^}]*)}')
+
+    bib_path=kpsewhich_path('bib')
+    tex_path=kpsewhich_path('tex')
+    preambule_end=preambule_end(mainfile)
+
+# Make TreeOfFiles:
+    [ tree_of_files, list_of_files, type_dict, level_dict]= tree(filename, 1, pattern, bibpattern)
+    vim.command("let b:TreeOfFiles="+str(tree_of_files))
+    vim.command("let b:ListOfFiles="+str(list_of_files))
+    vim.command("let b:TypeDict="+str(type_dict))
+    vim.command("let b:LevelDict="+str(level_dict))
+except IOError:
+    vim.command("let b:TreeOfFiles={}")
+    vim.command("let b:ListOfFiles=[]")
+    vim.command("let b:TypeDict={}")
+    vim.command("let b:LevelDict={}")
+END_PYTHON
+let g:time_TreeOfFiles=reltimestr(reltime(time))
 endfunction
 "}}}
+"
+" TreeOfFiles
+function! TreeOfFiles(main_file,...)
+    let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
+    let flat		= a:0 >= 2	? a:2 : 0	
+    let run_nr		= a:0 >= 3	? a:3 : 1 
+    let time=reltime()
+    if has("python") && &filetype != "plaintex"
+	" It was not tested on plaintex files.
+	call TreeOfFiles_py(a:main_file)
+    else
+	call TreeOfFiles_vim(a:main_file, pattern, flat, run_nr)
+    endif
+    " Notes: vim script avrage is 0.38s, python avrage is 0.28
+    let g:source_time_TreeOfFiles=reltimestr(reltime(time))
+"     echomsg string(g:source_time_TreeOfFiles)
+    return [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]
+endfunction
 
 " This function finds all the input and bibliography files declared in the source files (recursive).
 " {{{ FindInputFiles 

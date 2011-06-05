@@ -3,7 +3,7 @@
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Sat May 21 01:00  2011 W
+" Last Change: Sun Jun 05 11:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -245,7 +245,7 @@ function! <SID>WrapEnvironment(env_name,...)
 	else
 	    let env_name=env
 	endif
-	'<,'>WrapSelection '\begin{'.env_name.'}','\end{'.env_name.'}','0', '1'
+	call <SID>WrapSelection('\begin{'.env_name.'}','\end{'.env_name.'}','0', '1')
     endif
 endfunction "}}}
 vmap <buffer> <silent> <Plug>WrapEnvironment		:<C-U>call <SID>WrapEnvironment('', 1)<CR>
@@ -2136,7 +2136,6 @@ function! <SID>UpdateATP(bang)
 	    elseif compare == 0
 		redraw
 		echomsg "You have the latest STABLE version of ATP."
-		call delete(s:atp_tempname)
 		if g:atp_debugUpdateATP
 		    redir END
 		endif

@@ -2,7 +2,7 @@
 " Description:  This file contains mappings defined by ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sun May 22 08:00  2011 W
+" Last Change: Sun Jun 05 09:00  2011 W
 
 " Add maps, unless the user didn't want them.
 if exists("g:no_plugin_maps") && g:no_plugin_maps ||
@@ -31,20 +31,35 @@ endif
 
 if has("gui")
     if &l:cpoptions =~# "B"
-	cmap <buffer> <C-Space> \_s\+
-	cmap <buffer> <C-_> \_s\+
+	if g:atp_cmap_space
+	    cmap <buffer> <expr> <space> 	( g:atp_cmap_space && getcmdtype() =~ '[\/?]' ? '\_s\+' : ' ' )
+	endif
+	cmap <expr> <buffer> <C-Space> getcmdtype() =~ '[?/]' ? '\_s\+' : ' ' 
+	cmap <expr> <buffer> <C-_> getcmdtype() =~ '[?/]' ? '\_s\+' : ' '
     else
-	cmap <buffer> <C-Space> \\_s\\+
-	cmap <buffer> <C-_> \\_s\\+
+	if g:atp_cmap_space
+	    cmap <buffer> <expr> <space> 	( g:atp_cmap_space && getcmdtype() =~ '[\\/?]' ? '\\_s\\+' : ' ' )
+	endif
+	cmap <expr> <buffer> <C-Space> getcmdtype() =~ '[?/]' ? '\\_s\\+' : ' '
+	cmap <expr> <buffer> <C-_> getcmdtype() =~ '[?/]' ? '\\_s\\+' : ' '
     endif
 else
     if &l:cpoptions =~# "B"
-	cmap <buffer> <C-@> \_s\+
-	cmap <buffer> <C-_> \_s\+
+	if g:atp_cmap_space
+	    cmap <buffer> <expr> <space> 	( g:atp_cmap_space && getcmdtype() =~ '[\/?]' ? '\_s\+' : ' ' )
+	endif
+	cmap <expr> <buffer> <C-@> getcmdtype() =~ '[?/]' ? '\_s\+' : ' '
+	cmap <expr> <buffer> <C-_> getcmdtype() =~ '[?/]' ? '\_s\+' : ' '
     else
-	cmap <buffer> <C-@> \\_s\\+
-	cmap <buffer> <C-_> \\_s\\+
+	if g:atp_cmap_space
+	    cmap <buffer> <expr> <space> 	( g:atp_cmap_space && getcmdtype() =~ '[\\/?]' ? '\\_s\\+' : ' ' )
+	endif
+	cmap <expr> <buffer> <C-@> getcmdtype() =~ '[?/]' ? '\\_s\\+' : ' '
+	cmap <expr> <buffer> <C-_> getcmdtype() =~ '[?/]' ? '\\_s\\+' : ' '
     endif
+endif
+if maparg("<F2>", "n") == ""
+    nmap <buffer> <F2>	:echo ATP_ToggleSpace()<CR>
 endif
 
 command! -buffer -bang -nargs=* FontSearch	:call atplib#FontSearch(<q-bang>, <f-args>)
@@ -55,73 +70,73 @@ command! -buffer 	  CloseLastBracket	:call atplib#CloseLastBracket()
 
 " MAPS:
 
-if !hasmapto("\"SSec$") && !hasmapto("'SSec$")
+if !hasmapto("\"SSec") && !hasmapto("'SSec")
     exe "nmap <buffer> <silent>	".g:atp_goto_section_leader."S		:<C-U>keepjumps exe v:count1.\"SSec\"<CR>"
 endif
-if !hasmapto("\"Sec$") && !hasmapto("'Sec$$")
+if !hasmapto("\"Sec") && !hasmapto("'Sec")
     exe "nmap <buffer> <silent>	".g:atp_goto_section_leader."s		:<C-U>keepjumps exe v:count1.\"Sec\"<CR>"
 endif
-if !hasmapto("\"Chap$") && !hasmapto("'Chap$")
+if !hasmapto("\"Chap") && !hasmapto("'Chap")
     exe "nmap <buffer> <silent>	".g:atp_goto_section_leader."c		:<C-U>keepjumps exe v:count1.\"Chap\"<CR>"
 endif
-if !hasmapto("\"Part$") && !hasmapto("'Part$")
+if !hasmapto("\"Part") && !hasmapto("'Part")
     exe "nmap <buffer> <silent>	".g:atp_goto_section_leader."p		:<C-U>keepjumps exe v:count1.\"Part\"<CR>"
 endif
 
 if g:atp_MapCommentLines    
-    if !hasmapto("<Plug>CommentLines$", "n")
-	nmap <buffer> <silent> <LocalLeader>c	<Plug>CommentLines
+    if !hasmapto("<Plug>CommentLines", "n")
+	exe "nmap <buffer> <silent> ".g:atp_map_Comment."	<Plug>CommentLines"
     endif
-    if !hasmapto("<Plug>CommentLines$", "v")
-	vmap <buffer> <silent> <LocalLeader>c	<Plug>CommentLines
+    if !hasmapto("<Plug>CommentLines", "v")
+	exe "vmap <buffer> <silent> ".g:atp_map_Comment."	<Plug>CommentLines"
     endif
-    if !hasmapto("<Plug>UnCommentLines$", "n")
-	nmap <buffer> <silent> <LocalLeader>u	<Plug>UnCommentLines
+    if !hasmapto("<Plug>UnCommentLines", "n")
+	exe "nmap <buffer> <silent> ".g:atp_map_UnComment."	<Plug>UnCommentLines"
     endif
-    if !hasmapto("<Plug>UnCommentLines$", "v")
-	vmap <buffer> <silent> <LocalLeader>u	<Plug>UnCommentLines
+    if !hasmapto("<Plug>UnCommentLines", "v")
+	exe "vmap <buffer> <silent> ".g:atp_map_UnComment."	<Plug>UnCommentLines"
     endif
 endif
 
-if !hasmapto("<Plug>SyncTexKeyStroke$", "n")
+if !hasmapto("<Plug>SyncTexKeyStroke", "n")
     nmap <buffer> <silent> t 			<Plug>SyncTexKeyStroke
 endif
-if !hasmapto("<LeftMouse><Plug>SyncTexMouse$", "n")
+if !hasmapto("<LeftMouse><Plug>SyncTexMouse", "n")
     nmap <buffer> <silent> <S-LeftMouse> 	<LeftMouse><Plug>SyncTexMouse
 endif
 
-if !hasmapto(":SkipCommentForward<CR>$", 'n')
+if !hasmapto(":SkipCommentForward<CR>", 'n')
     nmap <buffer> <silent> ]*	:SkipCommentForward<CR> 
     nmap <buffer> <silent> gc	:SkipCommentForward<CR>
 endif
-if !hasmapto(":SkipCommentForward<CR>$", 'o')
+if !hasmapto(":SkipCommentForward<CR>", 'o')
     omap <buffer> <silent> ]*	:SkipCommentForward<CR> 
     omap <buffer> <silent> gc	:SkipCommentForward<CR>
 endif
-if !hasmapto("<Plug>SkipCommentForward$", 'v')
+if !hasmapto("<Plug>SkipCommentForward", 'v')
     vmap <buffer> <silent> ]*	<Plug>SkipCommentForward
     vmap <buffer> <silent> gc	<Plug>SkipCommentForward
 endif
 
-if !hasmapto("<Plug>SkipCommentBackward<CR>$", 'n')
+if !hasmapto("<Plug>SkipCommentBackward<CR>", 'n')
     nmap <buffer> <silent> [*	:SkipCommentBackward<CR> 
     nmap <buffer> <silent> gC	:SkipCommentBackward<CR>
 endif
-if !hasmapto("<Plug>SkipCommentBackward<CR>$", 'o')
+if !hasmapto("<Plug>SkipCommentBackward<CR>", 'o')
     omap <buffer> <silent> [*	:SkipCommentBackward<CR> 
     omap <buffer> <silent> gC	:SkipCommentBackward<CR>
 endif
-if !hasmapto("<Plug>SkipCommentBackward$", 'v')
+if !hasmapto("<Plug>SkipCommentBackward", 'v')
     vmap <buffer> <silent> gC	<Plug>SkipCommentBackward
     vmap <buffer> <silent> [*	<Plug>SkipCommentBackward
 endif
 
-if !hasmapto(":NInput<CR>$")
+if !hasmapto(":NInput<CR>")
     execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."i	:NInput<CR>"
     execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."gf	:NInput<CR>"
 endif
 
-if !hasmapto(":PInput<CR>$")
+if !hasmapto(":PInput<CR>")
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."i	:PInput<CR>"
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."gf	:PInput<CR>"
 endif
@@ -132,16 +147,16 @@ endif
 " nmap <C-j> <Plug>TexSyntaxMotionForward
 " nmap <C-k> <Plug>TexSyntaxMotionBackward
 
-if !hasmapto("<Plug>TexJMotionForward$", 'i')
+if !hasmapto("<Plug>TexJMotionForward", 'i')
     imap <C-j> <Plug>TexJMotionForward
 endif
-if !hasmapto("<Plug>TexJMotionForward$", 'n')
+if !hasmapto("<Plug>TexJMotionForward", 'n')
     nmap <C-j> <Plug>TexJMotionForward
 endif
-if !hasmapto("<Plug>TexJMotionBackward$", 'i')
+if !hasmapto("<Plug>TexJMotionBackward", 'i')
     imap <C-k> <Plug>TexJMotionBackward
 endif
-if !hasmapto("<Plug>TexJMotionBackward$", 'n')
+if !hasmapto("<Plug>TexJMotionBackward", 'n')
     nmap <C-k> <Plug>TexJMotionBackward
 endif
 
@@ -162,118 +177,118 @@ if g:atp_map_backward_motion_leader == "<"
     vnoremap <buffer> <silent> <<  :<C-U>exe "'<,'>normal! v".v:count1."<<"<CR>
 endif
 
-if !hasmapto("<Plug>GotoNextSubSection$", 'n')
+if !hasmapto("<Plug>GotoNextSubSection", 'n')
     execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."S 	<Plug>GotoNextSubSection"
 endif
-if !hasmapto("<Plug>vGotoNextSubSection$", 'v')
+if !hasmapto("<Plug>vGotoNextSubSection", 'v')
     execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."S	<Plug>vGotoNextSubSection"
 endif
-if !hasmapto("<Plug>GotoPreviousSubSection$", 'n')
+if !hasmapto("<Plug>GotoPreviousSubSection", 'n')
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>GotoPreviousSubSection"
 endif
-if !hasmapto("<Plug>vGotoPreviousSubSection$", 'v')
+if !hasmapto("<Plug>vGotoPreviousSubSection", 'v')
     execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>vGotoPreviousSubSection"
 endif
-if !hasmapto("<Plug>GotoNextSection$", 'n')
+if !hasmapto("<Plug>GotoNextSection", 'n')
     execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."s 	<Plug>GotoNextSection"
 endif
-if !hasmapto("<Plug>vGotoNextSection$", 'v')
+if !hasmapto("<Plug>vGotoNextSection", 'v')
     execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."s	<Plug>vGotoNextSection"
 endif
-if !hasmapto("<Plug>GotoPreviousSection$", 'n')
+if !hasmapto("<Plug>GotoPreviousSection", 'n')
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>GotoPreviousSection"
 endif
-if !hasmapto("<Plug>vGotoPreviousSection$", 'v')
+if !hasmapto("<Plug>vGotoPreviousSection", 'v')
     execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>vGotoPreviousSection"
 endif
 if !( g:atp_map_forward_motion_leader == "]" && &l:diff )
-    if !hasmapto("<Plug>GotoNextChapter$", 'n')
+    if !hasmapto("<Plug>GotoNextChapter", 'n')
 	execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."c 	<Plug>GotoNextChapter"
     endif
-    if !hasmapto("<Plug>vGotoNextChapter$", 'v')
+    if !hasmapto("<Plug>vGotoNextChapter", 'v')
 	execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."c 	<Plug>vGotoNextChapter"
     endif
 endif
 if !( g:atp_map_backward_motion_leader == "]" && &l:diff )
-    if !hasmapto("<Plug>GotoPreviousChapter$", 'n')
+    if !hasmapto("<Plug>GotoPreviousChapter", 'n')
 	execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>GotoPreviousChapter"
     endif
-    if !hasmapto("<Plug>vGotoPreviousChapter$", 'v')
+    if !hasmapto("<Plug>vGotoPreviousChapter", 'v')
 	execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>vGotoPreviousChapter"
     endif
 endif
-if !hasmapto("<Plug>GotoNextPart$", 'n')
+if !hasmapto("<Plug>GotoNextPart", 'n')
     execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>GotoNextPart"
 endif
-if !hasmapto("<Plug>vGotoNextPart$", 'v')
+if !hasmapto("<Plug>vGotoNextPart", 'v')
     execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>vGotoNextPart"
 endif
-if !hasmapto("<Plug>GotoPreviousPart$", "n")
+if !hasmapto("<Plug>GotoPreviousPart", "n")
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>GotoPreviousPart"
 endif
-if !hasmapto("<Plug>vGotoPreviousPart$", 'v')
+if !hasmapto("<Plug>vGotoPreviousPart", 'v')
     execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>vGotoPreviousPart"
 endif
 
-if !hasmapto("<Plug>GotoNextEnvironment$")
+if !hasmapto("<Plug>GotoNextEnvironment")
     execute "map <silent> <buffer> ".g:atp_map_forward_motion_leader."e		<Plug>GotoNextEnvironment"
 endif
-if !hasmapto("<Plug>JumptoNextEnvironment$")
+if !hasmapto("<Plug>JumptoNextEnvironment")
     execute "map <silent> <buffer> ".g:atp_map_forward_motion_leader."E		<Plug>JumptoNextEnvironment"
 endif
-if !hasmapto("<Plug>GotoPreviousEnvironment$")
+if !hasmapto("<Plug>GotoPreviousEnvironment")
     execute "map <silent> <buffer> ".g:atp_map_backward_motion_leader."e	<Plug>GotoPreviousEnvironment"
 endif
-if !hasmapto("<Plug>JumptoPreviousEnvironment$")
+if !hasmapto("<Plug>JumptoPreviousEnvironment")
     execute "map <silent> <buffer> ".g:atp_map_backward_motion_leader."E 	<Plug>JumptoPreviousEnvironment"
 endif
-if !hasmapto("<Plug>GotoNextMath$")
+if !hasmapto("<Plug>GotoNextMath")
     execute "map <silent> <buffer> ".g:atp_map_forward_motion_leader."m		<Plug>GotoNextMath"
 endif
-if !hasmapto("<Plug>GotoPreviousMath$")
+if !hasmapto("<Plug>GotoPreviousMath")
     execute "map <silent> <buffer> ".g:atp_map_backward_motion_leader."m	<Plug>GotoPreviousMath"
 endif
-if !hasmapto("<Plug>GotoNextDisplayedMath$")
+if !hasmapto("<Plug>GotoNextDisplayedMath")
     execute "map <silent> <buffer> ".g:atp_map_forward_motion_leader."M		<Plug>GotoNextDisplayedMath"
 endif
-if !hasmapto("<Plug>GotoPreviousDisplayedMath$")
+if !hasmapto("<Plug>GotoPreviousDisplayedMath")
     execute "map <silent> <buffer> ".g:atp_map_backward_motion_leader."M	<Plug>GotoPreviousDisplayedMath"
 endif
 
 " Goto File Map:
-if has("path_extra") && !hasmapto(" GotoFile($", 'n')
+if has("path_extra") && !hasmapto(" GotoFile(", 'n')
 	nnoremap <buffer> <silent> gf		:call GotoFile("", "")<CR>
 endif
 
 if !exists("g:atp_no_tab_map") || g:atp_no_tab_map == 0
     "Default Completion Maps:
-    if !hasmapto("<C-R>=atplib#TabCompletion(1)<CR>$", 'i')
+    if !hasmapto("<C-R>=atplib#TabCompletion(1)<CR>", 'i')
 	imap <silent> <buffer> <Tab> 		<C-R>=atplib#TabCompletion(1)<CR>
     endif
-    if !hasmapto("<C-R>=atplib#TabCompletion(0)<CR>$", 'i')
+    if !hasmapto("<C-R>=atplib#TabCompletion(0)<CR>", 'i')
 	imap <silent> <buffer> <S-Tab> 		<C-R>=atplib#TabCompletion(0)<CR>
     endif
-" 	if !hasmapto("atplib#TabCompletion(1,1)<CR>$", 'n')
+" 	if !hasmapto("atplib#TabCompletion(1,1)<CR>", 'n')
 " 	    nmap <silent> <buffer> <Tab>		:call atplib#TabCompletion(1,1)<CR>
 " 	endif
-    if !hasmapto("atplib#TabCompletion(0,1)<CR>$", 'i')
+    if !hasmapto("atplib#TabCompletion(0,1)<CR>", 'i')
 	nnoremap <silent> <buffer> <S-Tab>	:call atplib#TabCompletion(0,1)<CR> 
     endif
-    if !hasmapto(":WrapSelection \{ } begin<CR>$", 'v')
+    if !hasmapto(":WrapSelection \{ } begin<CR>", 'v')
 	vnoremap <buffer> <silent> <F7> 	:WrapSelection \{ } begin<CR>
     endif
 else 
     "Non Default Completion Maps:
-    if !hasmapto("<C-R>=atplib#TabCompletion(1)<CR>$", 'i')
+    if !hasmapto("<C-R>=atplib#TabCompletion(1)<CR>", 'i')
 	imap <silent> <buffer> <F7> 		<C-R>=atplib#TabCompletion(1)<CR>
     endif
-    if !hasmapto(" atplib#TabCompletion(1,1)<CR>$", 'n')
+    if !hasmapto(" atplib#TabCompletion(1,1)<CR>", 'n')
 	nnoremap <silent> <buffer> <F7>		:call atplib#TabCompletion(1,1)<CR>
     endif
-    if !hasmapto("<C-R>=atplib#TabCompletion(0)<CR>$", 'i')
+    if !hasmapto("<C-R>=atplib#TabCompletion(0)<CR>", 'i')
 	imap <silent> <buffer> <S-F7> 		<C-R>=atplib#TabCompletion(0)<CR>
     endif
-    if !hasmapto(" atplib#TabCompletion(0,1)<CR>$", 'n')
+    if !hasmapto(" atplib#TabCompletion(0,1)<CR>", 'n')
 	nnoremap <silent> <buffer> <S-F7>	:call atplib#TabCompletion(0,1)<CR> 
     endif
 endif
@@ -423,26 +438,26 @@ if !hasmapto(":WrapSelection ".s:backslash."left".s:backslash."{ ".s:backslash."
 endif
 
 " Tex Align:
-if !hasmapto(":TexAlign<CR>$", 'n')
+if !hasmapto(":TexAlign<CR>", 'n')
     nmap <silent> <buffer> <Localleader>a	:TexAlign<CR>
 endif
 
 " Paragraph Selection:
-if !hasmapto("<Plug>ATP_SelectCurrentParagraphInner$", 'v')
+if !hasmapto("<Plug>ATP_SelectCurrentParagraphInner", 'v')
     vmap <silent> <buffer> ip 	<Plug>ATP_SelectCurrentParagraphInner
 endif
-if !hasmapto("<Plug>ATP_SelectCurrentParagraphOuter$", 'v')
+if !hasmapto("<Plug>ATP_SelectCurrentParagraphOuter", 'v')
     vmap <silent> <buffer> ap 	<Plug>ATP_SelectCurrentParagraphOuter
 endif
-if !hasmapto(" vip<CR>$", "o")
+if !hasmapto(" vip<CR>", "o")
     omap <silent> <buffer>  ip	:normal vip<CR>
 endif
-if !hasmapto(" vap<CR>$", "o")
+if !hasmapto(" vap<CR>", "o")
     omap <silent> <buffer>  ap	:normal vap<CR>
 endif
 
 " Formating:
-if !hasmapto("m`vipgq``$", "n")
+if !hasmapto("m`vipgq``", "n")
     nmap <silent> <buffer> gw		m`vipgq``
 endif
 
@@ -451,10 +466,10 @@ nnoremap g>	:<C-U>call feedkeys("m`vip".(v:count1 <= 1 ? "" : v:count1).">``", '
 nnoremap g<	:<C-U>call feedkeys("m`vip".(v:count1 <= 1 ? "" : v:count1)."<``", 't')<CR>
 
 " Select Syntax:
-if !hasmapto("<Plug>SelectOuterSyntax$", "v")
+if !hasmapto("<Plug>SelectOuterSyntax", "v")
     vmap <buffer> <silent> aS		<Plug>SelectOuterSyntax
 endif
-if !hasmapto("<Plug>SelectInnerSyntax$", "v")
+if !hasmapto("<Plug>SelectInnerSyntax", "v")
     vmap <buffer> <silent> iS		<Plug>SelectInnerSyntax
 endif
 
@@ -462,216 +477,219 @@ endif
 " From vim.vim plugin (by Bram Mooleaner)
 " Move around functions.
 exe "nnoremap <silent> <buffer> <Plug>BegPrevEnvironment m':call search('".s:bbackslash."begin".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."[".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'bW')<CR>"
-if !hasmapto("<Plug>BegPrevEnvironment$", "n")
+if !hasmapto("<Plug>BegPrevEnvironment", "n")
     nmap <silent> <buffer> [[ <Plug>BegPrevEnvironment
 endif
 exe "vnoremap <silent> <buffer> <Plug>vBegPrevEnvironment m':<C-U>exe \"normal! gv\"<Bar>call search('".s:bbackslash."begin".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."[".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'bW')<CR>"
-if !hasmapto("<Plug>vBegPrevEnvironment$", "v")
+if !hasmapto("<Plug>vBegPrevEnvironment", "v")
     vmap <silent> <buffer> [[ <Plug>vBegPrevEnvironment
 endif
 exe "nnoremap <silent> <buffer> <Plug>BegNextEnvironment m':call search('".s:bbackslash."begin".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."[".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'W')<CR>"
-if !hasmapto("<Plug>BegNextEnvironment$", "n")
+if !hasmapto("<Plug>BegNextEnvironment", "n")
     nmap <silent> <buffer> ]] <Plug>BegNextEnvironment
 endif
 exe "vnoremap <silent> <buffer> <Plug>vBegNextEnvironment m':<C-U>exe \"normal! gv\"<Bar>call search('".s:bbackslash."begin".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."[".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'W')<CR>"
-if !hasmapto("<Plug>vBegNextEnvironment$", "v")
+if !hasmapto("<Plug>vBegNextEnvironment", "v")
     vmap <silent> <buffer> ]] <Plug>vBegNextEnvironment
 endif
 exe "nnoremap <silent> <buffer> <Plug>EndPrevEnvironment m':call search('".s:bbackslash."end".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."]".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'bW')<CR>"
-if !hasmapto("<Plug>EndPrevEnvironment$", "n")
+if !hasmapto("<Plug>EndPrevEnvironment", "n")
     nmap <silent> <buffer> [] <Plug>EndPrevEnvironment
 endif
 exe "vnoremap <silent> <buffer> <Plug>vEndPrevEnvironment m':<C-U>exe \"normal! gv\"<Bar>call search('".s:bbackslash."end".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."]".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'bW')<CR>"
-if !hasmapto("<Plug>vEndPrevEnvironment$", "v")
+if !hasmapto("<Plug>vEndPrevEnvironment", "v")
     vmap <silent> <buffer> [] <Plug>vEndPrevEnvironment
 endif
 exe "nnoremap <silent> <buffer> <Plug>EndNextEnvironment m':call search('".s:bbackslash."end".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."]".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'W')<CR>"
-if !hasmapto("<Plug>EndNextEnvironment$", "n")
+if !hasmapto("<Plug>EndNextEnvironment", "n")
     nmap <silent> <buffer> ][ <Plug>EndNextEnvironment
 endif
 exe "vnoremap <silent> <buffer> <Plug>vEndNextEnvironment m':<C-U>exe \"normal! gv\"<Bar>call search('".s:bbackslash."end".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."]".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'W')<CR>"
-if !hasmapto("<Plug>vEndNextEnvironment$", "v")
+if !hasmapto("<Plug>vEndNextEnvironment", "v")
     vmap <silent> <buffer> ][ <Plug>vEndNextEnvironment
 endif
 
 " Move Around Comments:
 exe "nnoremap <silent> <buffer> <Plug>BegNextComment :call search('^".s:backslash."(".s:backslash."s*%.*".s:backslash."n".s:backslash.")".s:backslash."@<!".s:backslash."(".s:backslash."s*%".s:backslash.")', 'W')<CR>"
-if !hasmapto("<Plug>BegNextComment$", "n")
+if !hasmapto("<Plug>BegNextComment", "n")
     nmap <silent> <buffer> ]% <Plug>BegNextComment
 endif
 exe "vnoremap <silent> <buffer> <Plug>vBegNextComment :<C-U>exe \"normal! gv\"<Bar>call search('^".s:backslash."(".s:backslash."s*%.*".s:backslash."n".s:backslash.")".s:backslash."@<!".s:backslash."(".s:backslash."s*%".s:backslash.")', 'W')<CR>"
-if !hasmapto("<Plug>vBegNextComment$", "v")
+if !hasmapto("<Plug>vBegNextComment", "v")
     vmap <silent> <buffer> ]% <Plug>vBegNextComment
 endif
 exe "nnoremap <silent> <buffer> <Plug>EndPrevComment 0<Bar>:call search('".s:backslash."%(^".s:backslash."s*%.*".s:backslash."n".s:backslash.")".s:backslash."%(^".s:backslash."s*%".s:backslash.")".s:backslash."@!', 'bW')<CR>"
-if !hasmapto("<Plug>EndPrevComment$", "n")
+if !hasmapto("<Plug>EndPrevComment", "n")
     nmap <silent> <buffer> [% <Plug>EndPrevComment
 endif
 exe "vnoremap <silent> <buffer> <Plug>vEndPrevComment :<C-U>exe \"normal! gv0\"<Bar>call search('".s:backslash."%(^".s:backslash."s*%.*".s:backslash."n".s:backslash.")".s:backslash."%(^".s:backslash."s*%".s:backslash.")".s:backslash."@!', 'bW')<CR>"
-if !hasmapto("<Plug>vEndPrevComment$", "v")
+if !hasmapto("<Plug>vEndPrevComment", "v")
     vmap <silent> <buffer> [% <Plug>vEndPrevComment
 endif
 
 " Select Comment:
-if !hasmapto("v<Plug>vSelectComment$", "n")
+if !hasmapto("v<Plug>vSelectComment", "n")
     exe "nmap <silent> <buffer> ".g:atp_MapSelectComment." v<Plug>vSelectComment"
 endif
 
 " Normal Mode Maps: (most of them)
-if mapcheck('<LocalLeader>v$') == "" && !hasmapto("<Plug>ATP_ViewOutput$", "n")
+if mapcheck('<LocalLeader>v') == "" && !hasmapto("<Plug>ATP_ViewOutput", "n")
     nmap  <silent> <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput
 endif
 
 exe "nmap  <silent> <buffer> <Plug>QForwardSearch 	q".s:backslash.":call ATP_CmdwinToggleSpace(1)<CR>i"
-if !hasmapto("<Plug>QForwardSearch$", "n")
-    nmap  <silent> <buffer> <F2> 			<Plug>QForwardSearch
+if !hasmapto("<Plug>QForwardSearch", "n")
+"     nmap  <silent> <buffer> <F2> 			<Plug>QForwardSearch
     if mapcheck('Q/$', 'n') == ""
 	nmap <silent> <buffer> Q/			<Plug>QForwardSearch
     endif
 endif
 exe "nmap <silent> <buffer> <Plug>QBackwardSearch	q?:call ATP_CmdwinToggleSpace(1)<CR>"
-if mapcheck('Q?$', 'n') == "" && !hasmapto("<Plug>QBackwardSearch$", "n")
+if mapcheck('Q?$', 'n') == "" && !hasmapto("<Plug>QBackwardSearch", "n")
     nmap <silent> <buffer> Q?				<Plug>QBackwardSearch
 endif
 
-if mapcheck('<LocalLeader>s$') == "" && !hasmapto("<Plug>ToggleStar$", "n")
+if mapcheck('<LocalLeader>s$') == "" && !hasmapto("<Plug>ToggleStar", "n")
     nmap  <silent> <buffer> <LocalLeader>s		<Plug>ToggleStar
-elseif !hasmapto("<Plug>ToggleStar$", "n") && g:atp_debugMapFile
+elseif !hasmapto("<Plug>ToggleStar", "n") && g:atp_debugMapFile && !g:atp_reload_functions
     echoerr "[ATP:] there will be no nmap to <Plug>ToggleStar"
 endif
 
-if !hasmapto("<Plug>ToggledebugMode$", "n")
+if !hasmapto("<Plug>TogglesilentMode", "n")
+    nmap  <silent> <buffer> <LocalLeader><Localleader>s	<Plug>TogglesilentMode
+endif
+if !hasmapto("<Plug>ToggledebugMode", "n")
     nmap  <silent> <buffer> <LocalLeader><Localleader>d	<Plug>ToggledebugMode
 endif
-if !hasmapto("<Plug>ToggleDebugMode$", "n")
+if !hasmapto("<Plug>ToggleDebugMode", "n")
     nmap  <silent> <buffer> <LocalLeader><Localleader>D	<Plug>ToggleDebugMode
 endif
-if !hasmapto("<Plug>WrapEnvironment$", "v")
+if !hasmapto("<Plug>WrapEnvironment", "v")
     vmap  <silent> <buffer> <F4>			<Plug>WrapEnvironment
 endif
-if !hasmapto("<Plug>ChangeEnv$", "n")
+if !hasmapto("<Plug>ChangeEnv", "n")
     nmap  <silent> <buffer> <F4>			<Plug>ChangeEnv
 endif
-if !hasmapto("<Plug>ChangeEnv$", "i")
+if !hasmapto("<Plug>ChangeEnv", "i")
     imap  <silent> <buffer> <F4>			<C-O><Plug>ChangeEnv
 endif
-if !hasmapto("<Plug>ToggleEnvForward$", "n")
+if !hasmapto("<Plug>ToggleEnvForward", "n")
     nmap  <silent> <buffer> <S-F4>			<Plug>ToggleEnvForward
 endif
 "     nmap  <silent> <buffer> <S-F4>			<Plug>ToggleEnvBackward
-if !hasmapto("<Plug>LatexEnvPrompt$", "n")
+if !hasmapto("<Plug>LatexEnvPrompt", "n")
     nmap  <silent> <buffer> <C-S-F4>			<Plug>LatexEnvPrompt
 endif
 "     ToDo:
 "     if g:atp_LatexBox
 " 	nmap <silent> <buffer> <F3>			:call <Sid>ChangeEnv()<CR>
 "     endif
-if !hasmapto("<Plug>ATP_ViewOutput$", "n")
+if !hasmapto("<Plug>ATP_ViewOutput", "n")
     nmap  <silent> <buffer> <F3>        		<Plug>ATP_ViewOutput
 endif
-if !hasmapto("<Plug>ATP_ViewOutput$", "i")
+if !hasmapto("<Plug>ATP_ViewOutput", "i")
     imap  <silent> <buffer> <F3> 			<C-O><Plug>ATP_ViewOutput
 endif
-if !hasmapto("<Plug>Getpid$", "n")
+if !hasmapto("<Plug>Getpid", "n")
     nmap  <silent> <buffer> <LocalLeader>g 		<Plug>Getpid
 endif
-if !hasmapto("<Plug>ATP_TOC$", "n")
+if !hasmapto("<Plug>ATP_TOC", "n")
     nmap  <silent> <buffer> <LocalLeader>t		<Plug>ATP_TOC
 endif
-if !hasmapto("<Plug>ATP_Labels$", "n")
+if !hasmapto("<Plug>ATP_Labels", "n")
     nmap  <silent> <buffer> <LocalLeader>L		<Plug>ATP_Labels
 endif
-if !hasmapto("<Plug>ATP_TeXCurrent$", "n")
+if !hasmapto("<Plug>ATP_TeXCurrent", "n")
     nmap  <silent> <buffer> <LocalLeader>l 		<Plug>ATP_TeXCurrent
 endif
-if !hasmapto("<Plug>ATP_TeXdebug$", "n")
+if !hasmapto("<Plug>ATP_TeXdebug", "n")
     nmap  <silent> <buffer> <LocalLeader>d 		<Plug>ATP_TeXdebug
 endif
-if !hasmapto("<Plug>ATP_TeXDebug$", "n")
+if !hasmapto("<Plug>ATP_TeXDebug", "n")
     nmap  <silent> <buffer> <LocalLeader>D 		<Plug>ATP_TeXDebug
 endif
-" if !hasmapto("<Plug>ATP_MakeLatex$", "n")
+" if !hasmapto("<Plug>ATP_MakeLatex", "n")
 "      nmap           <buffer> <c-l>			<Plug>ATP_MakeLatex
 " endif
 "ToDo: imaps!
-if !hasmapto("<Plug>ATP_TeXVerbose$", "n")
+if !hasmapto("<Plug>ATP_TeXVerbose", "n")
     nmap  <silent> <buffer> <F5> 			<Plug>ATP_TeXVerbose
 endif
-if !hasmapto("<Plug>ToggleAuTeX$", "n")
+if !hasmapto("<Plug>ToggleAuTeX", "n")
     nmap  <silent> <buffer> <s-F5> 			<Plug>ToggleAuTeX
 endif
-if !hasmapto("<Plug>ToggleAuTeXa$", "i")
+if !hasmapto("<Plug>ToggleAuTeXa", "i")
     imap  <silent> <buffer> <s-F5> 			<C-O><Plug>ToggleAuTeX
 endif
-if !hasmapto("<Plug>ToggleTab$", "n")
+if !hasmapto("<Plug>ToggleTab", "n")
     nmap  <silent> <buffer> `<Tab>			<Plug>ToggleTab
 endif
-if !hasmapto("<Plug>ToggleTab$", "i")
+if !hasmapto("<Plug>ToggleTab", "i")
     imap  <silent> <buffer> `<Tab>			<Plug>ToggleTab
 endif
-if !hasmapto("<Plug>ToggleMathIMaps$", "n")
+if !hasmapto("<Plug>ToggleMathIMaps", "n")
     nmap  <silent> <buffer> '<Tab>			<Plug>ToggleMathIMaps
 endif
-if !hasmapto("<Plug>ToggleMathIMapsa$", "i")
+if !hasmapto("<Plug>ToggleMathIMapsa", "i")
     imap  <silent> <buffer> '<Tab>			<Plug>ToggleMathIMapsa
 endif
-if !hasmapto("<Plug>SimpleBibtex$", "n")
+if !hasmapto("<Plug>SimpleBibtex", "n")
     nmap  <silent> <buffer> <LocalLeader>B		<Plug>SimpleBibtex
 endif
-if !hasmapto("<Plug>BibtexDefault$", "n")
+if !hasmapto("<Plug>BibtexDefault", "n")
     nmap  <silent> <buffer> <LocalLeader>b		<Plug>BibtexDefault
 endif
-if !hasmapto("<Plug>Delete$", "n")
+if !hasmapto("<Plug>Delete", "n")
     nmap  <silent> <buffer> <F6>d 			<Plug>Delete
 endif
-if !hasmapto("<Plug>Delete$", "i")
+if !hasmapto("<Plug>Delete", "i")
     imap  <silent> <buffer> <F6>d			<C-O><Plug>Delete
 endif
-if !hasmapto("<Plug>OpenLog$", "n")
+if !hasmapto("<Plug>OpenLog", "n")
     nmap  <silent> <buffer> <F6>l 			<Plug>OpenLog
 endif
-if !hasmapto("<Plug>OpenLog$", "i")
+if !hasmapto("<Plug>OpenLog", "i")
     imap  <silent> <buffer> <F6>l 			<C-O><Plug>OpenLog
 endif
-if !hasmapto(":ShowErrors e<CR>$", "n")
+if !hasmapto(":ShowErrors e<CR>", "n")
     nnoremap  <silent> <buffer> <F6> 			:ShowErrors e<CR>
 endif
-if !hasmapto(":ShowErrors e<CR>$", "i")
+if !hasmapto(":ShowErrors e<CR>", "i")
     inoremap  <silent> <buffer> <F6> 			:ShowErrors e<CR>
 endif
-if !hasmapto(":ShowErrors<CR>$", "n")
+if !hasmapto(":ShowErrors<CR>", "n")
     noremap   <silent> <buffer> <LocalLeader>e		:ShowErrors<CR>
 endif
-if !hasmapto(":ShowErrors w<CR>$", "n")
+if !hasmapto(":ShowErrors w<CR>", "n")
     nnoremap  <silent> <buffer> <F6>w 			:ShowErrors w<CR>
 endif
-if !hasmapto(":ShowErrors w<CR>$", "i")
+if !hasmapto(":ShowErrors w<CR>", "i")
     inoremap  <silent> <buffer> <F6>w 			:ShowErrors w<CR>
 endif
-if !hasmapto(":ShowErrors rc<CR>$", "n")
+if !hasmapto(":ShowErrors rc<CR>", "n")
     nnoremap  <silent> <buffer> <F6>r 			:ShowErrors rc<CR>
 endif
-if !hasmapto(":ShowErrors rc<CR>$", "i")
+if !hasmapto(":ShowErrors rc<CR>", "i")
     inoremap  <silent> <buffer> <F6>r 			:ShowErrors rc<CR>
 endif
-if !hasmapto(":ShowErrors f<CR>$", "n")
+if !hasmapto(":ShowErrors f<CR>", "n")
     nnoremap  <silent> <buffer> <F6>f 			:ShowErrors f<CR>
 endif
-if !hasmapto(":ShowErrors f<CR>$", "i")
+if !hasmapto(":ShowErrors f<CR>", "i")
     inoremap  <silent> <buffer> <F6>f 			:ShowErrors f<CR>
 endif
-if !hasmapto("<Plug>PdfFonts$", "n")
+if !hasmapto("<Plug>PdfFonts", "n")
     nnoremap  <silent> <buffer> <F6>g 			<Plug>PdfFonts
 endif
 
 " TeXdoc:
 " Note :TexDoc map cannot be <silent>
 nnoremap           <buffer> <Plug>TexDoc		:TexDoc<space>
-if !hasmapto("<Plug>TexDoc$", "n")
+if !hasmapto("<Plug>TexDoc", "n")
     nmap           <buffer> <F1>			<Plug>TexDoc
 endif
 inoremap           <buffer> <Plug>iTexDoc		<C-O>:TexDoc<space>
-if !hasmapto("<Plug>iTexDoc$", "i")
+if !hasmapto("<Plug>iTexDoc", "i")
     imap           <buffer> <F1> 			<Plug>iTexDoc
 endif
 
@@ -824,7 +842,7 @@ let g:atp_imap_math_misc = [
 	\ "g:atp_imap_define_math_misc", '\wedge' ], 
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_first_leader, 've', s:backslash.'vee', 	
 	\ "g:atp_imap_define_math_misc", '\vee' ],
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_first_leader, 'V', s:backslash.'Vee', 	
+\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_first_leader, 'V', s:backslash.'bigvee', 	
 	\ "g:atp_imap_define_math_misc", '\Vee' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_first_leader, '+', s:backslash.'bigcup', 	
 	\ "g:atp_imap_define_math_misc", '\bigcup' ],

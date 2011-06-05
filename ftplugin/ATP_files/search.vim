@@ -10,7 +10,7 @@ let s:sourced 	= exists("s:sourced") ? 1 : 0
 " Functions: (soure once)
 if !s:sourced || g:atp_reload_functions "{{{
 " Make a dictionary of definitions found in all input files.
-" {{{ s:make_defi_dict
+" {{{ s:make_defi_dict_vim
 " Comparing with ]D, ]d, ]i, ]I vim maps this function deals with multiline
 " definitions.
 "
@@ -21,7 +21,7 @@ if !s:sourced || g:atp_reload_functions "{{{
 "
 " ToDo: it is possible to check for the end using searchpairpos, but it
 " operates on a list not on a buffer.
-function! s:make_defi_dict(bang,...)
+function! s:make_defi_dict_vim(bang,...)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let bufname	= a:0 >= 1 ? a:1 : atp_MainFile
@@ -85,7 +85,7 @@ function! s:make_defi_dict(bang,...)
 		    let e_line	= lnr-1
 		    call add(defi_dict[inputfile], [ b_line, e_line ])
 		else
-		    call add(defi_dict[inputfile], [ b_line ])
+		    call add(defi_dict[inputfile], [ b_line, b_line ])
 		endif
 	    else
 		let lnr+=1
@@ -95,15 +95,121 @@ function! s:make_defi_dict(bang,...)
     endif
 
     return defi_dict
+endfunction "}}}
+" {{{ s:make_defi_dict_py
+" command! -nargs=* -bang MakeDefiDict  :call s:make_defi_dict_py(<q-bang>,<f-args>)
+function! s:make_defi_dict_py(bang,...)
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    let bufname	= a:0 >= 1 ? a:1 : atp_MainFile
+    " Not tested
+    let pattern	= a:0 >= 2 ? a:2 : '\\def\|\\newcommand'
+    " Not implemeted
+    let preambule_only= a:bang == "!" ? 0 : 1
+    let g:preambule_only=preambule_only
+    let only_begining	= a:0 >= 3 ? a:3 : 0
+    let g:only_begining=only_begining
+
+    if a:bang == "!" || !exists("b:TreeOfFiles")
+	 " Update the cached values:
+	 let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ] = TreeOfFiles(atp_MainFile)
+    endif
+    let [ Tree, List, Type_Dict, Level_Dict ] = deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ])
+ 
+python << ENDPYTHON
+import re, subprocess, os, glob
+
+def preambule_end(file):
+# find linenr where preambule ends,
+
+# file is list of lines
+    nr=1
+    for line in file:
+        if re.search('\\\\begin\s*{\s*document\s*}', line):
+            return nr
+        nr+=1
+    return 0
+
+pattern=vim.eval("pattern")
+type_dict=vim.eval("b:TypeDict")
+main_file=vim.eval("atp_MainFile")
+if int(vim.eval("preambule_only")) != 0:
+    preambule_only=True
+    files=[main_file]
+    for f in type_dict.keys():
+        if type_dict[f] == "preambule":
+            files.append(f)
+    main_file_ob=open(main_file, 'r')
+    main_file_l=main_file_ob.read().split("\n")
+    main_file_ob.close()
+    preambule_end=preambule_end(main_file_l)
+else:
+    preambule_only=False
+    files=[main_file]
+    files.extend(vim.eval("b:ListOfFiles"))
+if vim.eval("only_begining") !=0:
+    only_begining=True
+else:
+    only_begining=False
+
+def isnonempty(string):
+    if str(string) == "":
+        return False
+    else:
+        return True
+
+if pattern == "":
+    pat=".*"
+else:
+    pat=pattern
+
+# Does the no comment work?
+pattern=re.compile('^(?:[^%]|\\\\%)*(?:\\\\def|\\\\(?:re)?newcommand\s*{|\\\\providecommand\s*{|\\\\(?:re)?newenvironment\s*{|\\\\(?:re)?newtheorem\s*{|\\\\definecolor\s*{)')
+
+defi_dict={}
+for file in files:
+    defi_dict[file]=[]
+    lnr=1
+    file_ob=open(file, 'r')
+    file_l=file_ob.read().split("\n")
+    file_ob.close()
+#     print(file)
+#     print("preambule_only="+str(preambule_only))
+    while lnr <= len(file_l) and ( preambule_only and ( file == main_file and lnr <= preambule_end or file != main_file ) or not preambule_only):
+#         print(lnr)
+#        print(lnr <= len(file_l) and ( preambule_only and ( file == main_file and lnr <= preambule_end or file != main_file ) or not preambule_only))
+        line=file_l[lnr-1]
+        if re.search(pattern, line):
+#             print(line)
+            # add: no search in comments.
+            b_lnr       = lnr
+            if not only_begining:
+                _open       = len(re.findall("({)", line))
+                _close      = len(re.findall("(})", line))
+                while _open != _close:
+                    lnr+=1
+                    line     = file_l[lnr-1]
+                    _open   += len(re.findall("({)", line))
+                    _close  += len(re.findall("(})", line))
+                e_lnr        = lnr
+                defi_dict[file].append([ b_lnr, e_lnr ])
+            else:
+                defi_dict[file].append([ b_lnr, b_lnr ])
+            lnr         += 1
+        else:
+            lnr+=1
+vim.command("let s:defi_dict_py="+str(defi_dict))
+vim.command("let g:defi_dict_py="+str(defi_dict))
+ENDPYTHON
+return s:defi_dict_py
 endfunction
 "}}}
 
 " Find all names of locally defined commands, colors and environments. 
 " Used by the completion function.
-"{{{ LocalCommands 
+"{{{ LocalCommands_vim 
 " a:1 = pattern
 " a:2 = "!" => renegenerate the input files.
-function! LocalCommands(...)
+function! <SID>LocalCommands_vim(...)
 "     let time = reltime()
     let pattern = a:0 >= 1 && a:1 != '' ? a:1 : '\\def\>\|\\newcommand\>\|\\newenvironment\|\\newtheorem\|\\definecolor\|'
 		\ . '\\Declare\%(RobustCommand\|FixedFont\|TextFontCommand\|MathVersion\|SymbolFontAlphabet'
@@ -112,7 +218,6 @@ function! LocalCommands(...)
     let bang	= a:0 >= 2 ? a:2 : '' 
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
-
 
     " Makeing lists of commands and environments found in input files
     if bang == "!" || !exists("b:TreeOfFiles")
@@ -180,20 +285,110 @@ function! LocalCommands(...)
     let b:atp_LocalColors		= atp_LocalColors
     return [ atp_LocalEnvironments, atp_LocalCommands, atp_LocalColors ]
 
+endfunction "}}}
+" {{{ LocalCommands_py
+function! <SID>LocalCommands_py(write, ...)
+    " The first argument pattern is not implemented
+    " but it should be a python regular expression
+    let bang	= a:0 >= 2 ? a:2 : '' 
+
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+
+    if a:write
+	call atplib#write()
+    endif
+
+
+    " Makeing lists of commands and environments found in input files
+    if bang == "!" || !exists("b:TreeOfFiles")
+	 " Update the cached values:
+	 let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ] = TreeOfFiles(atp_MainFile)
+     endif
+     let [ Tree, List, Type_Dict, Level_Dict ] = deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ])
+
+     " Note: THIS CODE IS ONLY NEEDED WHEN PWD is different than the TreeOfFiles was
+     " called! There is an option to store full path in ATP, then this is not needed.
+     let files = []
+     for file in b:ListOfFiles
+	 if b:TypeDict[file] == "input" || b:TypeDict[file] == "preambule" 
+	     if filereadable(file)
+		 call add(files, file)
+	     else
+		 let file=atplib#KpsewhichFindFile("tex", file)
+		 if file != ""
+		     call add(files, file)
+		 endif
+	     endif
+	 endif
+     endfor
+python << END
+import re, vim
+
+pattern=re.compile('\s*(?:\\\\(?P<def>def)(?P<def_c>\\\\[^#{]*)|(?:\\\\(?P<nc>(?:re)?newcommand)|\\\\(?P<env>(?:re)?newenvironment)|\\\\(?P<nt>(?:re)?newtheorem\*?)|\\\\(?P<col>definecolor)|\\\\(?P<dec>Declare)(?:RobustCommand|FixedFont|TextFontCommand|MathVersion|SymbolFontAlphabet|MathSymbol|MathDelimiter|MathAccent|MathRadical|MathOperator)\s*{|\\\\(?P<sma>SetMathAlphabet))\s*{(?P<arg>[^}]*)})')
+
+files=[vim.eval("atp_MainFile")]+vim.eval("files")
+localcommands   =[]
+localcolors     =[]
+localenvs       =[]
+for file in files:
+    lnr=1
+    file_ob=open(file, 'r')
+    file_l=file_ob.read().split("\n")
+    file_ob.close()
+    for line in file_l:
+        m=re.match(pattern, line)
+        if m:
+            if m.group('def'):
+                localcommands.append(m.group('def_c'))
+            elif m.group('nc') or m.group('dec') or m.group('sma'):
+                localcommands.append(m.group('arg'))
+            elif m.group('nt') or m.group('env'):
+                localenvs.append(m.group('arg'))
+            elif m.group('col'):
+                localcolors.append(m.group('arg'))
+vim.command("let atp_LocalCommands="+str(localcommands))
+vim.command("let atp_LocalEnvironments="+str(localenvs))
+vim.command("let atp_LocalColors="+str(localcolors))
+END
+let b:atp_LocalCommands=map(atp_LocalCommands, 'substitute(v:val, ''\\\\'', ''\'', '''')')
+let b:atp_LocalColors=map(atp_LocalColors, 'substitute(v:val, ''\\\\'', ''\'', '''')')
+let b:atp_LocalEnvironments=map(atp_LocalEnvironments, 'substitute(v:val, ''\\\\'', ''\'', '''')')
+return [ b:atp_LocalEnvironments, b:atp_LocalCommands, b:atp_LocalColors ]
 endfunction
 "}}}
+" {{{ LocalCommands
+function! LocalCommands(write, ...)
+    let time=reltime()
+    let pattern = a:0 >= 1 && a:1 != '' ? a:1 : '\\def\>\|\\newcommand\>\|\\newenvironment\|\\newtheorem\|\\definecolor\|'
+		\ . '\\Declare\%(RobustCommand\|FixedFont\|TextFontCommand\|MathVersion\|SymbolFontAlphabet'
+			    \ . '\|MathSymbol\|MathDelimiter\|MathAccent\|MathRadical\|MathOperator\)'
+		\ . '\|\\SetMathAlphabet\>'
+    let bang	= a:0 >= 2 ? a:2 : '' 
+
+    if has("python")
+	call <SID>LocalCommands_py(a:write, '' , bang)
+    else
+	call <SID>LocalCommands_vim(pattern, bang)
+    endif
+    let g:time_LocalCommands=reltimestr(reltime(time))
+endfunction
+" }}}
 
 " Search for Definition in the definition dictionary (s:make_defi_dict).
 "{{{ DefiSearch
 function! DefiSearch(bang,...)
 
-    let pattern		= a:0 >= 1 ? a:1 : ''
-    let pattern		= '\%(\\def\|\\\%(re\)\=newcommand\s*{\=\|\\providecommand\s*{\=\|\\\%(re\)\=newenvironment\s*{\|\\\%(re\)\=newtheorem\s*{\)\s*\\\=\w*\zs'.pattern
+    let time		= reltime()
+    let o_pattern	= a:0 >= 1 ? a:1 : ''
+    let pattern		= '\%(\\def\|\\\%(re\)\=newcommand\s*{\=\|\\providecommand\s*{\=\|\\\%(re\)\=newenvironment\s*{\|\\\%(re\)\=newtheorem\s*{\|\\definecolor\s*{\)\s*\\\=\w*\zs'.o_pattern
     let preambule_only	= ( a:bang == "!" ? 0 : 1 )
-    let g:bang= a:bang
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
-    let defi_dict	= s:make_defi_dict(a:bang, atp_MainFile, pattern)
+    if has("python")
+	let defi_dict	= s:make_defi_dict_py(a:bang, atp_MainFile, pattern)
+    else
+	let defi_dict	= s:make_defi_dict_vim(a:bang, atp_MainFile, pattern)
+    endif
 
     if len(defi_dict) > 0
 	" wipe out the old buffer and open new one instead
@@ -205,7 +400,7 @@ function! DefiSearch(bang,...)
 	setl syntax=tex
 
 	let defi_list = []
-	let g:defi_list = defi_list
+" 	let g:defi_list = defi_list
 
 	for inputfile in keys(defi_dict)
 	    let ifile	= readfile(inputfile)
@@ -249,7 +444,7 @@ function! DefiSearch(bang,...)
 	let window_height= min([g:atp_DsearchMaxWindowHeight, len(defi_list)])
 	" open new buffer
 	let openbuffer=" +setl\\ buftype=nofile\\ nospell " . fnameescape("DefiSearch")
-	if g:vertical ==1
+	if g:vertical == 1
 	    let openbuffer="keepalt vsplit " . openbuffer 
 	else
 	    let openbuffer="keepalt rightbelow ".window_height."split " . openbuffer 
@@ -257,9 +452,11 @@ function! DefiSearch(bang,...)
 
 	silent exe openbuffer
 	call setline(1, defi_list)
-	call matchadd('Search', ( &l:ignorecase ? '\c' : '\C' ) .pattern)
-	let @/=pattern
-	setl ft=tex
+	if o_pattern != ""
+	    call matchadd('Search', ( &l:ignorecase ? '\c' : '\C' ) .o_pattern)
+	    let @/=o_pattern
+	endif
+	setl syntax=tex
 	setl readonly
 	map <buffer> q	:bd<CR>
     else
@@ -272,6 +469,19 @@ function! DefiSearch(bang,...)
 	endif
 	echohl Normal
     endif
+    let g:source_time_DSEARCH=reltimestr(reltime(time))
+endfunction
+function! DsearchComp(ArgLead, CmdLine, CursorPos)
+    if !exists("b:atp_LocalCommands")
+        LocalCommands
+    endif
+    let list=[]
+    call extend(list, b:atp_LocalCommands)
+    call extend(list, b:atp_LocalColors)
+    call extend(list, b:atp_LocalEnvironments)
+    call filter(list, 'v:val =~ a:ArgLead')
+    call map(list, 'escape(v:val, ''\*'')')
+    return sort(list)
 endfunction
 "}}}
 
@@ -1154,6 +1364,7 @@ function! BibSearch(bang,...)
 "     let pattern = a:0 >= 1 ? a:1 : ""
 "     let flag	= a:0 >= 2 ? a:2 : ""
 	
+    let time=reltime()
 	
     let Arg = ( a:0 >= 1 ? a:1 : "" )
     if Arg != ""
@@ -1179,7 +1390,26 @@ function! BibSearch(bang,...)
 	redir END
     endif
 
-    call atplib#showresults( atplib#searchbib(pattern, a:bang), flag, pattern)
+    if !exists("s:bibdict") || a:bang == "!"
+	let s:bibdict={}
+	if !exists("b:ListOfFiles") || !exists("b:TypeDict") || a:bang == "!"
+	    call TreeOfFiles(b:atp_MainFile)
+	endif
+	for file in b:ListOfFiles
+	    if b:TypeDict[file] == "bib"
+		let s:bibdict[file]=readfile(file)
+	    endif
+	endfor
+    endif
+    let b:atp_BibFiles=keys(s:bibdict)
+"     let g:bibdict=s:bibdict
+
+    if has("python") && g:atp_bibsearch == "python"
+	call atplib#showresults( atplib#searchbib_py(pattern, keys(s:bibdict), a:bang), flag, pattern, s:bibdict)
+    else
+	call atplib#showresults( atplib#searchbib(pattern, s:bibdict, a:bang), flag, pattern, s:bibdict)
+    endif
+    let g:time_BibSearch=reltimestr(reltime(time))
 endfunction
 nnoremap <silent> <Plug>BibSearchLast		:call BibSearch("", b:atp_LastBibPattern, b:atp_LastBibFlags)<CR>
 " }}}
@@ -1202,9 +1432,9 @@ if g:atp_mapNn
     " Note: the final step if the mapps n and N are made is in s:LoadHistory 
 endif
 
-command! -buffer -bang 		LocalCommands					:call LocalCommands("",<q-bang>)
+command! -buffer -bang 		LocalCommands					:call LocalCommands(1, "", <q-bang>)
 " command! -buffer -bang -nargs=* DefiSearch					:call DefiSearch(<q-bang>, <q-args>)
-command! -buffer -bang -nargs=* Dsearch						:call DefiSearch(<q-bang>, <q-args>)
+command! -buffer -bang -nargs=* -complete=customlist,DsearchComp Dsearch	:call DefiSearch(<q-bang>, <q-args>)
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleNn	:call ATP_ToggleNn(<f-args>)
 command! -buffer -bang -nargs=* BibSearch					:call BibSearch(<q-bang>, <q-args>)
 

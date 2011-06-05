@@ -58,25 +58,12 @@ function! <SID>ViewOutput(...)
     endif
 
 
-    let sync_args 	= ( fwd_search ?  <SID>SyncTex(0,1) : "" )
     if g:atp_debugV
 	let g:global_options = global_options
 	let g:local_options  = local_options
-	let g:sync_args      = sync_args
 	let g:viewer         = viewer
     endif
-    if b:atp_Viewer =~ '\<okular\>' && fwd_search
-	let view_cmd	= "(".viewer." ".global_options." ".local_options." ".sync_args.")&"
-    elseif b:atp_Viewer =~ '^\s*xdvi\>'
-	let view_cmd	= "(".viewer." ".global_options." ".local_options." ".sync_args." ".shellescape(outfile).")&"
-    else
-" I couldn't get it work with okular.	
-" 	let SyncTex	= s:SidWrap('SyncTex')
-" 	let sync_cmd 	= (fwd_search ? "vim "." --servername ".v:servername." --remote-expr "."'".SyncTex."()';" : "" ) 
-" 	let g:sync_cmd=sync_cmd
-
-	let view_cmd	= viewer." ".global_options." ".local_options." ".shellescape(outfile)."&"
-    endif
+    let view_cmd	= viewer." ".global_options." ".local_options." ".shellescape(outfile)." &"
 
     if g:atp_debugV
 	let g:view_cmd	= view_cmd
@@ -104,7 +91,25 @@ function! <SID>ViewOutput(...)
 		call <SID>Compiler( 0, 1, 1, 'silent' , "AU" , atp_MainFile, "")
 	    endif
 	endif
-    endif	
+    endif
+"     if fwd_search
+" 	let msg = "[SyncTex:] waiting for the viewer "
+" 	let i=1
+" 	while !<SID>IsRunning(viewer, outfile) && i<10
+" 	    echo msg
+" 	    sleep 100m
+" 	    redraw
+" 	    let msg.="."
+" 	    let i+=1
+" 	endwhile
+" 	if i<15
+" 	    call <SID>SyncTex(0)
+" 	else
+" 	    echohl WarningMsg
+" 	    echomsg "[SyncTex:] viewer is not running"
+" 	    echohl Normal
+" 	endif
+"     endif
 endfunction
 noremap <silent> 		<Plug>ATP_ViewOutput	:call <SID>ViewOutput()<CR>
 "}}}
@@ -191,6 +196,7 @@ function! <SID>SyncTex(mouse, ...) "{{{
 	exe "redir! > ".g:atp_TempDir."/SyncTex.log"
     endif
     let output_check 	= ( a:0 >= 1 && a:1 == 0 ? 0 : 1 )
+    let g:output_check 	= output_check
     let dryrun 		= ( a:0 >= 2 && a:2 == 1 ? 1 : 0 )
     " Mouse click <S-LeftMouse> is mapped to <LeftMouse>... => thus it first changes
     " the cursor position.
@@ -202,12 +208,30 @@ function! <SID>SyncTex(mouse, ...) "{{{
 	" Here should be a test if viewer is running, this can be made with python.
 	" this is way viewer starts not well when using :SyncTex command while Viewer
 	" is not running.
-       call <SID>ViewOutput("sync")
-       if g:atp_debugSyncTex
-	   silent echo "ViewOutput sync"
-	   redir END
-       endif
+"        call <SID>ViewOutput("sync")
+"        if g:atp_debugSyncTex
+" 	   silent echo "ViewOutput sync"
+" 	   redir END
+"        endif
+       echohl WarningMsg
+       echomsg "[SyncTex:] no output file"
+       echohl Normal
        return 2
+    endif
+    let atp_MainFile         = atplib#FullPath(b:atp_MainFile)
+    let ext		        = get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf")
+    let link=resolve(atp_MainFile)
+    if link != ""
+        let outfile     = fnamemodify(link,":r") . ext
+    else
+        let outfile     = fnamemodify(atp_MainFile,":r"). ext 
+    endif
+
+    if !<SID>IsRunning(b:atp_Viewer, atplib#FullPath(outfile)) && output_check
+        echohl WarningMsg
+        echomsg "[SyncTex:] please open the file first."
+        echohl Normal
+        return
     endif
     if b:atp_Viewer == "xpdf"
 	let [ page_nr, y_coord, x_coord ] = <SID>GetSyncData(line, col)
@@ -494,14 +518,7 @@ function! <SID>MakeLatex(bang, verbose, start)
     lockvar g:atp_TexCommand
 
     " Write file
-    let backup		= &backup
-    let writebackup	= &writebackup
-
-    " Disable WriteProjectScript
-    let eventignore 		= &l:eventignore
-    setl eventignore+=BufWrite
-    silent! w
-    let &l:eventignore 		= eventignore
+    call atplib#write()
 
     if a:verbose == "verbose"
 	exe ":!".cmd
@@ -571,6 +588,33 @@ function! <SID>SetBiberSettings()
     endif
 endfunction
 
+" This function checks if program a:program is running a file a:file.
+" a:file should be full path to the file.
+" {{{
+function! <SID>IsRunning(program, file)
+python << EOF
+import vim, psutil, os, pwd
+from psutil import NoSuchProcess
+x=0
+program	=vim.eval("a:program")
+f	=vim.eval("a:file")
+for pid in psutil.get_pid_list():
+    try:
+        p=psutil.Process(pid)
+        if p.username == pwd.getpwuid(os.getuid())[0] and re.search(program, p.cmdline[0]):
+            for arg in p.cmdline:
+                if arg == f:
+                    x=1
+                    break
+        if x:
+            break
+    except psutil.error.NoSuchProcess:
+        pass
+vim.command("let s:running="+str(x))
+EOF
+return s:running
+endfunction
+" }}}
 " THE MAIN COMPILER FUNCTIONs:
 " {{{ s:PythonCompiler
 function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, bang)
@@ -682,28 +726,12 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
 		\ . autex_wait
 
     " Write file
-    let backup=&backup
-    let writebackup=&writebackup
-    if a:command == "AU"  
-	if &backup | setlocal nobackup | endif
-	if &writebackup | setlocal nowritebackup | endif
-    endif
-
-    " Disable WriteProjectScript
-    let project=b:atp_ProjectScript
-    let b:atp_ProjectScript=0
-
     if g:atp_debugPythonCompiler
 	call atplib#Log("PythonCompiler.log", "PRE WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
     endif
 
-    silent! write
+    call atplib#write()
 
-    let b:atp_ProjectScript=project
-    if a:command == "AU"  
-	let &l:backup		= backup 
-	let &l:writebackup 	= writebackup 
-    endif
     if g:atp_debugPythonCompiler
 	call atplib#Log("PythonCompiler.log", "POST WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
     endif
@@ -1016,30 +1044,14 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	endif
 
 	" Take care about backup and writebackup options.
-	let backup=&backup
-	let writebackup=&writebackup
-	if a:command == "AU"  
-	    if &backup || &writebackup | setlocal nobackup | setlocal nowritebackup | endif
-	endif
-" This takes lots of time! 0.049s (more than 1/3)	
 	if g:atp_debugCompiler
 	    silent echomsg "BEFORE WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
 	endif
 
-	" disable WriteProjectScript
-	let project=b:atp_ProjectScript
-	let b:atp_ProjectScript=0
+	call atplib#write()
 
-	silent! w
-
-	let b:atp_ProjectScript=project
 	if g:atp_debugCompiler
 	    silent echomsg "AFTER WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
-	endif
-
-	if a:command == "AU"  
-	    let &l:backup=backup 
-	    let &l:writebackup=writebackup 
 	endif
 
 	if a:verbose != 'verbose'

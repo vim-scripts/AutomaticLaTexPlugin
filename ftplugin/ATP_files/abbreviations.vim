@@ -5,7 +5,7 @@
 " Language:	tex
 " Last Change:
 
-if exists("g:atp_noabbreviations") && g:atp_noabbreviations == 1
+if exists("g:atp_no_abbreviations") && g:atp_no_abbreviations == 1
     finish
 endif
 
@@ -133,20 +133,30 @@ if empty(maparg(g:atp_iabbrev_leader . "flalign\\*" . g:atp_iabbrev_leader, "i",
 endif
 
 " Local Environments
-if !exists("g:atp_LocalEnvironments")
-    call LocalCommands()
+function! <SID>LocalAbbreviations()
+    if !exists("b:atp_LocalEnvironments")
+	call LocalCommands(0)
+    endif
+    for env in b:atp_LocalEnvironments
+	if !empty(maparg(g:atp_iabbrev_leader.env.g:atp_iabbrev_leader, "i", 1))
+    " 	silent echomsg "abbreviation " . g:atp_iabbrev_leader.env.g:atp_iabbrev_leader . " exists."
+	    continue
+	endif
+	if exists("g:atp_abbreviate_".env)
+	    execute "iabbrev <buffer> ".g:atp_iabbrev_leader.env.g:atp_iabbrev_leader." \\begin{".env."}".get(g:atp_abbreviate_{env}, 0, "<CR>")."\\end{".env."}".get(g:atp_abbreviate_{env}, 1, "<Esc>O")
+	else
+	    execute "iabbrev <buffer> ".g:atp_iabbrev_leader.env.g:atp_iabbrev_leader." \\begin{".env."}<CR>\\end{".env."}<Esc>O"
+	endif
+    endfor
+endfunction
+if !(exists("g:atp_no_local_abbreviations") && g:atp_no_local_abbreviations == 1)
+augroup ATP_LocalAbbreviations
+    au!
+    " This is done via autocommands to not run LocalCommands() twice at
+    " startup.
+    au BufEnter *.tex :call <SID>LocalAbbreviations()
+augroup END
 endif
-for env in b:atp_LocalEnvironments
-    if !empty(maparg(g:atp_iabbrev_leader.env.g:atp_iabbrev_leader, "i", 1))
-" 	silent echomsg "abbreviation " . g:atp_iabbrev_leader.env.g:atp_iabbrev_leader . " exists."
-	continue
-    endif
-    if exists("g:atp_abbreviate_".env)
-	execute "iabbrev <buffer> ".g:atp_iabbrev_leader.env.g:atp_iabbrev_leader." \\begin{".env."}".get(g:atp_abbreviate_{env}, 0, "<CR>")."\\end{".env."}".get(g:atp_abbreviate_{env}, 1, "<Esc>O")
-    else
-	execute "iabbrev <buffer> ".g:atp_iabbrev_leader.env.g:atp_iabbrev_leader." \\begin{".env."}<CR>\\end{".env."}<Esc>O"
-    endif
-endfor
 
 
 if empty(maparg(g:atp_iabbrev_leader . "corollary" . g:atp_iabbrev_leader, "i", 1))

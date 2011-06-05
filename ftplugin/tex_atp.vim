@@ -3,10 +3,10 @@
 " URL:			https://sourceforge.net/projects/atp-vim/
 " BUGS:			https://lists.sourceforge.net/lists/listinfo/atp-vim-list
 " Do NOT DELETE the line just below, it is used by :UpdateATP (':help atp-:UpdateATP')
-" Time Stamp: 22-05-11_20-08
+" Time Stamp: 05-06-11_12-27
 " (but you can edit, if there is a reason for doing this. The format is dd-mm-yy_HH-MM)
 " Language:	    tex
-" Last Change: Sun May 01 07:00  2011 W
+" Last Change: Tue May 24 02:00  2011 W
 " GetLatestVimScripts: 2945 62 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
@@ -26,6 +26,12 @@
 "     with Automatic Tex Plugin for Vim.  If not, see <http://www.gnu.org/licenses/>.
 "
 "     This licence applies to all files shipped with Automatic Tex Plugin.
+
+" Do not source ATP if g:no_atp is set
+let reltime=reltime()
+if exists("g:no_atp") && g:no_atp == 1
+    finish
+endif
 
 let b:did_ftplugin	= 1
 
@@ -67,23 +73,32 @@ endif
 	    endif
     endfunction
 
+let reltime_project=reltime()
 	" Source Project Script
 	runtime ftplugin/ATP_files/project.vim
+let g:source_time_project=reltimestr(reltime(reltime_project))
 
 	" ATPRC file overwrites project settings
 	" (if the user put sth in atprc file, it means that he wants this globbaly) 
+let reltime_atprc_begin=reltime()
 	call <SID>ReadATPRC()
+let g:source_time_atprc_begin=reltimestr(reltime(reltime_atprc_begin))
 
 	" Functions needed before setting options.
 	runtime ftplugin/ATP_files/common.vim
 
 	" Options, global and local variables, autocommands.
+let reltime_options=reltime()
 	runtime ftplugin/ATP_files/options.vim
+let g:source_time_options=reltimestr(reltime(reltime_options))
 
 
+let reltime_compiler=reltime()
 	" Compilation related stuff.
 	runtime ftplugin/ATP_files/compiler.vim
+let g:source_time_compiler=reltimestr(reltime(reltime_compiler))
 
+let reltime_LatexBox=reltime()
 " 	let compiler_file = findfile('compiler/tex_atp.vim', &rtp)
 " 	if compiler_file
 " 		execute 'source ' 	. fnameescape(compiler_file)
@@ -98,13 +113,17 @@ endif
 		runtime ftplugin/ATP_files/LatexBox_latexmk.vim
 
 	endif
+let g:source_time_LatexBox=reltimestr(reltime(reltime_LatexBox))
 
+let reltime_motion=reltime()
 	runtime ftplugin/ATP_files/motion.vim
 
 	runtime ftplugin/ATP_files/search.vim
 
 	runtime ftplugin/ATP_files/various.vim
+let g:source_time_motion=reltimestr(reltime(reltime_motion))
 
+let reltime_maps=reltime()
 	" Source maps and menu files.
 	runtime ftplugin/ATP_files/mappings.vim
 
@@ -114,17 +133,39 @@ endif
 		runtime ftplugin/ATP_files/LatexBox_mappings.vim
 			
 	endif
+let g:source_time_maps=reltimestr(reltime(reltime_maps))
 
+let reltime_abbrev=reltime()
 	" Source abbreviations.
 	runtime ftplugin/ATP_files/abbreviations.vim
+let g:source_time_abbrev=reltimestr(reltime(reltime_abbrev))
 
+let reltime_menu=reltime()
 	" The menu.
 	runtime ftplugin/ATP_files/menu.vim
+let g:source_time_menu=reltimestr(reltime(reltime_menu))
 
 	" Help functions.
 	runtime ftplugin/ATP_files/helpfunctions.vim
 
+let reltime_atprc_end=reltime()
 	" Read ATPRC once again (to set mapps).
 	call <SID>ReadATPRC()
+let g:source_time_atprc_end=reltimestr(reltime(reltime_atprc_end))
 
+let g:source_time=reltimestr(reltime(reltime))
+command! SourceTime echo g:source_time_project." project\n".
+	    \ g:source_time_atprc_begin." begin\n".
+	    \ g:source_time_options." options\n".
+	    \ g:source_time_compiler." compiler\n".
+	    \ g:source_time_LatexBox." LatexBox\n".
+	    \ g:source_time_motion." motion\n".
+	    \ g:source_time_maps." maps\n".
+	    \ g:source_time_abbrev." abbrev\n".
+	    \ g:source_time_menu." menu\n".
+	    \ g:source_time_atprc_end." atprc_end\n  ".
+	    \ string(str2float(g:source_time_atprc_end)+str2float(g:source_time_menu)+str2float(g:source_time_abbrev)+
+	    \ str2float(g:source_time_maps)+str2float(g:source_time_motion)+str2float(g:source_time_LatexBox)+
+	    \ str2float(g:source_time_compiler)+str2float(g:source_time_options)+str2float(g:source_time_atprc_begin)+str2float(g:source_time_project))." sum\n".
+	    \ g:source_time." overall time"
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

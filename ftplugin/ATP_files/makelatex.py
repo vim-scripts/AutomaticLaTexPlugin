@@ -3,6 +3,11 @@
 # Date: 23 IV 2011
 # This file is a part of AutomaticTexPlugin plugin for Vim.
 # It is distributed under General Public Licence v3 or higher.
+# 
+# Note: this script, in order to work well, needs a high value of
+# max_print_line (ATP uses 2000) in order to not break log messages into lines.
+# This can be passed using the --env switch. (On the command line it is used in
+# this form: max_print_line=2000 latex .... )
 
 # import signal, os
 # def handler(signum, frame):
@@ -328,24 +333,21 @@ try:
         log_file  = open(tmplog, "r")
         log       = log_file.read()
         log_file.close()
-# undefined references|Citations undefined|Label(s) may have changed|Writing index file
-#Note: this is used only in the second run:
-#     log_list=re.findall('(u\n?n\n?d\n?e\n?f\n?i\n?n\n?e\n?d\s+r\n?e\n?f\n?e\n?r\n?e\n?n\n?c\n?e\n?s)|(C\n?i\n?t\n?a\n?t\n?i\n?o\n?n\n?s\s+u\n?n\n?d\n?e\n?f\n?i\n?n\n?e\n?d)|(L\n?a\n?b\n?e\n?l\(s\)\s+m\n?a\n?y\s+h\n?a\n?v\n?e\s+c\n?h\n?a\n?n\n?g\n?e\n?d)|(W\n?r\n?i\n?t\n?i\n?n\n?g\s+i\n?n\n?d\n?e\n?x\s+f\n?i\n?l\n?e)',log)
-        log_list=re.findall('(undefined references)|(Citations undefined)|(Label\(s\) may have changed)|(Writing index file)',log)
+        log_list=re.findall('(undefined references)|(Citations undefined)|(There were undefined citations)|(Label\(s\) may have changed)|(Writing index file)',log)
         citations       =False
         labels          =False
         makeidx         =False
         for el in log_list:
-            if el[0] != '' or el[1] != '':
+            if el[0] != '' or el[1] != '' or el[2] != '':
                 citations       =True
                 if biber:
                     need_runs.append(1)
                 else:
                     # Bibtex:
                     need_runs.append(2)
-            if el[2] != '':
-                labels          =True
             if el[3] != '':
+                labels          =True
+            if el[4] != '':
                 makeidx         =True
                 need_runs.append(1)
 

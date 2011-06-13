@@ -2,7 +2,7 @@
 " Description:  This file contains mappings defined by ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sun Jun 05 09:00  2011 W
+" Last Change: Sun Jun 12 04:00  2011 W
 
 " Add maps, unless the user didn't want them.
 if exists("g:no_plugin_maps") && g:no_plugin_maps ||
@@ -19,6 +19,7 @@ else
     let s:backslash="\\\\"
     let s:bbackslash="\\\\\\\\"
 endif
+let g:backslash=s:backslash
 
 
 " Commands to library functions (autoload/atplib.vim)
@@ -627,11 +628,11 @@ endif
 if !hasmapto("<Plug>ToggleTab", "i")
     imap  <silent> <buffer> `<Tab>			<Plug>ToggleTab
 endif
-if !hasmapto("<Plug>ToggleMathIMaps", "n")
-    nmap  <silent> <buffer> '<Tab>			<Plug>ToggleMathIMaps
+if !hasmapto("<Plug>ToggleIMaps", "n")
+    nmap  <silent> <buffer> '<Tab>			<Plug>ToggleIMaps
 endif
-if !hasmapto("<Plug>ToggleMathIMapsa", "i")
-    imap  <silent> <buffer> '<Tab>			<Plug>ToggleMathIMapsa
+if !hasmapto("<Plug>ToggleIMapsa", "i")
+    imap  <silent> <buffer> '<Tab>			<Plug>ToggleIMapsa
 endif
 if !hasmapto("<Plug>SimpleBibtex", "n")
     nmap  <silent> <buffer> <LocalLeader>B		<Plug>SimpleBibtex
@@ -703,27 +704,27 @@ endif
 if !exists("g:atp_imap_fonts") || g:atp_reload_variables
 let g:atp_imap_fonts = [
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'rm', 
-	\ '<Esc>:call Insert("'.s:bbackslash.'textrm{}", "'.s:bbackslash.'mathrm{}", 1)<CR>i', "g:atp_imap_define_fonts", 'rm font'],
+	\ '<Esc>:call Insert("'.s:bbackslash.'textrm{}", "'.s:bbackslash.'mathrm{}", 1)<CR>a', "g:atp_imap_define_fonts", 'rm font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'up', 
 	\ s:backslash.'textup{}<Left>', "g:atp_imap_define_fonts", 'up font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'md', 
 	\ s:backslash.'textmd{}<Left>', "g:atp_imap_define_fonts", 'md font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'it', 
-	\ '<Esc>:call Insert("'.s:bbackslash.'textit{}", "'.s:bbackslash.'mathit{}", 1)<CR>i', "g:atp_imap_define_fonts", 'it font'],
+	\ '<Esc>:call Insert("'.s:bbackslash.'textit{}", "'.s:bbackslash.'mathit{}", 1)<CR>a', "g:atp_imap_define_fonts", 'it font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'sl', 
 	\ s:backslash.'textsl{}<Left>', "g:atp_imap_define_fonts", 'sl font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'sc', 
 	\ s:backslash.'textsc{}<Left>', "g:atp_imap_define_fonts", 'sc font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'sf', 
-	\ '<Esc>:call Insert("'.s:bbackslash.'textsf{}", "'.s:bbackslash.'mathsf{}", 1)<CR>i', "g:atp_imap_define_fonts", 'sf font'],
+	\ '<Esc>:call Insert("'.s:bbackslash.'textsf{}", "'.s:bbackslash.'mathsf{}", 1)<CR>a', "g:atp_imap_define_fonts", 'sf font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'bf', 
-	\ '<Esc>:call Insert("'.s:bbackslash.'textbf{}", "'.s:bbackslash.'mathbf{}", 1)<CR>i', "g:atp_imap_define_fonts", 'bf font'],
+	\ '<Esc>:call Insert("'.s:bbackslash.'textbf{}", "'.s:bbackslash.'mathbf{}", 1)<CR>a', "g:atp_imap_define_fonts", 'bf font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'tt', 
-	\ '<Esc>:call Insert("'.s:bbackslash.'texttt{}", "'.s:bbackslash.'mathtt{}", 1)<CR>i', "g:atp_imap_define_fonts", 'tt font'],
+	\ '<Esc>:call Insert("'.s:bbackslash.'texttt{}", "'.s:bbackslash.'mathtt{}", 1)<CR>a', "g:atp_imap_define_fonts", 'tt font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'em', 
 	\ s:backslash.'emph{}<Left>', "g:atp_imap_define_fonts", 'emphasize font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'no', 
-	\ '<Esc>:call Insert("'.s:bbackslash.'textnormal{}", "'.s:bbackslash.'mathnormal{}", 1)<Cr>i', "g:atp_imap_define_fonts", 'normal font'],
+	\ '<Esc>:call Insert("'.s:bbackslash.'textnormal{}", "'.s:bbackslash.'mathnormal{}", 1)<Cr>a', "g:atp_imap_define_fonts", 'normal font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'bb', 
 	\ s:backslash.'mathbb{}<Left>', "g:atp_imap_define_fonts", 'mathbb font'],
     \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_second_leader, 'cal', 
@@ -820,9 +821,9 @@ endif
     " Make Greek Letters:
     augroup ATP_MathIMaps_GreekLetters
 	au!
-	au CursorMovedI	*.tex 	:call atplib#ToggleMathIMaps(g:atp_imap_greek_letters, 'CursorMovedI')
-	au CursorHoldI 	*.tex 	:call atplib#ToggleMathIMaps(g:atp_imap_greek_letters, 'CursorHoldI')
-	au InsertEnter	*.tex 	:call atplib#ToggleMathIMaps(g:atp_imap_greek_letters, 'InsertEnter') 
+	au CursorMovedI	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_greek_letters, 'CursorMovedI')
+	au CursorHoldI 	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_greek_letters, 'CursorHoldI')
+	au InsertEnter	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_greek_letters, 'InsertEnter') 
 	" Make imaps visible with :imap /this will not work with i_CTRL-C/
 	au InsertLeave	*.tex 	:call atplib#MakeMaps(g:atp_imap_greek_letters, 'InsertLeave')
 	au BufEnter	*.tex 	:call atplib#MakeMaps(g:atp_imap_greek_letters, 'BufEnter')
@@ -834,6 +835,8 @@ if !exists("g:atp_imap_math_misc") || g:atp_reload_variables
 	let g:atp_infty_leader = (g:atp_imap_first_leader == '#' ? '`' : g:atp_imap_first_leader ) 
     endif
 let g:atp_imap_math_misc = [
+\ [ 'inoremap', '<silent> <buffer>', '+',		      '+', s:backslash.'sum',
+	\ "g:atp_imap_define_math_misc", '\sum' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_infty_leader,      '8', s:backslash.'infty', 	
 	\ "g:atp_imap_define_math_misc", '\infty' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_infty_leader,      '6', s:backslash.'partial',	
@@ -888,13 +891,40 @@ endif
     " Make Miscellaneous Mathematical Maps:
     augroup ATP_MathIMaps_misc
 	au!
-	au CursorMovedI	*.tex 	:call atplib#ToggleMathIMaps(g:atp_imap_math_misc, 'CursorMovedI')
-	au CursorHoldI 	*.tex 	:call atplib#ToggleMathIMaps(g:atp_imap_math_misc, 'CursorHoldI') 
-	au InsertEnter	*.tex 	:call atplib#ToggleMathIMaps(g:atp_imap_math_misc, 'InsertEnter') 
+	au CursorMovedI	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_math_misc, 'CursorMovedI', g:atp_imap_diacritics)
+	au CursorHoldI 	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_math_misc, 'CursorHoldI', g:atp_imap_diacritics) 
+	au InsertEnter	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_math_misc, 'InsertEnter', g:atp_imap_diacritics) 
 	" Make imaps visible with :imap /this will not work with i_CTRL-C/
-	au InsertLeave	*.tex 	:call atplib#MakeMaps(g:atp_imap_math_misc, 'InsertLeave')
-	au BufEnter	*.tex 	:call atplib#MakeMaps(g:atp_imap_math_misc, 'BufEnter')
+" 	au InsertLeave	*.tex 	:call atplib#MakeMaps(g:atp_imap_math_misc, 'InsertLeave')
+" 	au BufEnter	*.tex 	:call atplib#MakeMaps(g:atp_imap_math_misc, 'BufEnter')
     augroup END
+
+    let g:atp_imap_diacritics = [
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  '''', s:backslash.'''{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\''{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  '"', s:backslash.'"{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\"{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  '^', s:backslash.'^{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\^{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  'v', s:backslash.'v{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\v{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  'b', s:backslash.'b{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\b{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  'd', s:backslash.'d{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\d{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  '`', s:backslash.'`{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\`{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  'H', s:backslash.'H{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\H{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  '~', s:backslash.'~{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\~{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  '.', s:backslash.'.{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\.{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  'c', s:backslash.'c{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\c{}' ],
+	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  't', s:backslash.'t{}<Left>', 	
+		    \ "g:atp_imap_define_diacritics", '\t{}' ]
+	    \ ]
 
 " Environment Maps:
 if g:atp_no_env_maps != 1
@@ -965,9 +995,9 @@ endif
     " Make Mathematical Maps:
     augroup ATP_MathIMaps
 	au!
-	au CursorMovedI	*.tex 	:call atplib#ToggleMathIMaps(g:atp_imap_math, 'CursorMovedI')
-	au CursorHoldI 	*.tex 	:call atplib#ToggleMathIMaps(g:atp_imap_math, 'CursorHoldI')
-	au InsertEnter	*.tex 	:call atplib#ToggleMathIMaps(g:atp_imap_math, 'InsertEnter')
+	au CursorMovedI	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_math, 'CursorMovedI')
+	au CursorHoldI 	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_math, 'CursorHoldI')
+	au InsertEnter	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_math, 'InsertEnter')
 	" Make imaps visible with :imap  /this will not work with i_CTRL-C/
 	au InsertLeave	*.tex 	:call atplib#MakeMaps(g:atp_imap_math, 'InsertLeave')
 	au BufEnter	*.tex 	:call atplib#MakeMaps(g:atp_imap_math, 'BufEnter')

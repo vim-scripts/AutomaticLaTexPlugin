@@ -5,8 +5,29 @@
 " URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 
+" Kill:
+" {{{
+function! atplib#KillPIDs(pids,...)
+    if len(a:pids) == 0 && a:0 == 0
+	return
+    endif
+python << END
+import os, signal
+from signal import SIGKILL
+pids=vim.eval("a:pids")
+for pid in pids:
+    try:
+	os.kill(int(pid),SIGKILL)
+    except OSError, e:
+	if e.errno == 3:
+             # No such process error.
+             pass
+        else:
+             raise
+END
+endfunction " }}}
 " Write:
-function! atplib#write() "{{{
+function! atplib#write(...) "{{{
     let backup		= &backup
     let writebackup	= &writebackup
     let project		= b:atp_ProjectScript
@@ -16,7 +37,11 @@ function! atplib#write() "{{{
     set nobackup
     set nowritebackup
 
-    silent! update
+    if a:0 > 0 && a:1 == "silent"
+	silent! update
+    else
+	update
+    endif
 
     let b:atp_ProjectScript = project
     let &backup		= backup
@@ -60,10 +85,12 @@ function! atplib#FullPath(file_name) "{{{1
     let cwd = getcwd()
     if a:file_name =~ '^\s*\/'
 	let file_path = a:file_name
-    else
+    elseif exists("b:atp_ProjectDir")
 	exe "lcd " . fnameescape(b:atp_ProjectDir)
 	let file_path = fnamemodify(a:file_name, ":p")
 	exe "lcd " . fnameescape(cwd)
+    else
+	let file_path = fnamemodify(a:file_name, ":p")
     endif
     return file_path
 endfunction
@@ -181,11 +208,14 @@ function! atplib#IsLeft(lchar,...)
     endif
 endfunction
 " try
-function! atplib#ToggleMathIMaps(var, augroup)
+function! atplib#ToggleIMaps(var, augroup, ...)
     if atplib#IsInMath() 
 	call atplib#MakeMaps(a:var, a:augroup)
     else
 	call atplib#DelMaps(a:var)
+	if a:0 >= 1
+	    call atplib#MakeMaps(a:1)
+	endif
     endif
 endfunction
 " catch E127
@@ -703,10 +733,13 @@ endfunction
 " resove(fnamemodify(bufname("%"),":p"))
 
 " {{{2 --------------- atplib#GrepAuxFile
-silent! function! atplib#GrepAuxFile(...)
+function! atplib#GrepAuxFile(...)
     " Aux file to read:
-    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
-    let aux_filename	= a:0 == 0 ? fnamemodify(atp_MainFile, ":r") . ".aux" : a:1 
+    if exists("b:atp_MainFile")
+	let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    endif
+    let aux_filename	= ( a:0 == 0 && exists("b:atp_MainFile") ? fnamemodify(atp_MainFile, ":r") . ".aux" : a:1 )
+    let tex_filename	= fnamemodify(aux_filename, ":r") . ".tex"
 
     if !filereadable(aux_filename)
 	" We should worn the user that there is no aux file
@@ -744,7 +777,7 @@ silent! function! atplib#GrepAuxFile(...)
 
     " Equation counter depedns on the option \numberwithin{equation}{section}
     " /now this only supports article class.
-    let equation = len(atplib#GrepPreambule('^\s*\\numberwithin{\s*equation\s*}{\s*section\s*}'))
+    let equation = len(atplib#GrepPreambule('^\s*\\numberwithin{\s*equation\s*}{\s*section\s*}', tex_filename))
 "     for line in aux_file
     for line in loc_list
 " 	if line =~ '^\\newlabel' 
@@ -1674,12 +1707,19 @@ for f in files:
     f_o.close()
     for line in f_l:
         if re.match('[^%]*\\\\bibitem', line):
-            match=re.search('\\\\bibitem\s*\[([^\]]*)\]\s*{([^}]*)}\s*(.*)', line)
-            label=match.group(1)
-            key=match.group(2)
-            rest=match.group(3)
-            if key != "":
-                citekey_label_dict[key]={ 'label' : label, 'rest' : rest }
+            match=re.search('\\\\bibitem\s*(?:\[([^\]]*)\])?\s*{([^}]*)}\s*(.*)', line)
+            if match:
+                label=match.group(1)
+                if label == None:
+                    label = ""
+                key=match.group(2)
+                if key == None:
+                    key = ""
+                rest=match.group(3)
+                if rest == None:
+                    rest = ""
+                if key != "":
+                    citekey_label_dict[key]={ 'label' : label, 'rest' : rest }
 vim.command("let l:citekey_label_dict="+str(citekey_label_dict))
 PEND
     else
@@ -2494,16 +2534,17 @@ function! atplib#GrepPackageList(...)
     return pre_list
 endfunction
 "{{{1 atplib#GrepPreambule
-function! atplib#GrepPreambule(pattern)
-    let saved_loclist = getloclist(0)
+function! atplib#GrepPreambule(pattern, ...)
+    let saved_loclist 	= getloclist(0)
+    let atp_MainFile	= ( a:0 >= 1 ? a:1 : b:atp_MainFile ) 
     let winview = winsaveview()
-    exe 'silent! 1lvimgrep /^[^%]*\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
+    exe 'silent! 1lvimgrep /^[^%]*\\begin\s*{\s*document\s*}/j ' . fnameescape(atp_MainFile)
     let linenr = get(get(getloclist(0), 0, {}), 'lnum', 'nomatch')
     if linenr == "nomatch"
 	call setloclist(0, saved_loclist)
 	return
     endif
-    exe 'silent! lvimgrep /'.a:pattern.'\%<'.linenr.'l/jg ' . fnameescape(b:atp_MainFile) 
+    exe 'silent! lvimgrep /'.a:pattern.'\%<'.linenr.'l/jg ' . fnameescape(atp_MainFile) 
     let matches = getloclist(0)
     call setloclist(0, saved_loclist)
     return matches

@@ -12,10 +12,10 @@ it or some ideas to share, you are cordially invited to write to me:
 mszamot@gmail.com. Voting at Vim site is also welcome ;) .
 -----------------------------------------------------------------------------
 
-				*atp_bibtex*
+			   *atp-bibtex*
 
 -----------------------------------------------------------------------------
-MOTIONS						*atp_bibtex-motions*
+MOTIONS						*atp-bibtex-motions*
     ]], }	go to next field (and use zz to redraw the screen)
     [[, {	go to previous field (and use zz to redraw the screen)
     ][		go to end of the current bib field
@@ -24,7 +24,7 @@ MOTIONS						*atp_bibtex-motions*
     <C-k>	(both map and imap) go to previous bib entry (after { or ( or " or ').
 
 -----------------------------------------------------------------------------
-COMMANDS					*atp_bibtex-:AMSRef*
+COMMANDS					*atp-bibtex-:AMSRef*
 :AMSRef {bib_data}  
     Command to get bib data from AMSRef:
 		http://www.ams.org/mathscinet-mref 
@@ -36,7 +36,7 @@ COMMANDS					*atp_bibtex-:AMSRef*
     g:atp_bibref.
 	
 -----------------------------------------------------------------------------
-MAPS						*atp_bibtex-maps*
+MAPS						*atp-bibtex-maps*
     There is a new ftplugin for bib files. It only defines a small set of
     useful maps and the AMSRef command. The defined maps are listead below: 
 		MAP KEY			FIELD TYPE: 
@@ -58,5 +58,5 @@ MAPS						*atp_bibtex-maps*
     With <F1> you will get help on bibtex: 'BibTeXing' by Oren Patashnik.
 
 -----------------------------------------------------------------------------
-COPY RIGHTS					*atp_bibtex-copy-rights*
+COPY RIGHTS					*atp-bibtex-copy-rights*
 	See |atp-copy-rights|.

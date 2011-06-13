@@ -1,6 +1,5 @@
 " Author:	David Mungerd
 " Maintainer:	Marcin Szamotulski
-" URL:		https://launchpad.net/automatictexplugin
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
 " Last Change:

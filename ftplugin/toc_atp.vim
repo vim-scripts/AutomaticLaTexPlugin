@@ -1,9 +1,8 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Mon May 16 02:00  2011 W
+" Last Change: Mon Jun 06 10:00  2011 W
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
-" URL:	       https://launchpad.net/automatictexplugin
 
 " if exists("b:did_ftplugin") | finish | endif
 let b:did_ftplugin = 1
@@ -172,6 +171,7 @@ function! <SID>yank(arg) " {{{
     if !labels_window
 	if exists("t:atp_labels") || get(t:atp_labels, file_name, "nofile") != "nofile"	 
 	    " set t:atp_labels variable
+	    let g:file=s:file()
 	    call atplib#generatelabels(getbufvar(s:file(), 'atp_MainFile'), 0)
 	endif
 

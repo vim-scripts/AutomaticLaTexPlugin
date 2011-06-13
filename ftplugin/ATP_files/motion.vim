@@ -1,7 +1,6 @@
 " Author:	Marcin Szamotulski
 " Description:	This file contains motion and highlight functions of ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 " Last Change:
 
@@ -76,7 +75,7 @@ function! s:maketoc(filename)
     endtry
     let texfile_copy	= deepcopy(texfile)
 
-    let true	= 1
+    let true		= 1
     let bline		= 0 	" We are not removing the preambule any more.
     let i		= 1
     " set variables for chapter/section numbers
@@ -85,11 +84,14 @@ function! s:maketoc(filename)
     endfor
     " make a filter
     let j = 0
-    for section in keys(g:atp_sections)
+    let biblatex	= ( atplib#SearchPackage("biblatex") )
+    " When \usepackge{biblatex} do not search for \bibliography{} commands -- they are placed in ther preambule.
+    let key_list 	= ( biblatex ? filter(keys(g:atp_sections), "v:val != 'bibliography'") : keys(g:atp_sections) ) 
+    for section in key_list
 	let filter = ( j == 0 ? g:atp_sections[section][0] . '' : filter . '\|' . g:atp_sections[section][0] )
 	let j+=1
     endfor
-    " ToDo: HOW TO MAKE THIS FAST?
+
     let s:filtered	= filter(deepcopy(texfile), 'v:val =~ filter')
     for line in s:filtered
 	for section in keys(g:atp_sections)
@@ -187,7 +189,7 @@ function! s:maketoc(filename)
 
 		    "ToDo: if section is bibliography (using bib) then find the first
 		    " empty line:
-		    if section == "bibliography" && line !~ '\\begin\s*{\s*thebibliography\s*}'
+		    if section == "bibliography" && line !~ '\\begin\s*{\s*thebibliography\s*}' && !biblatex
 			let idx	= tline-1
 			while texfile_copy[idx] !~ '^\s*$'
 			    let idx-= 1
@@ -199,7 +201,9 @@ function! s:maketoc(filename)
 		    endif
 
 		    " Add results to the dictionary:
-		    call extend(toc, { tline : [ section, ind{section}, title, star, shorttitle] }) 
+		    if biblatex && section != "bibliography" || !biblatex
+			call extend(toc, { tline : [ section, ind{section}, title, star, shorttitle] }) 
+		    endif
 
 		endif
 	    endif
@@ -1254,11 +1258,6 @@ function! GotoFile(bang,file,...)
 	let cur_col		= col(".")
     endif
 
-"     DEBUG
-"     let g:line	= line
-"     let g:file	= a:file 
-"     let g:check_line	= check_line
-
     " This part will be omitted if check_line is 0 (see note above).
     " \usepackege{...,<package_name>,...}
     if line =~ '\\usepackage' && g:atp_developer
@@ -1268,7 +1267,6 @@ function! GotoFile(bang,file,...)
 	    let fname   = atplib#append_ext(strpart(getline("."), bcol, col-bcol-1), ext)
 	    let file 	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, 1)
 	    let file_l	= [ file ]
-" 	    let file	= get(file_l, 0, "file_missing") 
 
 	    let message = "Pacakge: "
 	    let options = ""
@@ -1324,12 +1322,7 @@ function! GotoFile(bang,file,...)
 
 	call extend(file_l, [ atp_MainFile ], 0)
 	call extend(level_d, { atp_MainFile : 0 })
-" 	call filter(file_l, "v:val !~ expand('%') . '$'")
     endif
-
-"     DEBUG
-"     let g:method 	= method
-"     let g:file_l 	= file_l
 
     if len(file_l) > 1 && a:file =~ '^\s*$'
 	if method == "all"
@@ -1446,6 +1439,7 @@ function! GotoFile(bang,file,...)
 	let atp_MakeindexPIDs	= ( exists("b:atp_MakeindexPIDs") 	? b:atp_MakeindexPIDs 	: [] )
 	let atp_ProgressBar	= ( exists("b:atp_ProgressBar") 	? b:atp_ProgressBar 	: {} )
 	execute "edit " . fnameescape(file)
+	call RestoreProjectVariables(projectVarDict)
 	if &l:filetype =~ 'tex$' && file =~ '\.tex$' && &l:filetype != filetype  
 	    let &l:filetype	= filetype
 	" If the filetype is 'bib' we should source some portion of ATP, so
@@ -1458,7 +1452,6 @@ function! GotoFile(bang,file,...)
 
 	" Set the main file variable and pass the TreeOfFiles variables to the new
 	" buffer.
-	call RestoreProjectVariables(projectVarDict)
 	if exists("b:atp_ErrorFormat")
 	    unlockvar b:atp_ErrorFormat
 	endif
@@ -1752,11 +1745,11 @@ augroup ATP_BufList
     au BufEnter *.tex call s:buflist()
 augroup END
 " {{{1
-command! -buffer -bang LatexTags					:call <SID>LatexTags(<q-bang>)
-try
-command  -buffer -bang Tags						:call <SID>LatexTags(<q-bang>)
-catch /E174:/
-endtry
+if exists(":Tags") != 2
+    command! -buffer -bang Tags						:call <SID>LatexTags(<q-bang>)
+else
+    command! -buffer -bang LatexTags					:call <SID>LatexTags(<q-bang>)
+endif
 command! -nargs=? -complete=custom,RemoveFromToCComp RemoveFromToC	:call RemoveFromToC(<q-args>)
 map	<buffer> <silent> <Plug>JumptoPreviousEnvironment		:call <SID>JumptoEnvironment(1)<CR>
 map	<buffer> <silent> <Plug>JumptoNextEnvironment			:call <SID>JumptoEnvironment(0)<CR>
@@ -1892,8 +1885,8 @@ else
     command! -buffer -bang -count=1 -nargs=? -complete=customlist,Env_compl PPart		:call <SID>GotoSection(<q-bang>, <q-count>, 'sb', '\\\\part\\*\\=\\>', ( g:atp_mapNn ? 'atp' : 'vim' ), 'n', <q-args>)
 endif
 
-command! -buffer NInput				:<C-U>call <SID>Input("w") 	| let v:searchforward = 1
-command! -buffer PInput 			:<C-U>call <SID>Input("bw")	| let v:searchforward = 0
+command! -buffer NInput				:call <SID>Input("w") 	| let v:searchforward = 1
+command! -buffer PInput 			:call <SID>Input("bw")	| let v:searchforward = 0
 command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete GotoFile	:call GotoFile(<q-bang>,<q-args>, 0)
 command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete EditInputFile :call GotoFile(<q-bang>,<q-args>, 0)
 " vimeif data[0]['text'] =~ 'No Unique Match Found'	    echohl WarningMsg

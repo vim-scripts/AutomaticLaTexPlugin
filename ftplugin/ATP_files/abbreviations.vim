@@ -1,7 +1,6 @@
 " Author:	Marcin Szmotulski
 " Description:  This file contains abbreviations defined in ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 " Last Change:
 
@@ -150,12 +149,12 @@ function! <SID>LocalAbbreviations()
     endfor
 endfunction
 if !(exists("g:atp_no_local_abbreviations") && g:atp_no_local_abbreviations == 1)
-augroup ATP_LocalAbbreviations
-    au!
-    " This is done via autocommands to not run LocalCommands() twice at
-    " startup.
-    au BufEnter *.tex :call <SID>LocalAbbreviations()
-augroup END
+    augroup ATP_LocalAbbreviations
+	au!
+	" This is done via autocommands to not run LocalCommands() twice at
+	" startup.
+	au BufEnter *.tex :call <SID>LocalAbbreviations()
+    augroup END
 endif
 
 

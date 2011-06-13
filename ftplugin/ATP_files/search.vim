@@ -1,7 +1,6 @@
 " Author:	Marcin Szamotulski
 " Description:  This file provides searching tools of ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 " Last Change:
 
@@ -30,10 +29,10 @@ function! s:make_defi_dict_vim(bang,...)
     " \newtheorem, and \newenvironment commands  
     let pattern	= a:0 >= 2 ? a:2 : '\\def\|\\newcommand'
 
-    let preambule_only= a:bang == "!" ? 0 : 1
+    let preambule_only	= ( a:bang == "!" ? 0 : 1 )
 
     " this is still to slow!
-    let only_begining	= a:0 >= 3 ? a:3 : 0
+    let only_begining	= ( a:0 >= 3 ? a:3 : 0 )
 
     let defi_dict={}
 
@@ -99,6 +98,7 @@ endfunction "}}}
 " {{{ s:make_defi_dict_py
 " command! -nargs=* -bang MakeDefiDict  :call s:make_defi_dict_py(<q-bang>,<f-args>)
 function! s:make_defi_dict_py(bang,...)
+
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let bufname	= a:0 >= 1 ? a:1 : atp_MainFile
     " Not tested
@@ -172,11 +172,7 @@ for file in files:
     file_ob=open(file, 'r')
     file_l=file_ob.read().split("\n")
     file_ob.close()
-#     print(file)
-#     print("preambule_only="+str(preambule_only))
     while lnr <= len(file_l) and ( preambule_only and ( file == main_file and lnr <= preambule_end or file != main_file ) or not preambule_only):
-#         print(lnr)
-#        print(lnr <= len(file_l) and ( preambule_only and ( file == main_file and lnr <= preambule_end or file != main_file ) or not preambule_only))
         line=file_l[lnr-1]
         if re.search(pattern, line):
 #             print(line)
@@ -332,27 +328,42 @@ localcolors     =[]
 localenvs       =[]
 for file in files:
     lnr=1
-    file_ob=open(file, 'r')
-    file_l=file_ob.read().split("\n")
-    file_ob.close()
-    for line in file_l:
-        m=re.match(pattern, line)
-        if m:
-            if m.group('def'):
-                localcommands.append(m.group('def_c'))
-            elif m.group('nc') or m.group('dec') or m.group('sma'):
-                localcommands.append(m.group('arg'))
-            elif m.group('nt') or m.group('env'):
-                localenvs.append(m.group('arg'))
-            elif m.group('col'):
-                localcolors.append(m.group('arg'))
+    try:
+        file_ob=open(file, 'r')
+        file_l=file_ob.read().split("\n")
+        file_ob.close()
+        for line in file_l:
+            m=re.match(pattern, line)
+            if m:
+                if m.group('def'):
+                    localcommands.append(m.group('def_c'))
+                elif m.group('nc') or m.group('dec') or m.group('sma'):
+                    localcommands.append(m.group('arg'))
+                elif m.group('nt') or m.group('env'):
+                    localenvs.append(m.group('arg'))
+                elif m.group('col'):
+                    localcolors.append(m.group('arg'))
+    except IOError:
+        pass
 vim.command("let atp_LocalCommands="+str(localcommands))
 vim.command("let atp_LocalEnvironments="+str(localenvs))
 vim.command("let atp_LocalColors="+str(localcolors))
 END
-let b:atp_LocalCommands=map(atp_LocalCommands, 'substitute(v:val, ''\\\\'', ''\'', '''')')
-let b:atp_LocalColors=map(atp_LocalColors, 'substitute(v:val, ''\\\\'', ''\'', '''')')
-let b:atp_LocalEnvironments=map(atp_LocalEnvironments, 'substitute(v:val, ''\\\\'', ''\'', '''')')
+if exists("atp_LocalCommands")
+    let b:atp_LocalCommands=map(atp_LocalCommands, 'substitute(v:val, ''\\\\'', ''\'', '''')')
+else
+    let b:atp_LocalCommands=[]
+endif
+if exists("b:atp_LocalColors")
+    let b:atp_LocalColors=map(atp_LocalColors, 'substitute(v:val, ''\\\\'', ''\'', '''')')
+else
+    let b:atp_LocalColors=[]
+endif
+if exists("b:atp_LocalEnvironments")
+    let b:atp_LocalEnvironments=map(atp_LocalEnvironments, 'substitute(v:val, ''\\\\'', ''\'', '''')')
+else
+    let b:atp_LocalEnvironments=[]
+endif
 return [ b:atp_LocalEnvironments, b:atp_LocalCommands, b:atp_LocalColors ]
 endfunction
 "}}}
@@ -375,8 +386,10 @@ endfunction
 " }}}
 
 " Search for Definition in the definition dictionary (s:make_defi_dict).
-"{{{ DefiSearch
-function! DefiSearch(bang,...)
+"{{{ Dsearch
+function! <SID>Dsearch(bang,...)
+
+    call atplib#write()
 
     let time		= reltime()
     let o_pattern	= a:0 >= 1 ? a:1 : ''
@@ -458,7 +471,7 @@ function! DefiSearch(bang,...)
 	endif
 	setl syntax=tex
 	setl readonly
-	map <buffer> q	:bd<CR>
+	map <buffer> <silent> q	:bd<CR>
     else
 	redraw
 	echohl ErrorMsg
@@ -753,7 +766,6 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	    " FORWARD
 	    " cur < pat <= input
 	    if atplib#CompareCoordinates(cur_pos,pat_pos) && atplib#CompareCoordinates_leq(pat_pos, input_pos)
-		let goto	= 'ACCEPT' . 1
 		let goto_s	= 'ACCEPT'
 	    " cur == pat <= input
 	    elseif cur_pos == pat_pos && atplib#CompareCoordinates_leq(pat_pos, input_pos)
@@ -763,38 +775,30 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		" if there is not go UP.
 		let wrapscan	= ( flags_supplied =~# 'w' || &l:wrapscan && flags_supplied !~# 'W' )
 		if flag =~# 'c'
-		    let goto 	= 'ACCEPT'  . 2
 		let goto_s	= 'ACCEPT'
 		elseif wrapscan
 		    " if in wrapscan and without 'c' flag
-		    let goto	= 'UP' . 2
 		let goto_s	= 'UP'
 		else
 		    " this should not happen: cur == put can hold only in two cases:
 		    " wrapscan is on or 'c' is used.
-		    let goto	= 'ERROR' . 2
 		    let goto_s	= 'ERROR'
 		endif
 	    " pat < cur <= input
 	    elseif atplib#CompareCoordinates(pat_pos, cur_pos) && atplib#CompareCoordinates_leq(cur_pos, input_pos) 
-		let goto	= 'UP' . 4
 		let goto_s	= 'UP'
 	    " cur < input < pat
 	    elseif atplib#CompareCoordinates(cur_pos, input_pos) && atplib#CompareCoordinates(input_pos, pat_pos)
-		let goto	= 'UP' . 41
 		let goto_s	= 'UP'
 	    " cur < input == pat 		/we are looking for '\\input'/
 	    elseif atplib#CompareCoordinates(cur_pos, input_pos) && input_pos == pat_pos
-		let goto	= 'ACCEPT'
 		let goto_s	= 'ACCEPT'
 	    " input < cur <= pat	(includes input = 0])
 	    elseif atplib#CompareCoordinates(input_pos, cur_pos) && atplib#CompareCoordinates_leq(cur_pos, pat_pos)
 		" cur == pat thus 'flag' contains 'c'.
-		let goto	= 'ACCEPT'
 		let goto_s	= 'ACCEPT'
 	    " cur == input
 	    elseif cur_pos == input_pos
-		let goto 	= 'UP'
 		let goto_s	= 'UP'
 	    " cur < input < pat
 	    " input == 0 			/there is no 'input' ahead - flag_i contains 'W'/
@@ -817,14 +821,12 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 
 			    return
 			else
-			    let goto 	= "REJECT".1
 			    let goto_s 	= "REJECT"
 " 			    echohl ErrorMsg
 " 			    echomsg 'Pattern not found: ' . a:pattern
 " 			    echohl None
 			endif
 		    else
-			let goto 	= "REJECT".2
 			let goto_s 	= "REJECT"
 " 			echohl ErrorMsg
 " 			echomsg 'Pattern not found: ' . a:pattern
@@ -832,11 +834,9 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		    endif
 		" if we are not in the main file go up.
 		else
-		    let goto	= "DOWN" . 21
 		    let goto_s	= "DOWN"
 		endif
 	    else
-		let goto 	= 'ERROR' . 13
 		let goto_s 	= 'ERROR'
 	    endif
 	else
@@ -845,11 +845,9 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	    if atplib#CompareCoordinates(pat_pos, cur_pos) && atplib#CompareCoordinates_leq(input_pos, pat_pos) && pat_pos != [0, 0]
 		" input < pat
 		if input_pos != pat_pos
-		    let goto	= 'ACCEPT' . 1 . 'b'
 		    let goto_s	= 'ACCEPT'
 		" input == pat
 		else
-		    let goto	= 'UP' . 1 . 'b'
 		    let goto_s	= 'UP'
 		endif
 	    " input <= pat == cur (input != 0)			/pat == cur => pat != 0/
@@ -858,38 +856,30 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		" wrapscan is on
 		let wrapscan	= ( flags_supplied =~# 'w' || &l:wrapscan  && flags_supplied !~# 'W' )
 		if flag =~# 'c'
-		    let goto 	= 'ACCEPT'  . 2 . 'b'
 		    let goto_s 	= 'ACCEPT'
 		elseif wrapscan
 		    " if in wrapscan and without 'c' flag
-		    let goto	= 'UP' . 2 . 'b'
 		    let goto_s	= 'UP'
 		else
 		    " this should not happen: cur == put can hold only in two cases:
 		    " wrapscan is on or 'c' is used.
-		    let goto	= 'ERROR' . 2 . 'b'
 		    let goto_s	= 'ERROR'
 		endif
 	    " input <= cur < pat (input != 0)
 	    elseif atplib#CompareCoordinates(cur_pos, pat_pos) && atplib#CompareCoordinates_leq(input_pos, cur_pos) && input_pos != [0, 0] 
-		let goto	= 'UP' . 4 .'b'
 		let goto_s	= 'UP'
 	    " pat < input <= cur (input != 0)
 	    elseif atplib#CompareCoordinates_leq(input_pos, cur_pos) && atplib#CompareCoordinates(pat_pos, input_pos) && input_pos != [0, 0]
-		let goto	= 'UP' . 41 . 'b'
 		let goto_s	= 'UP'
 	    " input == pat < cur (pat != 0) 		/we are looking for '\\input'/
 	    elseif atplib#CompareCoordinates(input_pos, cur_pos) && input_pos == pat_pos && pat_pos != [0, 0]
-		let goto	= 'ACCEPT' . 5 . 'b'
 		let goto_s	= 'ACCEPT'
 	    " pat <= cur < input (pat != 0) 
 	    elseif atplib#CompareCoordinates(cur_pos, input_pos) && atplib#CompareCoordinates_leq(pat_pos, cur_pos) && input_pos != [0, 0]
 		" cur == pat thus 'flag' contains 'c'.
-		let goto	= 'ACCEPT' . 6 . 'b'
 		let goto_s	= 'ACCEPT'
 	    " cur == input
 	    elseif cur_pos == input_pos
-		let goto 	= 'UP'
 		let goto_s 	= 'UP'
 	    " input == 0 			/there is no 'input' ahead - flag_i contains 'W'/
 	    " 					/but there is no 'pattern ahead as well/
@@ -917,19 +907,16 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 
 			    return
 			else
-			    let goto 	= "REJECT" . 1 . 'b'
 			    let goto_s 	= "REJECT"
 " 			    echohl ErrorMsg
 " 			    echomsg 'Pattern not found: ' . a:pattern
 " 			    echohl None
 			endif
 		    else
-			let goto 	= "REJECT" . 2 . 'b'
 			let goto_s 	= "REJECT"
 		    endif
 		" if we are not in the main file go up.
 		else
-		    let goto	= "DOWN" . 3 . 'b'
 		    let goto_s	= "DOWN" 
 		    " If using the following line DOWN_ACCEPT and down_accept
 		    " variables are not needed. This seems to be the best way.
@@ -937,18 +924,16 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		    " 	\input <file_name> 	files.
 		    if pattern =~ '\\\\input' || pattern =~ '\\\\include'
 " 			if getline(input_pos[0]) =~ pattern || getline(".") =~ pattern
-			let goto	= "DOWN_ACCEPT" . 3 . 'b'
 			let goto_s	= "DOWN_ACCEPT"
 		    endif
 		endif
 	    else
-		let goto 	= 'ERROR' . 13 . 'b'
 		let goto_s 	= 'ERROR'
 	    endif
 	endif
 
 		if g:atp_debugRS
-		silent echo "goto:".goto
+		silent echo "goto_s:".goto_s
 		endif
 		if g:atp_debugRS >= 2
 		    silent echo "TIME ***goto*** " . reltimestr(reltime(time0))
@@ -1433,8 +1418,7 @@ if g:atp_mapNn
 endif
 
 command! -buffer -bang 		LocalCommands					:call LocalCommands(1, "", <q-bang>)
-" command! -buffer -bang -nargs=* DefiSearch					:call DefiSearch(<q-bang>, <q-args>)
-command! -buffer -bang -nargs=* -complete=customlist,DsearchComp Dsearch	:call DefiSearch(<q-bang>, <q-args>)
+command! -buffer -bang -nargs=* -complete=customlist,DsearchComp Dsearch	:call <SID>Dsearch(<q-bang>, <q-args>)
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleNn	:call ATP_ToggleNn(<f-args>)
 command! -buffer -bang -nargs=* BibSearch					:call BibSearch(<q-bang>, <q-args>)
 

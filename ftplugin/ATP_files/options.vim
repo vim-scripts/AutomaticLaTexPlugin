@@ -1,7 +1,6 @@
 " Author: 	Marcin Szamotulski	
 " Description: 	This file contains all the options defined on startup of ATP
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 " Last Change:
 
@@ -255,12 +254,12 @@ let b:atp_running	= 0
 " these are all buffer related variables:
 function! <SID>TexCompiler()
     if buflisted(atplib#FullPath(b:atp_MainFile))
-	let line = getbufline(atplib#FullPath(b:atp_MainFile), 1)[0]
+	let line = get(getbufline(atplib#FullPath(b:atp_MainFile), 1), 0, "")
 	if line =~ '^%&\w*tex\>'
 	    return matchstr(line, '^%&\zs\w\+')
 	endif
     else
-	let line = readfile(atplib#FullPath(b:atp_MainFile))[0] 
+	let line = get(readfile(atplib#FullPath(b:atp_MainFile)), 0, "")
 	if line =~ '^%&\w*tex\>'
 	    return matchstr(line, '^%&\zs\w\+')
 	endif
@@ -440,6 +439,9 @@ if !exists("g:atp_imap_define_environments") || g:atp_reload_variables
 endif
 if !exists("g:atp_imap_define_math_misc") || g:atp_reload_variables
     let g:atp_imap_define_math_misc = 1
+endif
+if !exists("g:atp_imap_define_diacritics") || g:atp_reload_variables
+    let g:atp_imap_define_diacritics = 1
 endif
 if !exists("g:atp_imap_define_greek_letters") || g:atp_reload_variables
     let g:atp_imap_define_greek_letters = 1
@@ -1025,7 +1027,7 @@ endif
 if !exists("g:atp_keep") || g:atp_reload_variables
     " Files with this extensions will be compied back and forth to/from temporary
     " directory in which compelation happens.
-    let g:atp_keep=[ "log", "aux", "toc", "bbl", "ind", "synctex.gz", "blg", "loa", "toc", "lot", "lof", "thm", "out" ]
+    let g:atp_keep=[ "log", "aux", "toc", "bbl", "ind", "idx", "synctex.gz", "blg", "loa", "toc", "lot", "lof", "thm", "out" ]
     " biber stuff is added before compelation, this makes it possible to change 
     " to biber on the fly
     if b:atp_BibCompiler =~ '^\s*biber\>'
@@ -1129,7 +1131,8 @@ if !exists("g:atp_ProjectLocalVariables") || g:atp_reload_variables
 		\ "b:atp_auruns", 	"b:atp_ReloadOnErr", 	"b:atp_OpenViewer", 
 		\ "b:atp_XpdfServer",	"b:atp_ProjectDir", 	"b:atp_Viewer",
 		\ "b:TreeOfFiles",	"b:ListOfFiles", 	"b:TypeDict",
-		\ "b:LevelDict", 	"b:atp_BibCompiler"
+		\ "b:LevelDict", 	"b:atp_BibCompiler",	"b:atp_StarEnvDefault",
+		\ "b:atp_StarMathEnvDefault"
 		\ ] 
     if !has("python")
 	call extend(g:atp_ProjectLocalVariables, ["b:atp_LocalCommands", "b:atp_LocalEnvironments", "b:atp_LocalColors"])
@@ -1746,8 +1749,9 @@ function! ATP_ToggleTab(...)
 endfunction
 " }}}
 " {{{ ATP_ToggleIMaps
-" switches on/off the <Tab> map for TabCompletion
-function! ATP_ToggleMathIMaps(insert_enter, bang,...)
+" switches on/off the imaps g:atp_imap_math, g:atp_imap_math_misc and
+" g:atp_imap_diacritics
+function! ATP_ToggleIMaps(insert_enter, bang,...)
 "     let g:arg	= ( a:0 >=1 ? a:1 : 0 )
 "     let g:bang = a:bang
     let on	= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) : g:atp_imap_define_math <= 0 || g:atp_imap_define_math_misc <= 0 )
@@ -1763,13 +1767,20 @@ function! ATP_ToggleMathIMaps(insert_enter, bang,...)
 	call atplib#DelMaps(g:atp_imap_math)
 	let g:atp_imap_define_math_misc = ( a:bang == "!" ? -1 : 0 )
 	call atplib#DelMaps(g:atp_imap_math_misc)
+	let g:atp_imap_define_diacritics = ( a:bang == "!" ? -1 : 0 ) 
+	call atplib#DelMaps(g:atp_imap_diacritics)
 	echo '[ATP:] imaps OFF '.(a:bang == "" ? '(insert)' : '')
     else
 " 	echomsg "MAKE IMAPS"
 	let g:atp_imap_define_math =1
-	call atplib#MakeMaps(g:atp_imap_math)
 	let g:atp_imap_define_math_misc = 1
-	call atplib#MakeMaps(g:atp_imap_math_misc)
+	let g:atp_imap_define_diacritics = 1
+	if atplib#IsInMath()
+	    call atplib#MakeMaps(g:atp_imap_math)
+	    call atplib#MakeMaps(g:atp_imap_math_misc)
+	else
+	    call atplib#MakeMaps(g:atp_imap_diacritics)
+	endif
 	echo '[ATP:] imaps ON'
     endif
 " Setting eventignore is not a good idea 
@@ -1785,12 +1796,13 @@ endfunction
 " }}}
 endif
  
-"  Commands And Maps:
+" Some Commands And Maps:
+"{{{
 command! -buffer ToggleSpace	:call <SID>ToggleSpace()
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleMathIMaps	 	:call ATP_ToggleMathIMaps(0, "!", <f-args>)
-nnoremap <silent> <buffer> 	<Plug>ToggleMathIMaps		:call ATP_ToggleMathIMaps(0, "!")<CR>
-inoremap <silent> <buffer> 	<Plug>ToggleMathIMaps		<Esc>:call ATP_ToggleMathIMaps(0, "!")<CR>
-" inoremap <silent> <buffer> 	<Plug>ToggleMathIMaps		<Esc>:call ATP_ToggleMathIMaps(1, "")<CR>
+command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleIMaps	 	:call ATP_ToggleIMaps(0, "!", <f-args>)
+nnoremap <silent> <buffer> 	<Plug>ToggleIMaps		:call ATP_ToggleIMaps(0, "!")<CR>
+inoremap <silent> <buffer> 	<Plug>ToggleIMaps		<Esc>:call ATP_ToggleIMaps(0, "!")<CR>
+" inoremap <silent> <buffer> 	<Plug>ToggleIMaps		<Esc>:call ATP_ToggleIMaps(1, "")<CR>
 
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleAuTeX 	:call ATP_ToggleAuTeX(<f-args>)
 nnoremap <silent> <buffer> 	<Plug>ToggleAuTeX 		:call ATP_ToggleAuTeX()<CR>
@@ -1957,7 +1969,7 @@ endif
 	\ "\\rmdefault", "\\sfdefault", "\\ttdefault", "\\bfdefault", "\\mddefault", "\\itdefault",
 	\ "\\sldefault", "\\scdefault", "\\updefault",  "\\renewcommand{", "\\newcommand{",
 	\ "\\input", "\\include", "\\includeonly", "\\includegraphics",  
-	\ "\\savebox", "\\sbox", "\\usebox", "\\rule", "\\raisebox{", 
+	\ "\\savebox", "\\sbox", "\\usebox", "\\rule", "\\raisebox{", "\\rotatebox{",
 	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
 	\ "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", "\\vbox",
 	\ "\\hrulefill", "\\dotfill", "\\hbox",
@@ -2632,7 +2644,7 @@ endif
 
 " Add extra syntax groups
 " {{{1 ATP_SyntaxGroups
-function! s:ATP_SyntaxGroups()
+function! <SID>ATP_SyntaxGroups()
     if &filetype == ""
 	" this is for :Dsearch window
 	return
@@ -2654,7 +2666,7 @@ function! s:ATP_SyntaxGroups()
 endfunction
 
 augroup ATP_AddSyntaxGroups
-    au Syntax tex :call <SID>ATP_SyntaxGroups()
+    au BufEnter *.tex :call <SID>ATP_SyntaxGroups()
 augroup END
 
 augroup ATP_Devel

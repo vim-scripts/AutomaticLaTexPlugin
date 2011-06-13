@@ -2,9 +2,8 @@
 " Description: LaTeX Box common functions
 " Maintainer:  Marcin Szamotulski
 " Note:		   This file is a part of Automatic Tex Plugin for Vim.
-" URL:		   https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Sat Apr 30 07:00  2011 W
+" Last Change: Fri Jun 10 07:00  2011 W
 
 let s:sourced = exists("s:sourced") ? 1 : 0
 " Settings {{{
@@ -113,46 +112,19 @@ endif
 " Filename utilities {{{
 "
 function! LatexBox_GetMainTexFile()
-
-	" 1. check for the b:main_tex_file variable
-	if exists('b:main_tex_file') && glob(b:main_tex_file, 1) != ''
-		return b:main_tex_file
-	endif
-
-	" 2. scan current file for "\begin{document}"
-	if &filetype == 'tex' && search('\C\\begin\_\s*{document}', 'nw') != 0
-		return expand('%:p')
-	endif
-
-	" 3. prompt for file with completion
-	let b:main_tex_file = s:PromptForMainFile()
-	return b:main_tex_file
-endfunction
-
-function! s:PromptForMainFile()
-	let saved_dir = getcwd()
-	execute 'cd ' . expand('%:p:h')
-	let l:file = ''
-	while glob(l:file, 1) == ''
-		let l:file = input('main LaTeX file: ', '', 'file')
-		if l:file !~ '\.tex$'
-			let l:file .= '.tex'
-		endif
-	endwhile
-	execute 'cd ' . saved_dir
-	return l:file
+	return atplib#FullPath(b:atp_MainFile)
 endfunction
 
 " Return the directory of the main tex file
 function! LatexBox_GetTexRoot()
-	return fnamemodify(LatexBox_GetMainTexFile(), ':h')
+	return fnamemodify(atplib#FullPath(b:atp_MainFile), ':h')
 endfunction
 
 function! LatexBox_GetTexBasename(with_dir)
 	if a:with_dir
-		return fnamemodify(LatexBox_GetMainTexFile(), ':r')
+		return fnamemodify(atplib#FullPath(b:atp_MainFile), ':r') 
 	else
-		return fnamemodify(LatexBox_GetMainTexFile(), ':t:r')
+		return fnamemodify(b:atp_MainFile, ':t:r')
 	endif
 endfunction
 
@@ -170,21 +142,21 @@ endfunction
 " }}}
 
 " View Output {{{
-function! LatexBox_View()
-	let outfile = LatexBox_GetOutputFile()
-	if !filereadable(outfile)
-		echomsg "[ATP:] ".fnamemodify(outfile, ':.') . ' is not readable'
-		return
-	endif
-	let cmd = '!' . g:LatexBox_viewer . ' ' . shellescape(outfile) . ' &>/dev/null &'
-	if has("gui_running")
-		silent execute cmd
-	else
-		execute cmd
-	endif
-endfunction
-
-command! LatexView			call LatexBox_View()
+" function! LatexBox_View()
+" 	let outfile = LatexBox_GetOutputFile()
+" 	if !filereadable(outfile)
+" 		echomsg "[ATP:] ".fnamemodify(outfile, ':.') . ' is not readable'
+" 		return
+" 	endif
+" 	let cmd = '!' . g:LatexBox_viewer . ' ' . shellescape(outfile) . ' &>/dev/null &'
+" 	if has("gui_running")
+" 		silent execute cmd
+" 	else
+" 		execute cmd
+" 	endif
+" endfunction
+" 
+" command! LatexView			call LatexBox_View()
 " }}}
 
 " In Comment {{{

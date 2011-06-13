@@ -1,7 +1,6 @@
 " Author: 	Marcin Szamotulski
 " Description: 	This file contains help commands and variables (for mappings used by ATP) 
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 " Last Change:
 

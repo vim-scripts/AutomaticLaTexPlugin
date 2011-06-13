@@ -2,9 +2,7 @@
 " Note:		this file contain the main compiler function and related tools, to
 " 		view the output, see error file.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
-" Last Change:
 
 " Some options (functions) should be set once:
 let s:sourced	 	= exists("s:sourced") ? 1 : 0
@@ -191,12 +189,13 @@ function! <SID>SyncShow( page_nr, y_coord)
 	echohl Normal
     endif
 endfunction "}}}
-function! <SID>SyncTex(mouse, ...) "{{{
+" {{{ SyncTex
+function! <SID>SyncTex(bang, mouse, ...)
     if g:atp_debugSyncTex
 	exe "redir! > ".g:atp_TempDir."/SyncTex.log"
     endif
     let output_check 	= ( a:0 >= 1 && a:1 == 0 ? 0 : 1 )
-    let g:output_check 	= output_check
+    let IsRunning_check = ( a:bang == "!" ? 0 : 1 )
     let dryrun 		= ( a:0 >= 2 && a:2 == 1 ? 1 : 0 )
     " Mouse click <S-LeftMouse> is mapped to <LeftMouse>... => thus it first changes
     " the cursor position.
@@ -219,7 +218,7 @@ function! <SID>SyncTex(mouse, ...) "{{{
        return 2
     endif
     let atp_MainFile         = atplib#FullPath(b:atp_MainFile)
-    let ext		        = get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf")
+    let ext		     = get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf")
     let link=resolve(atp_MainFile)
     if link != ""
         let outfile     = fnamemodify(link,":r") . ext
@@ -227,11 +226,16 @@ function! <SID>SyncTex(mouse, ...) "{{{
         let outfile     = fnamemodify(atp_MainFile,":r"). ext 
     endif
 
-    if !<SID>IsRunning(b:atp_Viewer, atplib#FullPath(outfile)) && output_check
-        echohl WarningMsg
-        echomsg "[SyncTex:] please open the file first."
-        echohl Normal
-        return
+    if IsRunning_check
+	if (!<SID>IsRunning(b:atp_Viewer, atplib#FullPath(outfile), b:atp_XpdfServer) && output_check) 
+	    "Note: I should test here if Xpdf is not holding a file (it might be not
+	    "visible through cmdline arguments -> this happens if file is opened in
+	    "another server. We can use: xpdf -remote b:atp_XpdfServer "run('echo %f')"
+	    echohl WarningMsg
+	    echomsg "[SyncTex:] please open the file first. (if file is opend add bang \"!\")"
+	    echohl Normal
+	    return
+	endif
     endif
     if b:atp_Viewer == "xpdf"
 	let [ page_nr, y_coord, x_coord ] = <SID>GetSyncData(line, col)
@@ -288,8 +292,8 @@ function! <SID>SyncTex(mouse, ...) "{{{
    endif
     return
 endfunction 
-nmap <buffer> <Plug>SyncTexKeyStroke		:call <SID>SyncTex(0)<CR>
-nmap <buffer> <Plug>SyncTexMouse		:call <SID>SyncTex(1)<CR>
+nmap <buffer> <Plug>SyncTexKeyStroke		:call <SID>SyncTex("", 0)<CR>
+nmap <buffer> <Plug>SyncTexMouse		:call <SID>SyncTex("", 1)<CR>
 "}}}
 "
 " This function gets the pid of the running compiler
@@ -518,7 +522,7 @@ function! <SID>MakeLatex(bang, verbose, start)
     lockvar g:atp_TexCommand
 
     " Write file
-    call atplib#write()
+    call atplib#write("silent")
 
     if a:verbose == "verbose"
 	exe ":!".cmd
@@ -536,25 +540,6 @@ endfunction
 "{{{ <SID>KillAll
 " the argument is a list of pids
 " a:1 if present supresses a message.
-function! <SID>KillPIDs(pids,...)
-    if len(a:pids) == 0 && a:0 == 0
-	return
-    endif
-python << END
-import os, signal
-from signal import SIGKILL
-pids=vim.eval("a:pids")
-for pid in pids:
-    try:
-	os.kill(int(pid),SIGKILL)
-    except OSError, e:
-	if e.errno == 3:
-             # No such process error.
-             pass
-        else:
-             raise
-END
-endfunction 
 function! <SID>Kill(bang)
     if !has("python")
 	if a:bang != "!"
@@ -565,10 +550,10 @@ function! <SID>Kill(bang)
 	return
     endif
     if len(b:atp_PythonPIDs)
-	call <SID>KillPIDs(b:atp_PythonPIDs)
+	call atplib#KillPIDs(b:atp_PythonPIDs)
     endif
     if len(b:atp_LatexPIDs)
-	call <SID>KillPIDs(b:atp_LatexPIDs)
+	call atplib#KillPIDs(b:atp_LatexPIDs)
     endif
 endfunction
 
@@ -590,20 +575,21 @@ endfunction
 
 " This function checks if program a:program is running a file a:file.
 " a:file should be full path to the file.
-" {{{
-function! <SID>IsRunning(program, file)
+" {{{ IsRunning
+function! <SID>IsRunning(program, file, ...)
 python << EOF
 import vim, psutil, os, pwd
 from psutil import NoSuchProcess
 x=0
 program	=vim.eval("a:program")
 f	=vim.eval("a:file")
+pat	="|".join(vim.eval("a:000"))
 for pid in psutil.get_pid_list():
     try:
         p=psutil.Process(pid)
         if p.username == pwd.getpwuid(os.getuid())[0] and re.search(program, p.cmdline[0]):
             for arg in p.cmdline:
-                if arg == f:
+                if arg == f or re.search(pat, arg) :
                     x=1
                     break
         if x:
@@ -629,7 +615,7 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
 
 	" This is not working: (I should kill compile.py scripts)
 	echomsg "[ATP:] killing all instances of ".get(g:CompilerMsg_Dict,b:atp_TexCompiler,'TeX')
-	call <SID>KillPIDs(b:atp_LatexPIDs,1)
+	call atplib#KillPIDs(b:atp_LatexPIDs,1)
 	sleep 1
 	PID
     endif
@@ -730,7 +716,7 @@ function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, b
 	call atplib#Log("PythonCompiler.log", "PRE WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
     endif
 
-    call atplib#write()
+    call atplib#write("silent")
 
     if g:atp_debugPythonCompiler
 	call atplib#Log("PythonCompiler.log", "POST WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
@@ -1048,7 +1034,7 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	    silent echomsg "BEFORE WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
 	endif
 
-	call atplib#write()
+	call atplib#write("silent")
 
 	if g:atp_debugCompiler
 	    silent echomsg "AFTER WRITING: b:changedtick=" . b:changedtick . " b:atp_changedtick=" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
@@ -1706,7 +1692,7 @@ command! -buffer		HighlightErrors		:call atplib#HighlightErrors()
 command! -buffer		ClearHighlightErrors	:call atplib#ClearHighlightErrors()
 command! -buffer -bang 		Kill			:call <SID>Kill(<q-bang>)
 command! -buffer -nargs=? 	ViewOutput		:call <SID>ViewOutput(<f-args>)
-command! -buffer 		SyncTex			:call <SID>SyncTex(0)
+command! -buffer -bang 		SyncTex			:call <SID>SyncTex(<q-bang>, 0)
 command! -buffer 		PID			:call <SID>GetPID()
 command! -buffer -bang 		MakeLatex		:call <SID>SetBiberSettings() | call <SID>MakeLatex(<q-bang>, 'silent', 0)
 nmap <buffer> <Plug>ATP_MakeLatex		:MakeLatex<CR>

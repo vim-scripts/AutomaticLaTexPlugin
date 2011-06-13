@@ -1,12 +1,11 @@
 " Title:		Vim filetype plugin file
 " Author:		Marcin Szamotulski
-" URL:			https://sourceforge.net/projects/atp-vim/
-" BUGS:			https://lists.sourceforge.net/lists/listinfo/atp-vim-list
+" Mailing List: 	atp-vim-list [AT] lists.sourceforge.net
 " Do NOT DELETE the line just below, it is used by :UpdateATP (':help atp-:UpdateATP')
-" Time Stamp: 05-06-11_12-27
+" Time Stamp: 12-06-11_18-10
 " (but you can edit, if there is a reason for doing this. The format is dd-mm-yy_HH-MM)
 " Language:	    tex
-" Last Change: Tue May 24 02:00  2011 W
+" Last Change: Mon Jun 06 10:00  2011 W
 " GetLatestVimScripts: 2945 62 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 

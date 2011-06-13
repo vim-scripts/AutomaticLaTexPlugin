@@ -2,6 +2,7 @@
 
 import re, optparse, subprocess, os
 from optparse import OptionParser
+from time import strftime, localtime
 
 # ToDoList:
 # I can use synstack function remotely to get tag_type.
@@ -130,6 +131,7 @@ tag_dict={}
 for file_name in file_list:
     file_ll=file_dict[file_name]
     linenr=0
+    p_line=""
     for line in file_ll:
         linenr+=1
         # Find LABELS in the current line:
@@ -138,6 +140,9 @@ for file_name in file_list:
             tag=str(match)+"\t"+file_name+"\t"+str(linenr)
             # Set the tag type:
             tag_type=get_tag_type(line, match, "label")
+            print(line)
+            if tag_type == "":
+                tag_type=get_tag_type(p_line+line, match, "label")
             tag+=";\"\tinfo:"+tag_type+"\tkind:label"
             # Add tag:
             tags.extend([tag])
@@ -150,6 +155,8 @@ for file_name in file_list:
                 if not tag_dict.has_key(str(match)):
                     tag_dict[str(match)]=[str(linenr), file_name, tag_type, 'hyper']
                     tag_type=get_tag_type(line, match, 'hypertarget')
+                    if tag_type == "":
+                        tag_type=get_tag_type(p_line+line, match, "label")
                     tags.extend([str(match)+"\t"+file_name+"\t"+str(linenr)+";\"\tinfo:"+tag_type+"\tkind:hyper"])
         # Find CITATIONS in the current line:
         if options.bibtags and not options.bibtags_env:
@@ -180,6 +187,7 @@ for file_name in file_list:
                     tag=str(match)+"\t"+r_file+"\t"+str(r_linenr)+";\"\tkind:cite"
                     tag_dict[str(match)]=[str(r_linenr), r_file, '', 'cite']
                     tags.extend([tag])
+        p_line=line
 
 # From aux file:
 ioerror=False
@@ -202,7 +210,9 @@ except IOError:
     pass
 
 # SORT (vim works faster when tag file is sorted) AND WRITE TAGS
-tags_sorted=sorted(tags)
+time=strftime("%a, %d %b %Y %H:%M:%S +0000", localtime())
+tags_sorted=sorted(tags, key=str.lower)
+tags_sorted=['!_TAG_FILE_SORTED\t2\t/'+time]+tags_sorted
 os.chdir(options.directory)
 tag_file = open("tags", 'w')
 tag_file.write("\n".join(tags_sorted))

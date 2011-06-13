@@ -2,7 +2,6 @@
 " Description: 	A vim script which stores values of variables in a project script.
 " 		It is read, and written via autocommands.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 " Last Change:
 
@@ -144,7 +143,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
     let cond_B	= get(get(s:project_Load, expand("%:p"), []), a:type, 0)
     if empty(expand("%:p"))
 	echohl ErrorMsg
-	echomsg "[ATP:] Error : File name is empty. Not loading project script."
+	echomsg "[ATP LoadScript:] Error : File name is empty. Not loading project script."
 	echohl Normal
 	if g:atp_debugProject
 	    redir END
@@ -365,7 +364,10 @@ endfunction
 " This is so, because writing very long lines is much slower than reading (it
 " reads the file and compare the variables with the existing ones).
 try
-function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
+function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, ...)
+
+    "Do not echo messages
+    let silent = ( a:0 > 0 ? a:1 : 0 )
 
     if g:atp_debugProject
 	let g:project_script = a:project_script
@@ -417,7 +419,9 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type)
     " The global variable overrides the local one!
     let cond = exists("g:atp_ProjectScript") && !g:atp_ProjectScript || exists("b:atp_ProjectScript") && ( !b:atp_ProjectScript && (!exists("g:atp_ProjectScript") || exists("g:atp_ProjectScript") && !g:atp_ProjectScript )) || !exists("b:atp_ProjectScript") && !exists("g:atp_ProjectScript")
     if  a:bang == "" && cond
-	echomsg "[ATP:] WriteProjectScript: ProjectScript is turned off."
+	if !silent
+	    echomsg "[ATP:] WriteProjectScript: ProjectScript is turned off."
+	endif
 	if g:atp_debugProject
 	    redir END
 	endif
@@ -639,6 +643,7 @@ catch /E127:/
 endtry
 function! <SID>WriteProjectScriptInterface(bang,...)
     let type 	= ( a:0 >= 1 ? a:1 : 'local' )
+    let silent  = ( a:0 >= 2 ? a:2 : 0 )
 
     if type != 'global' && type != 'local' 
 	echoerr "WriteProjectScript Error : type can be: local or global." 
@@ -647,10 +652,10 @@ function! <SID>WriteProjectScriptInterface(bang,...)
 
     let script 	= ( type == 'local' ? b:atp_ProjectScriptFile : s:common_project_script )
     let variables = ( type == 'local' ? g:atp_ProjectLocalVariables : g:atp_ProjectGlobalVariables )
-    if type == 'local'
+    if type == 'local' && !silent
 	echomsg "[ATP:] writing to " . b:atp_ProjectScriptFile
     endif
-    call s:WriteProjectScript(a:bang, script, variables, type)
+    call s:WriteProjectScript(a:bang, script, variables, type, silent)
 endfunction
 function! s:WPSI_comp(ArgLead, CmdLine, CursorPos)
     return filter(['local', 'global'], 'v:val =~ a:ArgLead')
@@ -658,9 +663,9 @@ endfunction
 "{{{ WriteProjectScript autocommands
 augroup ATP_WriteProjectScript 
     au!
-    " Before it was VimLeave
-    au BufWrite *.tex call s:WriteProjectScript("", b:atp_ProjectScriptFile, g:atp_ProjectLocalVariables, 'local')
-    au BufWrite *.tex call s:WriteProjectScript("", s:common_project_script, g:atp_ProjectGlobalVariables, 'global')
+    " Before it was VimLeave, write silently.
+    au BufWrite *.tex call s:WriteProjectScript("", b:atp_ProjectScriptFile, g:atp_ProjectLocalVariables, 'local', 1)
+    au BufWrite *.tex call s:WriteProjectScript("", s:common_project_script, g:atp_ProjectGlobalVariables, 'global', 1)
 augroup END 
 "}}}
 "}}}

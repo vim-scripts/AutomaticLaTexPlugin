@@ -1,9 +1,8 @@
 " Author:      Marcin Szamotulski	
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
-" URL:	       https://launchpad.net/automatictexplugin
 " Language:    tex
-" Last Change: Sun Jun 05 11:00  2011 W
+" Last Change: Thu Jun 09 10:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -360,7 +359,6 @@ function! Insert(text, math, ...)
     " select the correct wrapper
     if atplib#CheckSyntaxGroups(MathZones, line("."), col("."))
 	let insert	= a:math
-	let move	-= 1
     else
 	let insert	= a:text
     endif
@@ -1618,9 +1616,9 @@ catch /E127:/
 endtry
 " }}}
 
-" This functions prints preambule 
+" This functions prints preamble 
 " {{{ Preambule
-function! Preambule()
+function! <SID>Preamble()
     let loclist = getloclist(0)
     let winview = winsaveview()
     exe '1lvimgrep /^[^%]*\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
@@ -1796,6 +1794,8 @@ endfunction
 " {{{ WordCount() ShowWordCount()
 function! <SID>WordCount(bang)
 
+    call atplib#write()
+
     let g:atp_WordCount = {}
     for file in keys(filter(copy(b:TypeDict), 'v:val == ''input''')) + [ b:atp_MainFile ]
 	let wcount = substitute(system("detex -n " . fnameescape(file) . " | wc -w "), '\D', '', 'g')
@@ -1860,7 +1860,7 @@ function! <SID>Wdiff(new_file, old_file)
 	return 1
     endtry
 
-    " Remove the preambule:
+    " Remove the preamble:
     let new_pend=0
     for line in new_file
 	if line =~ '^[^%]*\\begin{document}'
@@ -1876,19 +1876,19 @@ function! <SID>Wdiff(new_file, old_file)
 	let old_pend+=1
     endfor
 
-    let new_preambule	= remove(new_file, 0, new_pend)  
-    let old_preambule	= remove(old_file, 0, old_pend)  
+    let new_preamble	= remove(new_file, 0, new_pend)  
+    let old_preamble	= remove(old_file, 0, old_pend)  
 
-    let g:new_preambule = new_preambule
-    let g:old_preambule = old_preambule
-    let g:new_file	= new_file
-    let g:old_file	= old_file
+"     let g:new_preamble = new_preamble
+"     let g:old_preamble = old_preamble
+"     let g:new_file	= new_file
+"     let g:old_file	= old_file
 
     let new_tmp		= tempname()
     let old_tmp		= tempname()
 
-    if new_preambule != old_preambule
-	let which_pre=inputlist(["Wich preambule to use:", "(1) from " . a:new_file, "(2) from " . a:old_file])
+    if new_preamble != old_preamble
+	let which_pre=inputlist(["Wich preamble to use:", "(1) from " . a:new_file, "(2) from " . a:old_file])
 	if which_pre != 1 && which_pre != 2
 	    return 0
 	endif
@@ -1938,7 +1938,7 @@ function! <SID>Wdiff(new_file, old_file)
     let s:atp_IDdelete	= matchadd('DiffDelete', '\\{=\zs\%(=\\}\@!\|=\\\@!}\|=\@!\\}\|[^}=\\]\|=\\\@!\|\\}\@!\|=\@<!\\\|\\}\@!\|\\\@<!}\)*\ze=\\}', 10)
     let s:atp_IDadd	= matchadd('DiffAdd', '\\{+\zs\%(+\\}\@!\|+\\\@!}\|+\@!\\}\|[^}+\\]\|+\\\@!\|\\}\@!\|+\@<!\\\|\\}\@!\|\\\@<!}\)*\ze+\\}', 10)
     normal "gg"
-    call append(0, ( which_pre == 1 ? new_preambule : old_preambule )) 
+    call append(0, ( which_pre == 1 ? new_preamble : old_preamble )) 
     silent! call search('\\begin{document}')
     normal "zt"
     map ]s /\\{[=+]\_.*[+=]\\}<CR>
@@ -2359,7 +2359,7 @@ else
 endif
 command! -buffer ReloadATP					:call <SID>ReloadATP("!")
 command! -bang -buffer -nargs=1 AMSRef				:call AMSRef(<q-bang>, <q-args>)
-command! -buffer	Preambule				:call Preambule()
+command! -buffer	Preamble				:call <SID>Preamble()
 command! -bang		WordCount				:call <SID>ShowWordCount(<q-bang>)
 command! -buffer -bang	UpadteATP				:call <SID>UpdateATP(<q-bang>)
 command! -buffer	ATPversion				:echo <SID>ATPversion()

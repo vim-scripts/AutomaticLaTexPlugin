@@ -1,10 +1,9 @@
 " Title:       Vim filetype plugin file
 " Author:      Marcin Szamotulski
 " Email:       mszamot [AT] gmail [DOT] com
-" URL:	       https://launchpad.net/automatictexplugin	
-" BUG Trucer:  https://bugs.launchpad.net/automatictexplugin
+" Mailing List: atp-vim-list [AT] lists.sourceforge.net
 " Language:    bib
-" Last Change: Sat May 21 06:00  2011 W
+" Last Change: Mon Jun 06 10:00  2011 W
 " Copyright Statement: 
 " 	  This file is part of Automatic Tex Plugin for Vim.
 "

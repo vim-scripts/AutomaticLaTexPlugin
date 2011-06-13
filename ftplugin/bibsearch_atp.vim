@@ -1,9 +1,8 @@
 " Vim filetype plugin file
 " Language:	tex
 " Maintainer:	Marcin Szamotulski
-" Last Change: Fri Apr 08 07:00  2011 W
+" Last Change: Mon Jun 06 10:00  2011 W
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
 
 "
 " {{{ Load Once

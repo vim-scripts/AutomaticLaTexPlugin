@@ -1,7 +1,6 @@
 " Author: 	Marcin Szamotulski
 " Description: 	This script has functions which have to be called before ATP_files/options.vim 
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
-" URL:		https://launchpad.net/automatictexplugin
 " Language:	tex
 
 " This file contains set of functions which are needed to set to set the atp
@@ -569,7 +568,8 @@ def scan_file(file, fname, pattern, bibpattern):
 # scan file for a pattern, return all groups,
 
 # file is a list of lines, 
-    matches={}
+    matches_d={}
+    matches_l=[]
     nr = 0
     for line in file:
         nr+=1
@@ -581,12 +581,17 @@ def scan_file(file, fname, pattern, bibpattern):
                     if str(m) != "":
                         m=addext(m, "tex")
                         if not os.access(m, os.F_OK):
-                            m=kpsewhich_find(m, tex_path)[0]
+                            try:
+                                m=kpsewhich_find(m, tex_path)[0]
+                            except IndexError:
+                                pass
 #                         print("fname="+fname+" nr="+str(nr)+" p_end="+str(preambule_end))
                         if fname == filename and nr < preambule_end:
-                            matches[m]=[fname, nr, 'preambule']
+                            matches_d[m]=[fname, nr, 'preambule']
+                            matches_l.append(m)
                         else:
-                            matches[m]=[fname, nr, 'input']
+                            matches_d[m]=[m, fname, nr, 'input']
+                            matches_l.append(m)
         match_all=re.findall(bibpattern, line)
         if len(match_all) > 0:
             for match in match_all:
@@ -595,8 +600,9 @@ def scan_file(file, fname, pattern, bibpattern):
                         m=addext(m, "bib")
                         if not os.access(m, os.F_OK):
                             m=kpsewhich_find(m, bib_path)[0]
-                        matches[m]=[fname,  nr, 'bib']
-    return matches
+                        matches_d[m]=[fname,  nr, 'bib']
+                        matches_l.append(m)
+    return [ matches_d, matches_l ]
 
 def tree(file, level, pattern, bibpattern):
 # files - list of file names to scan, 
@@ -608,33 +614,28 @@ def tree(file, level, pattern, bibpattern):
             path=bib_path
         else:
             path=tex_path
-        file=kpsewhich_find(file, path)[0]
-#         print("KPSEWHICH="+file)
-        file_ob = open(file, 'r')
-# if file is not found kpsewhich search should be done, as in original TreeOfFiles() function.
+        try:
+            file=kpsewhich_find(file, path)[0]
+        except IndexError:
+            pass
+        try:
+            file_ob = open(file, 'r')
+        except IOError:
+            return [ {}, [], {}, {} ]
     file_l  = file_ob.read().split("\n")
     file_ob.close()
-    found=scan_file(file_l, file, pattern, bibpattern)
-#         print("found="+str(found))
+    [found, found_l] =scan_file(file_l, file, pattern, bibpattern)
     t_list=[]
     t_level={}
     t_type={}
     t_tree={}
-    for item in iter(found):
+    for item in found_l:
         t_list.append(item)
         t_level[item]=level
         t_type[item]=found[item][2]
     i_list=[]
     for file in t_list:
-#         if not os.access(file, os.F_OK):
-#             if re.search('\.bib$', file):
-#                 path=bib_path
-#             else:
-#                 path=tex_path
-#             file=kpsewhich_find(file, path)[0]
-#             print("I2 "+file)
         if found[file][2]=="input":
-#             print("INPUT="+file)
             i_list.append(file)
     for file in i_list:
         [ n_tree, n_list, n_type, n_level ] = tree(file, level+1, pattern, bibpattern)
@@ -650,11 +651,11 @@ try:
     mainfile    = mainfile_ob.read().split("\n")
     mainfile_ob.close()
     if scan_preambule(mainfile, re.compile('\\\\usepackage\s*\[.*\]\s*{\s*subfiles\s*}')):
-	pat_str='(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?|subfiles)\s*{([^}]*)})'
+	pat_str='^[^%]*(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?|subfiles)\s*{([^}]*)})'
 	pattern=re.compile(pat_str)
 #     print(pat_str)
     else:
-	pat_str='(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?)\s*{([^}]*)})'
+	pat_str='^[^%]*(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?)\s*{([^}]*)})'
 	pattern=re.compile(pat_str)
 #     print(pat_str)
 

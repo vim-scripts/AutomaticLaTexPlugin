@@ -143,14 +143,14 @@ highlight texInputFileopt		ctermfg=161	ctermbg=233	guifg=DeepPink2
 highlight texType			ctermfg=40	ctermbg=233	guifg=green3
 highlight texTypeStyle			ctermfg=40	ctermbg=233	guifg=green3
 highlight texMath			ctermfg=245	ctermbg=233	guifg=DarkKhaki
-highlight texStatement 			ctermfg=245	ctermbg=233	guifg=DeepPink3
+highlight texStatement 			ctermfg=54	ctermbg=233	guifg=DeepPink3
+highlight Conceal 			ctermfg=54	ctermbg=233	guifg=DeepPink3		guibg=#1c1c1c
 highlight texString			ctermfg=39	ctermbg=233	guifg=DodgerBlue
 highlight texSpecialChar		ctermfg=39	ctermbg=233	guifg=DodgerBlue
 highlight texRefZone							guifg=DeepPink2		gui=bold
 highlight texCite							guifg=DeepPink4
 highlight texRefOption							guifg=HotPink4
-highlight texComment			ctermfg=125
-highlight texStatement			ctermfg=54
+highlight texComment			ctermfg=125			guifg=#7963CA
 
 " texlog /syntax file available in Automatic Tex Package/
 hi texlogKeyword		ctermfg=90 cterm=bold		guifg=magenta4	gui=bold

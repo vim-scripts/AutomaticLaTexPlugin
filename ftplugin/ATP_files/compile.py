@@ -270,7 +270,8 @@ output_fp       = os.path.splitext(mainfile_fp)[0]+extension
 
 try:
     # Send pid to ATP:
-    vim_remote_expr(servername, "atplib#PythonPID("+str(os.getpid())+")")
+    if verbose != "verbose":
+        vim_remote_expr(servername, "atplib#PythonPID("+str(os.getpid())+")")
 ####################################
 #
 #       Make temporary directory,
@@ -384,8 +385,7 @@ try:
             else:
                 latex = subprocess.Popen(latex_cmd, stdout=subprocess.PIPE)
                 pid   = latex.pid
-                if verbose != "verbose":
-                    vim_remote_expr(servername, "atplib#LatexPID("+str(pid)+")")
+                vim_remote_expr(servername, "atplib#LatexPID("+str(pid)+")")
                 debug_file.write("latex pid "+str(pid)+"\n")
                 latex.wait()
                 vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_LatexPIDs\")")
@@ -440,11 +440,15 @@ try:
             shutil.copy(file_cp, mainfile_dir)
 
 # Copy aux file if there were no compilation errors or if it doesn't exists in mainfile_dir.
+# copy aux file to _aux file (for atplib#GrepAuxFile)
     if latex_returncode == 0 or not os.path.exists(os.path.join(mainfile_dir, basename+".aux")):
         file_cp=basename+".aux"
         if os.path.exists(file_cp):
             shutil.copy(file_cp, mainfile_dir)
     os.chdir(cwd)
+    file_cp=basename+".aux"
+    if os.path.exists(file_cp):
+        shutil.copy(file_cp, os.path.join(mainfile_dir, basename+"._aux"))
 
 ####################################
 #

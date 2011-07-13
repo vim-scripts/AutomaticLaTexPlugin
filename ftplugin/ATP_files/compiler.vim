@@ -118,8 +118,13 @@ function! <SID>GetSyncData(line, col)
 
      	if !filereadable(fnamemodify(atplib#FullPath(b:atp_MainFile), ":r").'.synctex.gz') 
 	    redraw!
-	    echomsg "[SyncTex:] calling ".get(g:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)." to generate synctex data. Wait a moment..."
-	    let cmd=b:atp_TexCompiler . " -synctex=1 " . shellescape(atplib#FullPath(b:atp_MainFile))
+	    let cmd=b:atp_TexCompiler." ".join(split(b:atp_TexOptions, ','), " ")." ".shellescape(atplib#FullPath(b:atp_MainFile))
+	    if b:atp_TexOptions !~ '\%(-synctex\s*=\s*1\|-src-specials\>\)'
+		echomsg "[SyncTex:] b:atp_TexOptions does not contain -synctex=1 or -src-specials switches!"
+		return
+	    else
+		echomsg "[SyncTex:] calling ".get(g:CompilerMsg_Dict, b:atp_TexCompiler, b:atp_TexCompiler)." to generate synctex data. Wait a moment..."
+	    endif
  	    call system(cmd) 
  	endif
 	" Note: synctex view -i line:col:tex_file -o output_file
@@ -549,11 +554,11 @@ function! <SID>Kill(bang)
 	endif
 	return
     endif
-    if len(b:atp_PythonPIDs)
-	call atplib#KillPIDs(b:atp_PythonPIDs)
-    endif
     if len(b:atp_LatexPIDs)
 	call atplib#KillPIDs(b:atp_LatexPIDs)
+    endif
+    if len(b:atp_PythonPIDs)
+	call atplib#KillPIDs(b:atp_PythonPIDs)
     endif
 endfunction
 
@@ -604,6 +609,24 @@ endfunction
 " THE MAIN COMPILER FUNCTIONs:
 " {{{ s:PythonCompiler
 function! <SID>PythonCompiler(bibtex, start, runs, verbose, command, filename, bang)
+
+    " Kill comiple.py scripts if there are too many of them.
+    if len(b:atp_PythonPIDs) >= b:atp_MaxProcesses && b:atp_MaxProcesses
+	let a=copy(b:atp_LatexPIDs)
+	try
+	    if b:atp_KillYoungest
+		" Remove the newest PIDs (the last in the b:atp_PythonPIDs)
+		let pids=remove(b:atp_LatexPIDs, b:atp_MaxProcesses, -1) 
+	    else
+		" Remove the oldest PIDs (the first in the b:atp_PythonPIDs) /works nicely/
+		let pids=remove(b:atp_LatexPIDs, 0, max([len(b:atp_PythonPIDs)-b:atp_MaxProcesses-1,0]))
+	    endif
+	    echomsg string(a)." ".string(pids)." ".string(b:atp_LatexPIDs)
+	    call atplib#KillPIDs(pids)
+	catch E684:
+	endtry
+	echomsg string(b:atp_LatexPIDs)
+    endif
 
     " Set biber setting on the fly
     call <SID>SetBiberSettings()
@@ -991,10 +1014,16 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 	" Preserve files with extension belonging to the g:atp_keep list variable.
 	let copy_cmd=""
 	let j=1
-	for i in filter(copy(g:atp_keep), 'v:val != "aux"') 
+	for i in g:atp_keep 
 " ToDo: this can be done using internal vim functions.
-	    let copycmd=g:atp_cpcmd." ".cpoptions." ".shellescape(atplib#append(tmpdir,"/")).
-			\ "*.".i." ".shellescape(atplib#append(b:atp_OutDir,"/")) 
+	    if i != "aux"
+		let copycmd=g:atp_cpcmd." ".cpoptions." ".shellescape(atplib#append(tmpdir,"/")).
+			    \ "*.".i." ".shellescape(atplib#append(b:atp_OutDir,"/")) 
+	    else
+		let copycmd=g:atp_cpcmd." ".cpoptions." ".shellescape(atplib#append(tmpdir,"/")).
+			    \ "*.".i." ".shellescape(atplib#append(b:atp_OutDir,"/".fnamemodify(b:atp_MainFile, ":t:r")."_aux")) 
+	    endif
+
 	    if j == 1
 		let copy_cmd=copycmd
 	    else
@@ -1016,11 +1045,11 @@ function! <SID>Compiler(bibtex, start, runs, verbose, command, filename, bang)
 
 	    let command = command . " " . callback_cmd
 
+	    if g:atp_debugCompiler
+		silent echomsg "callback_cmd=" . callback_cmd
+	    endif
 	endif
 
-    if g:atp_debugCompiler
-	silent echomsg "callback_cmd=" . callback_cmd
-    endif
 
  	let rmtmp="rm -rf " . shellescape(tmpdir) . "; "
 	let command=command . " " . rmtmp . ") &"
@@ -1077,13 +1106,18 @@ function! <SID>auTeX(...)
 	echomsg "b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick
     endif
 
-    if mode() == 'i' && g:atp_updatetime_insert == 0 ||
-		\ mode()=='n' && g:atp_updatetime_normal == 0
+    if mode() == 'i' && b:atp_updatetime_insert == 0 ||
+		\ mode()=='n' && b:atp_updatetime_normal == 0
 	if g:atp_debugauTeX
 	    echomsg "autex is off for the mode: ".mode()
 	endif
 	return "autex is off for the mode: ".mode()." (see :help mode())"
     endif
+
+    if mode() == 'i' && g:atp_noautex_in_math && atplib#IsInMath()
+	return "noautex in math mode"
+    endif
+
 
     " Wait if the compiler is running. The problem is that CursorHoldI autocommands
     " are not triggered more than once after 'updatetime'.
@@ -1160,6 +1194,7 @@ function! <SID>auTeX(...)
 	    
 "
 " 	if <SID>NewCompare()
+	let g:debug=0
 	    if g:atp_Compiler == 'python'
 		call <SID>PythonCompiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 	    else

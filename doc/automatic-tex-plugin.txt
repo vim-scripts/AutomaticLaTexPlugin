@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 12 June 2011
+*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 13 July 2011
 
-	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 9.6.1)
+	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 9.7)
 			by Marcin Szamotulski
 		    mszamot [AT] gmail [DOT] com
 		----------------------------------------
@@ -154,6 +154,42 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 NEWS							*atp-news*
 >
  ======================
+ Changes in version 9.7
+<
+  The g:atp_imap_first_leader, g:atp_imap_second_leader,
+  g:atp_imap_third_leader, g:atp_imap_fourth_leader variables 
+  are now called:
+  |g:atp_imap_leader_1|, |g:atp_imap_leader_2|, |g:atp_imap_leader_3|,
+  |g:atp_imap_leader_4|.
+
+  See |b:atp_MaxProcesses| and |b:atp_KillYoungest|.
+
+  The variables |b:atp_TexOptions|, |b:atp_StarEnvDefault|,
+  |b:atp_StarMathEnvDefault| are added to |g:atp_ProjectLocalVariables|.
+
+  See |g:atp_imap_diacritics_inteligent| how to write diacritics with ATP.
+
+  Tikzpicture keyword completion is only active in non expert mode
+  (|atp-completion-non-expert-mode|). See |atp-completion-tikzpicture|.
+
+  |atp-:LocalCommands| will make abbreviations to found environments.
+
+  See |atp->f| for two new motions made for beamer frame environment. 
+
+  See |atp-completion-documentclass-options|,
+  |atp-completion-pacakages-options|.
+
+  Q? and Q/ searching maps removed.
+
+  Some new imaps:
+  	`u 	\underline{}
+	`o	\overline{}
+	`D	see in |atp-imap-math-misc|.
+  
+  + Many Small Bug Fixes :)
+
+>
+ ======================
  Changes in version 9.6.1
 <
   The main work was to make ATP web page: http://atp-vim.sf.net with proper
@@ -294,7 +330,7 @@ NEW IMAPS ~
     to open new line.
 
     The abbreviations are customizable: g:atp_imap_{envname}, also the leader
-    is customizable with |g:atp_imap_third_leader| and environment names for
+    is customizable with |g:atp_imap_leader_3| and environment names for
     example if you set |g:atp_EnvNameTheorem|="thm" then ]the imap will insert
     \begin{thm}:\end{thm} pair. You can list supported environments with ':let
     g:atp_EnvName<C-d>'. If you set g:atp_imap_{envname} to empty string ""
@@ -303,23 +339,10 @@ NEW IMAPS ~
     See also |atp-:ToggleIMaps|.
 
 NEW MOTIONS ~
- 							*atp->E* *atp-<E*
-    There are two more nice map >E which is something like %>e, i.e. jump over
-    the current environment and go to next one. The reverse <E is also
-    implemented, thought it is not simply <e%. They do not support count
-    (yet), and actually count breaks them. If you want to add |zz|, (|zt| or
-    |zb|) after >E you can put this in your |atprc| file:
-	map <buffer> <silent> >E	<Plug>JumptoNextEnvironmentzz
-	map <buffer> <silent> <E	<Plug>JumptoPreviousEnvironmentzz
-
-    |atp--S|, |atp--s|, |atp--c|, |atp--p| new maps for |atp-:SSec|,
-    |atp-:Sec|, |atp-:Chap| and |atp-:Part|. They also works relatively to the
-    current unit (section/chapter/part), i.e. 2]s will jump to second section
-    of the current chapter.
-
+    See |atp->E| and |atp-<E|.
 
 UPDATETIME ~
-    |g:atp_updatetime_insert| can be changed on the fly to 0 (previously it
+    |b:atp_updatetime_insert| can be changed on the fly to 0 (previously it
     requires to quitting vim and making changes in |vimrc|/|atprc| files. 
  
 MAKE LATEX ~
@@ -370,8 +393,7 @@ SPACE CMAP ~						|atp-<space>|
  cmap <buffer> <C-Space> 	\_s\+
  cmap <buffer> <C-_> 		\_s\+
     The <C-Space> map doesn't work in Vim, instead <C-@> is used which works
-    as <C-Space>. In Vim, and gVim as well, you can also use |atp-Q/|,
-    |atp-Q?| where <Space> is mapped to \_s\+.
+    as <C-Space>. In Vim, and gVim as well.
 
     Note: from version 9.6 <Space> is mapped to \_s\+ in cmdline modes / and ?.
     <F2> turns it on/off. The above maps are always on.
@@ -497,40 +519,58 @@ insert mode the file won't be compiled (and that's all right as you can be in th
 middle of your very long formula). The value of |'updatetime'| which works
 fine is around 1000ms (|'updatetime'| is set in milliseconds). Instead of
 setting |'updatetime'| options directly you should set the variables
-|g:atp_updatetime_insert| and |g:atp_updatetime_normal|. Here's an important
+|b:atp_updatetime_insert| and |b:atp_updatetime_normal|. Here's an important
 note on using CTRL-C (|i_CTRL-C|) in Vim:
 
 							*g:atp_IMapCC*
     In vim the key combination CTRL-C (|i_CTRL-C|) in insert mode exists to
     normal without triggering the InsertLeave autocommands. In this way it
-    doesn't changes the |'updatetime'| from |g:atp_updatetime_insert| to
-    |g:atp_updatetime_normal|. If |g:atp_IMapCC|=1 then |_CTRL-C| is mapped to
+    doesn't changes the |'updatetime'| from |b:atp_updatetime_insert| to
+    |b:atp_updatetime_normal|. If |g:atp_IMapCC|=1 then |_CTRL-C| is mapped to
     |i_CTRL-[| so the InsertLeave autocommands are parsed. However, it is
     a good habit to use |i_CTRL-C| while you are writting/editing and |i_CTRL-[| or
     |i_ESC| when you whish to see what you wrote (then TeX will be run
     quicker). If you follow this you can even set
-    |g:atp_updatetime_normal|=1 (if you set it to 0 then the file will not
+    |b:atp_updatetime_normal|=1 (if you set it to 0 then the file will not
     be processed while Vim is in normal mode).
 
-							*g:atp_updatetime_insert*
-							*g:atp_updatetime_normal*
+							*b:atp_updatetime_insert*
+							*b:atp_updatetime_normal*
 >
- g:atp_updatetime_insert = 2000							
- g:atp_updatetime_normal = 1000
+ b:atp_updatetime_insert = 4000	
+ b:atp_updatetime_normal = 2000
 < - These variables sets the value of |'updatetime'| vim option.
     Separate settings are for normal and insert mode. You can make
-    |g:atp_updatetime_normal| even smaller so that the file is processed
+    |b:atp_updatetime_normal| even smaller so that the file is processed
     whenever you go out from insert mode to normal mode. These values will
     overwrite the original value of |'updatetime'| (unless you set both
     variables to 0)  so you should adjust them in order for the change to have
     an effect.
 
-    If you set |g:atp_updatetime_insert|=0 the TeX compiler will not be called
+    If you set |b:atp_updatetime_insert|=0 the TeX compiler will not be called
     while Vim is in the insert mode. 
 
-    If you set |g:atp_updatetime_normal|=0 the TeX compiler will not be called
+    If you set |b:atp_updatetime_normal|=0 the TeX compiler will not be called
     while Vim is in the normal mode.
 
+							*b:atp_MaxProcesses*
+>
+ b:atp_MaxProcesses = 3
+<
+    When |g:atp_Compiler|="python" this variable will control the maximal
+    number of symultanous LaTeX processes in the background. If new process
+    comes old and the number of processes is |b:atp_MaxProcesses| or bigger
+    one appropriate number of processes is killed to have not more than
+    |b:atp_MaxProcesses|. If you set it to 0 ATP will not control the number
+    of running instances of LaTeX compiler. There is one more variable:
+
+    							*b:atp_KillYoungest*
+>
+ b:atp_KillYoungest = 0
+<
+    When set to 0 (the default) oldest processes are killed, when set to
+    1 youngest ones. If your file is big it might be better to kill youngest
+    processes.
 
 Coming back to compilation ... ~
 
@@ -634,14 +674,14 @@ CALL BACK AND DEBUG MODE				*atp-callback*
 	  debug modes).
 							*t:atp_DebugMode*	
 							*atp-debug-mode-silent*
-							*'silent'*
+							*atp-silent*
 	* if |t:atp_DebugMode| 	= 'silent'
 	  :DebugMode silent
 	  nmap <LocalLeader><LocalLeader>s
 	       You will not get any message from compilation. 
 
 							*atp-debug-mode-debug*
-							*'debug'*
+							*atp-debug*
 	* if |t:atp_DebugMode| 	= 'debug'
 	  :DebugMode debug
 	  nmap <LocalLeader><LocalLeader>d
@@ -662,7 +702,7 @@ CALL BACK AND DEBUG MODE				*atp-callback*
 		    mode).
 
 							*atp-debug-mode-Debug*
-							*'Debug'*
+							*atp-Debug*
 	* if |t:atp_DebugMode| 	= 'Debug'
 	  :DebugMode Debug
 	  nmap <LocalLeader><LocalLeader>D
@@ -670,7 +710,7 @@ CALL BACK AND DEBUG MODE				*atp-callback*
 	       to first error.	
 
 							*atp-debug-mode-verbose*
-							*'verbose'*
+							*atp-verbose*
 							*b:atp_VerboseLatexInteractionMode*
 	* if |t:atp_DebugMode| 	= 'verbose'
 	       Every compilation which is invoked by the user will be run in
@@ -815,7 +855,8 @@ map \l, map \d
 	errors, with "!" it updates the aux file even if there were errors.
 	This is done to make the labels completion work better, when there are
 	errors they often affect the aux file in a way that interferes with
-	|atp-:Labels| command.
+	|atp-:Labels| command. However ATP also makes a copy of aux file with
+	extension ._aux - this is for label completion: |atp-completion-label|.
 
 	If b:atp_OpenViewer=1 and there current viewer (b:Viewer) is not
 	running on the output file then this function will open a viewer. By
@@ -1124,6 +1165,11 @@ map t, map <S-LeftMouse>
 <	and also other variable to enable reverse searching (Xdvi->Vim) see
 	more |atp-viewers-Xdvi|.
 
+	This command sets |g:atp_xdviOptions| variable, but do not overrides
+	your settings if you defined '-editor' and '-watchfile' switches (it
+	defines only these two, watch file makes xdvi reload the file every
+	given interval)
+
 :SetXpdf						*atp-:SetXpdf*
 :SetOkular						*atp-SetOkular*
 	This command sets options for Xpdf viewer. Xpdf supports forward
@@ -1136,6 +1182,11 @@ map t, map <S-LeftMouse>
 	It reads the Xpdf viewer options from the variables
 	|b:atp_xpdfOptions| and g:atp_xpdfOptions. Similarly for Okular.
 						
+							*atp-:PdfFonts*
+:PdfFonts
+nmap <F6>g
+	Runs external program pdffonts on pdf output file.
+
 :BibSearch /{pattern}/ [flag]				see |atp-:BibSearch|
 	This function finds bib entries in bib files defined in your tex file
 	and in the variable b:atp_BibFiles (see |b:atp_BibFiles|), which match the
@@ -1207,6 +1258,20 @@ nmap gf
 	values (if they exist).
 
 	The current file is now shown with highlight group: |hl-WarningMsg|. 
+
+							*atp-:TexDoc*
+TexDoc:
+map <F1>, imap <F1>
+	Then you have to type what you are looking for and press enter. The
+	option 'keywordprg' is set to 'texdoc -m', i.e when your cursor is
+	over a package name and you press 'K' key then you should see the
+	package document file (if it is named after the package).
+
+	Without any argument it will open "g:atp_TeXdocDefault", by default it
+	is eqaul to "-a lshort", i.e. "The not so short introduction to LaTeX
+	2e" by Tobias Oetiker. You can change the default for something that
+	you use more often, for example you can set it to "-a faq", i.e. 'The
+	UK TeX FAQ' (or even to "-a lshort faq" if you want them both :). 
 
 							*atp-:InputFiles*
 :InputFiles				
@@ -1300,19 +1365,19 @@ map <F6>d
 :ListPrinters
 	List printers available on the host |g:atp_ssh|.
 
-							*atp-:WrapSelection*
-:WrapSelection {beginWrapper} [endWrapper] [cursor_pos] [new_lines]
+							*atp-:Wrap*
+:Wrap [beginWrapper] [endWrapper] [cursor_pos] [new_lines]
 
-	Puts selected text between {beginWrapper} and [endWrapper]. Also sets
+	Puts selected text between [beginWrapper] and [endWrapper]. Also sets
 	the cursor position according to the [cursor_pos]. Possible values
 	are: a number -- indicates the character offset from beginning of
-	{beginWrapper}; or 'end' put the cursor at the end of [endWrapper] or
+	[beginWrapper]; or 'end' put the cursor at the end of [endWrapper] or
 	'begin' leave the cursor at the beginning (to be precise at the end of
-	the starting wrapper).  The default [endWrapper] is '}'.  The last
-	argument [new_lines] 0/1 (default is 0): if 1 then the {beginWrapper}
-	and [endWrapper] are put in separate lines (the begin line and end
-	line are split), this is useful for putting text into and environment
-	\begin{}:\end{}. 
+	the starting wrapper).  The default [beginWrapper] is '{' and
+	[endWrapper] is '}'.  The last argument [new_lines] has two values 0/1
+	(default is 0): if 1 then the [beginWrapper] and [endWrapper] are put
+	in separate lines (the begin line and end line are split), this is
+	useful for putting text into an environment \begin{}:\end{}. 
 
 	See |<f-args>| to know how to pass arguments. (They are separated with
 	spaces, white spaces in arguments should be escaped with backslash
@@ -1329,82 +1394,20 @@ map <F6>d
 	{textWrapperPair} are Vim lists of length at least 1, the first
 	wrapper is the opening and the second is the closing one (if not given
 	the default '}' is used. The other arguments are as for
-	|atp-:WrapSelection|. If the opening leader in is not given then this
+	|atp-:Wrap|. If the opening leader in is not given then this
 	command is not wrapping the text (see below for the suggested map
 	'\tx').
 
 	The command arguments should be separated with commas and quoted
 	separately (see |<args>|).
 
-	For the predefined maps which use |atp-:WrapSelection| see below
+	For the predefined maps which use |atp-:Wrap| see below
 	|atp-maps-InteligentWrapSelection| or use |atp-:HelpVMaps|.
 
-							*atp-maps-WrapSelection*
-							*atp-maps-InteligentWrapSelection*
-	These are the provided maps in visual mode: >
-	    vmap <buffer> \rm	:<C-U>InteligentWrapSelection ['\\textrm{'],	['\\mathrm{']<CR>
-	    vmap <buffer> \em	:<C-U>InteligentWrapSelection ['\\emph{'],	['\\mathit{']<CR>
-	    vmap <buffer> \it	:<C-U>InteligentWrapSelection ['\\textit{'],	['\\mathit{']<CR>
-	    vmap <buffer> \sf	:<C-U>InteligentWrapSelection ['\\textsf{'],	['\\mathsf{']<CR>
-	    vmap <buffer> \tt	:<C-U>InteligentWrapSelection ['\\texttt{'], 	['\\mathtt{']<CR>
-	    vmap <buffer> \bf	:<C-U>InteligentWrapSelection ['\\textbf{'],	['\\mathbf{']<CR>
-	    vmap <buffer> \bb	:<C-U>InteligentWrapSelection ['\\textbf{'],	['\\mathbb{']<CR>
-	    vmap <buffer> \tx	:<C-U>InteligentWrapSelection ['\\textrm{'],	['\\text{']<CR>
-	    vmap <buffer> \sl	:<C-U>WrapSelection \\textsl{<CR>
-	    vmap <buffer> \sc	:<C-U>WrapSelection \\textsc{<CR>
-	    vmap <buffer> \up	:<C-U>WrapSelection \\textup{<CR>
-	    vmap <buffer> \md	:<C-U>WrapSelection \\textmd{<CR>
-	    vmap <buffer> \un	:<C-U>WrapSelection \\underline{<CR>
-	    vmap <buffer> \ov	:<C-U>WrapSelection \\overline{<CR>
-	    vmap <buffer> \n	:<C-U>InteligentWrapSelection ['\\textnormal{'],['\\mathnormal{']<CR>
-	    vmap <buffer> \cal	:<C-U>InteligentWrapSelection [''],['\\mathcal{']<CR>
-
-	    vmap <LocalLeader>mb :WrapSelection \\mbox{ } begin<CR>
-<   	Suggested maps: >
-	    vmap <buffer> \tx	:<C-U>InteligentWrapSelection [''],['\\text{']<CR>
-	    vmap <buffer> \in	:<C-U>InteligentWrapSelection [''],['\\intertext{']<CR>"
-<	The leader '\' in above commands is configurable: the value of
-	g:atp_vmap_text_font_leader is used (the default value is <LocalLeader>).
-
-	Another provided font wrapper: >
-	    vmap <LocalLeader>f	:exe ':WrapSelection {\usefont{'.g:atp_font_encoding.'}{}{}{}\selectfont\  }'.(len(g:atp_font_encoding)+11).'<CR>'
-<	Where the variable: 				*g:atp_font_encoding*
->
-	    g:atp_font_encoding
-<	stores the default encoding which is 'OT1', unless you use fontenc
-	package, then the default for fontenc is used (the last defined in
-	\usepackage[...]{fontenc} see the 'Latex2e font selection'
-	/font user guide/ available on CTAN).
-
-	Other wrappers: >
-	    vmap m			:WrapSelection \( \)<CR>
-	    vmap M			:WrapSelection \[ \]<CR>
-	    vmap <LocalLeader>(		:WrapSelection ( ) begin<CR>
-	    vmap <LocalLeader>[		:WrapSelection [ ] begin<CR>
-	    vmap <LocalLeader>{		:WrapSelection { } begin<CR>
-	    vmap <LocalLeader>)		:WrapSelection ( ) end<CR>
-	    vmap <LocalLeader>]		:WrapSelection [ ] end<CR>
-	    vmap <LocalLeader>}		:WrapSelection { } end<CR>
-	    vmap <LocalLeader>b(	:WrapSelection \left( \right) begin<CR>
-	    vmap <LocalLeader>b[	:WrapSelection \left[ \right] begin<CR>
-	    vmap <LocalLeader>b(	:WrapSelection \left( \right) begin<CR>
-	    vmap <LocalLeader>b[	:WrapSelection \left[ \right] end<CR>
-	    vmap <LocalLeader>b{	:WrapSelection \left{ \right} end<CR>
-	    vmap <LocalLeader>b{	:WrapSelection \left{ \right} end<CR>
-< 	And the maps to put the selected text into an environment: >
-	    vmap <LocalLeader>A	:WrapSelection \begin{align} \end{align} 0 1<CR>
-	    vmap <LocalLeader>C	:WrapSelection \begin{center} \end{center} 0 1<CR>
-	    vmap <LocalLeader>E	:WrapSelection \begin{equation} \end{equation} 0 1<CR>
-	    vmap <LocalLeader>L	:WrapSelection \begin{flushleft} \end{flushleft} 0 1<CR>
-	    vmap <LocalLeader>R	:WrapSelection \begin{flushright} \end{flushright} 0 1<CR>
-
-<	The leader <LocalLeader> can be changes using the variable *g:atp_vmap_environment_leader* 
-	(its default value is <LocalLeader>).
-	Note: that the arguments for this command must be put in ':' or ":".
-   	the highlighted text will put inside \textbf{ }. 
+	See section |atp-vmap-WrapSelection| on predefined set of vmaps.
 
 	You can also use a wrapper which was yanked into register 'a': >
-		:WrapSelection @a
+		:Wrap @a
 <  	This will work not only in visual mode. It will operate on last
 	selected text. So if you accidentally lost the selection you can still
 	use this command (but not the maps)!
@@ -1553,8 +1556,8 @@ map \L
 							*atp-:NEnv* *atp->e* *atp-<C-F>*
 :NEnv {environment}
 :[count]F {environment}
-[count]map >e
-[count]map <C-F>
+map [count]>e
+map [count]<C-F>
 	Move to next environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
@@ -1569,11 +1572,37 @@ map \L
 							*atp-:PEnv* *atp-<e* *atp-<C-B>*
 :PEnv {environment}
 [count]:B {environment}
-[count]map <e
-[count]map <C-B>
+map [count]<e
+map [count]<C-B>
 	Move to previous environment, for example ':NEnv definition'. Completion
 	is set, which finds environments defined in current tex source file.
 	This function omits environments in comment lines.
+
+ 							*atp->E* *atp-<E*
+nmap [count]>E
+nmap [count]<E
+	There are two more nice map >E which is something like %>e, i.e. jump
+	over the current environment and go to next one. The reverse <E is
+	also implemented, thought it is not simply <e%. They do not support
+	count (yet), and actually count breaks them. If you want to add |zz|,
+	(|zt| or |zb|) after >E you can put this in your |atprc| file:
+	    map <buffer> <silent> >E	<Plug>JumptoNextEnvironmentzz
+	    map <buffer> <silent> <E	<Plug>JumptoPreviousEnvironmentzz
+
+	|atp--S|, |atp--s|, |atp--c|, |atp--p| new maps for |atp-:SSec|,
+	|atp-:Sec|, |atp-:Chap| and |atp-:Part|. They also works relatively to
+	the current unit (section/chapter/part), i.e. 2]s will jump to second
+	section of the current chapter.
+
+							*atp->f* *atp-<f*
+							*atp->F* *atp-<F*
+nmap [count]>f [count]>F
+nmap [count]<f [count]<F
+	These two maps are only valid in beamer. They goto next/previous
+	frame. >F and <F are using |zt| command.
+    	
+						
+
 
 							*atp-<m* *atp-<M*
 	{environment} can be also math or displayedmath. For convenience
@@ -1918,18 +1947,20 @@ vmap <F4>
 	output directory will be not seen in the statusline.
 
 ToDo({keyword}, {stop}, [bufname])		*atp-function-ToDo*
-:ToDo [bufname]					*atp-:ToDo*
-:Note [bufname]					*atp-:Note*
+:ToDo[!] [bufname]					*atp-:ToDo*
+:Note[!] [bufname]					*atp-:Note*
 	The function list all the lines of the buffer [bufname] which match
-	for the pattern '%.*{keyword}'. The {stop} argument is the pattern to
+	for the pattern '^\s*%.*{keyword}'. The {stop} argument is the pattern to
 	before which to stop. The optional argument is the buffer name
 	(the buffer name completion is set on). If not given the current
 	buffer is assumed.  You can set highlighting for this command by:
 		highlight atp-Todo ctermfg=... 	guifg=...
-	The command :ToDo sets keyword='\c\<todo\>' and
-	stop='\s*%.*\c\<note\>', and the command :Note sets
-	keyword='\c\<note\>' and stop='\s*%.*\c\<todo\>'. This prevent from
-	listing ToDo lines with Notes and vice versa. 
+	The command :ToDo sets keyword='^\s*%\s*$\|^\s*%\c.*\<note:\>' and
+	stop='^\s*%.*\c\<note\>', and the command :Note sets
+	keyword='\c\<note\>' and stop='^\s*%\s*$\|^\s*%\c.*\<to\s*do:\>'. This
+	prevent from listing ToDo lines with Notes and vice versa and stops at
+	lines which contains only '%'. With bang "!" the '^\s*' is not
+	prepended to the patterns.
 
   							*atp-:WordCount*
 :WordCount[!] 					
@@ -2551,9 +2582,12 @@ COMPLETION MODES		                       	*atp-completion-modes*
 				b:atp_LocalColors
 				b:atp_LocalCommands
 				b:atp_LocalEnvironments
-<		If a command was declared with a arguments (i.e. using #1, or
-		#1#2, etc.) a single '{' is attached. It doesn't match for
-		definitions inside comments.
+<		If a command was declared with a arguments (i.e. using \def#1, or
+		\def#1#2, etc. or with \newcommand{...}[1]{...}) a single '{'
+		is attached. It doesn't match for definitions inside comments.
+
+		This command will also make abbreviations to environments
+		found, see |atp-abbreviations|.
 
 		Note: the python version searches for commands, environments,
 		...  defined in the begining of line (with possible white
@@ -2563,13 +2597,15 @@ COMPLETION MODES		                       	*atp-completion-modes*
 		current buffer, without saving project script and with
 		'nowritebackup' and 'nobackup' set. 
 
-							*atp-tikzpicture*
+							*atp-completion-tikzpicture*
 	tikzpicture ~
 		There is an extended support for tikz picture environment both
 		inline \tikz{:} and displayed: \begin{tikzpicture}
 		\end{tikzpicture}. The completion works for both commands and
 		keywords. The pull of them is enlarged if you add tikz
 		libraries. Normal commands are added if you are inside {:}.
+		Keyword completion is only active in non expert mode
+		(|atp-completion-non-expert-mode|).
 
 							*atp-completion-ref*
 							*atp-completion-label*
@@ -2810,6 +2846,30 @@ COMPLETION MODES		                       	*atp-completion-modes*
 		Completion for the command '\documentclass'. Returns list of
 		all classes available in your distribution.
 
+							*atp-completion-documentclass-options*
+							*atp-completion-package-options*
+	documentclass options ~
+	package options ~
+		You can write your own scrip which will add support for
+		documentclass or a package. Put it under
+		ftplugin/ATP_files/packages/ directory in your vim path.
+		Supported variables:
+>
+	    g:atp_documentclass_{dc_name}_options
+	    g:atp_package_{p_name}_options
+	    g:atp_package_{p_name}_commands
+	    g:atp_package_{p_name}_math_commands
+<		These are just list of options/commands. math_commands will be
+		added to completion only in math mode.
+>
+	    g:atp_package_{p_name}_options_values
+<		This variable is a vim dictionary: keys are vim patterns which
+		should match a package option, values are lists of the option
+		values. See ftplugin/ATP_files/packages/caption.vim for an
+		example. This was tested with the following option syntax: >
+		    option1=value1,option2={value1,value2}
+<
+	
 ------------------------------------------------------------------
 ATP COMPLETION VARIABLES				*atp-completion-variables*
 
@@ -3293,7 +3353,7 @@ put them in your |atprc| it is enough to use the standard "let b:...=".
 >
  	let b:atp_xpdfOptions	= ['-bg', 'Grey30', '-mattecolor', 'SlateBlue2', '-papercolor', 'White']
 	let g:atp_xpdfOptions	= ['-bg', 'NavajoWhite4', '-fg', 'black', '-mattecolor', 'burlywood']
-	let b:atp_xdviOptions	= ['-expertmode', '0', '-s', '6']
+	let b:atp_xdviOptions	= ['-expertmode', '0', '-s', '6', '-watchfile', '1']
 <	
 							*g:atp_XpdfServer* 
 >
@@ -3581,12 +3641,13 @@ PROJECT SCRIPT						*atp-ProjectScript*
 >
     let g:atp_ProjectLocalVariables = [
 		\ "b:atp_MainFile", 	"g:atp_mapNn", 		"b:atp_autex", 
-		\ "b:atp_TexCompiler", 	"b:atp_TexFlavor", 	"b:atp_OutDir" , 
-		\ "b:atp_auruns", 	"b:atp_ReloadOnErr", 	"b:atp_OpenViewer", 
-		\ "b:atp_XpdfServer",	"b:atp_ProjectDir", 	"b:atp_Viewer",
-		\ "b:TreeOfFiles",	"b:ListOfFiles", 	"b:TypeDict",
-		\ "b:LevelDict", 	"b:atp_BibCompiler",	"b:atp_StarEnvDefault",
-		\ "b:atp_StarMathEnvDefault"
+		\ "b:atp_TexCompiler", 	"b:atp_TexOptions", 	"b:atp_TexFlavor", 	
+		\ "b:atp_OutDir", 	"b:atp_auruns", 	"b:atp_ReloadOnErr", 	
+		\ "b:atp_OpenViewer", 	"b:atp_XpdfServer",	"b:atp_ProjectDir", 	
+		\ "b:atp_Viewer", 	"b:TreeOfFiles",	"b:ListOfFiles", 	
+		\ "b:TypeDict", 	"b:LevelDict", 		"b:atp_BibCompiler", 
+		\ "b:atp_StarEnvDefault", 	"b:atp_StarMathEnvDefault", 
+		\ "b:atp_updatetime_insert", 	"b:atp_updatetime_normal"
 		\ ] 
 <	If your vim doesn't have python support |+python| three more variables
 	are stored: |b:atp_LocalEnvironments| |b:atp_LocalCommands|, and
@@ -3765,21 +3826,21 @@ some other key that it is not used in Vim (there are not many of them though).
 The most commonly used latex-suite plugin uses similar set of mappings (but
 there might be some differences). The easy way to change imap leaders is by
 using the variables:
-							*g:atp_imap_first_leader*
+							*g:atp_imap_leader_1*
 >
-	    g:atp_imap_first_leader == "#"
+	    g:atp_imap_leader_1 == "#"
 <	    	for Greak letters and some math commands,
-							*g:atp_imap_second_leader*
+							*g:atp_imap_leader_2*
 >
-	    g:atp_imap_second_leader == "##"
+	    g:atp_imap_leader_2 == "##"
 <	    	for font commands, (another good choice is "_") 
-							*g:atp_imap_third_leader*
+							*g:atp_imap_leader_3*
 >
-	    g:atp_imap_third_leader == "]"
+	    g:atp_imap_leader_3 == "]"
 <	    	for environments, 
-							*g:atp_imap_fourth_leader*
+							*g:atp_imap_leader_4*
 >
-	    g:atp_imap_fourth_leader == "["
+	    g:atp_imap_leader_4 == "["
 <	    	for extra environments in the old layout (this will be removed).
 
 							|g:atp_map_forward_motion_leader|
@@ -3829,6 +3890,14 @@ However, they require that there are no maps such that no lhs is a subset ot
 the another, i.e. like "ab" and "abc". With the default settings it is
 shouldn't be a problem.
 
+NOTE: If you are looking for some imap, using :imap you might not find it,
+bacuse some imaps are oly defined when ATP is in insert mode. Moreover, the
+result depends if you are in a mathematical environment or not. Here is
+a trick how to find an imap which is only defined in insert mode. First go to
+insert mode, then press <Ctrl-O> (see |i_CTRL-O|), and then type ':imap<CR>'.
+If the cursor sands inside mathematical environment (for example inside \[:\])
+the result will show mathematical imaps.
+
 						*atp-j_motion* *atp-k_motion*
 imap <Ctrl-j>, imap <Ctrl-k>	- these are two motions (based on syntax)
 which help to navigate thought brackets (but not only) in insert mode.
@@ -3838,62 +3907,16 @@ map <Ctrl-j>, map <Ctrl-k> 	- as above but in normal mode.
 	These motions emulate the behaviour of latex-suite place holder system <++>,
 	without putting the placeholder into tex file.
 
-:ShowOptions[!]
-
-:TEX[!]
-map \l,imap \l
-
-:VTEX[!]
-map <F5>,imap <F5>, :VTEX 
-
-:ViewOutput
-map \v,map <F3>, imap \v, imap <F3>  
-
-							*b:atp_BibtexOutput*
-							*b:atp_BibtexReturnCode*
-:Bibtex[!]	run only BibTeX, with bang [!] run LaTeX+BibTeX+LaTeX+LaTeX
-map \b		if you use |g:atp_Compiler|='python' and BibTeX returned with 
-		errors the compilation will stop. In the debug mode you will 
-		also get BibTeX output. It is stored in |b:atp_BibtexOutput|,
-		BibTeX return code is in |b:atp_BibtexReturnCode|.
-
-:OpenLog, :ShowErrors o
-map <F6>l, imap <F6>l
-
-:Delete[!]
-map <F6>d
-	See |atp-:Delete|.
-
-:TOC[!]
-map \t
-	This is a mapping to the command |atp-:TOC|
-
-
-:Labels[!]
-map \L
-	This is a mapping to the command |atp-:Labels|
-
-:GotoFile, :EditInputFile
-nmap gf
-
-							|atp->m|
-nmap >m, nmap >m 					|atp-<m|
-	Goto the beginning of next/previous math environment.
-
-							|atp-<M|
-nmap ]M, nmap [M 					|atp->M|
-	Goto the beginning of next/previous displayed math environment. 
-							
 							*atp-]]*
 nmap ]], vmap ]]
 	Goto next \begin{
 
 							*atp-[[*
-nmap ]], vmap ]]
+nmap [[, vmap [[
 	Goto previous \begin{
 
 							*atp-][*
-nmap ]], vmap ][
+nmap ][, vmap ][
 	Goto next \end{
 
 							*atp-[]*
@@ -3908,32 +3931,6 @@ nmap gcl, vmap gc
 nmap gC, vmap gC
 	Goto begin of comment group (current or previous if not in comment).
 	    
-								*atp-:TexDoc*
-TexDoc:
-map <F1>, imap <F1>
-	Then you have to type what you are looking for and press enter. The
-	option 'keywordprg' is set to 'texdoc -m', i.e when your cursor is
-	over a package name and you press 'K' key then you should see the
-	package document file (if it is named after the package).
-
-	Without any argument it will open "g:atp_TeXdocDefault", by default it
-	is eqaul to "-a lshort", i.e. "The not so short introduction to LaTeX
-	2e" by Tobias Oetiker. You can change the default for something that
-	you use more often, for example you can set it to "-a faq", i.e. 'The
-	UK TeX FAQ' (or even to "-a lshort faq" if you want them both :). 
-
-:NInput
-nmap ]gf
-	Goto next input file.
-:PInput
-nmap [gf
-	Goto previous input file.
-
-							*atp-:PdfFonts*
-:PdfFonts
-nmap <F6>g
-Runs pdffonts command on pdf output file.
-
 							*atp-comment-lines*
 							*atp-uncomment-lines*
 							*g:atp_MapCommentLines*
@@ -3954,33 +3951,31 @@ nmap \u, vmap \u		-- uncomment
 cmap <buffer> <C-Space> 	\_s\+
 cmap <buffer> <C-_> 		\_s\+
     The <C-Space> map doesn't work in Vim, instead <C-@> is used which works
-    as <C-Space>. In Vim, and gVim as well, you can also use |atp-Q/|,
-    |atp-Q?| or |atp-<F2>| where <Space> is mapped to \_s\+.
-								*atp-Q/*
-								*atp-Q?*
-								*atp-<F2>*
-nmap Q/, nmap Q?, nmap <F2>
-	Q/ and Q? to enter command-line window in which <space> is mapped to
-	'\_s\+'. If you want to insert a white space type CTRL-V followed by
-	<Space>.
-
-	<F2> acts as 'Q/i' (i.e. enters insert mode).
-	If you want Q/ and Q? enter insert mode as well you can set: >
-	    nmap Q/		q/:call ATP_CmdwinToggleSpace('on')<CR>i
-	    nmap Q?		q?:call ATP_CmdwinToggleSpace('on')<CR>i
-<	in your |atprc| or |vimrc| file.
+    as <C-Space>. In Vim, and gVim as well.
 
 FONT COMMANDS						*atp-imap-fonts*
-imap ##rm \textrm{}<Left>
-imap ##it \textit{}<Left>
-imap ##sl \textsl{}<Left>
-imap ##sf \textsf{}<Left>
-imap ##bf \textbf{}<Left>
+
+Below are listed font imaps. They work in text mode, or math mode, or if there
+is only one given in both. The map leader is defined by the variable
+|g:atp_imap_leader_2|, which by default is set to '##' (another good
+setting is '_')
+	  	in text			in math ~
+imap ##rm 	\textrm{}<Left>		\mathrm{}<Left>
+imap ##te 	\textrm{}<Left>		\text{}<Left>
+imap ##up	\textup{}<Left>
+imap ##md	\textmd{}<Left>
+imap ##sl	\textsl{}<Left>
+imap ##sc	\textsc{}<Left>
+imap ##em	\emph{}<Left>
+imap ##it 	\textit{}<Left>		\mathit{}<Left>
+imap ##sf 	\textsf{}<Left>		\mathsf{}<Left>
+imap ##bf 	\textbf{}<Left>		\mathbf{}<Left>
+imap ##bf 	\texttt{}<Left>		\mathtt{}<Left>
+imap ##no	\textnormal{}<Left>	\mathnormal{}<Left>
+imap ##bb				\mathbb{}<Left>
+imap ##cal				\mathcal{}<Left>
+
 	
-imap ##mit \mathit{}<Left>
-imap ##mrm \mathrm{}<Left>
-imap ##msf \mathsf{}<Left>
-imap ##mbf \mathbf{}<Left>
 
 							
 GREEK LETTERS						*atp-imap-greek-letters*
@@ -4027,9 +4022,7 @@ imap #O 	\Theta
 imap #S 	\Sigma
 imap #T 	\Tau
 imap #U 	\Upsilon
-imap #V 	\Varsigma
 imap #W 	\Omega
-imap #Z 	\mathrm{Z}
 
 ENVIRONMENT IMAPS				*atp-imap-environments*
 						*g:atp_imap_ShortEnvIMaps*
@@ -4040,7 +4033,7 @@ g:atp_imap_ShortEnvIMaps=1
     and \item (I). You can also reconfigure them using the variables:
     g:atp_imap_{env_name} (for example g:atp_imap_theorem, if you don't want
     a map for particular environment set the corresponding variable to empty
-    string ""), |g:atp_imap_third_leader| is used as a leader (the default is
+    string ""), |g:atp_imap_leader_3| is used as a leader (the default is
     ]).  Map for letter environment is not defined when you use short imaps.
 
 Note: you can list this mappings using the command |atp-:HelpEnvIMaps|.
@@ -4155,8 +4148,11 @@ imap #V		\Vee
 imap #N		\Nabla
 imap #=		\equiv
 imap `8		\infty		[the default '#' is not working, ` is used intead, 
-				 but only if |g:atp_imap_first_leader|='#']
+				 but only if |g:atp_imap_leader_1|='#']
 imap `6		\partial	[as above, you can also use \p<Tab>]
+imap `D 	<Esc>vxi\frac{\partial}{\partial "}
+				[ let me explain the above map: you type x`D
+				and you get \frac{\partial}{\partial x} ]
 imap #@		\circ
 imap #=		\equiv
 imap #*		\bigcap
@@ -4165,8 +4161,9 @@ imap #\		\backslash
 imap #>		\geq
 imap #<		\leq
 imap #.		\dot		[#.s will put \dots]
+imap 
 
-MATH ACCENTS ~
+MATH ACCENTS AND DECORATIONS ~
 
 These imaps are defined in g:atp_iap_math_misc variable. They might be turned
 off usgin |atp-:ToggleIMaps| commands or |g:atp_imap_define_math_misc| variable.
@@ -4179,6 +4176,8 @@ imap `v		\check{}
 imap `_		\bar{}
 imap `~		\tilde{}	[if g:atp_imap_wide is nonempty it is \widetilde{}]
 imap `^		\hat{}		[as above]
+imap `u		\underline{}
+imap `o		\overline{}
 
 
  							*atp-imap-math*
@@ -4217,6 +4216,8 @@ imap c*		\prod		[    cat *]		/cat = categorical/
 imap c+		\coprod		[    cat +]
 imap <=		\leq
 imap >=		\geq
+imap ->		\rightarrow
+imap <-		\leftarrow
 imap t<		\triangleleft
 imap t>		\triangleright
 imap s<		\subseteq	[    set <]
@@ -4233,6 +4234,13 @@ These imaps are defined in g:atp_imap_math variable.  They might be turned off
 usgin |atp-:ToggleIMaps| commands or |g:atp_imap_define_diacritics| variable
 (be setting it to 0, works on the fly).
 
+						*g:atp_imap_diacritics_inteligent*
+if |g:atp_imap_diacritics_inteligent| is set to 1 (the default) to get \'{a}
+you have to type a`', i.e. the map acts on the character just before the
+cursor. Otherwise, if |g:atp_imap_diacritics_inteligent|=0 they act as normal
+imaps, i.e. typing `' resolves to \'{} with cursor placed between the
+brackets. Here is a list of all provided imaps to diacritics:
+
     imap `'	\'{}
     imap `"	\"{}
     imap `^	\^{}
@@ -4245,6 +4253,9 @@ usgin |atp-:ToggleIMaps| commands or |g:atp_imap_define_diacritics| variable
     imap `.	\.{}
     imap `c	\c{}
     imap `t	\t{}
+
+You can turn off diacritics imaps by setting |g:atp_imap_diacritics|=[] in
+your |vimrc| or |atprc| file.
 
 							*atp-:ToggleIMaps*
 :ToggleIMaps
@@ -4267,6 +4278,87 @@ LOG FILE MAPS						*atp-maps-log*
 	%		- searchpair for (:).
 <	You can use |n| and |N| Vim normal commands to repeat previous search [count] times.
 
+
+							*atp-vmap-WrapSelection*
+WRAP SELECTION VMAPS					*atp-vmap-InteligentWrapSelection*
+	These are the provided maps in visual mode: >
+	    vmap <buffer> \rm	:<C-U>InteligentWrapSelection ['\\textrm{'],	['\\mathrm{']<CR>
+	    vmap <buffer> \em	:<C-U>InteligentWrapSelection ['\\emph{'],	['\\mathit{']<CR>
+	    vmap <buffer> \it	:<C-U>InteligentWrapSelection ['\\textit{'],	['\\mathit{']<CR>
+	    vmap <buffer> \sf	:<C-U>InteligentWrapSelection ['\\textsf{'],	['\\mathsf{']<CR>
+	    vmap <buffer> \tt	:<C-U>InteligentWrapSelection ['\\texttt{'], 	['\\mathtt{']<CR>
+	    vmap <buffer> \bf	:<C-U>InteligentWrapSelection ['\\textbf{'],	['\\mathbf{']<CR>
+	    vmap <buffer> \bb	:<C-U>InteligentWrapSelection ['\\textbf{'],	['\\mathbb{']<CR>
+	    vmap <buffer> \tx	:<C-U>InteligentWrapSelection ['\\textrm{'],	['\\text{']<CR>
+	    vmap <buffer> \sl	:<C-U>WrapSelection \\textsl{<CR>
+	    vmap <buffer> \sc	:<C-U>WrapSelection \\textsc{<CR>
+	    vmap <buffer> \up	:<C-U>WrapSelection \\textup{<CR>
+	    vmap <buffer> \md	:<C-U>WrapSelection \\textmd{<CR>
+	    vmap <buffer> \un	:<C-U>WrapSelection \\underline{<CR>
+	    vmap <buffer> \ov	:<C-U>WrapSelection \\overline{<CR>
+	    vmap <buffer> \n	:<C-U>InteligentWrapSelection ['\\textnormal{'],['\\mathnormal{']<CR>
+	    vmap <buffer> \cal	:<C-U>InteligentWrapSelection [''],['\\mathcal{']<CR>
+
+	    vmap <LocalLeader>mb :Wrap \\mbox{ } begin<CR>
+<   	Suggested maps: >
+	    vmap <buffer> \tx	:<C-U>InteligentWrapSelection [''],['\\text{']<CR>
+	    vmap <buffer> \in	:<C-U>InteligentWrapSelection [''],['\\intertext{']<CR>"
+<	The leader '\' in above commands is configurable: the value of
+	g:atp_vmap_text_font_leader is used (the default value is <LocalLeader>).
+
+	Another provided font wrapper: >
+	    vmap <LocalLeader>f	:exe ':Wrap {\usefont{'.g:atp_font_encoding.'}{}{}{}\selectfont\  }'.(len(g:atp_font_encoding)+11).'<CR>'
+<	Where the variable: 				*g:atp_font_encoding*
+>
+	    g:atp_font_encoding
+<	stores the default encoding which is 'OT1', unless you use fontenc
+	package, then the default for fontenc is used (the last defined in
+	\usepackage[...]{fontenc} see the 'Latex2e font selection'
+	/font user guide/ available on CTAN).
+
+	Other wrappers: >
+	    vmap m			:Wrap \( \)<CR>
+	    vmap M			:Wrap \[ \]<CR>
+	    vmap <LocalLeader>(		:Wrap ( ) begin<CR>
+	    vmap <LocalLeader>[		:Wrap [ ] begin<CR>
+	    vmap <LocalLeader>{		:Wrap { } begin<CR>
+	    vmap <LocalLeader>)		:Wrap ( ) end<CR>
+	    vmap <LocalLeader>]		:Wrap [ ] end<CR>
+	    vmap <LocalLeader>}		:Wrap { } end<CR>
+	    vmap <LocalLeader>b(	:Wrap \left( \right) begin<CR>
+	    vmap <LocalLeader>b[	:Wrap \left[ \right] begin<CR>
+	    vmap <LocalLeader>b(	:Wrap \left( \right) begin<CR>
+	    vmap <LocalLeader>b[	:Wrap \left[ \right] end<CR>
+	    vmap <LocalLeader>b{	:Wrap \left{ \right} end<CR>
+	    vmap <LocalLeader>b{	:Wrap \left{ \right} end<CR>
+< 	And the maps to put the selected text into an environment: >
+	    vmap <LocalLeader>A	:Wrap \begin{align} \end{align} 0 1<CR>
+	    vmap <LocalLeader>C	:Wrap \begin{center} \end{center} 0 1<CR>
+	    vmap <LocalLeader>E	:Wrap \begin{equation} \end{equation} 0 1<CR>
+	    vmap <LocalLeader>L	:Wrap \begin{flushleft} \end{flushleft} 0 1<CR>
+	    vmap <LocalLeader>R	:Wrap \begin{flushright} \end{flushright} 0 1<CR>
+<
+							*atp-vmap-WrapSelection-accents*
+							*atp-vmap-InteligentWrapSelection-accents*
+	Accent wrappers: *|g:atp_imap_over_leader| defines <LocalLeader> as
+	a map leader):
+>
+	    vmap <silent><buffer> `'	:<C-U>IngeligentWrapSelection ["\\'{"],["\\acute{"]<CR>
+	    vmap <silent><buffer> `"	:<C-U>WrapSelection \"{ } end<CR>
+	    vmap <silent><buffer> `^	:<C-U>WrapSelection \^{ } end<CR>
+	    vmap <silent><buffer> `v	:<C-U>InteligentWrapSelection ["\\v{"],["\\check{"]<CR>
+	    vmap <silent><buffer> ``	:<C-U>InteligentWrapSelection ["\\`{], ["\\grave{"]<CR>
+	    vmap <silent><buffer> `b	:<C-U>WrapSelection \b{ } end<CR>
+	    vmap <silent><buffer> `d	:<C-U>WrapSelection \d{ } end<CR>
+	    vmap <silent><buffer> `H	:<C-U>WrapSelection \H{ } end<CR>
+	    vmap <silent><buffer> `~	:<C-U>WrapSelection \~{ } end<CR>
+	    vmap <silent><buffer> `.	:<C-U>InteligentWrapSelection ["\\.{], ["\\dot{"]<CR>
+	    vmap <silent><buffer> `c	:<C-U>WrapSelection \c{ } end<CR>
+	    vmap <silent><buffer> `t	:<C-U>WrapSelection \t{ } end<CR>
+<	The leader <LocalLeader> can be changes using the variable *g:atp_vmap_environment_leader* 
+	(its default value is <LocalLeader>).
+	Note: that the arguments for this command must be put in ':' or ":".
+   	the highlighted text will put inside \textbf{ }. 
 ================================================================================
 ABBREVIATIONS						*atp-abbreviations*
 
@@ -4280,8 +4372,11 @@ ABBREVIATIONS						*atp-abbreviations*
     |atp-completion-abbreviations|.
 
     Locally defined environments are also supported (the one defined in
-    |b:atp_LocalEnvironments|). If you need something different than
-    abbreviation for
+    |b:atp_LocalEnvironments|). They are made by the command
+    |atp-:LocalCommands|, e.g if g:atp_local_completion == 2 then they are
+    made on startup.
+
+    If you need something different than abbreviation for
 	\begin{theorem}
 	     <Cursor placed here>
 	\end{theorem}
@@ -4289,14 +4384,14 @@ ABBREVIATIONS						*atp-abbreviations*
 	\begin{corollary}<Cursor placed here>
 	\end{corollary}
     You can set the variable g:atp_abbreviation_{environment_name}. It is list
-    with two elements. First is used after \begin{...} and the second after
-    \end{...}. For the above examples:
+    with two elements. First element is used after \begin{...} and the second
+    after \end{...}. For the above examples:
 	let g:atp_abbreviation_theorem		= [ '<CR>', '<ESC>O' ]
 	let g:atp_abbreviation_corollary	= [ '<CR>', '<ESC><UP>A' ]
     The first one is the default so you do not need to set it. In the second
     example the abbreviation command will look like: >
 	abbreviate =corollary= \begin{corollary}<CR>\end{corollary}<ESC><UP>A
-<   This will only work for b:atp_LocalEnvironments, LaTeX and AMS
+<   This will only work for b:atp_LocalEnvironments; LaTeX and AMS
     environments are set accordingly.
     Environment name abbreviations are defined only if there were not defined.
     So you can override the settings using |atprc| file (or |vimrc| file).
@@ -4531,12 +4626,14 @@ Xdvi								*atp-Viewers-Xdvi*
 	    let b:atp_TexCompiler	= "latex"
 	    let b:atp_TexOptions	= ["-src-specials"]
 	    let b:atp_Viewer		= "xdvi" 
-	    let b:atp_xdviOptions	= ["-editor", "'gvim --remote-wait +%l %f'"]
+	    let b:atp_xdviOptions	= ["-editor", "'gvim --remote-wait +%l %f'", "-watchfile", "1"]
 <	They are not set by default, however there is simple command to set
 	them at once |atp-:SetXdvi|.	
 	This are excellent sources of information on this:
 	    http://xdvi.sourceforge.net/inverse-search.html
 	    http://Vim.wikia.com/wiki/Vim_can_interact_with_xdvi
+	Note the watchfile switch for xdvi: with it xdvi will reload the file,
+	if needed, every second.
 
 Zathura							
 	Perfectly works (but there is no reverse/inverse searching).

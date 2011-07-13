@@ -2,7 +2,7 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Thu Jun 09 10:00  2011 W
+" Last Change: Mon Jul 04 09:00  2011 C
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -10,15 +10,16 @@ let s:sourced 	= exists("s:sourced") ? 1 : 0
 if !s:sourced || g:atp_reload_functions "{{{
 " This is the wrap selection function.
 " {{{ WrapSelection
-function! s:WrapSelection(wrapper,...)
+function! s:WrapSelection(...)
 
-    let l:end_wrapper 	= ( a:0 >= 1 ? a:1 : '}' )
-    let l:cursor_pos	= ( a:0 >= 2 ? a:2 : 'end' )
-    let l:new_line	= ( a:0 >= 3 ? a:3 : 0 )
+    let wrapper		= ( a:0 >= 1 ? a:1 : '{' )
+    let end_wrapper 	= ( a:0 >= 2 ? a:2 : '}' )
+    let cursor_pos	= ( a:0 >= 3 ? a:3 : 'end' )
+    let new_line	= ( a:0 >= 4 ? a:4 : 0 )
 
-"     let b:new_line=l:new_line
-"     let b:cursor_pos=l:cursor_pos
-"     let b:end_wrapper=l:end_wrapper
+"     let b:new_line=new_line
+"     let b:cursor_pos=cursor_pos
+"     let b:end_wrapper=end_wrapper
 
     let l:begin=getpos("'<")
     " todo: if and on 'ą' we should go one character further! (this is
@@ -54,14 +55,14 @@ function! s:WrapSelection(wrapper,...)
 	let l:bend_line=strpart(l:end_line,0,l:end[2])
 	let l:eend_line=strpart(l:end_line,l:end[2])
 
-	if l:new_line == 0
+	if new_line == 0
 	    " inline
 " 	    let b:debug=0
-	    let l:begin_line=l:bbegin_line.a:wrapper.l:ebegin_line
-	    let l:end_line=l:bend_line.l:end_wrapper.l:eend_line
+	    let l:begin_line=l:bbegin_line.wrapper.l:ebegin_line
+	    let l:end_line=l:bend_line.end_wrapper.l:eend_line
 	    call setline(l:begin[1],l:begin_line)
 	    call setline(l:end[1],l:end_line)
-	    let l:end[2]+=len(l:end_wrapper)
+	    let l:end[2]+=len(end_wrapper)
 	else
 " 	    let b:debug=1
 	    " in seprate lines
@@ -69,27 +70,27 @@ function! s:WrapSelection(wrapper,...)
 	    if l:bbegin_line !~ '^\s*$'
 		let l:begin_choice=1
 		call setline(l:begin[1],l:bbegin_line)
-		call append(l:begin[1],l:indent.a:wrapper) " THERE IS AN ISSUE HERE!
+		call append(l:begin[1],l:indent.wrapper) " THERE IS AN ISSUE HERE!
 		call append(copy(l:begin[1])+1,l:indent.substitute(l:ebegin_line,'^\s*','',''))
 		let l:end[1]+=2
 	    elseif l:bbegin_line =~ '^\s\+$'
 		let l:begin_choice=2
-		call append(l:begin[1]-1,l:indent.a:wrapper)
+		call append(l:begin[1]-1,l:indent.wrapper)
 		call append(l:begin[1],l:begin_line.l:ebegin_line)
 		let l:end[1]+=2
 	    else
 		let l:begin_choice=3
-		call append(copy(l:begin[1])-1,l:indent.a:wrapper)
+		call append(copy(l:begin[1])-1,l:indent.wrapper)
 		let l:end[1]+=1
 	    endif
 	    if l:eend_line !~ '^\s*$'
 		let l:end_choice=4
 		call setline(l:end[1],l:bend_line)
-		call append(l:end[1],l:indent.l:end_wrapper)
+		call append(l:end[1],l:indent.end_wrapper)
 		call append(copy(l:end[1])+1,l:indent.substitute(l:eend_line,'^\s*','',''))
 	    else
 		let l:end_choice=5
-		call append(l:end[1],l:indent.l:end_wrapper)
+		call append(l:end[1],l:indent.end_wrapper)
 	    endif
 	    if (l:end[1] - l:begin[1]) >= 0
 		if l:begin_choice == 1
@@ -118,11 +119,11 @@ function! s:WrapSelection(wrapper,...)
 	let l:begin_l=strpart(l:begin_line,0,l:begin[2]-1)
 	let l:middle_l=strpart(l:begin_line,l:begin[2]-1,l:end[2]-l:begin[2]+1)
 	let l:end_l=strpart(l:begin_line,l:end[2])
-	if l:new_line == 0
+	if new_line == 0
 	    " inline
-	    let l:line=l:begin_l.a:wrapper.l:middle_l.l:end_wrapper.l:end_l
+	    let l:line=l:begin_l.wrapper.l:middle_l.end_wrapper.l:end_l
 	    call setline(l:begin[1],l:line)
-	    let l:end[2]+=len(a:wrapper)+1
+	    let l:end[2]+=len(wrapper)+1
 	else
 	    " in seprate lines
 	    let b:begin_l=l:begin_l
@@ -133,35 +134,83 @@ function! s:WrapSelection(wrapper,...)
 
 	    if l:begin_l =~ '\S' 
 		call setline(l:begin[1],l:begin_l)
-		call append(copy(l:begin[1]),l:indent.a:wrapper)
+		call append(copy(l:begin[1]),l:indent.wrapper)
 		call append(copy(l:begin[1])+1,l:indent.l:add_indent.l:middle_l)
-		call append(copy(l:begin[1])+2,l:indent.l:end_wrapper)
+		call append(copy(l:begin[1])+2,l:indent.end_wrapper)
 		if substitute(l:end_l,'^\s*','','') =~ '\S'
 		    call append(copy(l:begin[1])+3,l:indent.substitute(l:end_l,'^\s*','',''))
 		endif
 	    else
-		call setline(copy(l:begin[1]),l:indent.a:wrapper)
+		call setline(copy(l:begin[1]),l:indent.wrapper)
 		call append(copy(l:begin[1]),l:indent.l:add_indent.l:middle_l)
-		call append(copy(l:begin[1])+1,l:indent.l:end_wrapper)
+		call append(copy(l:begin[1])+1,l:indent.end_wrapper)
 		if substitute(l:end_l,'^\s*','','') =~ '\S'
 		    call append(copy(l:begin[1])+2,l:indent.substitute(l:end_l,'^\s*','',''))
 		endif
 	    endif
 	endif
     endif
-    if l:cursor_pos == "end"
-	let l:end[2]+=len(l:end_wrapper)-1
+    if cursor_pos == "end"
+	let l:end[2]+=len(end_wrapper)-1
 	call setpos(".",l:end)
-    elseif l:cursor_pos =~ '\d\+'
+    elseif cursor_pos =~ '\d\+'
 	let l:pos=l:begin
-	let l:pos[2]+=l:cursor_pos
+	let l:pos[2]+=cursor_pos
 	call setpos(".",l:pos)
-    elseif l:cursor_pos == "current"
+    elseif cursor_pos == "current"
 	keepjumps call setpos(".",l:pos_save)
-    elseif l:cursor_pos == "begin"
-	let l:begin[2]+=len(a:wrapper)-1
+    elseif cursor_pos == "begin"
+	let l:begin[2]+=len(wrapper)-1
 	keepjumps call setpos(".",l:begin)
     endif
+endfunction
+function! WrapSelection_compl(ArgLead, CmdLine, CursorPos)
+    let variables = ["g:atp_Commands"]
+    if searchpair('\\begin\s*{picture}','','\\end\s*{picture}','bnW',"", max([ 1, (line(".")-g:atp_completion_limits[2])]))
+	call add(variables, "g:atp_picture_commands")
+    endif
+    if atplib#SearchPackage('hyperref')
+	call add(variables, "g:atp_hyperref_commands")
+    endif
+    if atplib#IsInMath()
+	call add(variables, "g:atp_math_commands_PRE")
+	call add(variables, "g:atp_math_commands")
+	call add(variables, "g:atp_math_commands_non_expert_mode")
+	call add(variables, "g:atp_amsmath_commands")
+    endif
+    if atplib#SearchPackage("fancyhdr")
+	call add(variables, "g:atp_fancyhdr_commands")
+    endif
+    if atplib#SearchPackage("makeidx")
+	call add(variables, "g:atp_makeidx_commands")
+    endif
+"     Tikz dosn't have few such commands (in libraries)
+"     if atplib#SearchPackage(#\(tikz\|pgf\)')
+" 	let in_tikz=searchpair('\\begin\s*{tikzpicture}','','\\end\s*{tikzpicture}','bnW',"", max([1,(line(".")-g:atp_completion_limits[2])])) || atplib#CheckOpened('\\tikz{','}',line("."),g:atp_completion_limits[0])
+" 	    call add(variables, "g:atp_tikz_commands")
+" 	endif
+"     endif
+    if atplib#DocumentClass(b:atp_MainFile) == "beamer"
+	call add(variables, "g:atp_BeamerCommands")
+    endif
+    if atplib#SearchPackage("mathtools")
+	call add(variables, "g:atp_MathTools_commands")
+    endif
+    if atplib#SearchPackage("todonotes")
+	call add(variables, "g:atp_TodoNotes_commands")
+    endif
+"     if !exists("b:atp_LocalCommands")
+" 	call LocalCommands(0)
+"     endif
+    call add(variables, "b:atp_LocalCommands")
+
+    let wrap_commands=[]
+    for var in variables
+	call extend(wrap_commands, filter(copy({var}), "v:val =~ '{$'"))
+    endfor
+    call filter(wrap_commands, "count(wrap_commands, v:val) == 1")
+    call sort(wrap_commands)
+    return join(wrap_commands, "\n")
 endfunction
 "}}}
 "{{{ Inteligent Wrap Selection 
@@ -177,28 +226,7 @@ function! s:InteligentWrapSelection(text_wrapper, math_wrapper, ...)
     let cursor_pos	= ( a:0 >= 1 ? a:2 : 'end' )
     let new_line	= ( a:0 >= 2 ? a:3 : 0 )
 
-    let MathZones = copy(g:atp_MathZones)
-    let pattern		= '^texMathZone[VWX]'
-    if b:atp_TexFlavor == 'plaintex'
-	call add(MathZones, 'texMathZoneY')
-	let pattern	= '^texMathZone[VWXY]'
-    endif
-
-    " select the correct wrapper
-
-    let MathZone	= get(filter(map(synstack(line("."),max([1,col(".")-1])),"synIDattr(v:val,'name')"),"v:val=~pattern"),0,"")
-    if MathZone	=~ '^texMathZone[VWY]'
-	let step 	= 2
-    elseif MathZone == 'texMathZoneX'
-	let step 	= 1
-    else
-	let step	= 0
-    endif
-
-    " Note: in visual mode col(".") returns always the column starting position of
-    " the visual area, thus it is enough to check the begining (if we stand on
-    " $:\(:\[:$$ use text wrapper). 
-    if !empty(MathZone) && col(".") > step && atplib#CheckSyntaxGroups(MathZones, line("."), max([1, col(".")-step]))
+    if atplib#IsInMath()
 	let begin_wrapper 	= a:math_wrapper[0]
 	let end_wrapper 	= get(a:math_wrapper,1, '}')
     else
@@ -218,10 +246,16 @@ endfunction
 " WrapEnvironment "{{{
 " a:1 = 0 (or not present) called by a command
 " a:1 = 1 called by a key map (ask for env)
-function! <SID>WrapEnvironment(env_name,...)
-    let map = ( a:0 == 0 ? 0 : a:1 ) 
+function! <SID>WrapEnvironment(...)
+    let env_name = ( a:0 == 0 ? '' : a:1 )
+    let map = ( a:0 <= 1 ? 0 : a:2 ) 
     if !map
-	'<,'>WrapSelection '\begin{'.a:env_name.'}','\end{'.a:env_name.'}','0', '1'
+	execute "'<,'>Wrap \\begin{".escape(env_name, ' ')."} \\end{".escape(env_name, ' ')."} 0 1"
+	if env_name == ""
+	    call search("{") 
+	else
+	    call search('\\end{'.env_name.'}', 'e')
+	endif
     else
 	let envs=sort(filter(EnvCompletion("","",""), "v:val !~ '\*$' && v:val != 'thebibliography'"))
 	let g:envs=envs
@@ -249,6 +283,19 @@ function! <SID>WrapEnvironment(env_name,...)
 endfunction "}}}
 vmap <buffer> <silent> <Plug>WrapEnvironment		:<C-U>call <SID>WrapEnvironment('', 1)<CR>
 
+" SetUpdateTimes
+function! <SID>UpdateTime(...)
+    if a:0 == 0
+	" Show settings
+	echo "'updatetime' is set to:\nb:atp_updatetime_normal=".b:atp_updatetime_normal."\nb:atp_updatetime_insert=".b:atp_updatetime_insert
+	return
+    else
+	let b:atp_updatetime_normal=a:1
+	let b:atp_updatetime_insert=(a:0>=2 ? a:2 : a:1)
+	echo "'updatetime' is set to:\nb:atp_updatetime_normal=".b:atp_updatetime_normal."\nb:atp_updatetime_insert=".b:atp_updatetime_insert
+    endif
+endfunction
+
 " Inteligent Aling
 " TexAlign {{{
 " This needs Aling vim plugin.
@@ -259,7 +306,7 @@ function! TexAlign()
     let balign=searchpair('\\begin\s*{\s*array\s*}', '', '\\end\s*{\s*array\s*}', 'bnW')
     let [bmatrix, bmatrix_col]=searchpairpos('\\matrix\s*\[[^]]*\]\s*\zs{', '', '}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
     if bmatrix
-	let bpat = '\\matrix\s*\[[^]]*\]\s*{'
+	let bpat = '\\matrix\s*\(\[[^]]*\]\)\?\s*{'
 	let bline = bmatrix+1 
 	let epat = '}'
 	let AlignCtr = 'jl+ &'
@@ -315,8 +362,6 @@ function! TexAlign()
 	return
     endif
 	
-"     let g:env=env
-
     if !exists("bline")
 	let bline = search(bpat, 'cnb') + 1
     endif
@@ -328,9 +373,6 @@ function! TexAlign()
 	let eline = searchpair('{', '', '}', 'n')  - 1
 	call cursor(saved_pos[1], saved_pos[2])
     endif
-
-" 	let g:bline = bline
-" 	let g:eline = eline
 
     if bline <= eline
 	execute bline . ',' . eline . 'Align ' . AlignCtr
@@ -350,6 +392,7 @@ endfunction
 function! Insert(text, math, ...)
 
     let move = ( a:0 >= 1 ? a:1 : 0 )
+    let col  = col('.')
 
     if b:atp_TexFlavor == 'plaintex' && index(g:atp_MathZones, 'texMathZoneY') == -1
 	call add(g:atp_MathZones, 'texMathZoneY')
@@ -374,6 +417,9 @@ function! Insert(text, math, ...)
     let new_line	= strpart(line, 0, col) . insert . strpart(line, col)
     call setline(line("."), new_line)
     call cursor(line("."), col(".")+len(insert)-move)
+    if col == 1
+	call cursor(line("."), col(".")-1)
+    endif
 
     return ""
 endfunction
@@ -384,6 +430,7 @@ endfunction
 function! InsertItem()
     let begin_line	= searchpair( '\\begin\s*{\s*\%(enumerate\|itemize\|thebibliography\)\s*}', '', '\\end\s*{\s*\%(enumerate\|itemize\|thebibliography\)\s*}', 'bnW')
     let saved_pos	= getpos(".")
+    let g:saved_pos	= copy(saved_pos)
     call cursor(line("."), 1)
 
     if g:atp_debugInsertItem
@@ -393,7 +440,8 @@ function! InsertItem()
 
     if getline(begin_line) =~ '\\begin\s*{\s*thebibliography\s*}'
 	call cursor(saved_pos[1], saved_pos[2])
-	let new_line	= strpart(getline("."), 0, col(".")) . '\bibitem' . strpart(getline("."), col("."))
+	let col = ( col(".") == 1 ? 0 : col("."))
+	let new_line	= strpart(getline("."), 0, col) . '\bibitem' . strpart(getline("."), col)
 	call setline(line("."), new_line)
 
 	" Indent the line:
@@ -410,8 +458,10 @@ function! InsertItem()
 	    indent	= -1
 	    ind 	=  matchstr(getline("."), '^\s*')
 	endif
+	let indent_old = len(matchstr(getline("."), '^\s*'))
 	call setline(line("."), ind . substitute(getline("."), '^\s*', '', ''))
-	let saved_pos[2]	+= len('\bibitem') + indent
+	let a= (saved_pos[2]==1 ? -1 : 0 )
+	let saved_pos[2]	+= len('\bibitem') + indent - indent_old + a
 	call cursor(saved_pos[1], saved_pos[2])
 
 	if g:atp_debugInsertItem
@@ -424,12 +474,14 @@ function! InsertItem()
 
     " This will work with \item [[1]], but not with \item [1]]
     let [ bline, bcol]	= searchpos('\\item\s*\zs\[', 'b', begin_line) 
+    let g:bline = bline
     if bline == 0
 	call cursor(saved_pos[1], saved_pos[2])
+	let col= (col(".") == 1 ? 0 : col("."))
 	if search('\\item\>', 'nb', begin_line)
-	    let new_line	= strpart(getline("."), 0, col(".")) . '\item '. strpart(getline("."), col("."))
+	    let new_line	= strpart(getline("."), 0, col) . '\item '. strpart(getline("."), col)
 	else
-	    let new_line	= strpart(getline("."), 0, col(".")) . '\item'. strpart(getline("."), col("."))
+	    let new_line	= strpart(getline("."), 0, col) . '\item'. strpart(getline("."), col)
 	endif
 	call setline(line("."), new_line)
 
@@ -450,10 +502,11 @@ function! InsertItem()
 	if g:atp_debugInsertItem
 	    silent echo "1] indent=".len(ind)
 	endif
+	let indent_old = len(matchstr(getline("."), '^\s*'))
 	call setline(line("."), ind . substitute(getline("."), '^\s*', '', ''))
 
 	" Set the cursor position
-	let saved_pos[2]	+= len('\item') + indent
+	let saved_pos[2]	+= len('\item') + indent - indent_old
 	keepjumps call setpos(".", saved_pos)
 
 	if g:atp_debugInsertItem
@@ -517,7 +570,9 @@ function! InsertItem()
 
     keepjumps call setpos(".", saved_pos)
 
-    let new_line	= strpart(getline("."), 0, col(".")) . '\item' . space . '[' . new_item . '] ' . strpart(getline("."), col("."))
+    let col = (col(".")==1 ? 0 : col("."))
+    let new_line	= strpart(getline("."), 0, col) . '\item' . space . '[' . new_item . '] ' . strpart(getline("."), col)
+    let g:new_line = new_line
     if g:atp_debugInsertItem
 	silent echo "new_line=".new_line
     endif
@@ -539,10 +594,11 @@ function! InsertItem()
     if g:atp_debugInsertItem
 	silent echo "indent=".len(ind)
     endif
+    let indent_old = len(matchstr(getline("."), '^\s*'))
     call setline(line("."), ind . substitute(getline("."), '^\s*', '', ''))
 
     " Set the cursor position
-    let saved_pos[2]	+= len('\item' . space . '[' . new_item . ']') + indent
+    let saved_pos[2]	+= len('\item' . space . '[' . new_item . ']') + indent - indent_old
     keepjumps call setpos(".", saved_pos)
 
 
@@ -802,7 +858,7 @@ endtry "}}}
 " b:atp_LocalEnvironments variable.
 function! EnvCompletion(ArgLead, CmdLine, CursorPos) "{{{
     if !exists("b:atp_LocalEnvironments")
-	LocalCommands
+	call LocalCommands(1)
     endif
 
     let env_list = copy(b:atp_LocalEnvironments)
@@ -816,7 +872,7 @@ function! EnvCompletion(ArgLead, CmdLine, CursorPos) "{{{
 endfunction "}}}
 function! EnvCompletionWithoutStarEnvs(ArgLead, CmdLine, CursorPos) "{{{
     if !exists("b:atp_LocalEnvironments")
-	LocalCommands
+	call LocalCommands(1)
     endif
 
     let env_list = copy(b:atp_LocalEnvironments)
@@ -831,14 +887,14 @@ endfunction "}}}
 function! F_compl(ArgLead, CmdLine, CursorPos) "{{{
     " This is like EnvCompletion but without stared environments and with: chapter, section, ...
     if !exists("b:atp_LocalEnvironments")
-	LocalCommands
+	call LocalCommands(1)
     endif
 
     let env_list = copy(b:atp_LocalEnvironments)
     " add standard and ams environment if not present.
     let env_list=atplib#Extend(env_list, g:atp_Environments)
     let env_list=atplib#Extend(env_list, ['part', 'chapter', 'section', 'subsection', 'subsubsection'])
-    if atplib#SearchPackage('amsmath')
+    if atplib#SearchPackage('amsmath') || atplib#SearchPackage('amsthm')
 	let env_list=atplib#Extend(env_list, g:atp_amsmath_environments)
     endif
     call filter(env_list+['math'], "v:val !~ '\*$'")
@@ -1504,7 +1560,7 @@ let g:atp_open_completion = []
 " {{{ ToDo
 "
 " TODO if the file was not found ask to make one.
-function! ToDo(keyword,stop,...)
+function! ToDo(keyword, stop, bang, ...)
 
     if a:0 == 0
 	let bufname	= bufname("%")
@@ -1512,14 +1568,16 @@ function! ToDo(keyword,stop,...)
 	let bufname	= a:1
     endif
 
+    let b_pat	= ( a:bang == "!" ? '' : '^\s*' )
+
     " read the buffer
-    let texfile=getbufline(bufname, 1, "$")
+    let texfile	= getbufline(bufname, 1, "$")
 
     " find ToDos
     let todo = {}
     let nr=1
     for line in texfile
-	if line =~ '%.*' . a:keyword 
+	if line =~ b_pat.'%\s*' . a:keyword 
 	    call extend(todo, { nr : line }) 
 	endif
 	let nr += 1
@@ -1528,21 +1586,21 @@ function! ToDo(keyword,stop,...)
     " Show ToDos
     echohl atp_Todo
     if len(keys(todo)) == 0
-	echomsg "[ATP:] list for '%.*" . a:keyword . "' in '" . bufname . "' is empty."
+	echomsg "[ATP:] list for ".b_pat."'%\s*" . a:keyword . "' in '" . bufname . "' is empty."
 	return
     endif
-    echomsg "[ATP:] list for '%.*" . a:keyword . "' in '" . bufname . "':"
+    echomsg "[ATP:] list for ".b_pat."'%\s*" . a:keyword . "' in '" . bufname . "':"
     let sortedkeys=sort(keys(todo), "atplib#CompareNumbers")
     for key in sortedkeys
 	" echo the todo line.
-	echomsg key . " " . substitute(substitute(todo[key],'%','',''),'\t',' ','g')
+	echo key . " " . substitute(substitute(todo[key],'%','',''),'\t',' ','g')
 	let true	= 1
 	let a		= 1
 	let linenr	= key
 	" show all comment lines right below the found todo line.
-	while true && texfile[linenr] !~ '%.*\c\<todo\>' 
+	while true && texfile[linenr] !~ b_pat.'%\s*\c\<todo\>' 
 	    let linenr=key+a-1
-	    if texfile[linenr] =~ '\s*%' && texfile[linenr] !~ a:stop
+	    if texfile[linenr] =~ b_pat.'\s*%' && texfile[linenr] !~ a:stop
 		" make space of length equal to len(linenr)
 		let space=""
 		let j=0
@@ -1550,7 +1608,7 @@ function! ToDo(keyword,stop,...)
 		    let space=space . " " 
 		    let j+=1
 		endwhile
-		echomsg space . " " . substitute(substitute(texfile[linenr],'%','',''),'\t',' ','g')
+		echo space . " " . substitute(substitute(texfile[linenr],'%','',''),'\t',' ','g')
 	    else
 		let true = 0
 	    endif
@@ -1571,7 +1629,7 @@ function! <SID>ReloadATP(bang)
     let common_file	= globpath(&rtp, 'ftplugin/ATP_files/common.vim')
     let options_file	= globpath(&rtp, 'ftplugin/ATP_files/options.vim')
     let g:atp_reload_functions = ( a:bang == "!" ? 1 : 0 ) 
-    let g:atp_reload_variables = 0
+    let g:atp_reload_variables = 1
     if a:bang == ""
 	execute "source " . common_file
 	execute "source " . options_file 
@@ -1663,6 +1721,7 @@ function! <SID>GetAMSRef(what, bibfile)
  
     " Get data from AMS web site.
     let atpbib_WgetOutputFile = tempname()
+    let g:atpbib_WgetOutputFile = atpbib_WgetOutputFile
     let URLquery_path = globpath(&rtp, 'ftplugin/ATP_files/url_query.py')
     if a:bibfile != "nobibfile"
 	let url="http://www.ams.org/mathscinet-mref?ref=".what."&dataType=bibtex"
@@ -1737,6 +1796,7 @@ function! <SID>GetAMSRef(what, bibfile)
 	catch /E480:/
 	endtry
 	let data = getloclist(0)
+	let g:data = data
 	if !len(data) 
 	    echohl WarningMsg
 	    echomsg "[ATP:] nothing found."
@@ -1745,13 +1805,26 @@ function! <SID>GetAMSRef(what, bibfile)
 	elseif len(data) > 1
 	    echoerr "ATP Error: AMSRef vimgrep pattern error. You can send a bug report. Please include the exact :ATPRef command." 
 	endif
-	let bibref = '\bibitem{} ' . matchstr(data[0]['text'], '^<tr><td align="left">\zs.*\ze<\/td><\/tr>')
+	let bib_data = data[0]['text']
+	let ams_file = readfile(atpbib_WgetOutputFile)
+	if bib_data !~ '<\/td><\/tr>'
+	    let lnr	= data[0]['lnum']
+	    while bib_data !~ '<\/td><\/tr>'
+		let lnr+=1
+		let line = ams_file[lnr-1]
+		echo line
+		let bib_data .= line
+	    endwhile
+	endif
+	let g:bib_data = bib_data
+
+	let bibref = '\bibitem{} ' . matchstr(bib_data, '^<tr><td align="left">\zs.*\ze<\/td><\/tr>')
 	let g:atp_bibref = bibref
-	exe "let @" . g:atp_bibrefRegister . ' = "' . escape(bibref, '\') . '"'
+	exe "let @" . g:atp_bibrefRegister . ' = "' . escape(bibref, '\"') . '"'
 	let bibdata = [ bibref ]
     endif
     let g:atp_bibdata = bibdata
-    call delete(atpbib_WgetOutputFile)
+"     call delete(atpbib_WgetOutputFile)
     return bibdata
 endfunction
 catch /E127/
@@ -1772,7 +1845,6 @@ function! AMSRef(bang, what)
     let return=<SID>GetAMSRef(a:what, bibfile)
 "     let g:bang=a:bang
 "     let g:bibfile=bibfile
-"     let g:return=return
     if a:bang == "" && bibfile != "nobibfile" && return != [0] && return != ['NoUniqueMatch']
 	silent! w
 	silent! bd
@@ -2325,8 +2397,9 @@ nnoremap <silent> <buffer> 	<Plug>ToggleEnvBackward		:call <SID>ToggleEnvironmen
 nnoremap <silent> <buffer> 	<Plug>ChangeEnv			:call <SID>ToggleEnvironment(1)<CR>
 nnoremap <silent> <buffer> 	<Plug>TexDoc			:TexDoc 
 " Commands: "{{{1
+command! -buffer -nargs=* SetUpdateTime				:call <SID>UpdateTime(<f-args>)
 command! -buffer -nargs=* -complete=file Wdiff			:call <SID>Wdiff(<f-args>)
-command! -buffer -nargs=* -range WrapSelection			:call <SID>WrapSelection(<f-args>)
+command! -buffer -nargs=* -complete=custom,WrapSelection_compl -range Wrap			:call <SID>WrapSelection(<f-args>)
 command! -buffer -nargs=? -complete=customlist,EnvCompletion -range WrapEnvironment		:call <SID>WrapEnvironment(<f-args>)
 command! -buffer -nargs=? -range InteligentWrapSelection	:call <SID>InteligentWrapSelection(<args>)
 command! -buffer	TexAlign				:call TexAlign()
@@ -2351,11 +2424,11 @@ command! -buffer 	ListPrinters				:echo <SID>ListPrinters("", "", "")
 " List Packages:
 command! -buffer 	ShowPackages				:let b:atp_PackageList = atplib#GrepPackageList() | echo join(b:atp_PackageList, "\n")
 if &l:cpoptions =~# 'B'
-    command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\c\<to\s*do\>','\s*%\c.*\<note\>',<f-args>)
-    command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\c\<note\>','\s*%\c.*\<to\s*do\>',<f-args>)
+    command! -buffer -nargs=? -complete=buffer -bang ToDo			:call ToDo('\c\<to\s*do:\>','\s*%\s*$\|\s*%\c.*\<note:\>',<q-bang>, <f-args>)
+    command! -buffer -nargs=? -complete=buffer -bang Note			:call ToDo('\c\<note:\>','\s*%\s*$\|\s*%\c.*\<to\s*do:\>', <q-bang>, <f-args>)
 else
-    command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\\c\\<to\\s*do\\>','\\s*%\\c.*\\<note\\>',<f-args>)
-    command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\\c\\<note\\>','\\s*%\\c.*\\<to\\s*do\\>',<f-args>)
+    command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\\c\\<to\\s*do:\\>','\\s*%\\s*$\\|\\s*%\\c.*\\<note:\\>',<f-args>)
+    command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\\c\\<note:\\>','\\s*%\\s*$\\|\\s*%\\c.*\\<to\\s*do:\\>',<f-args>)
 endif
 command! -buffer ReloadATP					:call <SID>ReloadATP("!")
 command! -bang -buffer -nargs=1 AMSRef				:call AMSRef(<q-bang>, <q-args>)

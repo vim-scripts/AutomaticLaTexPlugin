@@ -93,7 +93,9 @@ function! s:maketoc(filename)
     endfor
 
     let s:filtered	= filter(deepcopy(texfile), 'v:val =~ filter')
+    let line_number = -1
     for line in s:filtered
+	let line_number+=1
 	for section in keys(g:atp_sections)
 	    if line =~ g:atp_sections[section][0] 
 		if line !~ '^\s*\\\@<!%'
@@ -102,6 +104,25 @@ function! s:maketoc(filename)
 		    " 'Abstract' will be plased, as we know what we have
 		    " matched
 		    let title	= line
+" This is an attempt to join consecutive lines iff the title is spanned
+" through more than one line.
+" s:filtered doesn't is not the same as texfile!!!
+" we should use texfile, but for this we need to know the true line numbers,
+" they should be around though.
+" 		    let open=count(split(title, '\zs'), '{')
+" 		    let closed=count(split(title, '\zs'), '}')
+" 		    let i=0
+" 		    if open!=closed
+" 			echomsg "XXXXXXX"
+" 			echomsg title
+" 		    endif
+" 		    while open!=closed && line_number+i+2<=len(s:filtered)
+" 			echomsg i." ".s:filtered[line_number+i]
+" 			let i+=1 
+" 			let open+=count(split(s:filtered[line_number+i], '\zs'), '{')
+" 			let closed+=count(split(s:filtered[line_number+i], '\zs'), '}')
+" 			let title.=" ".substitute(s:filtered[line_number+i], '^\s*', '', '')
+" 		    endwhile
 
 		    " test if it is a starred version.
 		    let star=0
@@ -137,6 +158,7 @@ function! s:maketoc(filename)
 			endif
 		    endwhile	
 		    let title = strpart(title,0,i)
+		    let title = substitute(title, '[{}]\|\\titlefont\|\\hfill\=\|\\hrule\|\\[vh]space\s*{[^}]\+}', '', 'g')
 
 		    " Section Number:
 		    " if it is not starred version add one to the section number
@@ -156,7 +178,7 @@ function! s:maketoc(filename)
 			let indsection		= 0
 			let indsubsection	= 0
 			let indsubsubsection	= 0
-		    elseif section ==  'section'
+		    elseif section ==  'section' || section == 'frame'
 			let indsubsection	= 0
 			let indsubsubsection	= 0
 		    elseif section ==  'subsection'
@@ -270,16 +292,13 @@ function! RemoveFromToC(file)
 	silent! call remove(t:atp_toc,which)
     endif
     let winnr=winnr()
-    call <SID>TOC("!", 0)
+    if index(map(tabpagebuflist(), 'bufname(v:val)'), '__ToC__') != -1
+	call <SID>TOC("!", 0)
+    endif
     exe winnr."wincmd w"
 endfunction
 function! RemoveFromToCComp(A, B, C)
-    if exists("b:atp_MainFile")
-	let list = filter(copy(t:atp_toc_buflist), "v:val != fnamemodify(b:atp_MainFile, ':p')")
-    else
-	let list = copy(t:atp_toc_buflist)
-    endif
-    return join(list,"\n")
+    return join(t:atp_toc_buflist,"\n")
 endfunction
 " {{{3 s:showtoc
 function! s:showtoc(toc)
@@ -394,7 +413,7 @@ function! s:showtoc(toc)
 		else
 		    call setline (number, showline . "\t" . nr . " " . a:toc[openfile][line][2])
 		endif
-	    elseif a:toc[openfile][line][0] == 'section'
+	    elseif a:toc[openfile][line][0] == 'section' || a:toc[openfile][line][0] == 'frame'
 		let secnr=a:toc[openfile][line][1]
 		if chap_on
 		    let nr=chnr . "." . secnr  
@@ -1059,6 +1078,22 @@ function! <SID>GotoEnvironment(flag,count,...)
     silent! let @/ 	 = pattern
     return ""
 endfunction
+" {{{3 GotoFrame
+function! <SID>GotoFrame(f, count)
+    let g:Count=a:count
+    let lz=&lazyredraw
+    set lazyredraw
+    if a:f == "backward"
+	call <SID>GotoEnvironment('bsW', a:count, 'frame')
+    else
+	call <SID>GotoEnvironment('sW', a:count, 'frame')
+    endif
+    normal! zt
+    let &lz=lz
+endfunction
+nnoremap <Plug>NextFrame	:<C-U>call <SID>GotoFrame('forward', v:count1)<CR>
+nnoremap <Plug>PreviousFrame	:<C-U>call <SID>GotoFrame('backward', v:count1)<CR>
+"{{{3 JumptoEnvironment
 " function! <SID>GotoEnvironmentB(flag,count,...)
 "     let env_name 	= (a:0 >= 1 && a:1 != ""  ? a:1 : '[^}]*')
 "     for i in range(1,a:count)
@@ -1066,7 +1101,7 @@ endfunction
 " 	call <SID>GotoEnvironment(flag,1,env_name)
 "     endfor
 " endfunction
-" Jump over current \begin and go to next one. {{{3
+" Jump over current \begin and go to next one.
 " i.e. if on line =~ \begin => % and then search, else search
 function! <SID>JumptoEnvironment(backward)
     call setpos("''", getpos("."))
@@ -1705,6 +1740,21 @@ endfunction
 function! JMotion(flag)
 " 	Note: pattern to match only commands which do not have any arguments:
 " 	'\(\\\w\+\>\s*{\)\@!\\\w\+\>'
+    let line = getline(".")
+    if a:flag !~# 'b'
+	let pline = strpart(line, col(".")-1)
+	if pline =~ '[{]*}{'
+	    call search('{.', 'e')
+	    return
+	endif
+    else
+	let pline = strpart(line, 0, col("."))
+	if pline =~ '}{'
+	    call search('}{', 'b')
+	    normal! h
+	    return
+	endif
+    endif
     if a:flag !~# 'b'
 	let pattern = '\%(\]\zs\|{\zs\|}\zs\|(\zs\|)\zs\|\[\zs\|\]\zs\|\$\zs\|^\zs\s*$\|\(\\\w\+\>\s*{\)\@!\\\w\+\>\zs\)'
     else

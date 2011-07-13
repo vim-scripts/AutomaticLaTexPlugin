@@ -77,7 +77,7 @@ let g:atp_ProjectGlobalVariables = ['g:atp_LatexPackages', 'g:atp_LatexClasses',
 " Autocommands:
 augroup ATP_ProjectFile
     au!
-    au BufWritePre *.tex.project.vim if has("persistent_undo") | setlocal noundofile | endif
+    au BufEnter *.tex.project.vim if has("persistent_undo") | setlocal noundofile | endif
 augroup END
 
 " Functions: (soure once)
@@ -142,10 +142,10 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
     let cond_A	= get(s:project_Load, expand("%:p"), 0)
     let cond_B	= get(get(s:project_Load, expand("%:p"), []), a:type, 0)
     if empty(expand("%:p"))
-	echohl ErrorMsg
-	echomsg "[ATP LoadScript:] Error : File name is empty. Not loading project script."
-	echohl Normal
 	if g:atp_debugProject
+	    echohl ErrorMsg
+	    echomsg "[ATP LoadProjectScript:] Error : File name is empty. Not loading project script."
+	    echohl Normal
 	    redir END
 	endif
 	return
@@ -535,7 +535,10 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, 
     " Make a list of variables defined in project script
     let defined_variables	= []
     let save_loclist		= getloclist(0)
-    silent! exe 'lvimgrep /^\s*\<let\>\s\+[bg]:/j ' . fnameescape(a:project_script)
+    try
+	silent! exe 'lvimgrep /^\s*\<let\>\s\+[bg]:/j ' . fnameescape(a:project_script)
+    catch E486:
+    endtry
     let defined_variables	= getloclist(0) 
     call map(defined_variables, 'matchstr(v:val["text"], ''^\s*let\s\+\zs[bg]:[^[:blank:]=]*'')') 
     call setloclist(0, save_loclist) 
@@ -661,11 +664,21 @@ function! s:WPSI_comp(ArgLead, CmdLine, CursorPos)
     return filter(['local', 'global'], 'v:val =~ a:ArgLead')
 endfunction 
 "{{{ WriteProjectScript autocommands
+function! <SID>AU_WriteLocalProjectScript()
+    if &filetype =~ 'tex'
+	call s:WriteProjectScript("", b:atp_ProjectScriptFile, g:atp_ProjectLocalVariables, 'local', 1)
+    endif
+endfunction
+function! <SID>AU_WriteGlobalProjectScript()
+    if &filetype =~ 'tex'
+	call s:WriteProjectScript("", s:common_project_script, g:atp_ProjectGlobalVariables, 'global', 1)
+    endif
+endfunction
 augroup ATP_WriteProjectScript 
     au!
     " Before it was VimLeave, write silently.
-    au BufWrite *.tex call s:WriteProjectScript("", b:atp_ProjectScriptFile, g:atp_ProjectLocalVariables, 'local', 1)
-    au BufWrite *.tex call s:WriteProjectScript("", s:common_project_script, g:atp_ProjectGlobalVariables, 'global', 1)
+    au BufUnload *.tex call <SID>AU_WriteLocalProjectScript()
+    au BufUnload *.tex call <SID>AU_WriteGlobalProjectScript()
 augroup END 
 "}}}
 "}}}

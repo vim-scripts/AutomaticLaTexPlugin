@@ -196,7 +196,8 @@ endif
 exe "setlocal complete+=".
 	    \ "k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/greek").
 	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/dictionary").
-	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/SIunits")
+	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/SIunits").
+	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/tikz")
 " The ams_dictionary is added after g:atp_amsmath variable is defined.
 
 " setlocal iskeyword+=\
@@ -253,12 +254,14 @@ let b:atp_running	= 0
 
 " these are all buffer related variables:
 function! <SID>TexCompiler()
-    if buflisted(atplib#FullPath(b:atp_MainFile))
+    if exists("b:atp_TexCompiler")
+	return b:atp_TexCompiler
+    elseif buflisted(atplib#FullPath(b:atp_MainFile))
 	let line = get(getbufline(atplib#FullPath(b:atp_MainFile), 1), 0, "")
 	if line =~ '^%&\w*tex\>'
 	    return matchstr(line, '^%&\zs\w\+')
 	endif
-    else
+    elseif filereadable(atplib#FullPath(b:atp_MainFile))
 	let line = get(readfile(atplib#FullPath(b:atp_MainFile)), 0, "")
 	if line =~ '^%&\w*tex\>'
 	    return matchstr(line, '^%&\zs\w\+')
@@ -274,6 +277,10 @@ let s:optionsDict= {
 		\ "atp_OpenViewer" 		: "1", 		
 		\ "atp_autex" 			: !&l:diff && expand("%:e") == 'tex', 
 		\ "atp_autex_wait"		: 0,
+		\ "atp_updatetime_insert"	: 4000,
+		\ "atp_updatetime_normal"	: 2000,
+		\ "atp_MaxProcesses"		: 3,
+		\ "atp_KillYoungest"		: 0,
 		\ "atp_ProjectScript"		: "1",
 		\ "atp_Viewer" 			: has("win26") || has("win32") || has("win64") || has("win95") || has("win32unix") ? "AcroRd32.exe" : "okular" , 
 		\ "atp_TexFlavor" 		: &l:filetype, 
@@ -367,6 +374,22 @@ lockvar b:atp_autex_wait
 
 " Global Variables: (almost all)
 " {{{ global variables 
+" if !exists("g:atp_imap_put_space") || g:atp_imap_put_space
+" This was not working :(.
+"     let g:atp_imap_put_space 	= 1
+" endif
+if !exists("g:atp_imap_tilde_braces")
+    let g:atp_imap_tilde_braces = 0
+endif
+if !exists("g:atp_imap_diacritics_inteligent") || g:atp_reload_variables
+    let g:atp_imap_diacritics_inteligent = 1
+endif
+if !exists("g:atp_imap_diffop_move") || g:atp_reload_variables
+    let g:atp_imap_diffop_move 	= 0
+endif
+if !exists("g:atp_noautex_in_math") || g:atp_reload_variables
+    let g:atp_noautex_in_math 	= 1
+endif
 if !exists("g:atp_cmap_space") || g:atp_reload_variables
     let g:atp_cmap_space 	= 1
 endif
@@ -406,7 +429,8 @@ if !exists("g:atp_sections") || g:atp_reload_variables
 	\	'subsubsection' : [ '\m^\s*\(\\subsubsection\*\?\>\)',			'\m\\subsubsection\*'	],
 	\	'bibliography' 	: [ '\m^\s*\(\\begin\s*{\s*thebibliography\s*}\|\\bibliography\s*{\)' , 'nopattern'],
 	\	'abstract' 	: [ '\m^\s*\(\\begin\s*{abstract}\|\\abstract\s*{\)',	'nopattern'		],
-	\   	'part'		: [ '\m^\s*\(\\part\*\?\>\)',				'\m\\part\*'		]
+	\   	'part'		: [ '\m^\s*\(\\part\*\?\>\)',				'\m\\part\*'		],
+	\   	'frame'		: [ '\m^\s*\(\\frametitle\*\?\>\)',			'\m\\frametitle\*'	]
 	\ }
 endif
 if !exists("g:atp_cgetfile") || g:atp_reload_variables
@@ -423,6 +447,8 @@ if !exists("g:atp_imap_ShortEnvIMaps") || g:atp_reload_variables
     let g:atp_imap_ShortEnvIMaps = 1
 endif
 if !exists("g:atp_imap_over_leader") || g:atp_reload_variables
+    " I'm not using "'" by default - because it is used quite often in mathematics to
+    " denote symbols.
     let g:atp_imap_over_leader	= "`"
 endif
 if !exists("g:atp_imap_subscript") || g:atp_reload_variables
@@ -574,6 +600,14 @@ if !exists("g:atp_imap_align") || g:atp_reload_variables
 	let g:atp_imap_align="ali"
     endif
 endif
+if !exists("g:atp_imap_multiline") || g:atp_reload_variables
+    " Is not defined by default: ]m, and ]M are used for \(:\) and \[:\].
+    if g:atp_imap_ShortEnvIMaps
+	let g:atp_imap_multiline=""
+    else
+	let g:atp_imap_multiline="lin"
+    endif
+endif
 if !exists("g:atp_imap_abstract") || g:atp_reload_variables
     if g:atp_imap_ShortEnvIMaps
 	let g:atp_imap_abstract="A"
@@ -634,12 +668,12 @@ endif
 if !exists("g:atp_MapSelectComment") || g:atp_reload_variables
     let g:atp_MapSelectComment = "_c"
 endif
-if exists("g:atp_latexpackages") || g:atp_reload_variables
+if exists("g:atp_latexpackages")
     " Transition to nicer name:
     let g:atp_LatexPackages = g:atp_latexpackages
     unlet g:atp_latexpackages
 endif
-if exists("g:atp_latexclasses") || g:atp_reload_variables
+if exists("g:atp_latexclasses")
     " Transition to nicer name:
     let g:atp_LatexClasses = g:atp_latexclasses
     unlet g:atp_latexclasses
@@ -914,14 +948,8 @@ if !exists("g:ViewerMsg_Dict") || g:atp_reload_variables
 		\ 'acroread'		: 'AcroRead',
 		\ 'epdfview'		: 'epdfView' }
 endif
-if !exists("g:atp_updatetime_insert") || g:atp_reload_variables
-    let g:atp_updatetime_insert = 2000
-endif
-if !exists("g:atp_updatetime_normal") || g:atp_reload_variables
-    let g:atp_updatetime_normal = 1000
-endif
-if g:atp_updatetime_normal
-    let &l:updatetime=g:atp_updatetime_normal
+if b:atp_updatetime_normal
+    let &l:updatetime=b:atp_updatetime_normal
 endif
 if !exists("g:atp_DefaultDebugMode") || g:atp_reload_variables
     " recognised values: silent, debug.
@@ -935,17 +963,17 @@ if !exists("g:atp_ignore_unmatched") || g:atp_reload_variables
     " boolean
     let g:atp_ignore_unmatched 	= 1
 endif
-if !exists("g:atp_imap_first_leader") || g:atp_reload_variables
-    let g:atp_imap_first_leader	= "#"
+if !exists("g:atp_imap_leader_1") || g:atp_reload_variables
+    let g:atp_imap_leader_1	= "#"
 endif
-if !exists("g:atp_imap_second_leader") || g:atp_reload_variables
-    let g:atp_imap_second_leader= "##"
+if !exists("g:atp_imap_leader_2") || g:atp_reload_variables
+    let g:atp_imap_leader_2= "##"
 endif
-if !exists("g:atp_imap_third_leader") || g:atp_reload_variables
-    let g:atp_imap_third_leader	= "]"
+if !exists("g:atp_imap_leader_3") || g:atp_reload_variables
+    let g:atp_imap_leader_3	= "]"
 endif
-if !exists("g:atp_imap_fourth_leader") || g:atp_reload_variables
-    let g:atp_imap_fourth_leader= "["
+if !exists("g:atp_imap_leader_4") || g:atp_reload_variables
+    let g:atp_imap_leader_4= "["
 endif
 " todo: to doc.
 if !exists("g:atp_completion_font_encodings") || g:atp_reload_variables
@@ -989,7 +1017,7 @@ if !exists("g:atp_algorithmic_dict") || g:atp_reload_variables
     let g:atp_algorithmic_dict = { 'IF' : 'ENDIF', 'FOR' : 'ENDFOR', 'WHILE' : 'ENDWHILE' }
 endif
 if !exists("g:atp_bracket_dict") || g:atp_reload_variables
-    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']', '\lceil' : '\rceil', '\lfloor' : '\rfloor', '\langle' : '\rangle', '\lgroup' : '\rgroup' }
+    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']', '\lceil' : '\rceil', '\lfloor' : '\rfloor', '\langle' : '\rangle', '\lgroup' : '\rgroup', '<' : '>' }
 endif
 if !exists("g:atp_LatexBox") || g:atp_reload_variables
     let g:atp_LatexBox		= 1
@@ -1013,7 +1041,7 @@ if !exists("g:atp_no_math_command_completion") || g:atp_reload_variables
     let g:atp_no_math_command_completion = 0
 endif
 if !exists("g:atp_tex_extensions") || g:atp_reload_variables
-    let g:atp_tex_extensions	= ["tex.project.vim", "aux", "log", "bbl", "blg", "bcf", "run.xml", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync", "synctex.gz" ]
+    let g:atp_tex_extensions	= ["tex.project.vim", "aux", "_aux", "log", "bbl", "blg", "bcf", "run.xml", "spl", "snm", "nav", "thm", "brf", "out", "toc", "mpx", "idx", "ind", "ilg", "maf", "glo", "mtc[0-9]", "mtc1[0-9]", "pdfsync", "synctex.gz" ]
 endif
 for ext in g:atp_tex_extensions
     let suffixes = split(&suffixes, ",")
@@ -1127,12 +1155,13 @@ if !exists("g:atp_ProjectLocalVariables") || g:atp_reload_variables
     " This is a list of variable names which will be preserved in project files
     let g:atp_ProjectLocalVariables = [
 		\ "b:atp_MainFile", 	"g:atp_mapNn", 		"b:atp_autex", 
-		\ "b:atp_TexCompiler", 	"b:atp_TexFlavor", 	"b:atp_OutDir" , 
-		\ "b:atp_auruns", 	"b:atp_ReloadOnErr", 	"b:atp_OpenViewer", 
-		\ "b:atp_XpdfServer",	"b:atp_ProjectDir", 	"b:atp_Viewer",
-		\ "b:TreeOfFiles",	"b:ListOfFiles", 	"b:TypeDict",
-		\ "b:LevelDict", 	"b:atp_BibCompiler",	"b:atp_StarEnvDefault",
-		\ "b:atp_StarMathEnvDefault"
+		\ "b:atp_TexCompiler", 	"b:atp_TexOptions", 	"b:atp_TexFlavor", 	
+		\ "b:atp_OutDir", 	"b:atp_auruns", 	"b:atp_ReloadOnError", 	
+		\ "b:atp_OpenViewer", 	"b:atp_XpdfServer",	"b:atp_ProjectDir", 	
+		\ "b:atp_Viewer", 	"b:TreeOfFiles",	"b:ListOfFiles", 	
+		\ "b:TypeDict", 	"b:LevelDict", 		"b:atp_BibCompiler", 
+		\ "b:atp_StarEnvDefault", 	"b:atp_StarMathEnvDefault", 
+		\ "b:atp_updatetime_insert", 	"b:atp_updatetime_normal",
 		\ ] 
     if !has("python")
 	call extend(g:atp_ProjectLocalVariables, ["b:atp_LocalCommands", "b:atp_LocalEnvironments", "b:atp_LocalColors"])
@@ -1178,7 +1207,7 @@ function! s:ShowOptions(bang,...)
     echohl WarningMsg
     echo "Local buffer variables:"
     echohl Normal
-    for key in keys(s:optionsDict)
+    for key in sort(keys(s:optionsDict))
 	let space = ""
 	for s in range(mlen-len(key)+1)
 	    let space .= " "
@@ -1207,6 +1236,7 @@ function! s:ShowOptions(bang,...)
 		call add(var_list, var_name)
 	    endif
 	endfor
+	call sort(var_list)
 
 	" Filter only matching variables that exists!
 	call filter(var_list, 'count(var_list, v:val) == 1 && exists(v:val)')
@@ -1218,7 +1248,7 @@ function! s:ShowOptions(bang,...)
 	    endfor
 	    if var_name =~ pattern && var_name !~ '_command\|_amsfonts\|ams_negations\|tikz_\|keywords'
 " 		if patn != '' && var_name !~ patn
-		if index(["g:atp_LatexPackages", "g:atp_LatexClasses", "g:atp_completion_modes", "g:atp_completion_modes_normal_mode", "g:atp_Environments", "g:atp_shortname_dict", "g:atp_MathTools_environments", "g:atp_keymaps", "g:atp_CupsOptions", "g:atp_CompilerMsg_Dict", "g:ViewerMsg_Dict", "g:CompilerMsg_Dict", "g:atp_amsmath_environments"], var_name) == -1 && var_name !~# '^g:atp_Beamer' && var_name !~# '^g:atp_TodoNotes'
+		if index(["g:atp_LatexPackages", "g:atp_LatexClasses", "g:atp_completion_modes", "g:atp_completion_modes_normal_mode", "g:atp_Environments", "g:atp_shortname_dict", "g:atp_MathTools_environments", "g:atp_keymaps", "g:atp_CupsOptions", "g:atp_CompilerMsg_Dict", "g:ViewerMsg_Dict", "g:CompilerMsg_Dict", "g:atp_amsmath_environments", "g:atp_siuinits"], var_name) == -1 && var_name !~# '^g:atp_Beamer' && var_name !~# '^g:atp_TodoNotes'
 		    echo var_name.space.string({var_name})
 		    if len(var_name.space.string({var_name})) > &l:columns
 			echo "\n"
@@ -1380,8 +1410,22 @@ function! <SID>SetXdvi()
 	let g:atp_xdviOptions	+= index(g:atp_xdviOptions, '-editor') != -1 && 
 		    \ ( !exists("b:atp_xdviOptions") || exists("b:atp_xdviOptions") && index(b:atp_xdviOptions,  '-editor') != -1 )
 		    \ ? ["-editor", "'".v:progname." --servername ".v:servername." --remote-wait +%l %f'"] : []
+	if index(g:atp_xdviOptions, '-watchfile') != -1 && 
+	\ ( !exists("b:atp_xdviOptions") || exists("b:atp_xdviOptions") && index(b:atp_xdviOptions,  '-watchfile') != -1 )
+	    let g:atp_xdviOptions += [ '-watchfile', '1' ]
+	endif
+
     else
-	let g:atp_xdviOptions = ["-editor",  "'".v:progname." --servername ".v:servername." --remote-wait +%l %f'"]
+	if ( !exists("b:atp_xdviOptions") || exists("b:atp_xdviOptions") && index(b:atp_xdviOptions,  '-editor') != -1 )
+	    let g:atp_xdviOptions = ["-editor",  "'".v:progname." --servername ".v:servername." --remote-wait +%l %f'"]
+	endif
+	if ( !exists("b:atp_xdviOptions") || exists("b:atp_xdviOptions") && index(b:atp_xdviOptions,  '-watchfile') != -1 )
+	    if exists("g:atp_xdviOptions")
+		let g:atp_xdviOptions += [ '-watchfile', '1' ]
+	    else
+		let g:atp_xdviOptions = [ '-watchfile', '1' ]
+	    endif
+	endif
     endif
 
     map <buffer> <LocalLeader>rs				:call RevSearch()<CR>
@@ -1847,7 +1891,12 @@ let g:atp_completion_modes=[
 	    \ 'beamerthemes', 		'beamerinnerthemes',
 	    \ 'beamerouterthemes', 	'beamercolorthemes',
 	    \ 'beamerfontthemes',	'todonotes',
-	    \ 'siunits' ]
+	    \ 'siunits',		'includegraphics',
+	    \ 'color names',		'page styles',
+	    \ 'page numberings',	'abbreviations',
+	    \ 'package options', 	'documentclass options',
+	    \ 'package options values'
+	    \ ]
 lockvar 2 g:atp_completion_modes
 catch /E741:/
 endtry
@@ -1862,6 +1911,7 @@ endif
 " By defualt all completion modes are ative.
 if !exists("g:atp_completion_active_modes") || g:atp_reload_variables
     let g:atp_completion_active_modes=deepcopy(g:atp_completion_modes)
+"     call filter(g:atp_completion_active_modes, "v:val != 'tikzpicture keywords'")
 endif
 if !exists("g:atp_completion_active_modes_normal_mode") || g:atp_reload_variables
     let g:atp_completion_active_modes_normal_mode=deepcopy(g:atp_completion_modes_normal_mode)
@@ -1964,22 +2014,24 @@ endif
 	\ "\\noindent", "\\normalfont", "\normalsize", "\\normalsize", "\\normal", 
 	\ "\hfil", "\\hfill", "\\hspace","\\hline", 
 	\ "\\large", "\\Large", "\\LARGE", "\\huge", "\\HUGE",
-	\ "\\overline{", "\\underline{", 
+	\ "\\underline{", 
 	\ "\\usefont{", "\\fontsize{", "\\selectfont", "\\fontencoding{", "\\fontfamiliy{", "\\fontseries{", "\\fontshape{",
+	\ "\\familydefault", 
 	\ "\\rmdefault", "\\sfdefault", "\\ttdefault", "\\bfdefault", "\\mddefault", "\\itdefault",
 	\ "\\sldefault", "\\scdefault", "\\updefault",  "\\renewcommand{", "\\newcommand{",
-	\ "\\input", "\\include", "\\includeonly", "\\includegraphics",  
+	\ "\\input", "\\include{", "\\includeonly{", "\\includegraphics{",  
 	\ "\\savebox", "\\sbox", "\\usebox", "\\rule", "\\raisebox{", "\\rotatebox{",
 	\ "\\parbox{", "\\mbox{", "\\makebox{", "\\framebox{", "\\fbox{",
 	\ "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", "\\vbox",
-	\ "\\hrulefill", "\\dotfill", "\\hbox",
+	\ "\\hrule", "\\hrulefill", "\\dotfill", "\\hbox",
 	\ "\\thispagestyle{", "\\mathnormal", "\\markright{", "\\markleft{", "\\pagestyle{", "\\pagenumbering{",
 	\ "\\author{", "\\address{", "\\date{", "\\thanks{", "\\title{",
 	\ "\\maketitle",
 	\ "\\marginpar", "\\indent", "\\par", "\\sloppy", "\\pagebreak", "\\nopagebreak",
 	\ "\\newpage", "\\newline", "\\newtheorem{", "\\linebreak", "\\line", "\\linespread{",
 	\ "\\hyphenation{", "\\fussy", "\\eject",
-	\ "\\enlagrethispage{", "\\clearpage", "\\cleardoublepage",
+	\ "\\enlagrethispage{", "\\centerline{", "\\centering", "\\clearpage", "\\cleardoublepage",
+	\ "\\encodingdefault", 
 	\ "\\caption{",
 	\ "\\opening{", "\\name{", "\\makelabels{", "\\location{", "\\closing{", 
 	\ "\\signature{", "\\stopbreaks", "\\startbreaks",
@@ -1989,7 +2041,8 @@ endif
 	\ "\\newlength{", "\\setlength{", "\\addtolength{", "\\settodepth{", "\\nointerlineskip", 
 	\ "\\addcontentsline{", "\\addtocontents",
 	\ "\\settoheight{", "\\settowidth{", "\\stretch{",
-	\ "\\width", "\\height", "\\depth", "\\totalheight",
+	\ "\\seriesdefault", "\\shapedefault",
+	\ "\\width", "\\height", "\\depth", "\\todo", "\\totalheight",
 	\ "\\footnote{", "\\footnotemark", "\\footnotetetext", 
 	\ "\\bibliography{", "\\bibliographystyle{", "\\baselineskip",
 	\ "\\flushbottom", "\\onecolumn", "\\raggedbottom", "\\twocolumn",  
@@ -1998,7 +2051,7 @@ endif
 	\ "\\topmargin", "\\oddsidemargin", "\\evensidemargin", "\\headheight", "\\headsep", 
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
 	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
-	\ "\\tableofcontents", "\\newfont{", "\\phantom",
+	\ "\\tableofcontents", "\\newfont{", "\\phantom{",
 	\ "\\DeclareRobustCommand", "\\DeclareFixedFont", "\\DeclareMathSymbol", 
 	\ "\\DeclareTextFontCommand", "\\DeclareMathVersion", "\\DeclareSymbolFontAlphabet",
 	\ "\\DeclareMathDelimiter", "\\DeclareMathAccent", "\\DeclareMathRadical",
@@ -2010,18 +2063,10 @@ endif
 		    \"\\framebox(", "\\line(", "\\linethickness{",
 		    \ "\\makebox(", "\\\multiput(", "\\oval(", "\\put", 
 		    \ "\\shortstack", "\\vector(" ]
-	let g:atp_hyperref_commands=[ '\hypersetup{', '\hypertarget{', '\url{', '\nolinkurl{', '\hyperbaseurl{', 
-		    \ '\hyperdef{', '\hyperref', '\hyperlink{', '\phantomsection', '\autoref{', '\autopageref{', 
-		    \ '\ref*{', '\autoref*{', '\autopageref*{', '\pdfstringdef{', '\pdfbookmark', 
-		    \ '\curretnpdfbookmark{', '\subpdfbookmark{', '\subpdfbookmark{', '\belowpdfbookmark{',
-		    \ '\texorpdfstring{', '\hypercalcbp', '\Acrobatmenu{', 
-		    \ '\textField', '\CheckBox', '\ChoiceMenu', '\PushButton', '\Submit', '\Reset',
-		    \ '\LayoutTextField', '\LayoutChoiceField', '\LayoutCheckField', '\MakeRadioField{', 
-		    \ '\MakeCheckField{', '\MakeTextField{', '\MakeChoiceField{', '\MakeButtonField{' ]
 	" ToDo: end writting layout commands. 
 	" ToDo: MAKE COMMANDS FOR PREAMBULE.
 
-	let g:atp_math_commands=["\\forall", "\\exists", "\\emptyset", "\\aleph", "\\partial",
+	let g:atp_math_commands=["\\begin{", "\\end{", "\\forall", "\\exists", "\\emptyset", "\\aleph", "\\partial",
 	\ "\\nabla", "\\Box", "\\bot", "\\top", "\\flat", "\\natural",
 	\ "\\mathbf{", "\\mathsf{", "\\mathrm{", "\\mathit{", "\\mathtt{", "\\mathcal{", 
 	\ "\\mathop{", "\\mathversion", "\\limits", "\\text{", "\\leqslant", "\\leq", "\\geqslant", "\\geq",
@@ -2029,7 +2074,7 @@ endif
 	\ "\\rightarrow", "\\Rightarrow", "\\leftarrow", "\\Leftarrow", "\\infty", "\\iff", 
 	\ "\\oplus", "\\otimes", "\\odot", "\\oint",
 	\ "\\leftrightarrow", "\\Leftrightarrow", "\\downarrow", "\\Downarrow", 
-	\ "\\overline", "\\underline", "\\overbrace{", "\\Uparrow",
+	\ "\\overline{", "\\underline{", "\\overbrace{", "\\Uparrow",
 	\ "\\Longrightarrow", "\\longrightarrow", "\\Longleftarrow", "\\longleftarrow",
 	\ "\\overrightarrow{", "\\overleftarrow{", "\\underrightarrow{", "\\underleftarrow{",
 	\ "\\uparrow", "\\nearrow", "\\searrow", "\\swarrow", "\\nwarrow", "\\mapsto", "\\longmapsto",
@@ -2037,23 +2082,24 @@ endif
 	\ "\\sum", "\\bigsum", "\\cup", "\\bigcup", "\\cap", "\\bigcap", 
 	\ "\\prod", "\\coprod", "\\bigvee", "\\bigwedge", "\\wedge",  
 	\ "\\int", "\\bigoplus", "\\bigotimes", "\\bigodot", "\\times",  
-	\ "\\smile", "\\frown", 
-	\ "\\dashv", "\\vdash", "\\vDash", "\\Vdash", "\\models", "\\sim", "\\simeq", 
+	\ "\\smile",
+	\ "\\dashv", "\\vdash", "\\vDash", "\\Vert", "\\Vdash", "\\models", "\\sim", "\\simeq", 
 	\ "\\prec", "\\preceq", "\\preccurlyeq", "\\precapprox", "\\mid",
 	\ "\\succ", "\\succeq", "\\succcurlyeq", "\\succapprox", "\\approx", 
 	\ "\\ldots", "\\cdot", "\\cdots", "\\vdots", "\\ddots", "\\circ", 
 	\ "\\thickapprox", "\\cong", "\\bullet",
 	\ "\\lhd", "\\unlhd", "\\rhd", "\\unrhd", "\\dagger", "\\ddager", "\\dag", "\\ddag", 
+	\ "\\varinjlim", "\\varprojlim",
 	\ "\\vartriangleright", "\\vartriangleleft", 
 	\ "\\triangle", "\\triangledown", "\\trianglerighteq", "\\trianglelefteq",
-	\ "\\copyright", "\\textregistered", "\\puonds",
+	\ "\\copyright", "\\textregistered", "\\pounds",
 	\ "\\big", "\\Big", "\\Bigg", "\\huge", 
 	\ "\\bigr", "\\Bigr", "\\biggr", "\\Biggr",
 	\ "\\bigl", "\\Bigl", "\\biggl", "\\Biggl", 
 	\ "\\hat", "\\grave", "\\bar", "\\acute", "\\mathring", "\\check", 
 	\ "\\dots", "\\dot", "\\vec", "\\breve",
 	\ "\\tilde", "\\widetilde" , "\\widehat", "\\ddot", 
-	\ "\\sqrt", "\\frac", "\\binom{", "\\cline", "\\vline", "\\hline", "\\multicolumn{", 
+	\ "\\sqrt{", "\\frac{", "\\binom{", "\\cline", "\\vline", "\\hline", "\\multicolumn{", 
 	\ "\\nouppercase", "\\sqsubseteq", "\\sqsubset", "\\sqsupseteq", "\\sqsupset", 
 	\ "\\square", "\\blacksquare",  
 	\ "\\nexists", "\\varnothing", "\\Bbbk", "\\circledS", 
@@ -2070,10 +2116,12 @@ endif
 	\ "\\langle", "\\rangle", "\\Diamond", "\\lgroup", "\\rgroup", "\\propto", "\\Join", "\\div", 
 	\ "\\land", "\\star", "\\uplus", "\\leadsto", "\\rbrack", "\\lbrack", "\\mho", 
 	\ "\\diamondsuit", "\\heartsuit", "\\clubsuit", "\\spadesuit", "\\top", "\\ell", 
-	\ "\\imath", "\\jmath", "\\wp", "\\Im", "\\Re", "\\prime", "\\ll", "\\gg" ]
+	\ "\\imath", "\\jmath", "\\wp", "\\Im", "\\Re", "\\prime", "\\ll", "\\gg", "\\Nabla" ]
 
 	let g:atp_math_commands_PRE=[ "\\diagdown", "\\diagup", "\\subset", "\\subseteq", "\\supset", "\\supsetneq",
-		    \ "\\sharp", "\\underline", "\\underbrace{",  ]
+		    \ "\\sharp", "\\underline{", "\\underbrace{",  ]
+
+	let g:atp_greek_letters = ['\alpha', '\beta', '\chi', '\delta', '\epsilon', '\phi', '\gamma', '\eta', '\iota', '\kappa', '\lambda', '\mu', '\nu', '\theta', '\pi', '\rho', '\sigma', '\tau', '\upsilon', '\vartheta', '\xi', '\psi', '\zeta', '\Delta', '\Phi', '\Gamma', '\Lambda', '\Mu', '\Theta', '\Pi', '\Sigma', '\Tau', '\Upsilon', '\Omega', '\Psi']
 
 	" commands defined by the user in input files.
 	" ToDo: to doc.
@@ -2110,7 +2158,7 @@ endif
 		    \ "\\nsupseteqq", "\\subsetneqq", "\\supsetneqq", "\\nsucceqq", "\\precneqq", "\\succneqq" ] 
 
 	" ToDo: add more amsmath commands.
-	let g:atp_amsmath_commands=[ "\\boxed", "\\intertext", "\\multiligngap", "\\shoveleft{", "\\shoveright{", "\\notag", "\\tag", 
+	let g:atp_amsmath_commands=[ "\\boxed", "\\intertext{", "\\multiligngap", "\\shoveleft{", "\\shoveright{", "\\notag", "\\tag", 
 		    \ "\\notag", "\\raistag{", "\\displaybreak", "\\allowdisplaybreaks", "\\numberwithin{",
 		    \ "\\hdotsfor{" , "\\mspace{",
 		    \ "\\negthinspace", "\\negmedspace", "\\negthickspace", "\\thinspace", "\\medspace", "\\thickspace",
@@ -2265,7 +2313,7 @@ endif
 		    \ '\hyperlinksound', '\hyperlinkmute',
 		    \ '\usetheme', '\usecolortheme', '\usefonttheme', '\useinnertheme', '\useoutertheme',
 		    \ '\usefonttheme', '\note', '\AtBeginNote', '\AtEndNote', '\setbeameroption{',
-		    \ '\setbeamerfont{', '\mode' ]
+		    \ '\setbeamerfont{', "\\setbeamertemplate{", '\mode', '\insertframetitle' ]
 
 	let g:atp_BeamerThemes = [ "default", "boxes", "Bergen", "Boadilla", "Madrid", "AnnArbor", 
 		    \ "CambridgeUS", "Pittsburgh", "Rochester", "Antibes", "JuanLesPins", "Montpellier", 
@@ -2280,20 +2328,6 @@ endif
 		    \ "dolphin" ]
 	let g:atp_BeamerFontThemes = [ "default", "serif", "structurebold", "structureitalicserif",
 		    \ "structuresmallcapsserif" ]
-
-	let g:atp_MathTools_math_commands = [ '\cramped', '\crampedllap', '\crampedclap', '\crampedrlap', '\smashoperator',
-		    \ '\adjustlimits', '\newtagform{', '\usetagform{', '\renewtagform{', 
-		    \ '\xleftrightarrow', '\xRightarrow', '\xLeftarrow', '\xLeftrightarrow', 
-		    \ '\xhookleftarrow', '\xhookrightarrow', '\xmapsto', '\underbracket', '\overbracket',
-		    \ '\LaTeXunderbrace', '\LaTeXoverbrace', '\Aboxed', '\ArrowBetweenLines', '\ArrowBetweenLines*',
-		    \ '\shortintertext', '\lparen', '\rparen', '\vcentcolon', 
-		    \ '\ordinarycolon', '\mathtoolsset{', '\prescript',
-		    \ '\newgathered', '\renewgathered', '\splitfrac{', '\splitdfrac{' ]
-	let g:atp_MathTools_commands = [ '\DeclarePairedDelimiter{', '\DeclarePairedDelimiterX{' ]
-
-	let g:atp_MathTools_environments = [ 'matrix*', 'pmatrix*', 'bmatrix*', 'Bmatrix*', 'vmatrix*', 'Vmatrix*', 
-		    \ 'multilined', 'dcases', 'dcases*', 'rcases', 'rcases*', 'drcases*', 'cases*', 'spreadlines',
-		    \ 'lgathered', 'rgathered' ]
 
 	let g:atp_TodoNotes_commands = [ '\todo{', '\listoftodos', '\missingfigure' ] 
 	let g:atp_TodoNotes_todo_options = 
@@ -2376,6 +2410,21 @@ let g:atp_siuinits= [
  \ '\yottad', '\zepto', '\zeptod', '\zetta', '\zettad' ]
  " }}}
 
+" Read Package/Documentclass Files {{{
+let time=reltime()
+let package_files = split(globpath(&rtp, "ftplugin/ATP_files/packages/*"), "\n")
+let g:atp_packages = map(copy(package_files), 'fnamemodify(v:val, ":t:r")')
+for file in package_files
+    " We cannot restrict here to not source some files - because the completion
+    " variables might be needed later. I need to find another way of using this files
+    " as additional scripts running syntax ... commands for example only if the
+    " packages are defined.
+    execute "source ".file
+endfor
+let g:source_time_package_files=reltimestr(reltime(time))
+
+" }}}
+
 " AUTOCOMMANDS:
 " Some of the autocommands (Status Line, LocalCommands, Log File):
 " {{{ Autocommands:
@@ -2413,11 +2462,11 @@ if !s:did_options
 	au InsertLeave *.tex 	:call <SID>InsertLeave_InsertEnter()
     augroup END
 
-    augroup ATP_Cmdwin
-	au!
-	au CmdwinLeave / :call ATP_CmdwinToggleSpace(0)
-	au CmdwinLeave ? :call ATP_CmdwinToggleSpace(0)
-    augroup END
+"     augroup ATP_Cmdwin
+" 	au!
+" 	au CmdwinLeave / if expand("<afile>") == "/"|:call ATP_CmdwinToggleSpace(0)|:endif
+" 	au CmdwinLeave ? if expand("<afile>") == "/"|:call ATP_CmdwinToggleSpace(0)|:endif
+"     augroup END
 
     augroup ATP_cmdheight
 	" update g:atp_cmdheight when user writes the buffer
@@ -2447,7 +2496,11 @@ endfunction
 
     function! ErrorMsg(type)
 	let errors		= len(filter(getqflist(),"v:val['type']==a:type"))
-	let type		= (a:type == 'E' ? 'errors' : 'warnnings')
+	if errors > 1
+	    let type		= (a:type == 'E' ? 'errors' : 'warnnings')
+	else
+	    let type		= (a:type == 'E' ? 'error' : 'warnning')
+	endif
 	let msg			= ""
 	if errors
 	    let msg.=" ".errors." ".type
@@ -2483,16 +2536,16 @@ endfunction
 	" Remove b:atp_TempDir (where compelation is done).
 	au VimLeave *.tex :call <SID>Rmdir(b:atp_TempDir)
 	" Remove TempDir for debug files.
-	au VimLeave *.tex :call <SID>RmTempDir()
+	au VimLeave *     :call <SID>RmTempDir()
 	" :Kill! (i.e. silently if there is no python support.)
 	au VimLeave *.tex :Kill!
     augroup END
 
     function! <SID>UpdateTime(enter)
-	if a:enter	== "Enter" && g:atp_updatetime_insert != 0
-	    let &l:updatetime	= g:atp_updatetime_insert
-	elseif a:enter 	== "Leave" && g:atp_updatetime_normal != 0
-	    let &l:updatetime	= g:atp_updatetime_normal
+	if a:enter	== "Enter" && b:atp_updatetime_insert != 0
+	    let &l:updatetime	= b:atp_updatetime_insert
+	elseif a:enter 	== "Leave" && b:atp_updatetime_normal != 0
+	    let &l:updatetime	= b:atp_updatetime_normal
 	endif
     endfunction
 
@@ -2510,7 +2563,7 @@ endfunction
     endif
 
     if g:atp_local_completion == 2
-	augroup ATP_LocaCommands
+	augroup ATP_LocalCommands
 	    au!
 	    au BufEnter *.tex 	call LocalCommands(0)
 	augroup END
@@ -2926,31 +2979,6 @@ if g:atp_Compiler == "python"
 endif
 " }}}
 
-"Make g:atp_TempDir, where log files are stored.
-"{{{
-function! <SID>TempDir() 
-    " Return temporary directory, unique for each user.
-if has("python")
-function! ATP_SetTempDir(tmp)
-    let g:atp_TempDir=a:tmp
-endfunction
-python << END
-import tempfile, os
-USER=os.getenv("USER")
-tmp=tempfile.mkdtemp(suffix="", prefix="atp_")
-vim.eval("ATP_SetTempDir('"+tmp+"')")
-END
-delfunction ATP_SetTempDir
-else
-    let g:atp_TempDir=substitute(tempname(), '\d\+$', "atp_debug", '')
-    call mkdir(g:atp_TempDir, "p", 0700)
-endif
-endfunction
-if g:atp_reload_functions == 0
-    call <SID>TempDir()
-endif
-"}}}
-
 " Remove g:atp_TempDir tree where log files are stored.
 " {{{
 function! <SID>RmTempDir()
@@ -2969,5 +2997,8 @@ else
     echohl Normal
 endif
 endfunction "}}}
+if g:atp_reload_functions == 0
+    call atplib#TempDir()
+endif
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

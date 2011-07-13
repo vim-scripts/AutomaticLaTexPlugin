@@ -15,37 +15,35 @@ function! <SID>HelpMathIMaps()
 	return ''
     endif
 
-"     let infty_leader = (g:atp_imap_first_leader == "#" ? "\\" : g:atp_imap_first_leader ) 
-
     let g:help_mathimaps = ''
 	\."\n MATH IMAPS"
-	\."\n <maplocalleader> has value g:atp_imap_first_leader"
-	\."\n ".g:atp_imap_first_leader."a \\alpha            ".g:atp_imap_first_leader."b \\beta"
-	\."\n ".g:atp_imap_first_leader."g \\gamma            ".g:atp_imap_first_leader."d \\delta"
-	\."\n ".g:atp_imap_first_leader."e \\epsilon          ".g:atp_imap_first_leader."ve \\varepsilon"
-	\."\n ".g:atp_imap_first_leader."z \\zeta             ".g:atp_imap_first_leader."h \\eta"
-	\."\n ".g:atp_imap_first_leader."o \\theta            ".g:atp_imap_first_leader."vo \\vartheta"
-	\."\n ".g:atp_imap_first_leader."i \\iota             ".g:atp_imap_first_leader."k \\kappa"
-	\."\n ".g:atp_imap_first_leader."l \\lambda           ".g:atp_imap_first_leader."m \\mu"
-	\."\n ".g:atp_imap_first_leader."n \\nu               ".g:atp_imap_first_leader."x \\xi"
-	\."\n ".g:atp_imap_first_leader."p \\pi               ".g:atp_imap_first_leader."r \\rho"
-	\."\n ".g:atp_imap_first_leader."s \\sigma            ".g:atp_imap_first_leader."vs \\varsigma" 
-	\."\n ".g:atp_imap_first_leader."t \\tau              ".g:atp_imap_first_leader."u \\upsilon"
-	\."\n ".g:atp_imap_first_leader."f \\phi              ".g:atp_imap_first_leader."c \\chi"
-	\."\n ".g:atp_imap_first_leader."y \\psi              ".g:atp_imap_first_leader."w \\omega"
+	\."\n <maplocalleader> has value g:atp_imap_leader_1"
+	\."\n ".g:atp_imap_leader_1."a \\alpha            ".g:atp_imap_leader_1."b \\beta"
+	\."\n ".g:atp_imap_leader_1."g \\gamma            ".g:atp_imap_leader_1."d \\delta"
+	\."\n ".g:atp_imap_leader_1."e \\epsilon          ".g:atp_imap_leader_1."ve \\varepsilon"
+	\."\n ".g:atp_imap_leader_1."z \\zeta             ".g:atp_imap_leader_1."h \\eta"
+	\."\n ".g:atp_imap_leader_1."o \\theta            ".g:atp_imap_leader_1."vo \\vartheta"
+	\."\n ".g:atp_imap_leader_1."i \\iota             ".g:atp_imap_leader_1."k \\kappa"
+	\."\n ".g:atp_imap_leader_1."l \\lambda           ".g:atp_imap_leader_1."m \\mu"
+	\."\n ".g:atp_imap_leader_1."n \\nu               ".g:atp_imap_leader_1."x \\xi"
+	\."\n ".g:atp_imap_leader_1."p \\pi               ".g:atp_imap_leader_1."r \\rho"
+	\."\n ".g:atp_imap_leader_1."s \\sigma            ".g:atp_imap_leader_1."vs \\varsigma" 
+	\."\n ".g:atp_imap_leader_1."t \\tau              ".g:atp_imap_leader_1."u \\upsilon"
+	\."\n ".g:atp_imap_leader_1."f \\phi              ".g:atp_imap_leader_1."c \\chi"
+	\."\n ".g:atp_imap_leader_1."y \\psi              ".g:atp_imap_leader_1."w \\omega"
 	\."\n"
-	\."\n ".g:atp_imap_first_leader."G \\Gamma            ".g:atp_imap_first_leader."D \\Delta"
-	\."\n ".g:atp_imap_first_leader."Z \\mathrm{Z}        ".g:atp_imap_first_leader."O \\Theta"
-	\."\n ".g:atp_imap_first_leader."L \\Lambda           ".g:atp_imap_first_leader."M \\Mu"
-	\."\n ".g:atp_imap_first_leader."N \\Nu               ".g:atp_imap_first_leader."P \\Pi"
-	\."\n ".g:atp_imap_first_leader."S \\Sigma            ".g:atp_imap_first_leader."U \\Upsilon"
-	\."\n ".g:atp_imap_first_leader."F \\Phi              ".g:atp_imap_first_leader."Y \\Psi"
-	\."\n ".g:atp_imap_first_leader."W \\Omega"
+	\."\n ".g:atp_imap_leader_1."G \\Gamma            ".g:atp_imap_leader_1."D \\Delta"
+	\."\n ".g:atp_imap_leader_1."Z \\mathrm{Z}        ".g:atp_imap_leader_1."O \\Theta"
+	\."\n ".g:atp_imap_leader_1."L \\Lambda           ".g:atp_imap_leader_1."M \\Mu"
+	\."\n ".g:atp_imap_leader_1."N \\Nu               ".g:atp_imap_leader_1."P \\Pi"
+	\."\n ".g:atp_imap_leader_1."S \\Sigma            ".g:atp_imap_leader_1."U \\Upsilon"
+	\."\n ".g:atp_imap_leader_1."F \\Phi              ".g:atp_imap_leader_1."Y \\Psi"
+	\."\n ".g:atp_imap_leader_1."W \\Omega"
 	\."\n"
-	\."\n ".g:atp_imap_first_leader."+ \\bigcup           ".g:atp_imap_first_leader."- \\setminus" 
-	\."\n ".g:atp_infty_leader."8 \\infty            ".g:atp_imap_first_leader."& \\wedge"
+	\."\n ".g:atp_imap_leader_1."+ \\bigcup           ".g:atp_imap_leader_1."- \\setminus" 
+	\."\n ".g:atp_infty_leader."8 \\infty            ".g:atp_imap_leader_1."& \\wedge"
 	\."\n ".                        "^^ ^{}               ".                        "__ _{}"
-	\."\n ".g:atp_imap_third_leader."m \\(\\)              ".g:atp_imap_third_leader."M \\[\\]           <maplocalleader> has value g:atp_imap_third_leader" 
+	\."\n ".g:atp_imap_leader_3."m \\(\\)              ".g:atp_imap_leader_3."M \\[\\]           <maplocalleader> has value g:atp_imap_leader_3" 
     return g:help_mathimaps
 endfunction
 silent call <SID>HelpMathIMaps()
@@ -60,25 +58,25 @@ function! <SID>HelpEnvIMaps()
 
     let g:help_envimaps = ''
 		\."\n ENVIRONMENT IMAPS" 
-		\."\n <maplocalleader> has value g:atp_imap_third_leader"
-		\."\n ".(g:atp_imap_begin != "" ? g:atp_imap_third_leader.g:atp_imap_begin." \\begin{}             " : "" ).(g:atp_imap_end != "" ? g:atp_imap_third_leader.g:atp_imap_end." \\end{}" : "")
-		\."\n ".(g:atp_imap_theorem != "" ? g:atp_imap_third_leader.g:atp_imap_theorem." theorem              " : "" ).(g:atp_imap_definition != "" ? g:atp_imap_third_leader.g:atp_imap_definition." definition" : "")
-		\."\n ".(g:atp_imap_proposition != "" ? g:atp_imap_third_leader.g:atp_imap_proposition." proposition          " : "").(g:atp_imap_lemma != "" ? g:atp_imap_third_leader.g:atp_imap_lemma." lemma" : "")
-		\."\n ".(g:atp_imap_remark != "" ? g:atp_imap_third_leader.g:atp_imap_remark." remark               " : "").(g:atp_imap_corollary != "" ? g:atp_imap_third_leader.g:atp_imap_corollary." corollary" : "")
-		\."\n ".(g:atp_imap_proof != "" ? g:atp_imap_third_leader.g:atp_imap_proof." proof                " : "").(g:atp_imap_example != "" ? g:atp_imap_third_leader.g:atp_imap_example." example" : "")
-		\."\n ".(g:atp_imap_note != "" ? g:atp_imap_third_leader.g:atp_imap_note." note                 " : "")
+		\."\n <maplocalleader> has value g:atp_imap_leader_3"
+		\."\n ".(g:atp_imap_begin != "" ? g:atp_imap_leader_3.g:atp_imap_begin." \\begin{}             " : "" ).(g:atp_imap_end != "" ? g:atp_imap_leader_3.g:atp_imap_end." \\end{}" : "")
+		\."\n ".(g:atp_imap_theorem != "" ? g:atp_imap_leader_3.g:atp_imap_theorem." theorem              " : "" ).(g:atp_imap_definition != "" ? g:atp_imap_leader_3.g:atp_imap_definition." definition" : "")
+		\."\n ".(g:atp_imap_proposition != "" ? g:atp_imap_leader_3.g:atp_imap_proposition." proposition          " : "").(g:atp_imap_lemma != "" ? g:atp_imap_leader_3.g:atp_imap_lemma." lemma" : "")
+		\."\n ".(g:atp_imap_remark != "" ? g:atp_imap_leader_3.g:atp_imap_remark." remark               " : "").(g:atp_imap_corollary != "" ? g:atp_imap_leader_3.g:atp_imap_corollary." corollary" : "")
+		\."\n ".(g:atp_imap_proof != "" ? g:atp_imap_leader_3.g:atp_imap_proof." proof                " : "").(g:atp_imap_example != "" ? g:atp_imap_leader_3.g:atp_imap_example." example" : "")
+		\."\n ".(g:atp_imap_note != "" ? g:atp_imap_leader_3.g:atp_imap_note." note                 " : "")
 		\."\n"
-		\."\n ".(g:atp_imap_enumerate != "" ? g:atp_imap_third_leader.g:atp_imap_enumerate." enumerate            " : "").(g:atp_imap_itemize != "" ? g:atp_imap_third_leader.g:atp_imap_itemize." itemize" : "")
-		\."\n ".(g:atp_imap_item != "" ? g:atp_imap_third_leader.g:atp_imap_item." \\item" : "")
+		\."\n ".(g:atp_imap_enumerate != "" ? g:atp_imap_leader_3.g:atp_imap_enumerate." enumerate            " : "").(g:atp_imap_itemize != "" ? g:atp_imap_leader_3.g:atp_imap_itemize." itemize" : "")
+		\."\n ".(g:atp_imap_item != "" ? g:atp_imap_leader_3.g:atp_imap_item." \\item" : "")
 		\."\n"
-		\.(g:atp_imap_align != "" ? "\n ".g:atp_imap_third_leader.g:atp_imap_align." align                " : "").(g:atp_imap_equation != "" ? g:atp_imap_third_leader.g:atp_imap_equation." equation" : "")
+		\.(g:atp_imap_align != "" ? "\n ".g:atp_imap_leader_3.g:atp_imap_align." align                " : "").(g:atp_imap_equation != "" ? g:atp_imap_leader_3.g:atp_imap_equation." equation" : "")
 		\."\n"
-		\."\n ".(g:atp_imap_flushleft != "" ? g:atp_imap_third_leader.g:atp_imap_flushleft." flushleft            " : "").(g:atp_imap_flushright != "" ? g:atp_imap_third_leader.g:atp_imap_flushright." flushright" : "")
-		\."\n ".(g:atp_imap_center != "" ? g:atp_imap_third_leader.g:atp_imap_center." center" : "")
+		\."\n ".(g:atp_imap_flushleft != "" ? g:atp_imap_leader_3.g:atp_imap_flushleft." flushleft            " : "").(g:atp_imap_flushright != "" ? g:atp_imap_leader_3.g:atp_imap_flushright." flushright" : "")
+		\."\n ".(g:atp_imap_center != "" ? g:atp_imap_leader_3.g:atp_imap_center." center" : "")
 		\."\n"
-		\.(g:atp_imap_tikzpicture != "" ? "\n ".g:atp_imap_third_leader.g:atp_imap_tikzpicture." tikzpicture" : "")
+		\.(g:atp_imap_tikzpicture != "" ? "\n ".g:atp_imap_leader_3.g:atp_imap_tikzpicture." tikzpicture" : "")
 		\."\n"
-		\."\n ".(g:atp_imap_frame != "" ? g:atp_imap_third_leader.g:atp_imap_frame." frame                " : "").(g:atp_imap_letter != "" ?  g:atp_imap_third_leader.g:atp_imap_letter." letter" : "" )
+		\."\n ".(g:atp_imap_frame != "" ? g:atp_imap_leader_3.g:atp_imap_frame." frame                " : "").(g:atp_imap_letter != "" ?  g:atp_imap_leader_3.g:atp_imap_letter." letter" : "" )
     return g:help_envimaps
 endfunction
 silent call <SID>HelpEnvIMaps()

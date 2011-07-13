@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Mon Jun 06 10:00  2011 W
+" Last Change: Sun Jun 19 06:00  2011 W
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 
 " if exists("b:did_ftplugin") | finish | endif
@@ -752,11 +752,11 @@ if expand("%") == "__ToC__"
 	let winnr	= s:gotowinnr()
 	exe winnr . " wincmd w"
 	exe "normal! " . cmd
-	TOC
+	TOC!
     endfunction
     command! -buffer -nargs=? Undo 	:call <SID>Undo(<f-args>) 
-    nnoremap <buffer> u		:call <SID>Undo('u')<CR>
-    nnoremap <buffer> U		:call <SID>Undo('U')<CR>
+    nnoremap <buffer> u			:call <SID>Undo('u')<CR>
+    nnoremap <buffer> U			:call <SID>Undo('U')<CR>
     nnoremap <buffer> g-		:call <SID>Undo('g-')<CR>
     nnoremap <buffer> g+		:call <SID>Undo('g+')<CR>
 endif

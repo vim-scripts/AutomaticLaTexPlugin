@@ -350,9 +350,9 @@ function! s:GetEnvironmentList(lead, cmdline, pos)
 	let suggestions = []
 	
 	if !exists("b:atp_LocalEnvironments")
-	    LocalCommands
+	    call LocalCommands(0)
 	elseif has("python")
-	    LocalCommands
+	    call LocalCommands(0)
 	endif
 	let l:completion_list=atplib#Extend(g:atp_Environments,b:atp_LocalEnvironments)
 

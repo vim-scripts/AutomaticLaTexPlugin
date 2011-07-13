@@ -146,11 +146,10 @@ else:
     preambule_only=False
     files=[main_file]
     files.extend(vim.eval("b:ListOfFiles"))
-if vim.eval("only_begining") !=0:
+if vim.eval("only_begining") != "0":
     only_begining=True
 else:
     only_begining=False
-
 def isnonempty(string):
     if str(string) == "":
         return False
@@ -248,7 +247,8 @@ function! <SID>LocalCommands_vim(...)
 	elseif line['text'] =~ '^[^%]*\%(\\def\>\|\\newcommand\)'
 	    " definition name 
 	    let name= '\' . matchstr(line['text'], '\\def\\\zs[^{]*\ze{\|\\newcommand{\?\\\zs[^\[{]*\ze}')
-	    let name=substitute(name, '\(#\d\+\)\+\s*$', '{', '')
+	    let name=substitute(name, '\(#\d\+\)\+\s*$', '', '')
+            let name.=(line['text'] =~ '\\def\\\w\+#[1-9]\|\\newcommand{[^}]*}\[[1-9]\]' ? '{' : '')
 	    if name =~ '#\d\+'
 		echo line['text']
 		echo name
@@ -306,7 +306,7 @@ function! <SID>LocalCommands_py(write, ...)
      " called! There is an option to store full path in ATP, then this is not needed.
      let files = []
      for file in b:ListOfFiles
-	 if b:TypeDict[file] == "input" || b:TypeDict[file] == "preambule" 
+	 if get(b:TypeDict, file, "") == "input" || get(b:TypeDict, file, "") == "preambule" 
 	     if filereadable(file)
 		 call add(files, file)
 	     else
@@ -320,7 +320,7 @@ function! <SID>LocalCommands_py(write, ...)
 python << END
 import re, vim
 
-pattern=re.compile('\s*(?:\\\\(?P<def>def)(?P<def_c>\\\\[^#{]*)|(?:\\\\(?P<nc>(?:re)?newcommand)|\\\\(?P<env>(?:re)?newenvironment)|\\\\(?P<nt>(?:re)?newtheorem\*?)|\\\\(?P<col>definecolor)|\\\\(?P<dec>Declare)(?:RobustCommand|FixedFont|TextFontCommand|MathVersion|SymbolFontAlphabet|MathSymbol|MathDelimiter|MathAccent|MathRadical|MathOperator)\s*{|\\\\(?P<sma>SetMathAlphabet))\s*{(?P<arg>[^}]*)})')
+pattern=re.compile('\s*(?:\\\\(?P<def>def)(?P<def_c>\\\\[^#{]*)|(?:\\\\(?P<nc>newcommand)|\\\\(?P<env>newenvironment)|\\\\(?P<nt>newtheorem\*?)|\\\\(?P<col>definecolor)|\\\\(?P<dec>Declare)(?:RobustCommand|FixedFont|TextFontCommand|MathVersion|SymbolFontAlphabet|MathSymbol|MathDelimiter|MathAccent|MathRadical|MathOperator)\s*{|\\\\(?P<sma>SetMathAlphabet))\s*{(?P<arg>[^}]*)})')
 
 files=[vim.eval("atp_MainFile")]+vim.eval("files")
 localcommands   =[]
@@ -336,9 +336,15 @@ for file in files:
             m=re.match(pattern, line)
             if m:
                 if m.group('def'):
-                    localcommands.append(m.group('def_c'))
+                    if re.search('\\\\def\\\\\w+#[1-9]', line):
+                        localcommands.append(m.group('def_c')+'{')
+                    else:
+                        localcommands.append(m.group('def_c'))
                 elif m.group('nc') or m.group('dec') or m.group('sma'):
-                    localcommands.append(m.group('arg'))
+                    if re.search('\\\\newcommand\s*{[^}]*}\s*\[[1-9]\]\s*{', line):
+                        localcommands.append(m.group('arg')+'{')
+                    else:
+                        localcommands.append(m.group('arg'))
                 elif m.group('nt') or m.group('env'):
                     localenvs.append(m.group('arg'))
                 elif m.group('col'):
@@ -354,12 +360,12 @@ if exists("atp_LocalCommands")
 else
     let b:atp_LocalCommands=[]
 endif
-if exists("b:atp_LocalColors")
+if exists("atp_LocalColors")
     let b:atp_LocalColors=map(atp_LocalColors, 'substitute(v:val, ''\\\\'', ''\'', '''')')
 else
     let b:atp_LocalColors=[]
 endif
-if exists("b:atp_LocalEnvironments")
+if exists("atp_LocalEnvironments")
     let b:atp_LocalEnvironments=map(atp_LocalEnvironments, 'substitute(v:val, ''\\\\'', ''\'', '''')')
 else
     let b:atp_LocalEnvironments=[]
@@ -367,6 +373,30 @@ endif
 return [ b:atp_LocalEnvironments, b:atp_LocalCommands, b:atp_LocalColors ]
 endfunction
 "}}}
+" Local Abbreviations {{{
+function! <SID>LocalAbbreviations()
+    if !exists("b:atp_LocalEnvironments")
+	let no_abbrev= ( exists('g:atp_no_local_abbreviations') ? g:atp_no_local_abbreviations : -1 )
+	let g:atp_no_local_abbreviations = 1
+	call LocalCommands(0)
+	if no_abbrev == -1
+	    unlet g:atp_no_local_abbreviations
+	else
+	    let g:atp_no_local_abbreviations = no_abbrev
+	endif
+    endif
+    for env in b:atp_LocalEnvironments
+	if !empty(maparg(g:atp_iabbrev_leader.env.g:atp_iabbrev_leader, "i", 1))
+    " 	silent echomsg "abbreviation " . g:atp_iabbrev_leader.env.g:atp_iabbrev_leader . " exists."
+	    continue
+	endif
+	if exists("g:atp_abbreviate_".env)
+	    execute "iabbrev <buffer> ".g:atp_iabbrev_leader.env.g:atp_iabbrev_leader." \\begin{".env."}".get(g:atp_abbreviate_{env}, 0, "<CR>")."\\end{".env."}".get(g:atp_abbreviate_{env}, 1, "<Esc>O")
+	else
+	    execute "iabbrev <buffer> ".g:atp_iabbrev_leader.env.g:atp_iabbrev_leader." \\begin{".env."}<CR>\\end{".env."}<Esc>O"
+	endif
+    endfor
+endfunction "}}}
 " {{{ LocalCommands
 function! LocalCommands(write, ...)
     let time=reltime()
@@ -376,10 +406,13 @@ function! LocalCommands(write, ...)
 		\ . '\|\\SetMathAlphabet\>'
     let bang	= a:0 >= 2 ? a:2 : '' 
 
-    if has("python")
+    if has("python") && ( !exists("g:atp_no_python") || g:atp_no_python == 0 )
 	call <SID>LocalCommands_py(a:write, '' , bang)
     else
 	call <SID>LocalCommands_vim(pattern, bang)
+    endif
+    if !(exists("g:atp_no_local_abbreviations") && g:atp_no_local_abbreviations == 1)
+	call <SID>LocalAbbreviations()
     endif
     let g:time_LocalCommands=reltimestr(reltime(time))
 endfunction

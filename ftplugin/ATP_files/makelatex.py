@@ -261,7 +261,7 @@ def reload_xpdf():
 
 def copy_back_output(tmpdir):
     os.chdir(tmpdir)
-    if os.path.exists(file_cp):
+    if os.path.exists(file_cp) and os.path.exists(basename+output_ext):
         shutil.copy(basename+output_ext, texfile_dir)
     os.chdir(texfile_dir)
 
@@ -333,7 +333,7 @@ try:
         log_file  = open(tmplog, "r")
         log       = log_file.read()
         log_file.close()
-        log_list=re.findall('(undefined references)|(Citations undefined)|(There were undefined citations)|(Label\(s\) may have changed)|(Writing index file)',log)
+        log_list=re.findall('(undefined references)|(Citations undefined)|(There were undefined citations)|(Label\(s\) may have changed)|(Writing index file)|(run Biber on the file)',log)
         citations       =False
         labels          =False
         makeidx         =False

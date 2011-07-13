@@ -72,8 +72,8 @@ function! s:JumpToMatch(mode, ...)
 	endif
 
 	" open/close pairs (dollars signs are treated apart)
-	let open_pats 		= ['{', '\[', '(', '\\begin\>', '\\left\>']
-	let close_pats 		= ['}', '\]', ')', '\\end\>', '\\right\>']
+	let open_pats 		= ['{', '\[', '(', '\\begin\>', '\\left\>', '\\lceil\>', '\\lgroup\>', '\\lfloor', '\\langle']
+	let close_pats 		= ['}', '\]', ')', '\\end\>', '\\right\>', '\\rceil', '\\rgroup\>', '\\rfloor', '\\rangle']
 	let dollar_pat 		= '\\\@<!\$'
 	let two_dollar_pat 	= '\\\@<!\$\$'
 
@@ -426,8 +426,8 @@ function! s:HighlightMatchingPair()
 
 " 	let open_pats 		= ['\\begin\>\ze\%(\s*{\s*document\s*}\)\@!', '\\left\>', '\c\\bigg\=\>\%((\|{\|\\{\|\[\)' ]
 " 	let close_pats 		= ['\\end\>\ze\%(\s*{\s*document\s*}\)\@!', '\\right\>', '\c\\bigg\=\>\%()\|}\|\\}\|\]\)' ]
-	let open_pats 		= ['\\begin\>\ze', '\\left\>', '\c\\bigg\=l\=\>\%((\|{\|\\{\|\[\)' ]
-	let close_pats 		= ['\\end\>\ze', '\\right\>', '\c\\bigg\=r\=\>\%()\|}\|\\}\|\]\)' ]
+	let open_pats 		= ['\\begin\>\ze', '\\left\>', '\c\\bigg\=l\=\>\%((\|{\|\\{\|\[\)', '\\lceil\>', '\\lgroup\>', '\\lfloor', '\\langle' ]
+	let close_pats 		= ['\\end\>\ze', '\\right\>', '\c\\bigg\=r\=\>\%()\|}\|\\}\|\]\)', '\\rceil', '\\rgroup\>', '\\rfloor', '\\rangle' ]
 	let dollar_pat 		= '\\\@<!\$'
 	let two_dollar_pat 	= '\\\@<!\$\$'
 
@@ -569,6 +569,7 @@ function! s:InnerSearchPos(begin, line, col, run)
 			\ '\|\\closing{' .
 			\ '\|\\\@<!\$\$\s*$' . 
 			\ '\|\\\\\*\=' . 
+			\ '\|\\\%(small\|med\|big\)skip' .
 			\ '\|\%^\|\%$\)' 
 " 			\ '\|^\s*%\)'
 	    let [ line, column ] = searchpos(pattern, flag)
@@ -596,6 +597,7 @@ function! s:InnerSearchPos(begin, line, col, run)
 			\ '\|^\s*\\\@<!\\\[' . 
 			\ '\|^\s*\\\@<!\$\$' . 
 			\ '\|\\\\\*\=' .
+			\ '\|\\\%(small\|med\|big\)skip' .
 			\ '\|\%^\|\%$\)'
 	    let [ line, column ] = searchpos(pattern, 'nW')
 	endif
@@ -669,7 +671,8 @@ function! s:SelectCurrentParagraph(seltype)
 			\ '\|\\closing{' .
 			\ '\|\\\@<!\\\]\s*$' . 
 			\ '\|\\\@<!\$\$\s*$' . 
-			\ '\|\\\\\*\=\)'
+			\ '\|\\\\\*\=\%(\[\d\+\w\+\]\)\=' .
+			\ '\|\\\%(small\|med\|big\)skip\)'
 	    let [ bline, bcol ] = searchpos(pattern, 'ecnW')
 	elseif bline_str =~ '^\\item\>\|^\\begin\>' && bcol > 1
 	    let bcol -= 1 
@@ -742,7 +745,7 @@ function! s:SelectCurrentParagraph(seltype)
 	call atplib#Log("SelectCurrentParagraph.log", "eeline_str=".eeline_str)
     endif
 
-    if getline(bline) =~ '\\par\|\\newline\|\\begin\s*{\s*\%(document\|letter\)\s*}' || bline_str =~ '^\%(\\\[\|\\item\>\)'
+    if getline(bline) =~ '\\par\>\|\\newline\>\|\\begin\s*{\s*\%(document\|letter\)\s*}' || bline_str =~ '^\%(\\\[\|\\item\>\)'
 	" move to the beginning of \par
 	let bmove	= ''
     else
@@ -751,14 +754,14 @@ function! s:SelectCurrentParagraph(seltype)
     endif
 
 
-    if getline(eline) =~ '\\par'
+    if getline(eline) =~ '\\par\>'
 	let emove	= 'gE'
     elseif eline_str  =~ '\\@<!\\\]'
 	let emove	= ''
     elseif eeline_str =~ '^\s*\\end\s*{\s*\%(align\%(at\)\=\|equation\|display\%(ed\)\=math'
 		\ . '\|array\|eqnarray\|inlinemath\|math\)\*\=\s*}'
 	let emove	= 'E'
-    elseif eeline_str =~ '^\\closing'
+    elseif eeline_str =~ '^\\closing\>'
 	let emove	= 'ge'
     else
 	let emove	= 'ge'
@@ -803,6 +806,17 @@ function! SelectComment()
 	    normal! v
     endif
     call search('\%(^\s*%.*\zs\n\)\%(^\s*%\)\@!', "cW")
+endfunction
+
+" {{{ select group
+function! SelectEnvironment(name)
+    call search('\\begin\s*{\s*'.a:name.'\s*}', "cbW")
+"     if visualmode() ==# 'V'
+	    normal! V
+"     else
+" 	    normal! v
+"     endif
+    call search('\\end\s*{\s*'.a:name.'\s*}', "cW")
 endfunction
 " }}}
 
@@ -894,5 +908,7 @@ vnoremap <silent> <Plug>LatexBox_SelectCurrentEnvOuter 	:<C-U>call <SID>SelectCu
 vnoremap <silent> <Plug>ATP_SelectCurrentParagraphInner :<C-U>call <SID>SelectCurrentParagraph('inner')<CR>
 vnoremap <silent> <Plug>ATP_SelectCurrentParagraphOuter :<C-U>call <SID>SelectCurrentParagraph('outer')<CR>
 vmap <silent><buffer> <Plug>vSelectComment 		:<C-U>call SelectComment()<CR>
+nmap <silent><buffer> <Plug>SelectFrameEnvironment	:call SelectEnvironment('frame')<CR>
+" vmap <silent><buffer> <Plug>vSelectFrameEnvironment	:<C-U>call <SID>SelectEnvironment('frame')<CR>
 "}}}
 

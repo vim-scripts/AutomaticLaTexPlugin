@@ -198,6 +198,7 @@ exe "setlocal complete+=".
 	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/dictionary").
 	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/SIunits").
 	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/tikz")
+
 " The ams_dictionary is added after g:atp_amsmath variable is defined.
 
 " setlocal iskeyword+=\
@@ -1888,14 +1889,13 @@ let g:atp_completion_modes=[
 	    \ 'package names',		'font encoding',
 	    \ 'font family',		'font series',
 	    \ 'font shape',		'algorithmic',
-	    \ 'beamerthemes', 		'beamerinnerthemes',
-	    \ 'beamerouterthemes', 	'beamercolorthemes',
-	    \ 'beamerfontthemes',	'todonotes',
+	    \ 'todonotes',
 	    \ 'siunits',		'includegraphics',
 	    \ 'color names',		'page styles',
 	    \ 'page numberings',	'abbreviations',
 	    \ 'package options', 	'documentclass options',
-	    \ 'package options values'
+	    \ 'package options values', 'environment options',
+	    \ 'command values'
 	    \ ]
 lockvar 2 g:atp_completion_modes
 catch /E741:/
@@ -2002,7 +2002,7 @@ endif
 " 	\ 'qpalatin', 'qbookman', 'qcourier', 'qswiss', 'qtimes', 'verbatim', 'wasysym'])
 
 	" the command \label is added at the end.
-	let g:atp_Commands=["\\begin{", "\\end{", 
+	let g:atp_Commands=[ "\\begin{", "\\end{", 
 	\ "\\cite", "\\nocite{", "\\ref{", "\\pageref{", "\\eqref{", "\\item",
 	\ "\\emph{", "\\documentclass{", "\\usepackage{",
 	\ "\\section", "\\subsection", "\\subsubsection", "\\part", 
@@ -2051,13 +2051,13 @@ endif
 	\ "\\topmargin", "\\oddsidemargin", "\\evensidemargin", "\\headheight", "\\headsep", 
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
 	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
-	\ "\\tableofcontents", "\\newfont{", "\\phantom{",
+	\ "\\tableofcontents", "\\newfont{", "\\phantom{", "\\DeclareMathOperator",
 	\ "\\DeclareRobustCommand", "\\DeclareFixedFont", "\\DeclareMathSymbol", 
 	\ "\\DeclareTextFontCommand", "\\DeclareMathVersion", "\\DeclareSymbolFontAlphabet",
 	\ "\\DeclareMathDelimiter", "\\DeclareMathAccent", "\\DeclareMathRadical",
 	\ "\\SetMathAlphabet", "\\show", "\\CheckCommand", "\\mathnormal",
 	\ "\\pounds", "\\magstep{", "\\hyperlink", "\\newenvironment{", 
-	\ "\\renewenvironemt{", "\\DeclareFixedFont", "\\layout", "\\parskip" ]
+	\ "\\renewenvironemt{", "\\DeclareFixedFont", "\\layout", "\\parskip", "\\mathchardef" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -2294,41 +2294,6 @@ endif
 	let g:atp_tikz_library_through_keywords	= ['through']
 	let g:atp_tikz_library_trees_keywords	= ['grow', 'via', 'three', 'points', 'two', 'child', 'children', 'sibling', 'clockwise', 'counterclockwise', 'edge', 'parent', 'fork'] 
 
-	" BEAMER
-	let g:atp_BeamerEnvironments = ["frame", "beamercolorbox", "onlyenv", "altenv", 
-		    \ "visibleenv", "uncoverenv", "invisibleenv", "overlayarea", "overprint", "actionenv",
-		    \ 'description', 'structureenv', 'alertenv', 'block', 'alertblock', 'exampleblock', 'beamercolorbox',
-		    \ 'beamerboxesrounded', 'columns', 'semiverbatim' ]
-
-	let g:atp_BeamerCommands = ["\\alert{", "\\frametitle{", "\\framesubtitle", "\\titlepage", "\\setbeamercolor{", 
-		    \ "\\pause", "\\onslide", "\\only", "\\uncover", "\\visible", "\\invisible", "\\temporal", "\\alt",
-		    \ "\\usebeamercolor{", "\\usetheme{", "\\includeonlyframes{", "\\againframe", "\\setbeamersize{",
-		    \ "\\action{", "\\inserttocsection", "\\inserttocsectionumber", "\\lecture", "\\AtBeginLecture{",
-		    \ "\\appendix", "\\hypertarget", "\\beamerbutton", "\\beamerskipbutton", "\\beamerreturnbutton", 
-		    \ "\\beamergotobutton", '\hyperlinkslideprev', '\hyperlinkslidenext', '\hyperlinkframestart', 
-		    \ '\hyperlinkframeend', '\hyperlinkframestartnext', '\hyperlinkframeendprev', 
-		    \ '\hyperlinkpresentationstart', '\hyperlinkpresentationend', '\hyperlinkappendixstart', 
-		    \  '\hyperlinkappendixend', '\hyperlinkdocumentstart',  '\hyperlinkdocumentend',
-		    \ '\framezoom', '\structure', '\insertblocktitle', '\column', '\movie', '\animate', 
-		    \ '\hyperlinksound', '\hyperlinkmute',
-		    \ '\usetheme', '\usecolortheme', '\usefonttheme', '\useinnertheme', '\useoutertheme',
-		    \ '\usefonttheme', '\note', '\AtBeginNote', '\AtEndNote', '\setbeameroption{',
-		    \ '\setbeamerfont{', "\\setbeamertemplate{", '\mode', '\insertframetitle' ]
-
-	let g:atp_BeamerThemes = [ "default", "boxes", "Bergen", "Boadilla", "Madrid", "AnnArbor", 
-		    \ "CambridgeUS", "Pittsburgh", "Rochester", "Antibes", "JuanLesPins", "Montpellier", 
-		    \ "Berkeley" , "PalAlto", "Gottingen", "Marburg", "Hannover", "Berlin", "Ilmenau", 
-		    \ "Dresden", "Darmstadt", "Frankfurt", "Singapore", "Szeged", "Copenhagen", "Luebeck", "Malmoe", 
-		    \ "Warsaw", ]
-	let g:atp_BeamerInnerThemes = [ "default", "circles", "rectangles", "rounded", "inmargin" ]
-	let g:atp_BeamerOuterThemes = [ "default", "infolines", "miniframes", "smoothbars", "sidebar",
-		    \ "split", "shadow", "tree", "smoothtree" ]
-	let g:atp_BeamerColorThemes = [ "default", "structure", "sidebartab", "albatross", "beetle", "crane", 
-		    \ "dove", "fly", "seagull", "wolverine", "beaver", "lily", "orchid", "rose", "whale", "seahorse", 
-		    \ "dolphin" ]
-	let g:atp_BeamerFontThemes = [ "default", "serif", "structurebold", "structureitalicserif",
-		    \ "structuresmallcapsserif" ]
-
 	let g:atp_TodoNotes_commands = [ '\todo{', '\listoftodos', '\missingfigure' ] 
 	let g:atp_TodoNotes_todo_options = 
 		    \ [ 'disable', 'color=', 'backgroundcolor=', 'linecolor=', 'bordercolor=', 
@@ -2411,17 +2376,21 @@ let g:atp_siuinits= [
  " }}}
 
 " Read Package/Documentclass Files {{{
-let time=reltime()
-let package_files = split(globpath(&rtp, "ftplugin/ATP_files/packages/*"), "\n")
-let g:atp_packages = map(copy(package_files), 'fnamemodify(v:val, ":t:r")')
-for file in package_files
-    " We cannot restrict here to not source some files - because the completion
-    " variables might be needed later. I need to find another way of using this files
-    " as additional scripts running syntax ... commands for example only if the
-    " packages are defined.
-    execute "source ".file
-endfor
-let g:source_time_package_files=reltimestr(reltime(time))
+" This is run by an autocommand group ATP_Packages which is after ATP_LocalCommands
+" b:atp_LocalColors are used in some package files.
+function! <SID>ReadPackageFiles()
+    let time=reltime()
+    let package_files = split(globpath(&rtp, "ftplugin/ATP_files/packages/*"), "\n")
+    let g:atp_packages = map(copy(package_files), 'fnamemodify(v:val, ":t:r")')
+    for file in package_files
+	" We cannot restrict here to not source some files - because the completion
+	" variables might be needed later. I need to find another way of using this files
+	" as additional scripts running syntax ... commands for example only if the
+	" packages are defined.
+	execute "source ".file
+    endfor
+    let g:source_time_package_files=reltimestr(reltime(time))
+endfunction
 
 " }}}
 
@@ -2569,6 +2538,11 @@ endfunction
 	augroup END
     endif
 
+    augroup ATP_Packages
+	au!
+	au BufEnter *.tex call <SID>ReadPackageFiles()
+    augroup END
+
     augroup ATP_TeXFlavor
 	au!
 	au FileType *tex 	let b:atp_TexFlavor = &filetype
@@ -2645,16 +2619,13 @@ endif
 " a:0 	= 0 check if in math mode
 " a:1   = 0 assume cursor is not in math
 " a:1	= 1 assume cursor stands in math  
-function! s:SetMathVimOptions(...)
+function! SetMathVimOptions(...)
 
 	if !g:atp_SetMathVimOptions
 	    return "no setting to toggle" 
 	endif
 
 	let MathZones = copy(g:atp_MathZones)
-	if b:atp_TexFlavor == 'plaintex'
-	    call add(MathZones, 'texMathZoneY')
-	endif
 	    
 	" Change the long values to numbers 
 	let MathVimOptions = map(copy(g:atp_MathVimOptions),
@@ -2664,7 +2635,8 @@ function! s:SetMathVimOptions(...)
 
 	" check if the current (and 3 steps back) cursor position is in math
 	" or use a:1
-	let check	= a:0 == 0 ? atplib#CheckSyntaxGroups(MathZones) + atplib#CheckSyntaxGroups(MathZones, line("."), max([ 1, col(".")-3])) : a:1
+" 	let check	= a:0 == 0 ? atplib#CheckSyntaxGroups(MathZones) + atplib#CheckSyntaxGroups(MathZones, line("."), max([ 1, col(".")-3])) : a:1
+	let check	= a:0 == 0 ? atplib#IsInMath() : a:1
 
 	if check
 	    for option_name in keys(MathVimOptions)
@@ -2683,13 +2655,13 @@ if !s:did_options
     augroup ATP_SetMathVimOptions
 	au!
 	" if leaving the insert mode set the non-math options
-	au InsertLeave 	*.tex 	:call s:SetMathVimOptions(0)
+	au InsertLeave 	*.tex 	:call SetMathVimOptions(0)
 	" if entering the insert mode or in the insert mode check if the cursor is in
 	" math or not and set the options acrodingly
-	au InsertEnter	*.tex 	:call s:SetMathVimOptions()
-	au CursorMovedI *.tex 	:call s:SetMathVimOptions()
-	" This slows down vim when moving the cursor:
-	" au CursorMoved *.tex :call s:SetMathVimOptions()
+	au InsertEnter	*.tex 	:call SetMathVimOptions()
+" This is done by atplib#ToggleIMap() function, which is run only when cursor
+" enters/leaves LaTeX math mode:
+" 	au CursorMovedI *.tex 	:call s:SetMathVimOptions()
     augroup END
 
 endif

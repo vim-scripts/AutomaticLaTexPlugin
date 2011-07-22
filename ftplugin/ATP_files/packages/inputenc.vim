@@ -1,3 +1,6 @@
+" This file is a part of ATP.
+" Author: Marcin Szamotulski
+
 let g:atp_package_inputenc_options=[
     \ 'ascii', 'latin1', 'latin2', 'latin3', 'latin4', 'latin5',
     \ 'latin9', 'decmulti', 'cp850', 'cp852', 'cp858', 

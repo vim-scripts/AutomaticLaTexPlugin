@@ -1,21 +1,41 @@
 " This file is a part of ATP.
-" Written by Marcin Szamotulski
-let g:atp_package_color_options=[
+" Written by Marcin Szamotulski.
+let g:atp_package_xcolor_options=[
 	    \ 'dvips', 'xdvi', 'dvipdf', 'dvipdfm', 'dvipdfmx',
 	    \ 'pdftex', 'dvipsone', 'dviwindo', 'emtex', 'dviwin',
 	    \ 'pxtexps', 'pctexwin', 'pctexhp', 'pxtex32', 'truetex',
 	    \ 'tcidvi', 'vtex', 'oztex', 'textrues', 'xetex',
-	    \ 'monochrome', 'usenames', 'dvipsnames'
+	    \ 'monochrome', 
+	    \ 'natural', 'rgb', 'cmy', 'cmyk', 'hsb', 'gray',
+	    \ 'RGB', 'HTML', 'HSB', 'Gray',
+	    \ 'dvipsnames', 'dvipsnames*', 'svgnames', 'svgnames*',
+	    \ 'x11names', 'x11names*',
+	    \ 'table', 'fixpdftex', 'hyperref',
+	    \ 'prologue', 'kernelfbox', 'xcdraw', 'noxcdraw', 'fixinclude',
+	    \ 'showerrors', 'hideerrors'
 	    \ ]
-let g:atp_pacakge_color_commands=[
-	    \ '\definecolor{', '\color{', '\textcolor{', '\pagecolor{',
-	    \ '\colorbox{', '\fcolorbox{', '\ExecuteOption{', '\DeclareOption{'
+" These are obsolete options:
+" 	    \ 'pst', 'override', 'usenames', 'nodvipsnames'
+let g:atp_package_xcolor_commands=[
+	    \ '\GetGinDriver', '\GinDriver', '\xcolorcmd',
+	    \ '\rangeHsb',  '\rangeRGB', '\rangeHSB', '\rangeGray',
+	    \ '\selectcolormodel{', '\ifconvertcolorsD', '\ifconvertcolorsU',
+	    \ '\definecolor', '\providecolor{', '\colorlet{', '\definecolorset{',
+	    \ '\providecolorset{', '\definecolorserites{', '\definecolors{',
+	    \ '\providecolors{', '\DefineNamedColor{', '\preparecolor{',
+	    \ '\preparecolorset{', '\ifdeinfecolors', '\xglobal', '\color{',
+	    \ '\textcolor{', '\pagecolor{', '\colorbox{', '\fcolorbox{', 
+	    \ '\boxframe', '\testcolor{', '\blendcolors', '\colormask', '\maskcolors{',
+	    \ '\maskcolorstrue', '\ifmaskcolors', '\resetcolorseries{',
+	    \ '\colorseriescycle{', '\rowcolors{', '\showrowcolors',
+	    \ '\hiderowcolors', '\rownum', '\extractcolorspecs', '\tracingcolors',
+	    \ 'convertcolorspecs{'
 	    \ ]
-let color_models = [ 'rgb', 'cmyk', 'gray', 'named' ]
-let g:atp_package_color_command_values={
-	    \ '\\ExecuteOptions{$' : g:atp_package_color_options,
-	    \ '\%(\\definecolor{[^}]*}{$\|\\\%f\?colorbox\[$\|\%(text\|page\)color\[$\)' : color_models,
-	    \ '\%(\\\(text\|page\)?color{$\|\\colorbox{$\|\\fcolorbox\%({[^}]*}\)\?{$\|\)' :  'GetColors'
+let color_models = [ 'natural', 'rgb', 'cmy', 'cmyk', 'hsb', 'gray',
+	    \ 'RGB', 'HTML', 'HSB', 'Gray', 'Hsb', 'tHsb', 'wave' ]
+let g:atp_package_xcolor_command_values={
+	    \ '\%(\\\%(text\|page\)\?color{\|\\colorbox{\|\\fcolorbox{\|\\fcolorbox{[^}]*}{\|\\testcolor{\|\\maskcolors\%(\[[^\]]*\]\|\\rowcolors\(\[[^\]]*\]\)\?{[^}]*}{\%([^}]*}{\)\?\)\?{\)$' : 'GetColors',
+	    \ '\%(\\selectcolormodel\s*{\|\\maskcolors\[\|\\convertcolorspec{\)$' : color_models
 	    \ }
 
 " This function will be run by TabCompletion (atplib#TabCompletion() in
@@ -28,7 +48,7 @@ function! GetColors()
 	let colors=[]
     endif
     let colors=extend(colors,[ 'red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'black', 'gray', 'white', 'darkgray', 'lightgray', 'brown', 'lime', 'olive', 'orange', 'pink', 'purple', 'teal', 'violet' ])
-    let line=getline(atplib#SearchPackage('color'))
+    let line=getline(atplib#SearchPackage('xcolor'))
     if line =~ '\\usepackage\[[^\]]*\<dvipsnames\*\?\>'
 	let add_colors = [
 		    \	'Apricot',        'Cyan',        'Mahogany',     'ProcessBlue', 'SpringGreen',

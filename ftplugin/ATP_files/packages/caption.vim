@@ -1,6 +1,6 @@
 " This file is a part of ATP.
 " Written by M.Szamotulski.
-" Based on caption package documentation 2008/04/06.
+" Based On: caption package documentation 2008/04/06.
 let g:atp_package_caption_options	= [
 	    \ 'format=', 'indentation=',
 	    \ 'lableformat=', 'labelsep=',

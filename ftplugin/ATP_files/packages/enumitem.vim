@@ -1,5 +1,6 @@
 " This file is a part of ATP.
 " Author: Marcin Szamotulski
+" Based On: enumitem v2.2
 
 let g:atp_package_enumitem_commands=[
 	    \ '\setlist{', '\setenumerate{', '\setdescription{',
@@ -17,5 +18,5 @@ let g:atp_package_enumitem_environment_options={
     \ '\<\%(enumerate\|itemize\|description\)\>' : env_options
     \ }
 let g:atp_package_enumitem_command_values={
-    \ '\\setlist{' : env_options
+    \ '\\set\%(list\|enumerate\|description\|itemize\){' : env_options
     \ }

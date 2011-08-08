@@ -2,7 +2,7 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Mon Jul 04 09:00  2011 C
+" Last Change: Sat Aug 06 10:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -304,9 +304,15 @@ function! TexAlign()
     let synstack = map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
 
     let balign=searchpair('\\begin\s*{\s*array\s*}', '', '\\end\s*{\s*array\s*}', 'bnW')
-    let [bmatrix, bmatrix_col]=searchpairpos('\\matrix\s*\[[^]]*\]\s*\zs{', '', '}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
+"     let [bmatrix, bmatrix_col]=searchpairpos('\\matrix\s*\%(\[[^]]*\]\s*\)\=\zs{', '', '}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
+    let [bmatrix, bmatrix_col]=searchpos('\\matrix\s*\%(\[[^]]*\]\s*\)\=\zs{', 'bW', max([1, (line(".")-g:atp_completion_limits[2])]))
+    if bmatrix != 0
+	normal %
+	let bmatrix = ( line(".") >= save_pos[1] ? bmatrix : 0 )
+	call cursor(save_pos[1], save_pos[2])
+    endif
     if bmatrix
-	let bpat = '\\matrix\s*\(\[[^]]*\]\)\?\s*{'
+	let bpat = '\\matrix\s*\(\[[^\]]*\]\)\?\s*{'
 	let bline = bmatrix+1 
 	let epat = '}'
 	let AlignCtr = 'jl+ &'
@@ -361,7 +367,7 @@ function! TexAlign()
     else
 	return
     endif
-	
+
     if !exists("bline")
 	let bline = search(bpat, 'cnb') + 1
     endif
@@ -379,6 +385,102 @@ function! TexAlign()
     endif
 
     call setpos(".", save_pos) 
+endfunction
+"}}}
+"{{{ ATP_strlen
+" This function is used to measure lenght of a string using :Align, :TexAlign
+" commads. See help file of AlignPlugin for g:Align_xstrlen variable.
+function! ATP_strlen(x)
+    if !&conceallevel 
+	return strlen(substitute(a:x, '.\Z', 'x', 'g'))
+    endif
+    let x=a:x
+    let hide = ( &conceallevel < 3 ? 'x' : '' )
+    let greek=[ 
+	    \ '\\alpha', '\\beta', '\\gamma', '\\delta', '\\epsilon', '\\varepsilon',
+	    \ '\\zeta', '\\eta', '\\theta', '\\vartheta', '\\kappa', '\\lambda', '\\mu',
+	    \ '\\nu', '\\xi', '\\pi', '\\varpi', '\\rho', '\\varrho', '\\sigma',
+	    \ '\\varsigma', '\\tau', '\\upsilon', '\\phi', '\\varphi', '\\chi', '\\psi', '\\omega',
+	    \ '\\Gamma', '\\Delta', '\\Theta', '\\Lambda', '\\Xi', '\\Pi', '\\Sigma',
+	    \ '\\Upsilon', '\\Phi', '\\Psi', '\\Omega']
+    if &enc == 'utf-8' && g:tex_conceal =~# 'g'
+	for gletter in greek
+	    let x = substitute(x, gletter, hide, 'g')
+	endfor
+    endif
+    let s:texMathList=[
+        \ '|', 'angle', 'approx', 'ast', 'asymp', 'backepsilon', 'backsimeq', 'barwedge', 'because',
+        \ 'between', 'bigcap', 'bigcup', 'bigodot', 'bigoplus', 'bigotimes', 'bigsqcup', 'bigtriangledown', 'bigvee',
+        \ 'bigwedge', 'blacksquare', 'bot', 'boxdot', 'boxminus', 'boxplus', 'boxtimes', 'bumpeq', 'Bumpeq',
+        \ 'cap', 'Cap', 'cdots', 'cdot', 'circ', 'circeq', 'circlearrowleft', 'circlearrowright', 'circledast',
+        \ 'circledcirc', 'complement', 'cong', 'coprod', 'cup', 'Cup', 'curlyeqprec', 'curlyeqsucc', 'curlyvee',
+        \ 'curlywedge', 'dashv', 'diamond', 'div', 'doteqdot', 'doteq', 'dotplus', 'dotsb', 'dotsc',
+        \ 'dotsi', 'dotso', 'dots', 'doublebarwedge', 'downarrow', 'Downarrow', 'emptyset', 'eqcirc', 'eqsim',
+        \ 'eqslantgtr', 'eqslantless', 'equiv', 'exists', 'fallingdotseq', 'forall', 'ge', 'geq', 'geqq',
+        \ 'gets', 'gneqq', 'gtrdot', 'gtreqless', 'gtrless', 'gtrsim', 'hookleftarrow', 'hookrightarrow', 'iiint',
+        \ 'iint', 'Im', 'in', 'infty', 'int', 'lceil', 'ldots', 'leftarrow', 'left\\{',
+        \ 'Leftarrow', 'leftarrowtail', 'Leftrightarrow', 
+	\ 'leftrightsquigarrow', 'leftthreetimes', 'leqq', 
+        \ 'leq', 'lessdot', 'lesseqgtr', 'lesssim', 'le', 'lfloor', 'lmoustache', 'lneqq', 'ltimes', 'mapsto',
+        \ 'measuredangle', 'mid', 'mp', 'nabla', 'ncong', 'nearrow', 'neg', 'neq',
+        \ 'nexists', 'ne', 'ngeqq', 'ngeq', 'ngtr', 'ni', 'nleftarrow', 'nLeftarrow', 'nLeftrightarrow', 'nleqq',
+        \ 'nleq', 'nless', 'nmid', 'notin', 'nprec', 'nrightarrow', 'nRightarrow', 'nsim', 'nsucc',
+        \ 'ntriangleleft', 'ntrianglelefteq', 'ntrianglerighteq', 'ntriangleright', 'nvdash', 'nvDash', 'nVdash', 'nwarrow', 'odot',
+        \ 'oint', 'ominus', 'oplus', 'oslash', 'otimes', 'owns', 'partial', 'perp', 'pitchfork',
+        \ 'pm', 'precapprox', 'preccurlyeq', 'preceq', 'precnapprox', 'precneqq', 'precsim', 'prec', 'prod',
+        \ 'propto', 'rceil', 'Re', 'rfloor', 'Rightarrow', 'rightarrowtail', 'rightarrow', 'right\\}',
+        \ 'subseteqq', 'subseteq', 'subsetneqq', 'subsetneq', 'subset', 'Subset', 'succapprox', 'succcurlyeq',
+        \ 'succeqq', 'succnapprox', 'succneq', 'succsim', 'succ', 'sum', 'Supset', 'supseteqq', 'supseteq', 'supsetneqq',
+        \ 'supsetneq', 'surd', 'swarrow', 'therefore', 'times', 'top', 'to', 'trianglelefteq', 'triangleleft',
+        \ 'triangleq', 'triangleright', 'trianglerighteq', 'twoheadleftarrow', 'twoheadrightarrow', 'uparrow', 'Uparrow', 'updownarrow', 'Updownarrow',
+        \ 'varnothing', 'vartriangle', 'vdash', 'vDash', 'Vdash', 'vdots', 'veebar', 'vee', 'Vvdash',
+        \ 'wedge', 'wr', 'gg', 'll', 'backslash', 'langle', 'lbrace', 'lgroup', 'rangle', 'rbrace',
+	\ ]
+  let s:texMathDelimList=[
+     \ '<', '>', '(', ')', '\[', ']', '\\{', 
+     \ '\\}', '|', '\\|', '\\backslash', '\\downarrow', '\\Downarrow', '\\langle', '\\lbrace', 
+     \ '\\lceil', '\\lfloor', '\\lgroup', '\\lmoustache', '\\rangle', '\\rbrace', '\\rceil', 
+     \ '\\rfloor', '\\rgroup', '\\rmoustache', '\\uparrow', '\\Uparrow', '\\updownarrow', '\\Updownarrow']
+    if g:tex_conceal =~# 'm'
+	for symb in s:texMathList
+	    let x=substitute(x, '\C\\'.symb, hide, 'g')
+	endfor
+	for symb in s:texMathDelimList
+	    let x=substitute(x, '\\[Bb]cigg\=[lr]'.symb, hide, 'g') 
+	endfor
+	let x=substitute(x, '\\\%(left\|right\)\>', '', 'g')
+    endif
+    if &enc == 'utf-8' && g:tex_conceal =~# 's'
+	let x=substitute(x, '\\\@<![_^]\%({.\)\=', '', 'g')
+    endif
+    if &enc == 'utf-8' && g:tex_conceal =~# 'a'
+	for accent in [
+		    \ '\\[`''\^"~kruv]{\=[aA]}\=',
+		    \ '\\[`''\^"~kruv]{\=[aA]}\=',
+		    \ '\\[`\^.cv]{\=[cC]}\=',
+		    \ '\\[v]{\=[dD]}\=',
+		    \ '\\[`''\^"~.ckuv]{\=[eE]}\=',
+		    \ '\\[`.cu]{\=[gG]}\=',
+		    \ '\\[`''\^"~.u]{\=[iI]}\=',
+		    \ '\\[''\^"cv]{\=[lL]}\=',
+		    \ '\\[''~cv]{\=[nN]}\=',
+		    \ '\\[`''\^"~.Hku]{\=[oO]}\=',
+		    \ '\\[''cv]{\=[rR]}\=',
+		    \ '\\[''\^cv]{\=[sS]}\=',
+		    \ '\\[''cv]{\=[tT]}\=',
+		    \ '\\[`''\^"~Hru]{\=[uU]}\=',
+		    \ '\\[\^]{\=[wW]}\=',
+		    \ '\\[`''\^"~]{\=[yY]}\=',
+		    \ '\\[''.v]{\=[zZ]}\=',
+		    \ '\\[`''\^"~.cHkruv]{\=[aA]}\=',
+		    \ '\\[`''\^"~.u]{\=\\i}\=',
+		    \ '\\AA\>', '\\[oO]\>', '\\AE\>', '\\ae\>', '\\OE\>', '\\ss\>' ]
+	    let x=substitute(x, accent, hide, 'g')
+	endfor
+    endif
+    " Add custom concealed symbols.
+    let x=substitute(x,'.','x','g')
+    return strlen(x)
 endfunction
 "}}}
 
@@ -1629,7 +1731,6 @@ function! <SID>ReloadATP(bang)
     let common_file	= globpath(&rtp, 'ftplugin/ATP_files/common.vim')
     let options_file	= globpath(&rtp, 'ftplugin/ATP_files/options.vim')
     let g:atp_reload_functions = ( a:bang == "!" ? 1 : 0 ) 
-    let g:atp_reload_variables = 1
     if a:bang == ""
 	execute "source " . common_file
 	execute "source " . options_file 
@@ -1667,7 +1768,6 @@ function! <SID>ReloadATP(bang)
 	endfor
     endif
     let g:atp_reload_functions 	= 0
-    let g:atp_reload_variables  = 0
 endfunction
 catch /E127:/
     " Cannot redefine function, function is in use.

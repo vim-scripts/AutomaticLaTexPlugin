@@ -321,7 +321,13 @@ function! s:showtoc(toc)
 	if !exists("t:toc_window_width")
 	    let t:toc_window_width = g:atp_toc_window_width
 	endif
-	let openbuffer="keepalt " . t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ nobuflisted\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
+	let toc_winnr=bufwinnr(bufnr("__Labels__"))
+	if toc_winnr == -1
+	    let openbuffer="keepalt " . t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ nobuflisted\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
+	else
+	    exe toc_winnr."wincmd w"
+	    let l:openbuffer= "keepalt above split +setl\\ buftype=nofile\\ nobuflisted\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
+	endif
 	keepalt silent exe  openbuffer
 	" We are setting the address from which we have come.
 	silent call atplib#setwindow()
@@ -1492,12 +1498,8 @@ function! GotoFile(bang,file,...)
 	endif
 	let b:atp_ErrorFormat	= atp_ErrorFormat
 	let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]	= deepcopy([tree_d, file_l_orig, type_d, level_d ])
-	if exists("b:atp_ProgressBar")
-	    unlockvar b:atp_ProgressBar
-	endif
 	let [ b:atp_LastLatexPID, b:atp_LatexPIDs, b:atp_ProgressBar ] = [ atp_LastLatexPID, atp_LatexPIDs, atp_ProgressBar ]
 	let [ b:atp_BibtexPIDs, b:atp_MakeindexPIDs ] = [ atp_BibtexPIDs, atp_MakeindexPIDs ]
-	lockvar b:atp_ProgressBar
 	if !&l:autochdir
 	    exe "lcd " . fnameescape(cwd)
 	endif
@@ -1547,19 +1549,19 @@ function! <SID>SkipComment(flag, mode, ...)
     " find previous line
     let pline_nr=min([line("$"), max([1,line(".")+nr])])
     let pline	= getline(pline_nr) 
-    " This code find previous non empty line    
-"     while pline =~ '^\s*$' && pline_nr > 1 && pline_nr < line("$")
-" 	let pline_nr += nr
-" 	let pline=getline(pline_nr)
-"     endwhile
 
-"     while line =~ '^\s*%' || ( line =~ '^\s*$' && pline =~ '^\s*%' )
     while pline =~ '^\s*%'
 	call cursor(line(".")+nr, ( nr == -1 ? 1 : len(getline(line(".")+nr))))
-" 	let line=getline(line("."))
 	let pline_nr=min([line("$"), max([1,line(".")+nr])])
 	let pline	= getline(pline_nr) 
     endwhile
+    if a:mode == 'n' && ( !g:atp_VimCompatible || g:atp_VimCompatible =~? '\<no\>' )
+	if a:flag =~# 'b'
+	    call cursor(line(".")-1,1)
+	else
+	    call cursor(line(".")+1,1)
+	endif
+    endif
     if a:mode == 'v'
 	let end_pos = [ line("."), col(".") ]
 	" Go where visual mode started

@@ -85,7 +85,7 @@ function! s:JumpToMatch(mode, ...)
 		let zonex=s:HasSyntax('texMathZoneX', line("."), col(".")) || s:HasSyntax('texMathZoneX', line('.'), max([1, col(".")-1])) 
 		let zoney=s:HasSyntax('texMathZoneY', line("."), col("."))  
 
-	let stopline = ( g:atp_VimCompatible || g:atp_VimCompatible =~ '\c\<yes\>' ? line('.') : 0 )
+	let stopline = ( g:atp_VimCompatible || g:atp_VimCompatible =~? '\<yes\>' ? line('.') : 0 )
 	" go to next opening/closing pattern on same line
 	if !s:HasSyntax('texSectionModifier', line('.'), col('.'))
 	    let pos = !s:SearchAndSkipComments(
@@ -570,8 +570,8 @@ function! s:InnerSearchPos(begin, line, col, run)
 			\ '\|\\\@<!\$\$\s*$' . 
 			\ '\|\\\\\*\=' . 
 			\ '\|\\\%(small\|med\|big\)skip' .
-			\ '\|\%^\|\%$\)' 
-" 			\ '\|^\s*%\)'
+			\ '\|\%^\|\%$' . 
+			\ '\|^\s*%\)'
 	    let [ line, column ] = searchpos(pattern, flag)
 " 	    if getline(line) =~ '^\s*%'
 " 		let [ line, column ] = [ line+1, 1 ]
@@ -598,8 +598,11 @@ function! s:InnerSearchPos(begin, line, col, run)
 			\ '\|^\s*\\\@<!\$\$' . 
 			\ '\|\\\\\*\=' .
 			\ '\|\\\%(small\|med\|big\)skip' .
-			\ '\|\%^\|\%$\)'
+			\ '\|\%^\|\%$\|^\s*\\\@<!%\)'
 	    let [ line, column ] = searchpos(pattern, 'nW')
+" 	    if getline(line) =~ '^\s*\\\@<!%'
+" 		let [ line, column ] = [ line-1, len(getline(line-1))-1 ]
+" 	    endif
 	endif
 	call cursor(cline, ccol)
 	return [ line, column ] 
@@ -612,6 +615,10 @@ endif
 
 function! s:SelectCurrentParagraph(seltype) 
     if a:seltype == "inner"
+	    if getline(line(".")) =~ '^\s*\\\@<!%'
+	    call SelectComment()
+	    return
+	endif
 	" inner type ends and start with \[:\] if \[ is at the begining of
 	" line (possibly with white spaces) and \] is at the end of line
 	" (possibly with white spaces, aswell).
@@ -646,8 +653,12 @@ function! s:SelectCurrentParagraph(seltype)
 	" Move to the end of match
 	let [ cline, ccolumn ] = [ line("."), col(".") ]
 	call cursor(bline, bcol)
-	let bline_str = strpart(getline(bline), bcol-1)
-	if getline(bline) !~ '^\s*$' && bline_str !~ '^\%(\\\[\|\\item\>\)'
+	let bline_str 		= strpart(getline(bline), bcol-1)
+	if getline(bline) =~ '^\s*%'
+	   let bline 		= search('^\s*%\@!')
+	   let bcol		= 1
+	   let no_motion   	= 1
+	elseif getline(bline) !~ '^\s*$' && bline_str !~ '^\%(\\\[\|\\item\>\)'
 " 	if getline(bline) !~ '^\s*$' && getline(bline) !~ '\\begin\s*{\s*\(equation\|align\|inlinemath\|dispayedmath\)\s*}' && bline_str !~ '^\%(\\\[\|\\item\>\)'
 	    let pattern = '\%(^\s*$' . 
 			\ '\|^[^%]*\%(\\\zepar\>' . 
@@ -655,10 +666,10 @@ function! s:SelectCurrentParagraph(seltype)
 			    \ '\|\\end\s*{[^}]*}\s*' . 
 			    \ '\|\\begin\s*{[^}]*}\s*\%(\%({' . 
 				\ '\|\[\)[^]}]*\%(\]' . 
-				\ '\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\\%(label\|hypertarget\s*{[^}]*}\s*\)\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n' . 
+				\ '\|}\)\)\=\s*\%({[^}]*}\)\=\s*\%(\%(\\\%(label\|index\|hypertarget\s*{[^}]*}\s*\)\s*{[^}]*}\)\s*\%(\\footnote\s*\%(\n' . 
 					\ '\|[^}]\)*}\)\=' . 
 				    \ '\|\s*\%(\\footnote\s*\%(\n' . 
-				\ '\|[^}]\)*}\)\s*\%(\\\%(label\|hypertarget\s*{[^}]*}\s*\)\s*{[^}]*}\)\=\)\=\)' . 
+				\ '\|[^}]\)*}\)\s*\%(\\\%(label\|index\|hypertarget\s*{[^}]*}\s*\)\s*{[^}]*}\)\=\)\{0,3}\)' . 
 			\ '\|\\item\%(\s*\[[^\]]*\]\)\=' . 
 			\ '\|\\\%(part\*\=' . 
 			\ '\|chapter\*\=' . 
@@ -745,7 +756,7 @@ function! s:SelectCurrentParagraph(seltype)
 	call atplib#Log("SelectCurrentParagraph.log", "eeline_str=".eeline_str)
     endif
 
-    if getline(bline) =~ '\\par\>\|\\newline\>\|\\begin\s*{\s*\%(document\|letter\)\s*}' || bline_str =~ '^\%(\\\[\|\\item\>\)'
+    if getline(bline) =~ '\\par\>\|\\newline\>\|\\begin\s*{\s*\%(document\|letter\)\s*}' || bline_str =~ '^\%(\\\[\|\\item\>\)' || exists("no_motion")
 	" move to the beginning of \par
 	let bmove	= ''
     else
@@ -753,6 +764,7 @@ function! s:SelectCurrentParagraph(seltype)
 	let bmove 	=  "w"
     endif
 
+    let whichwrap = &whichwrap
 
     if getline(eline) =~ '\\par\>'
 	let emove	= 'gE'
@@ -764,7 +776,9 @@ function! s:SelectCurrentParagraph(seltype)
     elseif eeline_str =~ '^\\closing\>'
 	let emove	= 'ge'
     else
-	let emove	= 'ge'
+	let emove	= 'h'
+	set whichwrap+=h
+	" This used to be 'ge' as well.
     endif
 
     if g:atp_debugSelectCurrentParagraph
@@ -790,6 +804,7 @@ function! s:SelectCurrentParagraph(seltype)
     if !empty(emove)
 	execute "normal " . emove
     endif
+    let &whichwrap=whichwrap
 endfunction
 " }}}
 

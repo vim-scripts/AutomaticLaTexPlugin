@@ -2,10 +2,10 @@
 " Author:		Marcin Szamotulski
 " Mailing List: 	atp-vim-list [AT] lists.sourceforge.net
 " Do NOT DELETE the line just below, it is used by :UpdateATP (':help atp-:UpdateATP')
-" Time Stamp: 22-07-11_09-50
+" Time Stamp: 08-08-11_09-48
 " (but you can edit, if there is a reason for doing this. The format is dd-mm-yy_HH-MM)
 " Language:	    tex
-" Last Change: Tue Jun 14 01:00  2011 W
+" Last Change: Wed Jul 27 11:00  2011 W
 " GetLatestVimScripts: 2945 62 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
@@ -90,7 +90,6 @@ let g:source_time_atprc_begin=reltimestr(reltime(reltime_atprc_begin))
 let reltime_options=reltime()
 	runtime ftplugin/ATP_files/options.vim
 let g:source_time_options=reltimestr(reltime(reltime_options))
-
 
 let reltime_compiler=reltime()
 	" Compilation related stuff.

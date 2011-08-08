@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Sun Jun 19 06:00  2011 W
+" Last Change: Fri Aug 05 01:00  2011 W
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 
 " if exists("b:did_ftplugin") | finish | endif
@@ -40,7 +40,7 @@ endfunction
 
 " Get the file name and its path from the LABELS/ToC list.
 function! s:file() "{{{
-    let labels		= expand("%") == "__Labels__" ? 1 : 0
+    let labels	= ( expand("%") == "__Labels__" ? 1 : 0 )
 
     if labels == 0
 	return get(b:atp_Toc, line("."), ["", ""])[0]
@@ -70,7 +70,7 @@ command! -buffer File	:echo s:file()
 "
 " This function returns the window number to which we will eventually go.
 function! s:gotowinnr()
-    let labels_window	= expand("%") == "__Labels__" ? 1 : 0
+    let labels_window	= ( expand("%") == "__Labels__" ? 1 : 0 )
 
     " This is the line number to which we will go.
     let l:nr=atplib#getlinenr(line("."), labels_window)
@@ -81,21 +81,13 @@ function! s:gotowinnr()
 
     if labels_window
 	" Find labels window to go in Labels window
-	if bufwinnr(t:atp_bufname) != -1
-	    let l:gotowinnr=t:atp_winnr
-	else
-	    let l:gotowinnr=-1
-	endif
+	let l:gotowinnr=bufwinnr(l:bufname)
     else
 	" Find labels window to go in ToC window
 	if t:atp_bufname == l:bufname
 	    " if t:atp_bufname agree with that found in ToC
 	    " if the t:atp_winnr is still open
-	    if bufwinnr(t:atp_bufname) != -1
-		let l:gotowinnr=t:atp_winnr
-	    else
-		let l:gotowinnr=-1
-	    endif
+	    let l:gotowinnr=bufwinnr(l:bufname)
 	else
 	    if bufwinnr("^" . l:bufname . "$") != 0
 		" if not but there is a window with buffer l:bufname

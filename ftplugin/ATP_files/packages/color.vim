@@ -14,8 +14,8 @@ let g:atp_pacakge_color_commands=[
 let color_models = [ 'rgb', 'cmyk', 'gray', 'named' ]
 let g:atp_package_color_command_values={
 	    \ '\\ExecuteOptions{$' : g:atp_package_color_options,
-	    \ '\%(\\definecolor{[^}]*}{$\|\\\%f\?colorbox\[$\|\%(text\|page\)color\[$\)' : color_models,
-	    \ '\%(\\\(text\|page\)?color{$\|\\colorbox{$\|\\fcolorbox\%({[^}]*}\)\?{$\|\)' :  'GetColors'
+	    \ '\%(\\definecolor{[^}]*}{$\|\\%f\?colorbox\[$\|\%(text\|page\)color\[$\)' : color_models,
+	    \ '\%(\\\(text\|page\)?color{$\|\\colorbox{$\|\\fcolorbox\%({[^}]*}\)\?{$\)' :  'GetColors'
 	    \ }
 
 " This function will be run by TabCompletion (atplib#TabCompletion() in

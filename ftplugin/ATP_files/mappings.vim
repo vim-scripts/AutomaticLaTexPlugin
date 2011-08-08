@@ -2,7 +2,7 @@
 " Description:  This file contains mappings defined by ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Fri Jul 22 09:00  2011 W
+" Last Change: Thu Aug 04 11:00  2011 W
 
 " Add maps, unless the user didn't want them.
 if exists("g:no_plugin_maps") && g:no_plugin_maps ||
@@ -29,6 +29,8 @@ let g:backslash=s:backslash
 if g:atp_IMapCC
     imap <silent> <buffer> <C-c> <C-[>
 endif
+
+exe "cmap <buffer> <M-c> ^".s:backslash."%([^%]".s:bbackslash."|".s:bbackslash."%".s:backslash.")*".backslash."zs"
 
 if has("gui")
     if &l:cpoptions =~# "B"
@@ -106,30 +108,37 @@ if !hasmapto("<LeftMouse><Plug>SyncTexMouse", "n")
     nmap <buffer> <silent> <S-LeftMouse> 	<LeftMouse><Plug>SyncTexMouse
 endif
 
+" Move Around Comments:
 if !hasmapto(":SkipCommentForward<CR>", 'n')
-    nmap <buffer> <silent> ]*	:SkipCommentForward<CR> 
+    nmap <buffer> <silent> ]*	:SkipCommentForward<CR>
+    nmap <buffer> <silent> ]%	:SkipCommentForward<CR>
     nmap <buffer> <silent> gc	:SkipCommentForward<CR>
 endif
 if !hasmapto(":SkipCommentForward<CR>", 'o')
-    omap <buffer> <silent> ]*	:SkipCommentForward<CR> 
+    omap <buffer> <silent> ]*	:SkipCommentForward<CR>
+    omap <buffer> <silent> ]%	:SkipCommentForward<CR>
     omap <buffer> <silent> gc	:SkipCommentForward<CR>
 endif
 if !hasmapto("<Plug>SkipCommentForward", 'v')
     vmap <buffer> <silent> ]*	<Plug>SkipCommentForward
+    vmap <buffer> <silent> ]%	<Plug>SkipCommentForward
     vmap <buffer> <silent> gc	<Plug>SkipCommentForward
 endif
 
 if !hasmapto("<Plug>SkipCommentBackward<CR>", 'n')
-    nmap <buffer> <silent> [*	:SkipCommentBackward<CR> 
+    nmap <buffer> <silent> [*	:SkipCommentBackward<CR>
+    nmap <buffer> <silent> [%	:SkipCommentBackward<CR>
     nmap <buffer> <silent> gC	:SkipCommentBackward<CR>
 endif
 if !hasmapto("<Plug>SkipCommentBackward<CR>", 'o')
-    omap <buffer> <silent> [*	:SkipCommentBackward<CR> 
+    omap <buffer> <silent> [*	:SkipCommentBackward<CR>
+    omap <buffer> <silent> [%	:SkipCommentBackward<CR>
     omap <buffer> <silent> gC	:SkipCommentBackward<CR>
 endif
 if !hasmapto("<Plug>SkipCommentBackward", 'v')
-    vmap <buffer> <silent> gC	<Plug>SkipCommentBackward
     vmap <buffer> <silent> [*	<Plug>SkipCommentBackward
+    vmap <buffer> <silent> [%	<Plug>SkipCommentBackward
+    vmap <buffer> <silent> gC	<Plug>SkipCommentBackward
 endif
 
 if !hasmapto(":NInput<CR>")
@@ -140,16 +149,6 @@ endif
 if !hasmapto(":PInput<CR>")
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."i	:PInput<CR>"
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."gf	:PInput<CR>"
-endif
-
-if atplib#DocumentClass("b:atp_MainFile") == "beamer"
-    " >f, <f
-    exe "nmap <buffer> <silent> <expr> ".g:atp_map_forward_motion_leader."f ':<C-U>'.v:count1.'F frame<CR>'"
-    exe "nmap <buffer> <silent> <expr> ".g:atp_map_backward_motion_leader."f ':<C-U>'.v:count1.'B frame<CR>'"
-
-    " >F, <F
-    exe "nmap <buffer> <silent> ".g:atp_map_forward_motion_leader."F <Plug>NextFrame"
-    exe "nmap <buffer> <silent> ".g:atp_map_backward_motion_leader."F <Plug>PreviousFrame"
 endif
 
 " Syntax motions:
@@ -356,10 +355,10 @@ if !hasmapto(":<C-U>Wrap ".s:backslash."textmd{<CR>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."md	:<C-U>Wrap ".s:backslash."textmd{<CR>"
 endif
 if !hasmapto(":<C-U>Wrap ".s:backslash."underline{<CR>", 'v')
-    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."un	:<C-U>Wrap ".s:backslash."underline{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_imap_over_leader."un	:<C-U>Wrap ".s:backslash."underline{<CR>"
 endif
 if !hasmapto(":<C-U>Wrap ".s:backslash."overline{<CR>", 'v')
-    execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."ov	:<C-U>Wrap ".s:backslash."overline{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_imap_over_leader."ov	:<C-U>Wrap ".s:backslash."overline{<CR>"
 endif
 if !hasmapto(":<C-U>InteligentWrapSelection ['".s:backslash."textnormal{'],['".s:backslash."mathnormal{']<CR>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."no	:<C-U>InteligentWrapSelection ['".s:backslash."textnormal{'],['".s:backslash."mathnormal{']<CR>"
@@ -563,36 +562,35 @@ if !hasmapto("<Plug>vEndNextEnvironment", "v")
     vmap <silent> <buffer> ][ <Plug>vEndNextEnvironment
 endif
 
-" Move Around Comments:
-exe "nnoremap <silent> <buffer> <Plug>BegNextComment :call search('^".s:backslash."(".s:backslash."s*%.*".s:backslash."n".s:backslash.")".s:backslash."@<!".s:backslash."(".s:backslash."s*%".s:backslash.")', 'W')<CR>"
-if !hasmapto("<Plug>BegNextComment", "n")
-    nmap <silent> <buffer> ]% <Plug>BegNextComment
-endif
-exe "vnoremap <silent> <buffer> <Plug>vBegNextComment :<C-U>exe \"normal! gv\"<Bar>call search('^".s:backslash."(".s:backslash."s*%.*".s:backslash."n".s:backslash.")".s:backslash."@<!".s:backslash."(".s:backslash."s*%".s:backslash.")', 'W')<CR>"
-if !hasmapto("<Plug>vBegNextComment", "v")
-    vmap <silent> <buffer> ]% <Plug>vBegNextComment
-endif
-exe "nnoremap <silent> <buffer> <Plug>EndPrevComment 0<Bar>:call search('".s:backslash."%(^".s:backslash."s*%.*".s:backslash."n".s:backslash.")".s:backslash."%(^".s:backslash."s*%".s:backslash.")".s:backslash."@!', 'bW')<CR>"
-if !hasmapto("<Plug>EndPrevComment", "n")
-    nmap <silent> <buffer> [% <Plug>EndPrevComment
-endif
-exe "vnoremap <silent> <buffer> <Plug>vEndPrevComment :<C-U>exe \"normal! gv0\"<Bar>call search('".s:backslash."%(^".s:backslash."s*%.*".s:backslash."n".s:backslash.")".s:backslash."%(^".s:backslash."s*%".s:backslash.")".s:backslash."@!', 'bW')<CR>"
-if !hasmapto("<Plug>vEndPrevComment", "v")
-    vmap <silent> <buffer> [% <Plug>vEndPrevComment
-endif
-
 " Select Comment:
 if !hasmapto("v<Plug>vSelectComment", "n")
     exe "nmap <silent> <buffer> ".g:atp_MapSelectComment." v<Plug>vSelectComment"
 endif
 " Select Frame: (beamer)
-if atplib#DocumentClass(b:atp_MainFile) == "beamer"
-    let g:atp_MapSelectFrame = "_f"
-    if !hasmapto("v<Plug>vSelectFrameEnvironment", "n")
-	exe "nmap <silent> <buffer> ".g:atp_MapSelectFrame." <Plug>SelectFrameEnvironment"
-" 	exe "vmap <silent> <buffer> ".g:atp_MapSelectFrame." <Plug>vSelectFrameEnvironment"
+" This is done by a function, because it has to be run through an autocommand
+" otherwise atplib#DocumentClass is not working.
+function! <SID>BeamerOptions()
+    if atplib#DocumentClass(b:atp_MainFile) == "beamer"
+	
+	" _f
+	if !exists("g:atp_MapSelectFrame")
+	    let g:atp_MapSelectFrame = "=f"
+	endif
+	if !hasmapto("v<Plug>vSelectFrameEnvironment", "n")
+	    exe "nmap <silent> <buffer> ".g:atp_MapSelectFrame." <Plug>SelectFrameEnvironment"
+" 	    exe "vmap <silent> <buffer> ".g:atp_MapSelectFrame." <Plug>vSelectFrameEnvironment"
+	endif
+
+	" >f, <f
+	exe "nmap <buffer> <silent> <expr> ".g:atp_map_forward_motion_leader."f ':<C-U>'.v:count1.'F frame<CR>'"
+	exe "nmap <buffer> <silent> <expr> ".g:atp_map_backward_motion_leader."f ':<C-U>'.v:count1.'B frame<CR>'"
+
+	" >F, <F
+	exe "nmap <buffer> <silent> ".g:atp_map_forward_motion_leader."F <Plug>NextFrame"
+	exe "nmap <buffer> <silent> ".g:atp_map_backward_motion_leader."F <Plug>PreviousFrame"
     endif
-endif
+endfunction
+au BufEnter *.tex 	call <SID>BeamerOptions()
 
 " Normal Mode Maps: (most of them)
 if mapcheck('<LocalLeader>v') == "" && !hasmapto("<Plug>ATP_ViewOutput", "n")
@@ -908,8 +906,13 @@ if !exists("g:atp_imap_math_misc") || g:atp_reload_variables
 	let g:atp_infty_leader = (g:atp_imap_leader_1 == '#' ? '`' : g:atp_imap_leader_1 ) 
     endif
 let g:atp_imap_math_misc = [
-\ [ 'inoremap', '<silent> <buffer>', '+',		      '+', s:backslash.'sum',
+\ [ 'inoremap', '<silent> <buffer> <expr>', '+',	      '+', 
+	\ '!atplib#IsLeft("^")&&!atplib#IsLeft("_") ? '''.s:backslash.'sum'' : "++"',
 	\ "g:atp_imap_define_math_misc", '\sum' ],
+\ [ 'inoremap', '<silent> <buffer>', '<bar>', 		      '-', s:backslash.'vdash',
+	\ "g:atp_imap_define_math_misc", '\vdash' ],
+\ [ 'inoremap', '<silent> <buffer>', '-', 		      '<bar>', s:backslash.'dashv',
+	\ "g:atp_imap_define_math_misc", '\dashv' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_infty_leader,      '8', s:backslash.'infty', 	
 	\ "g:atp_imap_define_math_misc", '\infty' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_infty_leader,      '6', s:backslash.'partial',	
@@ -1080,34 +1083,35 @@ endif
 " Mathematical Maps:
 if !exists("g:atp_imap_math") || g:atp_reload_variables
     let g:atp_imap_math= [ 
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", g:atp_imap_subscript, "( g:atp_imap_subscript == '_' && !atplib#IsLeft('\\', 1) && atplib#IsLeft('_') <bar><bar> g:atp_imap_subscript != '_' ) && atplib#IsInMath() ? (g:atp_imap_subscript == '_' ? '<BS>' : '' ).'_{}<Left>' : '_' ", "g:atp_imap_define_math", 	'_{}'], 
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", g:atp_imap_supscript, "( g:atp_imap_supscript == '^' && !atplib#IsLeft('\\', 1) && atplib#IsLeft('^') <bar><bar> g:atp_imap_supscript != '^' ) && atplib#IsInMath() ? (g:atp_imap_supscript == '^' ? '<BS>' : '' ).'^{}<Left>' : (atplib#IsLeft('~') ? '<BS>".s:backslash."=(g:atp_imap_wide ? ''wide'' : '''' )<CR>hat{}<Left>' : '^') ", "g:atp_imap_define_math", 	'^{}'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", g:atp_imap_subscript, "( g:atp_imap_subscript == '_' && !atplib#IsLeft('\\', 1) && atplib#IsLeft('_') <bar><bar> g:atp_imap_subscript != '_' ) && atplib#IsInMath() ? (g:atp_imap_subscript == '_' ? '<BS>' : '' ).'_{}<Left>' : '_'", "g:atp_imap_define_math", 	'_{}'], 
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", g:atp_imap_supscript, "( g:atp_imap_supscript == '^' && !atplib#IsLeft('\\', 1) && atplib#IsLeft('^') <bar><bar> g:atp_imap_supscript != '^' ) && atplib#IsInMath() ? (g:atp_imap_supscript == '^' ? '<BS>' : '' ).'^{}<Left>' : (atplib#IsLeft('~') ? '<BS>".s:backslash."=(g:atp_imap_wide ? ''wide'' : '''' )<CR>hat{}<Left>' : '^')", "g:atp_imap_define_math", 	'^{}'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "~", "atplib#IsLeft('~') && atplib#IsInMath() ? '<BS>".s:backslash."=(g:atp_imap_wide ? \"wide\" : \"\" ) <CR>tilde=(g:atp_imap_tilde_braces ? \"{}\" : \"\")<CR>'.(g:atp_imap_tilde_braces ? '<Left>' : '') : '~' " , "g:atp_imap_define_math", 	'\\(wide)tilde({})'], 
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "=", "atplib#IsInMath() && atplib#IsLeft('=') && !atplib#IsLeft('&',1) ? '<BS>&=' : '='", "g:atp_imap_define_math",	'&=' ],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "o+", "atplib#IsInMath() ? '".s:backslash."oplus' 	: 'o+' ", "g:atp_imap_define_math", 		'\\oplus' ],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "O+", "atplib#IsInMath() ? '".s:backslash."bigoplus' 	: 'O+' ", "g:atp_imap_define_math",		'\\bigoplus'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "o-", "atplib#IsInMath() ? '".s:backslash."ominus' 	: 'o-' ", "g:atp_imap_define_math",		'\\ominus'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "o.", "atplib#IsInMath() ? '".s:backslash."odot' 	: 'o.' ", "g:atp_imap_define_math",		'\\odot'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "O.", "atplib#IsInMath() ? '".s:backslash."bigodot' 	: 'O.' ", "g:atp_imap_define_math",		'\\bigodot'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "o*", "atplib#IsInMath() ? '".s:backslash."otimes' 	: 'o*' ", "g:atp_imap_define_math",		'\\otimes'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "O*", "atplib#IsInMath() ? '".s:backslash."bigotimes' 	: 'O*' ", "g:atp_imap_define_math",		'\\bigotimes'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s+", "atplib#IsInMath() ? '".s:backslash."cup' 	: 's+' ", "g:atp_imap_define_math",		'\\cup'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s-", "atplib#IsInMath() ? '".s:backslash."setminus' 	: 's-' ", "g:atp_imap_define_math",		'\\cup'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "S+", "atplib#IsInMath() ? '".s:backslash."bigcup' 	: 'S+' ", "g:atp_imap_define_math",		'\\bigcup'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s*", "atplib#IsInMath() ? '".s:backslash."cap' 	: 's*' ", "g:atp_imap_define_math",		'\\cap'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "S*", "atplib#IsInMath() ? '".s:backslash."bigcap' 	: 'S*' ", "g:atp_imap_define_math",		'\\bigcap'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "c*", "atplib#IsInMath() ? '".s:backslash."prod' 	: 'c*' ", "g:atp_imap_define_math",		'\\prod'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "c+", "atplib#IsInMath() ? '".s:backslash."coprod' 	: 'c+' ", "g:atp_imap_define_math",		'\\coprod'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "t<", "atplib#IsInMath() ? '".s:backslash."triangleleft' : 't<' ", "g:atp_imap_define_math",		'\\triangleleft'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "t>", "atplib#IsInMath() ? '".s:backslash."triangleright' : 't>' ", "g:atp_imap_define_math",		'\\triangleright'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s<", "atplib#IsInMath() ? '".s:backslash."subseteq' 	: 's<' ", "g:atp_imap_define_math",		'\\subseteq'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s>", "atplib#IsInMath() ? '".s:backslash."supseteq' 	: 's>' ", "g:atp_imap_define_math",		'\\supseteq'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<=", "atplib#IsInMath() ? '".s:backslash."leq' 	: '<=' ", "g:atp_imap_define_math",		'\\leq'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", ">=", "atplib#IsInMath() ? '".s:backslash."geq' 	: '>=' ", "g:atp_imap_define_math",		'\\geq'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "->", "atplib#IsInMath('!') ? '".s:backslash."rightarrow' 	: '->' ", "g:atp_imap_define_math",		'\\rightarrow'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<-", "atplib#IsInMath('!') ? '".s:backslash."leftarrow' 	: '<-' ", "g:atp_imap_define_math",		'\\leftarrow'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<_", "atplib#IsInMath('!') ? '".s:backslash."Leftarrow' 	: '<-' ", "g:atp_imap_define_math",		'\\leftarrow'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "_>", "atplib#IsInMath('!') ? '".s:backslash."Rightarrow' 	: '->' ", "g:atp_imap_define_math",		'\\rightarrow'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "o+", "atplib#IsInMath() ? '".s:backslash."oplus' 	: 'o+'", "g:atp_imap_define_math", 		'\\oplus' ],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "O+", "atplib#IsInMath() ? '".s:backslash."bigoplus' 	: 'O+'", "g:atp_imap_define_math",		'\\bigoplus'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "o-", "atplib#IsInMath() ? '".s:backslash."ominus' 	: 'o-'", "g:atp_imap_define_math",		'\\ominus'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "o.", "atplib#IsInMath() ? '".s:backslash."odot' 	: 'o.'", "g:atp_imap_define_math",		'\\odot'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "O.", "atplib#IsInMath() ? '".s:backslash."bigodot' 	: 'O.'", "g:atp_imap_define_math",		'\\bigodot'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "o*", "atplib#IsInMath() ? '".s:backslash."otimes' 	: 'o*'", "g:atp_imap_define_math",		'\\otimes'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "O*", "atplib#IsInMath() ? '".s:backslash."bigotimes' 	: 'O*'", "g:atp_imap_define_math",		'\\bigotimes'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "t*", "atplib#IsInMath() ? '".s:backslash."times' 	: 't*'", "g:atp_imap_define_math",		'\\otimes'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s+", "atplib#IsInMath() ? '".s:backslash."cup' 	: 's+'", "g:atp_imap_define_math",		'\\cup'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s-", "atplib#IsInMath() ? '".s:backslash."setminus' 	: 's-'", "g:atp_imap_define_math",		'\\cup'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "S+", "atplib#IsInMath() ? '".s:backslash."bigcup' 	: 'S+'", "g:atp_imap_define_math",		'\\bigcup'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s*", "atplib#IsInMath() ? '".s:backslash."cap' 	: 's*'", "g:atp_imap_define_math",		'\\cap'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "S*", "atplib#IsInMath() ? '".s:backslash."bigcap' 	: 'S*'", "g:atp_imap_define_math",		'\\bigcap'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "c*", "atplib#IsInMath() ? '".s:backslash."prod' 	: 'c*'", "g:atp_imap_define_math",		'\\prod'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "c+", "atplib#IsInMath() ? '".s:backslash."coprod' 	: 'c+'", "g:atp_imap_define_math",		'\\coprod'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "t<", "atplib#IsInMath() ? '".s:backslash."triangleleft' : 't<'", "g:atp_imap_define_math",		'\\triangleleft'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "t>", "atplib#IsInMath() ? '".s:backslash."triangleright' : 't>'", "g:atp_imap_define_math",		'\\triangleright'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s<", "atplib#IsInMath() ? '".s:backslash."subseteq' 	: 's<'", "g:atp_imap_define_math",		'\\subseteq'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s>", "atplib#IsInMath() ? '".s:backslash."supseteq' 	: 's>'", "g:atp_imap_define_math",		'\\supseteq'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<=", "atplib#IsInMath() ? '".s:backslash."leq' 	: '<='", "g:atp_imap_define_math",		'\\leq'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", ">=", "atplib#IsInMath() ? '".s:backslash."geq' 	: '>='", "g:atp_imap_define_math",		'\\geq'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "->", "atplib#IsInMath('!') ? '".s:backslash."rightarrow' 	: '->'", "g:atp_imap_define_math",		'\\rightarrow'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<-", "atplib#IsInMath('!') ? '".s:backslash."leftarrow' 	: '<-'", "g:atp_imap_define_math",		'\\leftarrow'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<_", "atplib#IsInMath('!') ? '".s:backslash."Leftarrow' 	: '<-'", "g:atp_imap_define_math",		'\\leftarrow'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "_>", "atplib#IsInMath('!') ? '".s:backslash."Rightarrow' 	: '->'", "g:atp_imap_define_math",		'\\rightarrow'],
 	\ ]
 endif
 

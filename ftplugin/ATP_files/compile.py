@@ -71,7 +71,7 @@ debug_file      = open(script_logfile, 'w')
 # Cleanup on exit:
 def cleanup(debug_file):
     debug_file.close()
-    shutil.rmtree(tmpdir)
+#     shutil.rmtree(tmpdir)
 atexit.register(cleanup, debug_file)
 
 command         = options.command
@@ -445,10 +445,10 @@ try:
         file_cp=basename+".aux"
         if os.path.exists(file_cp):
             shutil.copy(file_cp, mainfile_dir)
-    os.chdir(cwd)
     file_cp=basename+".aux"
     if os.path.exists(file_cp):
         shutil.copy(file_cp, os.path.join(mainfile_dir, basename+"._aux"))
+    os.chdir(cwd)
 
 ####################################
 #

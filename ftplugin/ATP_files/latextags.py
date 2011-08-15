@@ -220,6 +220,6 @@ tag_file.close()
 
 # Communicate to Vim:
 if options.servername != "":
-    vim_remote_expr(options.servername, "atplib#Echo(\"[LatexTags:] tags done.\",'echo','')")
+    vim_remote_expr(options.servername, "atplib#Echo(\"[LatexTags:] tags file written.\",'echo','')")
 if ioerror:
     vim_remote_expr(options.servername, "atplib#Echo(\"[LatexTags:] no aux file.\",'echomsg', 'WarningMsg')")

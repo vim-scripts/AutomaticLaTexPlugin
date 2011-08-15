@@ -1,4 +1,4 @@
-*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 08 August 2011
+*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 15 August 2011
 
 	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10)
 			by Marcin Szamotulski
@@ -161,6 +161,24 @@ for all the defined functions :help atp*()<CTRL>d, mappings: :help atp-map<CTRL>
 NEWS							*atp-news*
 >
  ======================
+ Changes in version 10.2
+<
+  :Dictionary {word}		-- an interface to http://www.impan.pl/Dictionary/.
+  					see |atp-:Dictionary| (with map =d
+					using |<cword>| under the cursor).
+
+  |atp-:Edit|   		  -- instead of :EditInputFile
+
+  :ShowErrors e			-- fixed (finally!)
+  :TexAlign			-- can manage table environements and also
+				   join lines which do not end with \\, see
+				   |g:atp_TexAlign_join_lines| how to set this.
+
+  'iskeyword'			-- is set using g:tex_isk variable. This is
+				   compatible with the standard tex syntax
+				   file.
+>
+ ======================
  Changes in version 10
 <
   If you use <Shift-Tab> (i.e. non-expert mode for completion) to close
@@ -221,7 +239,7 @@ NEWS							*atp-news*
       \varsigma 	#vs
       \varepsilon 	#ve
 
-  The main change is the speed up of writting in insert mode by consolidation
+  The main change is the speed up of writing in insert mode by consolidation
   autocommands for |CursorMovedI| group and changing them when they are
   actually run. This is used for defining imaps, see |atp-imaps|, and for
   setting vim options in LaTeX math mode, see |g:atp_MathVimOptions|.
@@ -608,8 +626,8 @@ note on using CTRL-C (|i_CTRL-C|) in Vim:
     doesn't changes the |'updatetime'| from |b:atp_updatetime_insert| to
     |b:atp_updatetime_normal|. If |g:atp_IMapCC|=1 then |_CTRL-C| is mapped to
     |i_CTRL-[| so the InsertLeave autocommands are parsed. However, it is
-    a good habit to use |i_CTRL-C| while you are writting/editing and |i_CTRL-[| or
-    |i_ESC| when you whish to see what you wrote (then TeX will be run
+    a good habit to use |i_CTRL-C| while you are writing/editing and |i_CTRL-[| or
+    |i_ESC| when you wish to see what you wrote (then TeX will be run
     quicker). If you follow this you can even set
     |b:atp_updatetime_normal|=1 (if you set it to 0 then the file will not
     be processed while Vim is in normal mode).
@@ -1315,7 +1333,7 @@ map c, map y, map p
 	as not readable.  
 							
 :GotoFile[!]						*atp-:GotoFile*
-:EditInputFile[!]	/ the old name / 		*atp-:EditInputFile*
+:Edit[!]				 		*atp-:Edit*
 nmap gf
 	This command finds input files under b:atp_MainFile (it is recursive).
 	The nmap 'gf' checks first if there is a file under the cursor. If
@@ -1395,6 +1413,17 @@ map <F1>, imap <F1>
 	You can use {bang} "!" to regenerate the library if it has changed.
 	This is particularly useful as by default ATP remembers g:atp_Library in
 	the common project script (see |atp-ProjectScript|).
+
+							*atp-:Dictionary*
+:Dictionary {word}
+map =d
+	This is an interface to http://www.impan.pl/Dictionary/. Type a [word]
+	and you will get quotes from mathematical articles or books written by
+	native speakers of English. The command has a completion for words.
+	List of words is hardcoded in ATP (it is too slow to get it), since the
+	dictionary evolves it might contain new entries.
+
+	The map takes the |<word>| under the cursor as an argument.
 
 :Delete[!]						*atp-:Delete*
 map <F6>d
@@ -1512,6 +1541,10 @@ map \a
 	g:Align_xstrlen="ATP_strlen" if 'conceallevel' option is >0. if
 	'conceallevel' is reset to 0 ATP_strlen behaves like
 	g:Align_xstrlen=2.
+
+	If *g:atp_TexAlign_join_lines* =1 then |atp-:TexAlign| will also join
+	all the lines which do not ends with \\. By default it is equal to
+	0.
     							*atp-:LatexTags*
 							*atp-:Tags*
 :Tags[!]
@@ -1942,7 +1975,7 @@ vmap <F4>
 	'ignorecase' and 'smartcase'. You can override them with '\C' (match
 	case what follows) and '\c' (ignore case in what follows).
 
-	It works likes ]d but handles multi line definitions.
+	It works likes [D but handles multi line definitions.
 
 *g:atp_DsearchMaxWindowHeight* = 15
 	You can set the maximal hieght of the window wich shows the results of
@@ -3426,7 +3459,7 @@ put them in your |atprc| it is enough to use the standard "let b:...=".
 >
  let g:texmf	= $HOME/texmf				
 <	This variable configures where input files are placed. See
-	|atp-:EditInputFile|.
+	|atp-:Edit|.
 							*g:askforoutdir*
 >
  let g:askforoutdir	= 0				
@@ -4202,7 +4235,7 @@ Note: This can be effectivly set only in |atprc| or |vimrc| files.
     |g:atp_ProjectLocalVariables|.
 
     							*b:atp_StarMathEnvDefault*	
-    b:atpStarMathEnvDefault variable with values "*" or "" (the default).  It
+    b:atp_StarMathEnvDefault variable with values "*" or "" (the default).  It
     is added to align and equation imaps (|atp-imap-environments|).  By
     default it will be restored by the project script. See
     |g:atp_ProjectLocalVariables|.
@@ -4822,6 +4855,22 @@ y/\\begin{document}/		When standing on 1st line - copy the preamble
 					/ when there are more than two empty
 					lines it leaves just one /  
 
+:g/\\begin{table}/+;/\\end{table}/-s/\(\\\\\s*\)\@<!\n/
+				Joint lines inside table environment which
+				doesn't end with \\, i.e. from >
+				    \begin{table}
+					    a&b
+					    c&d\\
+					    A&B&C
+					    &D\\
+				    \end{table}
+<				it will make >
+				    \begin{table}
+					    a&b&c&d\\
+					    A&B&C&D\\
+				    \end{table}
+<				(modulo white spaces which might appear)
+
 vipgq				Format inner paragraph. Or even better:
 m`vipgq``			This is so nice that I added a map: >
 				    nmap gq	m`vipgq``		
@@ -4836,9 +4885,10 @@ m`vip<``			Indent inner paragraph, they are mapped to: >
 :TeXdoc ams<Ctrl-d>		Show tex documentation which matches ams (the
 				completion for TeXdoc command finds matches in
 				alias files of texdoc :!texdoc -f).
-\ref{^thm:<Tab>			will list all cross references to theorems (if
-				you use the prefix thm: for theorems.
 
+\ref{thm:<Tab>			It will list all cross references to theorems
+\ref{^thm:<S-Tab>		(if you use the prefix thm: for theorems).
+				
 				If you want to change the name of a command,
 				you can try:
 augroup DelCommands
@@ -4861,6 +4911,8 @@ command! -buffer	Xpdf	:call SetXpdf()
 :map [=		[sz=		suggestions. Another version is to use
 				]S and [S instead of ]s and [s.
 				
+imap <C-B>	<C-o>b<C-o>de	Delete word before the cursor
+		<C-o>vbx	(this an alternative using visual mode).
 
 ================================================================================
 COLOUR HIGHLIGHTING AND SYNTAX GROUPS				*atp-highlight*
@@ -4997,5 +5049,4 @@ COPY RIGHTS							*atp-copy-rights*
 <   where taken from latex-suite Vim plugin and are under Vim charity
     |license|.
 
-
-	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10)
+	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10.2)

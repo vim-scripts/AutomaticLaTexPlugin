@@ -260,9 +260,15 @@ def reload_xpdf():
             devnull.close()
 
 def copy_back_output(tmpdir):
+# Copy pdf(dvi) and (aux) files back to working directory,
+
+# aux file is copied also to _aux file used by ATP.
     os.chdir(tmpdir)
     if os.path.exists(file_cp) and os.path.exists(basename+output_ext):
         shutil.copy(basename+output_ext, texfile_dir)
+    if os.path.exists(basename+".aux"):
+        shutil.copy(basename+".aux", texfile_dir)
+        shutil.copy(basename+".aux", os.path.join(texfile_dir, basename+"._aux"))
     os.chdir(texfile_dir)
 
 def copy_back(tmpdir, latex_returncode):

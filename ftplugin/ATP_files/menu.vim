@@ -99,6 +99,15 @@ imenu 550.30 LaTe&X.&Table\ of\ Contents<Tab>:TOC				<Esc>:TOC<CR>
 menu 550.30 LaTe&X.L&abels<Tab>:Labels						:<C-U>Labels<CR>
 cmenu 550.30 LaTe&X.L&abels<Tab>:Labels						<C-U>Labels<CR>
 imenu 550.30 LaTe&X.L&abels<Tab>:Labels						<Esc>:Labels<CR>
+if b:atp_LatexTags
+    menu 550.30 LaTe&X.T&ags<Tab>:Tags						:<C-U>Tags<CR>
+    cmenu 550.30 LaTe&X.T&ags<Tab>:Tags						<C-U>Tags<CR>
+    imenu 550.30 LaTe&X.T&ags<Tab>:Tags						<Esc>:Tags<CR>
+else
+    menu 550.30 LaTe&X.T&ags<Tab>:LatexTags					:<C-U>LatexTags<CR>
+    cmenu 550.30 LaTe&X.T&ags<Tab>:LatexTags					<C-U>LatexTags<CR>
+    imenu 550.30 LaTe&X.T&ags<Tab>:LatexTags					<Esc>:LatexTags<CR>
+endif
 "
 menu 550.40 LaTe&X.&Go\ to.&GotoFile<Tab>:GotoFile				:GotoFile<CR>
 cmenu 550.40 LaTe&X.&Go\ to.&GotoFile<Tab>:GotoFile				GotoFile<CR>

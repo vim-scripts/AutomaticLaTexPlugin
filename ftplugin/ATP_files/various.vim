@@ -2,7 +2,7 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Sat Aug 06 10:00  2011 W
+" Last Change: Sat Aug 13 08:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -364,6 +364,11 @@ function! TexAlign()
 	let epat = '\\end\s*{\s*tabular\*\=\s*}' 
 	let AlignCtr = 'jl+ &'
 	let env = "tabular"
+    elseif searchpair('\\begin\s*{\s*table\s*\}', '', '\\end\s*{\s*table\s*}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
+	let bpat = '\\begin\s*{\s*table\*\=\s*}' 
+	let epat = '\\end\s*{\s*table\*\=\s*}' 
+	let AlignCtr = 'jl+ &'
+	let env = "table"
     else
 	return
     endif
@@ -380,6 +385,19 @@ function! TexAlign()
 	call cursor(saved_pos[1], saved_pos[2])
     endif
 
+    if g:atp_TexAlign_join_lines
+    " Join lines
+	execute bline . ',' . eline . 's/\(\\\\\s*\)\@<!\n//g'
+	if env != "matrix"
+	    let eline = searchpair(bpat, '', epat, 'cn')  - 1
+	else
+	    let saved_pos = getpos(".")
+	    call cursor(bmatrix, bmatrix_col)
+	    let eline = searchpair('{', '', '}', 'n')  - 1
+	    call cursor(saved_pos[1], saved_pos[2])
+	endif
+    endif
+
     if bline <= eline
 	execute bline . ',' . eline . 'Align ' . AlignCtr
     endif
@@ -391,7 +409,7 @@ endfunction
 " This function is used to measure lenght of a string using :Align, :TexAlign
 " commads. See help file of AlignPlugin for g:Align_xstrlen variable.
 function! ATP_strlen(x)
-    if !&conceallevel 
+    if v:version < 703 || !&conceallevel 
 	return strlen(substitute(a:x, '.\Z', 'x', 'g'))
     endif
     let x=a:x
@@ -1828,7 +1846,7 @@ function! <SID>GetAMSRef(what, bibfile)
     else
 	let url="http://www.ams.org/mathscinet-mref?ref=".what."&dataType=tex"
     endif
-    let cmd=g:atp_Python." ".URLquery_path." ".shellescape(url)." ".shellescape(atpbib_WgetOutputFile)
+    let cmd=g:atp_Python." ".shellescape(URLquery_path)." ".shellescape(url)." ".shellescape(atpbib_WgetOutputFile)
     call system(cmd)
     let loclist = getloclist(0)
 
@@ -1961,6 +1979,344 @@ function! AMSRef(bang, what)
     endif
 endfunction
 "}}}
+
+" Dictionary (of J.Trzeciak IMPAN)
+"{{{ Dictionary
+function! <SID>Dictionary(word)
+    redraw
+    let URLquery_path 	= globpath(&rtp, 'ftplugin/ATP_files/url_query.py')
+    let url		= "http://www.impan.pl/cgi-bin/dictsearch?q=".a:word
+    let wget_file 	= tempname()
+    let cmd=g:atp_Python." ".shellescape(URLquery_path)." ".shellescape(url)." ".shellescape(wget_file)
+    call system(cmd)
+    let loclist		= getloclist(0)
+    exe 'lvimgrep /\CMathematical English Usage - a Dictionary/j '.fnameescape(wget_file)
+    let entry=readfile(wget_file)[getloclist(0)[0]['lnum']+1]
+    call setloclist(0, loclist)
+    let entry		= substitute(entry, '<p>', "\n", 'g')
+    let entry		= substitute(entry, '<h4>\zs\([0-9]\+\)\ze</h4>', "\n\\1", 'g')
+    let entry		= substitute(entry, '<[^>]\+>', '', 'g')
+    let entry		= substitute(entry, '\n\zs\([0-9]\+\)\s*\n', '\n\1 ', 'g')
+    if &enc == 'utf-8'
+	let entry		= substitute(entry, '&#8594;', '→', 'g')
+	let entry		= substitute(entry, '&#8734;', '∞', 'g')
+	let entry		= substitute(entry, '&lang;', '⟨', 'g')
+	let entry		= substitute(entry, '&rang;', '⟩', 'g')
+	let entry		= substitute(entry, '&#8805;', '≥', 'g')
+	let entry		= substitute(entry, '&#8804;', '≤', 'g')
+	let entry		= substitute(entry, '&#8721;\s*', '∑', 'g')
+	let entry		= substitute(entry, '&#960;', '⊓', 'g')
+    else
+	let entry		= substitute(entry, '&#8594;', '->', 'g')
+	let entry		= substitute(entry, '&#8734;', '\infty ', 'g')
+	let entry		= substitute(entry, '&lang;', '<', 'g')
+	let entry		= substitute(entry, '&rang;', '>', 'g')
+	let entry		= substitute(entry, '&#8721;\s*', '\sum ', 'g')
+    endif
+    let entry		= substitute(entry, '&#822[01];', '"', 'g')
+    let entry		= substitute(entry, '&nbsp;', ' ', 'g')
+    let entry		= substitute(entry, 'Lists of words starting with.*', '', 'g')
+    let entry		= substitute(entry, '\.\{4,}', '...', 'g')
+    let g:entry=entry
+    let entry_list	= split(entry, "\n")
+    let i=0
+    redraw
+    for line in entry_list
+	if i == 0
+	    echoh Title
+	elseif line =~ '\[see also:'
+	    echohl WarningMsg
+	else
+	    let line=substitute(line, '^\s*', '', '')
+	endif
+	echo line
+	if line =~ '\[see also:' || i == 0
+	    echohl Normal
+	endif
+	let i+=1
+    endfor
+"     let g:url		= url
+    let g:wget_file 	= wget_file
+endfunction
+
+function! Complete_Dictionary(ArgLead, CmdLine, CursorPos)
+    let word_list = [ 'across', 'afford', 'alternative', 'appear',
+\ 'ask', 'abbreviate', 'act', 'afield', 'alternatively', 'appearance', 'aspect',
+\ 'abbreviation', 'action', 'aforementioned', 'although', 'applicability', 'assert', 'able',
+\ 'actual', 'after', 'altogether', 'applicable', 'assertion', 'abound', 'actually',
+\ 'again', 'always', 'application', 'assess', 'about', 'adapt', 'against',
+\ 'ambiguity', 'apply', 'assign', 'above', 'adaptation', 'agree', 'among',
+\ 'appreciation', 'associate', 'absence', 'add', 'agreement', 'amount', 'approach',
+\ 'assume', 'absorb', 'addition', 'aid', 'analogous', 'appropriate', 'assumption',
+\ 'abstract', 'additional', 'aim', 'analogously', 'appropriately', 'at', 'abundance',
+\ 'additionally', 'alas', 'analogue', 'approximate', 'attach', 'abuse', 'address',
+\ 'albeit', 'analogy', 'approximately', 'attain', 'accessible', 'adhere', 'algebra',
+\ 'analyse', 'arbitrarily', 'attempt', 'accidental', 'ad', 'hoc', 'algorithm',
+\ 'analysis', 'arbitrary', 'attention', 'accomplish', 'adjoin', 'all', 'angle',
+\ 'area', 'author', 'accord', 'adjust', 'allow', 'announce', 'argue',
+\ 'automatic', 'accordance', 'adjustment', 'allude', 'anomalous', 'argument', 'automatically', 'according', 'admit', 
+\ 'almost', 'another', 'arise', 'auxiliary', 'accordingly', 'adopt', 'alone', 'answer', 'around', 'available', 'account', 
+\ 'advance', 'along', 'any', 'arrange', 'average', 'accurate', 'advantage',
+\ 'already', 'apart', 'arrangement', 'avoid', 'achieve', 'advantageous', 'also',
+\ 'apparatus', 'arrive', 'await', 'achievement', 'advent', 'alter', 'apparent',
+\ 'article', 'aware', 'acknowledge', 'affect', 'alternate', 'apparently', 'artificial',
+\ 'away', 'acquire', 'affirmative', 'alternately', 'appeal', 'as', 
+\ 'back', 'be', 'behave', 'besides', 'bottom', 
+\ 'bring', 'background', 'bear', 'behaviour', 'best', 'bound', 'broad',
+\ 'backward(s)', 'because', 'behind', 'better', 'boundary', 'broadly', 'ball',
+\ 'become', 'being', 'between', 'bracket', 'build', 'base', 'before',
+\ 'believe', 'beware', 'break', 'but', 'basic', 'beforehand', 'belong',
+\ 'beyond', 'brevity', 'by', 'basically', 'begin', 'below', 'borrow',
+\ 'brief', 'bypass', 'basis', 'beginning', 'benefit', 'both', 'briefly',
+\ 'by-product', 'calculate', 'choose', 'commonly', 'concisely', 'constantly',
+\ 'convert', 'calculation', 'circle', 'companion', 'conclude', 'constitute', 'convey',
+\ 'call', 'circumstances', 'compare', 'conclusion', 
+\ 'constraint', 'convince', 'can', 'circumvent', 'comparison', 'concrete', 'construct',
+\ 'coordinate', 'cancel', 'cite', 'compensate', 'condition', 'construction', 'core',
+\ 'capture', 'claim', 'complement', 'conditional', 'consult', 'corollary', 'cardinality',
+\ 'clarity', 'complete', 'conduct', 'contain', 'correct', 'care', 'class',
+\ 'completely', 'conference', 'content', 'correspond', 'careful', 'classic', 'completeness',
+\ 'confine', 'context', 'correspondence', 'carefully', 'classical', 'completion', 'confirm',
+\ 'continue', 'coset', 'carry', 'classification', 'complex', 'conflict', 'continuous',
+\ 'cost', 'case', 'clear', 'complicated', 'confound', 'continuum', 'could',
+\ 'category', 'clearly', 'complication', 'confuse', 'contradict', 'count', 'cause',
+\ 'close', 'compose', 'confusion', 'contradiction', 'counterexample', 'caution', 'closely',
+\ 'composition', 'conjecture', 'contrary', 'couple', 'centre', 'clue', 'comprehensive',
+\ 'conjunction', 'contrast', 'course', 'certain', 'cluster', 'comprise', 'connect',
+\ 'contribute', 'cover', 'certainly', 'coefficient', 'computable', 'connection', 'contribution',
+\ 'create', 'challenge', 'coincidence', 'computation', 'consecutive', 'control', 'criterion',
+\ 'chance', 
+\ 'collect', 'computational', 'consequence', 'convenience', 'critical', 'change', 'collection',
+\ 'compute', 'consequently', 'convenient', 'cross', 'character', 'column', 'conceivably',
+\ 'consider', 'conveniently', 'crucial', 'characteristic', 'combine', 'concentrate', 'considerable',
+\ 'convention', 'crucially', 'characterization', 'come', 'concept', 'considerably', 'converge',
+\ 'cumbersome', 'characterize', 'commence', 'conceptually', 'consideration', 'convergence', 'curiously',
+\ 'check', 'comment', 'concern', 'consist', 'converse', 'customary', 'choice',
+\ 'common', 'concise', 'constant', 'conversely', 'cut', 'data',
+\ 'definiteness', 'derive', 'differ', 'discussion', 'dominate', 'date', 'definition',
+\ 'describe', 'difference', 'disjoint', 'doomed', 'deal', 'degree', 'description',
+\ 'different', 'disparate', 'double', 'decay', 'delete', 'deserve', 'differently',
+\ 'dispense', 'doubly', 'decide', 'deliberately', 'design', 'difficult', 'display',
+\ 'doubt', 'declare', 'delicate', 'designate', 'difficulty', 'disprove', 'down',
+\ 'decline', 'demand', 'desirable', 'digress', 'disregard', 'downward(s)', 'decompose',
+\ 'demonstrate', 'desire', 'dimension', 'distance', 'draft', 'decomposition', 'denote',
+\ 'detail', 'diminish', 'distinct', 'draw', 'decrease', 'depart', 'deteriorate',
+\ 'direct', 'distinction', 'drawback', 'dedicate', 'depend', 'determine', 'direction',
+\ 'distinguish', 'drop', 'deduce', 'dependence', 'develop', 'directly', 'distribute',
+\ 'due', 'deep', 'dependent', 'development', 'disadvantage', 'distribution', 'duration',
+\ 'default', 'depict', 'device', 'disappear', 'divide', 'during', 'defer',
+\ 'depth', 'devote', 'discover', 'do', 'define', 'derivation', 'diameter',
+\ 'discuss', 'document', 'each', 'embrace', 'entirely', 'establish',
+\ 'exception', 'explicit', 'ease', 'emerge', 'entry', 'establishment', 'exceptional',
+\ 'explicitly', 'easily', 'emphasis', 'enumerate', 'estimate', 'exercise', 'exploit',
+\ 'easy', 'emphasize', 'enumeration', 'estimation', 'exchange', 'exploration', 'effect',
+\ 'employ', 'envisage', 'even', 'exclude', 'explore', 'effective', 'enable',
+\ 'equal', 'event', 'exclusive', 'expose', 'effectively', 'encircle', 'equality',
+\ 'eventual', 'exclusively', 'exposition', 'effectiveness', 'encompass', 'equally', 'eventually',
+\ 'exemplify', 'express', 'effort', 'encounter', 'equate', 'ever', 'exhibit',
+\ 'expression', 'either', 'encourage', 'equation', 'every', 'exist', 'extend',
+\ 'elaborate', 'end', 'equip', 'evidence', 'existence', 'extension', 'elegant',
+\ 'enhance', 'equivalent', 'evident', 
+\ 'expand', 'extensive', 'element', 'enjoy', 'equivalently', 'evidently', 'expansion',
+\ 'extensively', 'elementary', 'enough', 'erroneous', 'exactly', 'expect', 'extent',
+\ 'eliminate', 'ensuing', 'error', 'examination', 'expectation', 'extra', 'else',
+\ 'ensure', 'especially', 'examine', 'expense', 'extract', 'elsewhere', 'entail',
+\ 'essence', 'example', 'explain', 'extreme', 'embed', 'enter', 'essential',
+\ 'exceed', 'explanation', 'embedding', 'entire', 'essentially', 'except', 'explication',
+\ 'fact', 'fashion', 'finally', 'follow', 'formulation', 'from',
+\ 'factor', 'fast', 'find', 'for', 'fortunately', 'fulfil', 'fail',
+\ 'feasible', 'fine', 'force', 'forward', 'full', 'fairly', 'feature',
+\ 'finish', 'foregoing', 'foundation', 'fully', 'fall', 'fellowship', 'first',
+\ 'form', 'fraction', 'furnish', 'fallacious', 'few', 'fit', 'formalism',
+\ 'framework', 'further', 'false', 'field', 'fix', 'formally', 'free',
+\ 'furthermore', 'familiar', 'figure', 'focus', 'former', 'freedom', 'futile',
+\ 'family', 'fill', '-fold', 'formula', 'freely', 'future', 'far',
+\ 'final', 'folklore', 'formulate', 'frequently', 'gain', 'generality',
+\ 'generate', 'glue', 'grasp', 'ground', 'gap', 'generalization', 'get',
+\ 'go', 'grateful', 'grow', 'gather', 'generalize', 'give', 'good',
+\ 'gratefully', 'growth', 'general', 'generally', 'glance', 'grant', 'great',
+\ 'guarantee', 'half', 'hardly', 'heavy', 'here', 'hinder',
+\ 'hospitality', 'hand', 'harm', 'help', 'hereafter', 'hold', 'how',
+\ 'handle', 'have', 'helpful', 'heuristic', 'hope', 'however', 'happen',
+\ 'heart', 'hence', 'high', 'hopeless', 'hypothesis', 'hard', 'heavily',
+\ 'henceforth', 'highly', 'hopelessly', 'idea', 'importance', 'independence',
+\ 'informally', 'integrate', 'introduction', 'identical', 'important', 'independent', 'information',
+\ 'integration', 'intuition', 'identify', 'impose', 'independently', 'informative', 'intend',
+\ 'intuitively', 'identity', 'impossible', 'indeterminate', 'ingredient', 'intention', 'invalid',
+\ 'i.e.', 'impracticable', 'indicate', 'inherent', 'intentionally', 'invariant', 'if',
+\ 'improve', 'indication', 'initially', 'interchange', 'inverse', 'ignore', 'improvement',
+\ 'indistinguishable', 'initiate', 'interchangeably', 'investigate', 'illegitimate', 'impulse', 'individual',
+\ 'innermost', 
+\ 'interest', 'investigation', 'illuminate', 'in', 'individually', 'inordinately', 'interplay',
+\ 'invoke', 'illustrate', 'inability', 'induce', 'insert', 'interpret', 'involve',
+\ 'illustration', 'incidentally', 'induction', 'inside', 'interpretation', 'involved', 'image',
+\ 'include', 'inductive', 'inspection', 'intersect', 'inward(s)', 'immediate', 'incomparable',
+\ 'inductively', 'inspiration', 'intersection', 'irrelevant', 'immediately', 'incompatible', 'inequality',
+\ 'inspire', 'interval', 'irrespective', 'implement', 'incomplete', 'infer', 'instead',
+\ 'intimately', 'issue', 'implementation', 'increase', 'infinite', 'institution', 'into',
+\ 'it', 'implication', 'indebt', 'infinitely', 'integer', 'intricate', 'item',
+\ 'implicit', 'indeed', 'infinity', 'integrable', 'intrinsic', 'iterate', 'imply',
+\ 'indefinitely', 'influence', 'integral', 'introduce', 'itself', 'job',
+\ 'join', 'just', 'justify', 'juxtaposition', 'keep', 'key',
+\ 'kind', 'know', 'knowledge', 'label', 'latter', 'lemma',
+\ 'lie', 'link', 'lose', 'lack', 'lay', 'lend', 'light',
+\ 'list', 'loss', 'language', 'lead', 'length', 'like', 'literature',
+\ 'lot', 'large', 'learn', 'lengthy', 'likely', 'little', 'low',
+\ 'largely', 'least', 'less', 'likewise', 'locate', 'lower', 'last',
+\ 'leave', 'let', 'limit', 'location', 'lastly', 'left', 'letter',
+\ 'limitation', 'long', 'late', 'legitimate', 'level', 'line', 'look',
+\ 'machinery', 'many', 'meaningful', 'middle', 'model', 'most',
+\ 'magnitude', 'map', 'meaningless', 'might', 'moderate', '-most', 'main',
+\ 'mark', 'means', 'mild', 'modification', 'mostly', 'mainly', 'match',
+\ 'measure', 'mimic', 'modify', 'motivate', 'maintain', 'material', 'meet',
+\ 'mind', 'modulus', 'motivation', 'major', 'matrix', 'member', 'minimal',
+\ 'moment', 'move', 'majority', 'matter', 'membership', 'minimum', 'monotone',
+\ 'much', 'make', 'maximal', 'mention', 'minor', 'more', 'multiple',
+\ 'manage', 'maximum', 'mere', 'minus', 'moreover', 'multiplication', 'manifestly',
+\ 'may', 'merely', 'miss', '-morphic', 'multiply', 'manipulate', 'mean',
+\ 'merit', 'mistake', '-morphically', 'must', 'manner', 'meaning', 'method',
+\ 'mnemonic', '-morphism', 
+\ 'mutatis', 'mutandis', 'name', 'nearby', 'need', 'next',
+\ 'norm', 'notice', 'namely', 'nearly', 'negative', 'nice', 'normally',
+\ 'notion', 'narrowly', 'neat', 'neglect', 'nicety', 'not', 'novelty',
+\ 'natural', 'necessarily', 'negligible', 'no', 'notably', 'now', 'naturally',
+\ 'necessary', 'neither', 'non-', 'notation', 'nowhere', 'nature', 'necessitate',
+\ 'never', 'none', 'note', 'number', 'near', 'necessity', 'nevertheless',
+\ 'nor', 'nothing', 'numerous', 'obey', 'occasion', 'omission',
+\ 'opposite', 'ought', 'overall', 'object', 'occasionally', 'omit', 'or',
+\ 'out', 'overcome', 'objective', 'occur', 'on', 'order', 'outcome',
+\ 'overlap', 'obscure', 'occurrence', 'once', 'organization', 'outline', 'overlook',
+\ 'observation', 'odds', 'one', 'organize', 'outnumber', 'overview', 'observe',
+\ 'of', 'only', 'origin', 'output', 'owe', 'obstacle', 'off',
+\ 'onwards', 'original', 'outset', 'own', 'obstruction', 'offer', 'open',
+\ 'originally', 'outside', 'obtain', 'offset', 'operate', 'originate', 'outstanding',
+\ 'obvious', 'often', 'opportunity', 'other', 'outward(s)', 'obviously', 'old',
+\ 'oppose', 'otherwise', 'over', 'page', 'penultimate', 'plain',
+\ 'preassign', 'previous', 'project', 
+\ 'pair', 'percent', 'plausible', 'precede', 'previously', 'promise', 'paper',
+\ 'percentage', 'play', 'precise', 'price', 'prompt', 'paragraph', 'perform',
+\ 'plentiful', 'precisely', 'primarily', 'proof', 'parallel', 'perhaps', 'plug',
+\ 'precision', 'primary', 'proper', 'parameter', 'period', 'plus', 'preclude',
+\ 'prime', 'properly', 'parametrize', 'periodic', 'point', 'predict', 'principal',
+\ 'property', 'paraphrase', 'permission', 'pose', 'predictable', 'prior', 'proportion',
+\ 'parenthesis', 'permit', 'position', 'prefer', 'probability', 'propose', 'part',
+\ 'permute', 'positive', 'preferable', 'probably', 'proposition', 'partial', 'persist',
+\ 'positively', 'preliminary', 'problem', 'prove', 'partially', 'perspective', 'possession',
+\ 'preparatory', 'procedure', 'provide', 'particular', 'pertain', 'possibility', 'prerequisite',
+\ 'proceed', 'provided', 'particularly', 'pertinent', 'possible', 'prescribe', 'process',
+\ 'provisional', 'partition', 'phenomenon', 'possibly', 'presence', 'produce', 'publish',
+\ 'pass', 'phrase', 'postpone', 'present', 'product', 'purpose', 'passage',
+\ 'pick', 'potential', 'presentation', 'professor', 'pursue', 'path', 'picture',
+\ 'power', 'preserve', 'profound', 'push', 'pattern', 'piece', 'practically',
+\ 'presume', 'profusion', 'put', 'peculiar', 'place', 'practice', 'prevent',
+\ 'progress', 'quality', 'quantity', 'quickly', 'quote', 'quantitative',
+\ 'question', 'quite', 'radius', 'rearrangement', 'referee', 'remainder',
+\ 'requirement', 'reverse', 'raise', 'reason', 'reference', 'remark', 'requisite',
+\ 'revert', 'random', 'reasonable', 'refine', 'remarkable', 'research', 'review',
+\ 'range', 'reasonably', 'refinement', 'remarkably', 'resemblance', 'revise',
+\ 'rank', 'reasoning', 'reflect', 'remedy', 
+\ 'resemble', 'revolution', 'rapidly', 'reassemble', 'reflection', 'remember', 'reserve',
+\ 'rewrite', 'rare', 'recall', 'reformulate', 'remind', 'resistant', 'right',
+\ 'rarely', 'receive', 'reformulation', 'reminiscent', 'resolve', 'rigorous', 'rarity',
+\ 'recent', 'refute', 'removal', 'respect', 'rise', 'rate', 'recently',
+\ 'regard', 'remove', 'respective', 'role', 'rather', 
+\ 'recognition', 'regardless', 'rename', 'respectively', 'root', 'ratio', 'recognize',
+\ 'relabel', 'renewal', 'rest', 'rotate', 'reach', 'recommend', 'relate',
+\ 'repeat', 'restate', 'rotation', 'read', 'record', 'relation', 'repeatedly',
+\ 'restraint', 'rough', 'readability', 'recourse', 'relationship', 'repetition', 'restrict',
+\ 'roughly', 'readable', 'recover', 'relative', 'rephrase', 'restriction', 'round',
+\ 'reader', 'recur', 'relax', 'replace', 'restrictive', 'routine', 'readily',
+\ 'rederive', 'relevance', 'replacement', 'result', 'routinely', 'ready', 'reduce',
+\ 'relevant', 'report', 'retain', 'rudimentary', 'realize', 'reduction', 'reliance',
+\ 'represent', 'retrieve', 'rule', 'really', 'redundant', 'rely', 'representative',
+\ 'return', 'run', 'rearrange', 'refer', 'remain', 'require', 'reveal',
+\ 'sequence', 'simplicity', 'specify', 'study', 'suggest',
+\ 'sacrifice', 'serious', 'simplify', 'spirit', 'subdivide', 'suggestion', 'sake',
+\ 'serve', 'simply', 'split', 'subject', 'suit', 'same', 'set',
+\ 'simultaneously', 'square', 'subordinate', 'suitable', 'satisfactory', 'setting', 'since',
+\ 'stage', 'subscript', 'suitably', 'satisfy', 'settle', 'single', 'stand',
+\ 'subsequence', 'sum', 'save', 'set-up', 'situation', 'standard', 'subsequent',
+\ 'summarize', 'say', 'several', 'size', 'standpoint', 'subsequently', 'summary',
+\ 'scale', 'shape', 'sketch', 'start', 'substance', 'superfluous', 'scenario',
+\ 'share', 'slant', 'state', 'substantial', 'superior', 'scheme', 'sharp',
+\ 'slight', 'statement', 'substantially', 'supply', 'scope', 'sharpen', 'slightly',
+\ 'stay', 'substantiate', 'support', 'scrutiny', 'shed', 'small', 'step',
+\ 'substitute', 'suppose', 'search', 'short', 'so', 'stick', 'subsume',
+\ 'suppress', 'second', 'shortcoming', 'solely', 'still', 'subterfuge', 'supremum',
+\ 'section', 'shorthand', 'solution', 'stipulation', 'subtle', 'sure', 'see',
+\ 'shortly', 'solve', 'straight', 'subtlety', 'surely', 'seek', 'should',
+\ 'some', 'straightforward', 'subtract', 'surpass', 'seem', 'show', 'something',
+\ 'strange', 'succeed', 'surprise', 'seemingly', 'shrink', 'sometimes', 'strategy',
+\ 'success', 'surprisingly', 'segment', 'side', 'somewhat', 'strength', 'successful',
+\ 'survey', 'select', 'sight', 'soon', 'strengthen', 'successfully', 'suspect',
+\ 'selection', 'sign', 'sophisticated', 'stress', 'successive', 'symbol', 'self-contained',
+\ 'significance', 'sort', 'strict', 'successively', 'symmetry', 'self-evident', 'significant',
+\ 'source', 'strictly', 'succinct', 'system', 'send', 'significantly', 'space',
+\ 'strike', 'succinctly', 'systematic', 'sense', 'signify', 'speak', 'stringent',
+\ 'such', 'systematically', 'sensitive', 'similar', 'special', 'strive', 'suffice',
+\ 'separate', 'similarity', 'specialize', 'stroke', 'sufficiency', 'separately', 'similarly',
+\ 'specific', 'strong', 'sufficient', 'sequel', 'simple', 'specifically', 
+\ 'structure', 'sufficiently', 'table', 'tempt', 'theorem', 'three',
+\ 'towards', 'truncate', 'tabulate', 'tend', 'theory', 'through', 'tractable',
+\ 'truth', 'tacit', 'tentative', 'there', 'throughout', 'transfer', 'try',
+\ 'tacitly', 'term', 'thereafter', 'thus', 'transform', 'turn', 'take',
+\ 'terminate', 'thereby', 'tie', 'transition', 'twice', 'talk', 'terminology',
+\ 'therefore', 'tilde', 'translate', 'two', 'task', 'test', 'these',
+\ 'time', 'treat', 'twofold', 'technical', 'text', 'thesis', 'to',
+\ 'treatment', 'two-thirds', 'technicality', 'than', 'thing', 'together', 'trial',
+\ 'type', 'technique', 'thank', 'think', 'too', 'trick', 'typical',
+\ 'technology', 'thanks', 'third', 'tool', 'trivial', 'typically', 'tedious',
+\ 'that', 'this', 'top', 'triviality', 'tell', 'the', 'thorough',
+\ 'topic', 'trivially', 'temporarily', 'theme', 'those', 'total', 'trouble',
+\ 'temporary', 'then', 'though', 'touch', 'true', 'ultimate',
+\ 'underlie', 'uniformly', 'unity', 'unresolved', 'useful', 'unaffected', 'underline',
+\ 'unify', 'university', 'until', 'usefulness', 'unaware', 'understand', 'unimportant',
+\ 'unless', 'unusual', 'usual', 'unchanged', 'undertake', 'union', 'unlike',
+\ 'up', 'usually', 'unclear', 'undesirable', 'unique', 'unlikely', 'upon',
+\ 'utility', 'under', 'unfortunately', 'uniquely', 'unnecessarily', 'upper', 'utilize',
+\ 'undergo', 'uniform', 'unit', 'unnecessary', 'use', 'vacuous',
+\ 'valuable', 'variation', 'verification', 'view', 'vacuously', 'value', 'variety',
+\ 'verify', 'viewpoint', 'valid', 'vanish', 'various', 'version', 'violate',
+\ 'validate', 'variable', 'variously', 'very', 'visit', 'validity', 'variant',
+\ 'vary', 'via', 'visualize', 'want', 'well', 'whenever',
+\ 'while', '-wise', 'word', 'warrant', 'were', 'where', 'whole',
+\ 'wish', 'work', 'way', 'what', 'whereas', 'wholly', 'with',
+\ 'worth', 'weak', 'whatever', 'wherever', 'whose', 'within', 'would',
+\ 'weaken', 'whatsoever', 'whether', 'why', 'without', 'write', 'weakness',
+\ 'when', 'which', 'wide', 'witness', 'wealth', 'whence', 'whichever',
+\ 'widely', 'wonder', 'year', 'yet', 'yield', 'zero']
+    return join(word_list, "\n")
+endfunction
+
+function! MakeListOfWords()
+    echo "[ATP:] This takes a while ..."
+    let word_list 	= []
+    let loclist		= getloclist(0)
+    let wget_file 	= tempname()
+    let URLquery_path 	= globpath(&rtp, 'ftplugin/ATP_files/url_query.py')
+
+    for letter in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k' , 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x' , 'y', 'z' ]
+	let url		= "http://www.impan.pl/Dictionary/".letter.".html"
+	let cmd=g:atp_Python." ".shellescape(URLquery_path)." ".shellescape(url)." ".shellescape(wget_file)
+	call system(cmd)
+	exe 'lvimgrep /\%(Mathematical English Usage - a Dictionary\|Go to the list of words starting with\)/j '.wget_file
+	let file 	= []
+	let file_wget 	= readfile(wget_file)
+	for i in range((getloclist(0)[0]['lnum']+2),(getloclist(0)[1]['lnum'])-2)
+	    call add(file, file_wget[i])
+	endfor
+	call map(file, 'substitute(v:val, ''<[^>]\+>'', " ", "g")')
+	for line in file
+	    call extend(word_list, split(line, '\s\+'))
+	endfor
+
+    endfor
+
+    let g:word_list		= word_list
+    return word_list
+endfunction
+"}}}
+
 
 " Count Words
 " {{{ WordCount() ShowWordCount()
@@ -2256,7 +2612,7 @@ function! <SID>UpdateATP(bang)
 	    if g:atp_debugUpdateATP
 		silent echo "tempname=".s:atp_tempname
 	    endif
-	    let cmd=g:atp_Python." ".s:URLquery_path." ".shellescape(url)." ".shellescape(s:atp_tempname)
+	    let cmd=g:atp_Python." ".shellescape(s:URLquery_path)." ".shellescape(url)." ".shellescape(s:atp_tempname)
 	    let g:get_cmd=cmd
 	    if a:bang == "!"
 		echo "[ATP:] getting latest snapshot (unstable version) ..."
@@ -2487,6 +2843,7 @@ endif "}}}
 
 " COMMANDS AND MAPS:
 " Maps: "{{{1
+nmap <buffer> <silent> <Plug>Dictionary				:call <SID>Dictionary(expand("<cword>"))<CR>
 map <buffer> <Plug>CommentLines					:call Comment(1)<CR>
 map <buffer> <Plug>UnCommentLines 				:call Comment(0)<CR>
 vmap <buffer> 	<Plug>WrapSelection				:<C-U>call <SID>WrapSelection('')<CR>i
@@ -2497,6 +2854,7 @@ nnoremap <silent> <buffer> 	<Plug>ToggleEnvBackward		:call <SID>ToggleEnvironmen
 nnoremap <silent> <buffer> 	<Plug>ChangeEnv			:call <SID>ToggleEnvironment(1)<CR>
 nnoremap <silent> <buffer> 	<Plug>TexDoc			:TexDoc 
 " Commands: "{{{1
+command! -buffer -nargs=1 -complete=custom,Complete_Dictionary Dictionary :call <SID>Dictionary(<f-args>)
 command! -buffer -nargs=* SetUpdateTime				:call <SID>UpdateTime(<f-args>)
 command! -buffer -nargs=* -complete=file Wdiff			:call <SID>Wdiff(<f-args>)
 command! -buffer -nargs=* -complete=custom,WrapSelection_compl -range Wrap			:call <SID>WrapSelection(<f-args>)

@@ -68,7 +68,7 @@ function! <SID>ViewOutput(...)
     endif
 
     if filereadable(outfile)
-	if b:atp_Viewer == "xpdf"	
+	if b:atp_Viewer == "xpdf"
 	    call system(view_cmd)
 	else
 	    call system(view_cmd)
@@ -1489,23 +1489,27 @@ function! <SID>SetErrorFormat(...)
 
     let &l:errorformat=""
     if ( carg =~ 'e' || carg =~# 'all' ) 
+" 	let efm = "!\ LaTeX\ %trror:\ %m,!\ %m,!pdfTeX %trror:\ %m"
+	let efm = "%E!\ LaTeX\ Error:\ %m,\%E!\ %m,%E!pdfTeX Error:\ %m"
 	if &l:errorformat == ""
-	    let &l:errorformat= "%E!\ LaTeX\ %trror:\ %m,\%E!\ %m,%E!pdfTeX %trror:\ %m"
+	    let &l:errorformat= efm
 	else
-	    let &l:errorformat= &l:errorformat . ",%E!\ LaTeX\ %trror:\ %m,\%E!\ %m,%E!pdfTeX %trror:\ %m"
+	    let &l:errorformat= &l:errorformat . "," . efm
 	endif
     endif
     if ( carg =~ 'w' || carg =~# 'all' )
+	let efm='%WLaTeX\ %tarning:\ %m\ on\ input\ line\ %l%.,
+			\%WLaTeX\ %.%#Warning:\ %m,
+	    		\%Z(Font) %m\ on\ input\ line\ %l%.,
+			\%+W%.%#\ at\ lines\ %l--%*\\d'
+" 	let efm=
+" 	    \'%+WLaTeX\ %.%#Warning:\ %.%#line\ %l%.%#,
+" 	    \%+W%.%#\ at\ lines\ %l--%*\\d,
+" 	    \%WLaTeX\ %.%#Warning:\ %m'
 	if &l:errorformat == ""
-	    let &l:errorformat='%WLaTeX\ %tarning:\ %m\ on\ input\ line\ %l%.,
-			\%WLaTeX\ %.%#Warning:\ %m,
-	    		\%Z(Font) %m\ on\ input\ line\ %l%.,
-			\%+W%.%#\ at\ lines\ %l--%*\\d'
+	    let &l:errorformat=efm
 	else
-	    let &l:errorformat= &l:errorformat . ',%WLaTeX\ %tarning:\ %m\ on\ input\ line\ %l%.,
-			\%WLaTeX\ %.%#Warning:\ %m,
-	    		\%Z(Font) %m\ on\ input\ line\ %l%.,
-			\%+W%.%#\ at\ lines\ %l--%*\\d'
+	    let &l:errorformat= &l:errorformat . ',' . efm
 " 	    let &l:errorformat= &l:errorformat . ',%+WLaTeX\ %.%#Warning:\ %.%#line\ %l%.%#,
 " 			\%WLaTeX\ %.%#Warning:\ %m,
 " 			\%+W%.%#\ at\ lines\ %l--%*\\d'
@@ -1551,10 +1555,11 @@ function! <SID>SetErrorFormat(...)
 	endif
     endif
     if carg =~ '\CF'
+	let efm = '%+P)%#%\\s%#(%f,File: %m,Package: %m,Document Class: %m,LaTeX2e %m'
 	if &l:errorformat == ""
-	    let &l:errorformat = 'File: %m'
+	    let &l:errorformat = efm
 	else
-	    let &l:errorformat = &l:errorformat . ',File: %m'
+	    let &l:errorformat = &l:errorformat . ',' . efm
 	endif
     endif
     if carg =~ '\Cp'
@@ -1566,33 +1571,39 @@ function! <SID>SetErrorFormat(...)
     endif
     if &l:errorformat != ""
 
-	let pm = ( g:atp_show_all_lines == 1 ? '+' : '-' )
+" 	let pm = ( g:atp_show_all_lines == 1 ? '+' : '-' )
 
-	let l:dont_ignore = 0
-	if carg =~ '\CA\cll'
-	    let l:dont_ignore = 1
-	    let pm = '+'
-	endif
+" 	let l:dont_ignore = 0
+" 	if carg =~ '\CA\cll'
+" 	    let l:dont_ignore = 1
+" 	    let pm = '+'
+" 	endif
+
+	let l:dont_ignore= 1
+	let pm = '+'
 
 	let &l:errorformat = &l:errorformat.",
-		    	    \%Cl.%l\ %m,
-			    \%".pm."C\ \ %m%.%#,
+		    	    \%Zl.%l\ %m,
+			    \%".pm."C\\s%#%m,
 			    \%".pm."C%.%#-%.%#,
 			    \%".pm."C%.%#[]%.%#,
 			    \%".pm."C[]%.%#,
 			    \%".pm."C%.%#%[{}\\]%.%#,
 			    \%".pm."C<%.%#>%.%#,
-			    \%".pm."C%m,
-			    \%".pm."GSee\ the\ LaTeX%m,
-			    \%".pm."GType\ \ H\ <return>%m,
-			    \%".pm."G%.%#\ (C)\ %.%#,
-			    \%".pm."G(see\ the\ transcript%.%#),
-			    \%-G\\s%#"
-	if (g:atp_ignore_unmatched && !g:atp_show_all_lines)
-	    exec 'setlocal efm+=%-G%.%#' 
-	elseif l:dont_ignore
-	    exec 'setlocal efm+=%-G%.%#' 
-	endif
+			    \%-ZI've inserted%.%#,
+			    \%-ZThe control sequence%.%#,
+			    \%-ZYour command was ignored%.%#,
+			    \%-ZYou've closed more groups than you opened%.%#,
+			    \%-ZThe `$' that I just saw%.%#,
+			    \%-ZSee LaTeX%.%#,
+			    \%-ZA number should have been here%.%#,
+			    \%-ZI'm ignoring this;%.%#,
+			    \%-ZType\ \ H\ <return>%m,
+			    \%-G ...%.%#,
+			    \%-G%.%#\ (C)\ %.%#,
+			    \%-G(see\ the\ transcript%.%#),
+			    \%-G\\s%#,
+			    \%-G%.%#"
 	let &l:errorformat = &l:errorformat.",
 			    \%".pm."O(%*[^()])%r,
 			    \%".pm."O%*[^()](%*[^()])%r,
@@ -1600,23 +1611,10 @@ function! <SID>SetErrorFormat(...)
 			    \%".pm."P\ %\\=(%f%r,
 			    \%".pm."P%*[^()](%f%r,
 			    \%".pm."P[%\\d%[^()]%#(%f%r"
-	if g:atp_ignore_unmatched && !g:atp_show_all_lines
-	    exec 'setlocal efm+=%-P%*[^()]' 
-	elseif l:dont_ignore
-	    exec 'setlocal efm+=%-P%*[^()]' 
-	endif
 	let &l:errorformat = &l:errorformat.",
 			    \%".pm."Q)%r,
 			    \%".pm."Q%*[^()])%r,
 			    \%".pm."Q[%\\d%*[^()])%r"
-	if g:atp_ignore_unmatched && !g:atp_show_all_lines
-	    let &l:errorformat = &l:errorformat.",%-Q%*[^()]"
-	elseif l:dont_ignore
-	    let &l:errorformat = &l:errorformat.",%-Q%*[^()]"
-	endif
-
-" 			    removed after GType
-" 			    \%-G\ ...%.%#,
     endif
     if l:cgetfile
 	try

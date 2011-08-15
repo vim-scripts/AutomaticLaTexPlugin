@@ -1798,8 +1798,10 @@ augroup ATP_BufList
 augroup END
 " {{{1
 if exists(":Tags") != 2
+    let b:atp_LatexTags = 1
     command! -buffer -bang Tags						:call <SID>LatexTags(<q-bang>)
 else
+    let b:atp_LatexTags = 0
     command! -buffer -bang LatexTags					:call <SID>LatexTags(<q-bang>)
 endif
 command! -nargs=? -complete=custom,RemoveFromToCComp RemoveFromToC	:call RemoveFromToC(<q-args>)
@@ -1940,6 +1942,6 @@ endif
 command! -buffer NInput				:call <SID>Input("w") 	| let v:searchforward = 1
 command! -buffer PInput 			:call <SID>Input("bw")	| let v:searchforward = 0
 command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete GotoFile	:call GotoFile(<q-bang>,<q-args>, 0)
-command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete EditInputFile :call GotoFile(<q-bang>,<q-args>, 0)
+command! -buffer -nargs=? -bang -complete=customlist,<SID>GotoFileComplete Edit 	:call GotoFile(<q-bang>,<q-args>, 0)
 " vimeif data[0]['text'] =~ 'No Unique Match Found'	    echohl WarningMsg
 command! -bang -nargs=? -complete=customlist,GotoLabelCompletion GotoLabel  		:call GotoLabel(<f-bang>, <f-args>)

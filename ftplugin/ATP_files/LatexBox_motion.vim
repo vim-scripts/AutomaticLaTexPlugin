@@ -564,7 +564,7 @@ function! s:InnerSearchPos(begin, line, col, run)
 				\ '\|subsection\*\=' . 
 				\ '\|subsubsection\*\=' . 
 				\ '\|paragraph\*\=' . 
-				\ '\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=' . 
+				\ '\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({[^}]*}\)\=' . 
 			\ '\|\\opening{[^}]*}' .
 			\ '\|\\closing{' .
 			\ '\|\\\@<!\$\$\s*$' . 
@@ -589,9 +589,9 @@ function! s:InnerSearchPos(begin, line, col, run)
 				\ '\|chapter\*\=' . 
 				\ '\|section\*\=' . 
 				\ '\|subsection\*\=' . 
-				\ '\|\<subsubsection\*\=' . 
-				\ '\|\<paragraph\*\=' . 
-				\ '\|\<subparagraph\*\=\){[^}]*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=' . 
+				\ '\|subsubsection\*\=' . 
+				\ '\|paragraph\*\=' . 
+				\ '\|subparagraph\*\=\){\(\n\|[^}]\)*}\s*\%(\[[^]]*\]\)\=\s*\%({^}]*}\)\=' . 
 			\ '\|\\opening{[^}]*}' .
 			\ '\|\\closing{' .
 			\ '\|^\s*\\\@<!\\\[' . 
@@ -677,7 +677,7 @@ function! s:SelectCurrentParagraph(seltype)
 			\ '\|subsection\*\=' . 
 			\ '\|subsubsection\*\=' . 
 			\ '\|paragraph\*\=' . 
-			\ '\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({^}]*}\)\=' . 
+			\ '\|subparagraph\*\=\)\s*\%(\[[^]]*\]\)\=\s*{[^}]*}\s*\%({[^}]*}\)\=\%(\s*\\\%(label\|hypertarget\s*{[^}]*}\)\s*{[^}]*}\)\{,2}' . 
 			\ '\|\\opening{[^}]*}' .
 			\ '\|\\closing{' .
 			\ '\|\\\@<!\\\]\s*$' . 

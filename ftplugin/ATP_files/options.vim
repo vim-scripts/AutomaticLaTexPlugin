@@ -214,6 +214,7 @@ endif
 " Borrowed from tex.vim written by Benji Fisher:
     " Set 'comments' to format dashed lists in comments
     setlocal comments=sO:%\ -,mO:%\ \ ,eO:%%,:%
+"     setlocal comments=n:%,s:%,m:%,e:%
 
     " Set 'commentstring' to recognize the % comment character:
     " (Thanks to Ajit Thakkar.)
@@ -242,7 +243,7 @@ endif
     " command but not with [d, [D and [+CTRL D (jump to first macro definition)
     
     " AlignPlugin settings
-    if !exists("g:Align_xstrlen") && &conceallevel 
+    if !exists("g:Align_xstrlen") && v:version >= 703 && &conceallevel 
 	let g:Align_xstrlen="ATP_strlen"
     endif
     
@@ -380,6 +381,9 @@ lockvar b:atp_autex_wait
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_TexAlign_join_lines")
+    let g:atp_TexAlign_join_lines = 0
+endif
 " if !exists("g:atp_imap_put_space") || g:atp_imap_put_space
 " This was not working :(.
 "     let g:atp_imap_put_space 	= 1
@@ -1988,8 +1992,8 @@ endif
 	    let g:atp_no_separator = 0
 	endif
 	if !g:atp_no_separator
-	    exe "setl iskeyword+=".g:atp_separator
-" 	    let g:debug=&l:iskeyword
+	    " This sets iskeyword vim option (see syntax/tex.vim file)
+	    let g:tex_isk ="48-57,a-z,A-Z,192-255,".g:atp_separator
 	endif
 	if !exists("g:atp_no_short_names")
 	    let g:atp_env_short_names = 1

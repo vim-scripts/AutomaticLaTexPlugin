@@ -446,7 +446,6 @@ function! <SID>Dsearch(bang,...)
 	setl syntax=tex
 
 	let defi_list = []
-" 	let g:defi_list = defi_list
 
 	for inputfile in keys(defi_dict)
 	    let ifile	= readfile(inputfile)
@@ -498,6 +497,9 @@ function! <SID>Dsearch(bang,...)
 
 	silent exe openbuffer
 	call setline(1, defi_list)
+	if getline(line(".")) =~ '^\s*$'
+	    normal! dd
+	endif
 	if o_pattern != ""
 	    call matchadd('Search', ( &l:ignorecase ? '\c' : '\C' ) .o_pattern)
 	    let @/=o_pattern

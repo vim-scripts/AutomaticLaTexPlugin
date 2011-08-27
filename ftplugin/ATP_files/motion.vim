@@ -285,7 +285,6 @@ function! RemoveFromToC(file)
     else
 	let which = fnamemodify(a:file, ":p")
     endif
-    let g:which = which
 
     if which != ""
 	silent! call remove(t:atp_toc_buflist,index(t:atp_toc_buflist, which))
@@ -522,12 +521,15 @@ function! s:showtoc(toc)
     " Help Lines:
     if search('<Enter> jump and close', 'nW') == 0
 	call append('$', [ '', 			
+		\ '_       set',
 		\ '<Space> jump', 
 		\ '<Enter> jump and close', 	
 		\ 's       jump and split', 
 		\ 'y or c  yank label', 	
 		\ 'p       paste label', 
 		\ 'q       close', 		
+		\ 'zc	     fold section[s]',
+		\ ":'<,'>Fold",
 		\ ':YankSection', 
 		\ ':DeleteSection', 
 		\ ':PasteSection', 		
@@ -1828,7 +1830,7 @@ imap <Plug>TexJMotionBackward	<Esc>:call JMotion('b')<CR>a
 nmap <Plug>TexJMotionForward	:call JMotion('')<CR>
 nmap <Plug>TexJMotionBackward	:call JMotion('b')<CR>
 
-command! -buffer -nargs=1 -complete=buffer MakeToc	:echo s:maketoc(fnamemodify(<f-args>, ":p"))[fnamemodify(<f-args>, ":p")] 
+" command! -buffer -nargs=1 -complete=buffer MakeToc	:echo s:maketoc(fnamemodify(<f-args>, ":p"))[fnamemodify(<f-args>, ":p")] 
 command! -buffer -bang -nargs=? TOC	:call <SID>TOC(<q-bang>)
 command! -buffer CTOC			:call CTOC()
 command! -buffer -bang Labels		:call <SID>Labels(<q-bang>)

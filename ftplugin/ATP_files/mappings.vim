@@ -2,7 +2,7 @@
 " Description:  This file contains mappings defined by ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sat Aug 13 08:00  2011 W
+" Last Change: Sat Aug 27 08:00  2011 W
 
 " Add maps, unless the user didn't want them.
 if exists("g:no_plugin_maps") && g:no_plugin_maps ||
@@ -23,6 +23,11 @@ let g:backslash=s:backslash
 
 " Dicronary map
 nmap <buffer> <silent> =d <Plug>Dictionary
+
+" Replace map
+if !g:atp_VimCompatible
+    nmap <buffer> <silent> r <Plug>Replace
+endif
 
 " Commands to library functions (autoload/atplib.vim)
 
@@ -494,7 +499,7 @@ execute "vnoremap <silent> <buffer> <expr>".g:atp_imap_over_leader."~		':<C-U>Wr
 
 " Tex Align:
 if !hasmapto(":TexAlign<CR>", 'n')
-    nmap <silent> <buffer> <Localleader>a	:TexAlign<CR>
+    nmap <silent> <buffer> <Localleader>a	<Plug>TexAlign
 endif
 
 " Paragraph Selection:
@@ -810,83 +815,83 @@ endif
 " Greek Letters:
 if !exists("g:atp_imap_greek_letters") || g:atp_reload_variables
     let g:atp_imap_greek_letters= [
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'a', s:backslash.'alpha',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'a', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'alpha" : g:atp_imap_leader_1."a" )' ,	 
 		    \ "g:atp_imap_define_greek_letters", '\alpha' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'b', s:backslash.'beta',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'b', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'beta" : g:atp_imap_leader_1."b" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\beta' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'c', s:backslash.'chi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'c', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'chi" : g:atp_imap_leader_1."c" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\chi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'd', s:backslash.'delta',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'd', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'delta" : g:atp_imap_leader_1."d" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\delta' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'e', s:backslash.'epsilon',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'e', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'epsilon" : g:atp_imap_leader_1."e" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\epsilon' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'f', s:backslash.'phi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'f', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'phi" : g:atp_imap_leader_1."f" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\phi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'y', s:backslash.'psi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'y', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'psi" : g:atp_imap_leader_1."y" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\psi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'g', s:backslash.'gamma',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'g', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'gamma" : g:atp_imap_leader_1."g" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\gamma' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'h', s:backslash.'eta',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'h', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'eta" : g:atp_imap_leader_1."h" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\eta' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'k', s:backslash.'kappa',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'k', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'kappa" : g:atp_imap_leader_1."k" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\kappa' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'l', s:backslash.'lambda',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'l', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'lambda" : g:atp_imap_leader_1."l" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\lambda' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'i', s:backslash.'iota',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'i', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'iota" : g:atp_imap_leader_1."i" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\iota' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'm', s:backslash.'mu',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'm', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'mu" : g:atp_imap_leader_1."m" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\mu' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'n', s:backslash.'nu',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'n', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'nu" : g:atp_imap_leader_1."n" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\nu' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'p', s:backslash.'pi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'p', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'pi" : g:atp_imap_leader_1."p" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\pi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'o', s:backslash.'theta',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'o', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'theta" : g:atp_imap_leader_1."o" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\theta' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'r', s:backslash.'rho',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'r', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'rho" : g:atp_imap_leader_1."r" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\rho' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 's', s:backslash.'sigma',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 's', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'sigma" : g:atp_imap_leader_1."s" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\sigma' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 't', s:backslash.'tau',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 't', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'tau" : g:atp_imap_leader_1."t" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\tau' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'u', s:backslash.'upsilon',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'u', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'upsilon" : g:atp_imap_leader_1."u" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\upsilon' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'w', s:backslash.'omega',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'w', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'omega" : g:atp_imap_leader_1."w" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\omega' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'x', s:backslash.'xi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'x', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'xi" : g:atp_imap_leader_1."x" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\xi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'z', s:backslash.'zeta',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'z', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'zeta" : g:atp_imap_leader_1."z" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\zeta' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 've', s:backslash.'varepsilon', 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 've', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'varepsilon" : g:atp_imap_leader_1."ve" )', 
 		    \ "g:atp_imap_define_greek_letters", '\varepsilon' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'vs', s:backslash.'varsigma',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'vs', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'varsigma" : g:atp_imap_leader_1."vs" )', 	 
 		    \ "g:atp_imap_define_greek_letters", '\varsigma' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'vo', s:backslash.'vartheta',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'vo', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'vartheta" : g:atp_imap_leader_1."vo" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\vartheta' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'vf', s:backslash.'varphi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'vf', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'varphi" : g:atp_imap_leader_1."vf" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\varphi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'vp', s:backslash.'varpi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'vp', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'varpi" : g:atp_imap_leader_1."vp" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\varpi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'X', s:backslash.'Xi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'X', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Xi" : g:atp_imap_leader_1."X" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Xi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'D', s:backslash.'Delta',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'D', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Delta" : g:atp_imap_leader_1."D" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Delta' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'Y', s:backslash.'Psi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'Y', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Psi" : g:atp_imap_leader_1."Y" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Psi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'F', s:backslash.'Phi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'F', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Phi" : g:atp_imap_leader_1."F" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Phi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'G', s:backslash.'Gamma',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'G', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Gamma" : g:atp_imap_leader_1."G" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Gamma' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'L', s:backslash.'Lambda',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'L', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Lambda" : g:atp_imap_leader_1."L" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Lambda' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'P', s:backslash.'Pi',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'P', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Pi" : g:atp_imap_leader_1."P" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Pi' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'O', s:backslash.'Theta',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'O', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Theta" : g:atp_imap_leader_1."O" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Theta' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'S', s:backslash.'Sigma',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'S', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Sigma" : g:atp_imap_leader_1."S" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Sigma' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'U', s:backslash.'Upsilon',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'U', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Upsilon" : g:atp_imap_leader_1."U" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Upsilon' ],
-	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'W', s:backslash.'Omega',	 
+	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'W', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Omega" : g:atp_imap_leader_1."W" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Omega' ],
 	    \ ]
 endif
@@ -921,10 +926,6 @@ let g:atp_imap_math_misc = [
 	\ "g:atp_imap_define_math_misc", '\partial' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '&', s:backslash.'wedge', 	
 	\ "g:atp_imap_define_math_misc", '\wedge' ], 
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 've', s:backslash.'vee', 	
-	\ "g:atp_imap_define_math_misc", '\vee' ],
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'V', s:backslash.'bigvee', 	
-	\ "g:atp_imap_define_math_misc", '\Vee' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '+', s:backslash.'bigcup', 	
 	\ "g:atp_imap_define_math_misc", '\bigcup' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '*', s:backslash.'bigcap', 	
@@ -966,7 +967,13 @@ let g:atp_imap_math_misc = [
 \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_over_leader,  	      'D', '"<ESC>vx".(col(".")<=len(getline("."))? "i" : "a" )."'.s:bbackslash.'frac{'.s:bbackslash.'partial}{'.s:bbackslash.'partial \"}".(g:atp_imap_diffop_move ? "<C-o>F}<space>" : "")', 
 	\ "g:atp_imap_define_math_misc", '\frac{\partial}{\partial x} - x comes from the letter wrote just before' ]
 \ ]
-" 		\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '~', s:backslash.'=(g:atp_imap_wide ? "wide" : "")<CR>tilde{}<Left>', 	"g:atp_imap_define_math_misc", '''\''.(g:atp_imap_wide ? "wide" : "")."tilde"' ],
+" These two maps where interfering with \varepsilon
+" \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 've', s:backslash.'vee', 	
+" 	\ "g:atp_imap_define_math_misc", '\vee' ],
+" \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'V', s:backslash.'bigvee', 	
+" 	\ "g:atp_imap_define_math_misc", '\Vee' ],
+
+" " 		\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '~', s:backslash.'=(g:atp_imap_wide ? "wide" : "")<CR>tilde{}<Left>', 	"g:atp_imap_define_math_misc", '''\''.(g:atp_imap_wide ? "wide" : "")."tilde"' ],
 " 		\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '^', s:backslash.'=(g:atp_imap_wide ? "wide" : "" )<CR>hat{}<Left>', 	"g:atp_imap_define_math_misc", '''\''.(g:atp_imap_wide ? "wide" : "")."hat"' ], 
 endif
 
@@ -1102,6 +1109,10 @@ if !exists("g:atp_imap_math") || g:atp_reload_variables
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "S+", "atplib#IsInMath() ? '".s:backslash."bigcup' 	: 'S+'", "g:atp_imap_define_math",		'\\bigcup'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s*", "atplib#IsInMath() ? '".s:backslash."cap' 	: 's*'", "g:atp_imap_define_math",		'\\cap'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "S*", "atplib#IsInMath() ? '".s:backslash."bigcap' 	: 'S*'", "g:atp_imap_define_math",		'\\bigcap'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "l*", "atplib#IsInMath() ? '".s:backslash."wedge' 	: 'l*'", "g:atp_imap_define_math",		'\\wedge'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "L*", "atplib#IsInMath() ? '".s:backslash."bigwedge' 	: 'L*'", "g:atp_imap_define_math",		'\\bigwedge'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "l+", "atplib#IsInMath() ? '".s:backslash."vee' 	: 'l+'", "g:atp_imap_define_math",		'\\vee'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "L+", "atplib#IsInMath() ? '".s:backslash."bigvee' 	: 'L+'", "g:atp_imap_define_math",		'\\bigvee'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "c*", "atplib#IsInMath() ? '".s:backslash."prod' 	: 'c*'", "g:atp_imap_define_math",		'\\prod'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "c+", "atplib#IsInMath() ? '".s:backslash."coprod' 	: 'c+'", "g:atp_imap_define_math",		'\\coprod'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "t<", "atplib#IsInMath() ? '".s:backslash."triangleleft' : 't<'", "g:atp_imap_define_math",		'\\triangleleft'],

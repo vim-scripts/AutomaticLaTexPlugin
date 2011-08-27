@@ -41,6 +41,7 @@ parser.add_option("--keep",             dest="keep",            default="aux,toc
 parser.add_option("--reload-viewer",    dest="reload_viewer",   default=False,          action="store_true")
 parser.add_option("--reload-on-error",  dest="reload_on_error", default=False,          action="store_true")
 parser.add_option("--bibliographies",   dest="bibliographies",  default="",                             )
+parser.add_option("--verbose",          dest="verbose",         default="silent"                        )
 # This is not yet used:
 parser.add_option("--force",            dest="force",           default=False,          action="store_true")
 parser.add_option("--env",              dest="env",             default=""                              )
@@ -243,7 +244,9 @@ def xpdf_server_file_dict():
                     ind=0
                 if ind != 0 and len(cmdline) >= 1:
                     server_file_dict[cmdline[ind+1]]=[cmdline[len(cmdline)-1], pr]
-        except psutil.NoSuchProcess:
+        except psutil.error.NoSuchProcess:
+            pass
+        except psutil.error.AccessDenied:
             pass
     return server_file_dict
 
@@ -313,6 +316,10 @@ try:
 # SET ENVIRONMENT
     for var in env:
         os.putenv(var[0], var[1])
+
+# SOME VARIABLES
+    did_bibtex      = False
+    did_makeidx     = False
 
 # WE RUN FOR THE FIRST TIME:
 # Set Environment:
@@ -421,10 +428,12 @@ try:
 # I guess some of the code done above have to be put inside the loop.
 # Maybe it would be nice to make functions from some parts of the code.
         while condition:
+            print("RUN "+str(run))
             if run == 1:
 # BIBTEX
                 if bibtex:
-                    bibtex=False
+                    bibtex      = False
+                    did_bibtex  = True
                     os.chdir(tmpdir)
                     if re.search(bibcmd, '^\s*biber'):
                         auxfile = basename
@@ -435,11 +444,13 @@ try:
                     bibtex.wait()
                     vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_BibtexPIDs\")")
                     bibtex_output=re.sub('"', '\\"', bibtex.stdout.read().decode())
-                    vim_remote_expr(servername, "atplib#BibtexReturnCode('"+str(bibtex.returncode)+"',\""+str(bibtex_output)+"\")")
+                    bibtex_returncode=bibtex.returncode
+                    vim_remote_expr(servername, "atplib#BibtexReturnCode('"+str(bibtex_returncode)+"',\""+str(bibtex_output)+"\")")
                     os.chdir(texfile_dir)
 # MAKEINDEX
                 if makeidx:
                     makeidx=False
+                    did_makeidx=True
                     os.chdir(tmpdir)
                     index=subprocess.Popen(['makeindex', idxfile], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                     vim_remote_expr(servername, "atplib#MakeindexPID('"+str(index.pid)+"')")
@@ -447,7 +458,9 @@ try:
                     pids.append(index.pid)
                     index.wait()
                     vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_MakeindexPIDs\")")
+                    makeidx_output=re.sub('"', '\\"', index.stdout.read().decode())
                     index_returncode=index.returncode
+                    vim_remote_expr(servername, "atplib#MakeidxReturnCode('"+str(index_returncode)+"',\""+str(makeidx_output)+"\")")
                     os.chdir(texfile_dir)
 
 # LATEX
@@ -516,4 +529,12 @@ except Exception:
 
 debug_file.write("PIDS="+str(pids))
 vim_remote_expr(servername, "atplib#Echo('[ATP:] MakeLatex finished.', 'echomsg', 'Normal')")
+if did_bibtex and bibtex_returncode != 0:
+    vim_remote_expr(servername, "atplib#Echo('[MakeLatex:] bibtex returncode "+str(bibtex_returncode)+".', 'echo', 'Normal')")
+if did_makeidx and index_returncode != 0:
+    vim_remote_expr(servername, "atplib#Echo('[MakeLatex:] makeidx returncode "+str(index_returncode)+".', 'echo', 'Normal')")
+print("did_bibtex="+str(did_bibtex))
+print("did_makeidx="+str(did_makeidx))
+print("verbose="+str(options.verbose))
+vim_remote_expr(servername, "atplib#CallBack('"+str(options.verbose)+"','COM','"+str(did_bibtex)+"','"+str(did_makeidx)+"')")
 sys.exit(latex.returncode)

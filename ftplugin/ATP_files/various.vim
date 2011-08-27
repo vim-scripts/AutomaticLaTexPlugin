@@ -2,12 +2,51 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Sat Aug 13 08:00  2011 W
+" Last Change: Sat Aug 27 08:00  2011 W
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
 " FUNCTIONS: (source once)
 if !s:sourced || g:atp_reload_functions "{{{
+" Replace function (like :normal! r)
+function! <SID>Replace() "{{{
+    " It will not work with <:> since with the default settings "normal %" is not
+    " working with <:>, possibly because g:atp_bracket_dict doesn't contain this
+    " pair.
+    let char =  nr2char(getchar())
+    let g:char = char
+    let f_char = getline(line("."))[col(".")-1]
+    if f_char =~ '^[(){}\[\]]$'
+	if f_char =~ '^[({\[]$'
+	    let bracket_dict = { '{' : '}',
+			\  '(' : ')',
+			\  '[' : ']',}
+	else
+	    let bracket_dict = { '}' : '{',
+			\  ')' : '(',
+			\  ']' : '[',}
+	endif
+	let c_bracket = get(bracket_dict,char, "")
+	if c_bracket == ""
+	    exe "normal! r".char
+	    return
+	endif
+	let [b_line, b_col] = [line("."), col(".")]
+	exe "normal %"
+	let [e_line, e_col] = [line("."), col(".")]
+	call cursor(b_line, b_col)
+	exe "normal! r".char
+	call cursor(e_line, e_col)
+	exe "normal! r".c_bracket
+	call cursor(b_line, b_col)
+	return
+    else
+	exe "normal! r".char
+    endif
+endfunction 
+nnoremap <Plug>Replace	:call <SID>Replace()<CR>
+"}}}
+
 " This is the wrap selection function.
 " {{{ WrapSelection
 function! s:WrapSelection(...)
@@ -299,7 +338,7 @@ endfunction
 " Inteligent Aling
 " TexAlign {{{
 " This needs Aling vim plugin.
-function! TexAlign()
+function! TexAlign(bang)
     let save_pos = getpos(".")
     let synstack = map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
 
@@ -370,6 +409,7 @@ function! TexAlign()
 	let AlignCtr = 'jl+ &'
 	let env = "table"
     else
+	let g:env="no_env"
 	return
     endif
 
@@ -385,9 +425,9 @@ function! TexAlign()
 	call cursor(saved_pos[1], saved_pos[2])
     endif
 
-    if g:atp_TexAlign_join_lines
+    if a:bang == "!" && eline-1 > bline
     " Join lines
-	execute bline . ',' . eline . 's/\(\\\\\s*\)\@<!\n//g'
+    execute 'silent! '.(bline).','.(eline-1).'g/\%(\\\\\s*\)\@<!\n/s/\n//'
 	if env != "matrix"
 	    let eline = searchpair(bpat, '', epat, 'cn')  - 1
 	else
@@ -404,6 +444,7 @@ function! TexAlign()
 
     call setpos(".", save_pos) 
 endfunction
+nmap <Plug>TexAlign		:call TexAlign(( g:atp_TexAlign_join_lines ? "!" : "" ))<CR>
 "}}}
 "{{{ ATP_strlen
 " This function is used to measure lenght of a string using :Align, :TexAlign
@@ -512,6 +553,7 @@ endfunction
 function! Insert(text, math, ...)
 
     let move = ( a:0 >= 1 ? a:1 : 0 )
+    let g:vcol = ( a:0 >= 2 ? a:2 : virtcol(".") )
     let col  = col('.')
 
     if b:atp_TexFlavor == 'plaintex' && index(g:atp_MathZones, 'texMathZoneY') == -1
@@ -535,6 +577,7 @@ function! Insert(text, math, ...)
     let col		= col(".")
 
     let new_line	= strpart(line, 0, col) . insert . strpart(line, col)
+    let g:new_line	= new_line
     call setline(line("."), new_line)
     call cursor(line("."), col(".")+len(insert)-move)
     if col == 1
@@ -1775,7 +1818,10 @@ function! <SID>ReloadATP(bang)
 	" delete functions from autoload/atplib.vim:
 	let atplib_file	= globpath(&rtp, 'autoload/atplib.vim')
 	let saved_loclist = getloclist(0)
-	exe 'lvimgrep /^\s*fun\%[ction]!\=\s\+/gj '.atplib_file
+	try
+	    exe 'silent! lvimgrep /^\s*fun\%[ction]!\=\s\+/gj '.atplib_file
+	catch E486:
+	endtry
 	let list=map(getloclist(0), 'v:val["text"]')
 	call setloclist(0,saved_loclist)
 	call map(list, 'matchstr(v:val, ''^\s*fun\%[ction]!\=\s\+\zsatplib#\S\+\ze\s*('')')
@@ -1955,7 +2001,7 @@ function! AMSRef(bang, what)
     if len(b:AllBibFiles) > 1
 	let bibfile = inputlist(extend("Which bib file to use?", b:AllBibFiles))
     elseif len(b:AllBibFiles) == 1
-	let bibfile = b:AllBibFiles[0]
+	let bibfile = b:atp_BibFiles[0]
     elseif !len(b:AllBibFiles)
 	let bibfile = "nobibfile"
     endif
@@ -2566,7 +2612,7 @@ function! <SID>UpdateATP(bang)
 
 	let dir = fnamemodify(globpath(&rtp, "ftplugin/tex_atp.vim"), ":h:h")
 	if dir == ""
-	    echoerr "[ATP:] Cannot find local .vim directory."
+	    echoerr "[ATP:] Cannot find local ATP directory."
 	    if g:atp_debugUpdateATP
 		redir END
 	    endif
@@ -2860,7 +2906,7 @@ command! -buffer -nargs=* -complete=file Wdiff			:call <SID>Wdiff(<f-args>)
 command! -buffer -nargs=* -complete=custom,WrapSelection_compl -range Wrap			:call <SID>WrapSelection(<f-args>)
 command! -buffer -nargs=? -complete=customlist,EnvCompletion -range WrapEnvironment		:call <SID>WrapEnvironment(<f-args>)
 command! -buffer -nargs=? -range InteligentWrapSelection	:call <SID>InteligentWrapSelection(<args>)
-command! -buffer	TexAlign				:call TexAlign()
+command! -buffer -bang	TexAlign				:call TexAlign(<q-bang>)
 command! -buffer 	ToggleStar   				:call <SID>ToggleStar()<CR>
 command! -buffer -nargs=? ToggleEnv	   			:call <SID>ToggleEnvironment(0, <f-args>)
 command! -buffer -nargs=* -complete=customlist,EnvCompletion ChangeEnv				:call <SID>ToggleEnvironment(1, <f-args>)

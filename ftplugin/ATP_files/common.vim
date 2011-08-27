@@ -577,7 +577,6 @@ def scan_file(file, fname, pattern, bibpattern):
         if len(match_all) > 0:
             for match in match_all:
                 for m in match:
-#                     print("m="+str(m))
                     if str(m) != "":
                         m=addext(m, "tex")
                         if not os.access(m, os.F_OK):
@@ -585,9 +584,8 @@ def scan_file(file, fname, pattern, bibpattern):
                                 m=kpsewhich_find(m, tex_path)[0]
                             except IndexError:
                                 pass
-#                         print("fname="+fname+" nr="+str(nr)+" p_end="+str(preambule_end))
                         if fname == filename and nr < preambule_end:
-                            matches_d[m]=[fname, nr, 'preambule']
+                            matches_d[m]=[m, fname, nr, 'preambule']
                             matches_l.append(m)
                         else:
                             matches_d[m]=[m, fname, nr, 'input']
@@ -600,7 +598,7 @@ def scan_file(file, fname, pattern, bibpattern):
                         m=addext(m, "bib")
                         if not os.access(m, os.F_OK):
                             m=kpsewhich_find(m, bib_path)[0]
-                        matches_d[m]=[fname,  nr, 'bib']
+                        matches_d[m]=[m, fname,  nr, 'bib']
                         matches_l.append(m)
     return [ matches_d, matches_l ]
 
@@ -632,10 +630,10 @@ def tree(file, level, pattern, bibpattern):
     for item in found_l:
         t_list.append(item)
         t_level[item]=level
-        t_type[item]=found[item][2]
+        t_type[item]=found[item][3]
     i_list=[]
     for file in t_list:
-        if found[file][2]=="input":
+        if found[file][3]=="input":
             i_list.append(file)
     for file in i_list:
         [ n_tree, n_list, n_type, n_level ] = tree(file, level+1, pattern, bibpattern)
@@ -643,7 +641,7 @@ def tree(file, level, pattern, bibpattern):
             t_list.append(f)
             t_type[f]   =n_type[f]
             t_level[f]  =n_level[f]
-        t_tree[file]    = [ n_tree, found[file][1] ]
+        t_tree[file]    = [ n_tree, found[file][2] ]
     return [ t_tree, t_list, t_type, t_level ]
 
 try:
@@ -653,11 +651,9 @@ try:
     if scan_preambule(mainfile, re.compile('\\\\usepackage\s*\[.*\]\s*{\s*subfiles\s*}')):
 	pat_str='^[^%]*(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?|subfiles)\s*{([^}]*)})'
 	pattern=re.compile(pat_str)
-#     print(pat_str)
     else:
 	pat_str='^[^%]*(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?)\s*{([^}]*)})'
 	pattern=re.compile(pat_str)
-#     print(pat_str)
 
     bibpattern=re.compile('^[^%]*\\\\(?:bibliography|addbibresource|addsectionbib(?:\s*\[.*\])?|addglobalbib(?:\s*\[.*\])?)\s*{([^}]*)}')
 
@@ -737,6 +733,7 @@ function! FindInputFiles(MainFile,...)
     let b:AllInputFiles		= deepcopy(AllInputFiles)
     let b:AllBibFiles		= deepcopy(AllBibFiles)
 
+
     " this variable will store unreadable bibfiles:    
     let NotReadableInputFiles=[]
 
@@ -791,23 +788,6 @@ endfunction
 "}}}
 
 " There is a copy of this variable in compiler.vim
-
-" function! LatexRunning()
-" python << EOL
-" import psutil, vim
-" if vim.eval("exists('b:atp_LastLatexPID')"):
-" 	lpid = int(vim.eval("exists('b:atp_LastLatexPID') ? b:atp_LastLatexPID : -1"))
-" 	if lpid != -1:
-"                 try:
-" 			name=psutil.Process(lpid).name
-"                 except psutil.NoSuchProcess:
-" 			lpid=0
-" 	vim.command(":let b:atp_LastLatexPID="+str(lpid))
-" else:
-" 	vim.command(":let b:atp_LastLatexPID=0")
-" EOL
-" endfunction
-
 function! ATPRunning() "{{{
 
     if !g:atp_statusNotif
@@ -973,6 +953,7 @@ endfunction
 
 " The main status function, it is called via autocommand defined in 'options.vim'.
 let s:errormsg = 0
+let g:i=0
 function! ATPStatus(...) "{{{
 
     if expand("%") == "[Command Line]" || &l:filetype == "qf"
@@ -980,7 +961,8 @@ function! ATPStatus(...) "{{{
 	return
     endif
 
-    if a:0 >= 1 
+    if a:0 >= 1 && a:1 != -1
+	" This is run be the command :Status (:ATPStatus)
 	if a:1 == ""
 	    let g:status_OutDir = s:StatusOutDir()
 	    let g:atp_statusOutDir = 1
@@ -989,6 +971,7 @@ function! ATPStatus(...) "{{{
 	    let g:atp_statusOutDir = 0
 	endif
     else
+	" This is run by the autocommand group ATP_Status
 	if g:atp_statusOutDir
 	    let g:status_OutDir = s:StatusOutDir()
 	else

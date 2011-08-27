@@ -279,6 +279,12 @@ function! atplib#BibtexReturnCode(returncode,...)
 	let b:atp_BibtexOutput= ( a:0 >= 1 ? a:1 : "" )
 endfunction
 " }}}
+" MakeidxReturnCode {{{
+function! atplib#MakeidxReturnCode(returncode,...)
+	let b:atp_MakeidxReturnCode=a:returncode
+	let b:atp_MakeidxOutput= ( a:0 >= 1 ? a:1 : "" )
+endfunction
+" }}}
 " Callback {{{
 " a:mode 	= a:verbose 	of s:compiler ( one of 'default', 'silent',
 " 				'debug', 'verbose')
@@ -290,10 +296,13 @@ endfunction
 function! atplib#CallBack(mode,...)
 
     " If the compiler was called by autocommand.
-    let AU = ( a:0 >= 1 ? a:1 : 'COM' )
+    let AU 	= ( a:0 >= 1 ? a:1 : 'COM' )
     " Was compiler called to make bibtex
-    let BIBTEX = ( a:0 >= 2 ? a:2 : "False" )
-    let BIBTEX = ( BIBTEX == "True" || BIBTEX == 1 ? 1 : 0 )
+    let BIBTEX 	= ( a:0 >= 2 ? a:2 : "False" )
+    let BIBTEX 	= ( BIBTEX == "True" || BIBTEX == 1 ? 1 : 0 )
+    let MAKEIDX	= ( a:0 >= 3 ? a:3 : "False" )
+    let MAKEIDX = ( MAKEIDX == "TRUE" || MAKEIDX == 1 ? 1 : 0 )
+
     if g:atp_debugCallBack
 	exe "redir! > ".g:atp_TempDir."/CallBack.log"
     endif
@@ -335,7 +344,7 @@ function! atplib#CallBack(mode,...)
     "  i.e. redraw at the end of function (this is done to not redraw twice in
     "  this function)
     let l:clist 	= 0
-    let atp_DebugMode = t:atp_DebugMode
+    let atp_DebugMode 	= t:atp_DebugMode
 
     if b:atp_TexReturnCode == 0 && ( a:mode == 'silent' || atp_DebugMode == 'silent' ) && g:atp_DebugMode_AU_change_cmdheight 
 	let &l:cmdheight=g:atp_cmdheight
@@ -361,6 +370,20 @@ function! atplib#CallBack(mode,...)
 
 	    cclose
 	    call add(msg_list, ["[ATP:] no errors, closing quick fix window.", "Normal"])
+	endif
+
+    elseif a:mode == "silent" && AU == "COM"
+	if b:atp_TexReturnCode
+	    let showed_message		= 1
+	    call add(msg_list, ["[ATP:] ".Compiler." returned with exit code ".b:atp_TexReturnCode.".", 'ErrorMsg', 'after'])
+	endif
+	if BIBTEX && b:atp_BibtexReturnCode
+	    let showed_message		= 1
+	    call add(msg_list, ["[ATP:] ".b:atp_BibCompiler." returned with exit code ".b:atp_BibtexReturnCode.".", 'ErrorMsg', 'after'])
+	endif
+	if MAKEIDX && b:atp_Makeindex
+	    let showed_message		= 1
+	    call add(msg_list, ["[ATP:] makeidx returned with exit code ".b:atp_MakeidxReturnCode.".", 'ErrorMsg', 'after'])
 	endif
     endif
 
@@ -401,15 +424,15 @@ function! atplib#CallBack(mode,...)
 	endif
 
 	if BIBTEX && b:atp_BibtexReturnCode
-
-	    if g:atp_debugCallBack
-		let g:debugCB .= 8
-	    endif
-
 	    let l:clist		= 1
-	    call add(msg_list, [ "[Bib:] BibTeX returned with exit code ".b:atp_BibtexReturnCode .".", "ErrorMsg", "after"])
+	    call add(msg_list, [ "[Bib:] ".b:atp_BibtexCompiler." returned with exit code ".b:atp_BibtexReturnCode .".", "ErrorMsg", "after"])
 	    call add(msg_list, [ "BIBTEX_OUTPUT" , "Normal", "after"])
+	endif
 
+	if MAKEIDX && b:atp_MakeidxReturnCode
+	    let l:clist		= 1
+	    call add(msg_list, [ "[Bib:] makeidx returned with exit code ".b:atp_MakeidxReturnCode .".", "ErrorMsg", "after"])
+	    call add(msg_list, [ "MAKEIDX_OUTPUT" , "Normal", "after"])
 	endif
 
 	" In debug mode, go to first error. 
@@ -432,10 +455,14 @@ function! atplib#CallBack(mode,...)
 
     " Count length of the message:
     let msg_len		= len(msg_list)
-    if len(map(copy(msg_list), "v:val[0] == 'BIBTEX_OUTPUT'")) 
-	let msg_len += (BIBTEX ? len(split(b:atp_BibtexOutput, "\\n")) - 1 : - 1 )
+    if len(filter(copy(msg_list), "v:val[0] == 'BIBTEX_OUTPUT'")) 
+	let msg_len 	+= (BIBTEX ? len(split(b:atp_BibtexOutput, "\\n")) - 1 : - 1 )
     endif
-    let msg_len		+= ((len(getqflist()) <= 7 && !t:atp_QuickFixOpen) ? len(getqflist()) : 0 )
+    if len(filter(copy(msg_list), "v:val[0] == 'MAKEIDX_OUTPUT'")) 
+	let msg_len 	+= (MAKEIDX ? len(split(b:atp_MakeidxOutput, "\\n")) - 1 : - 1 )
+    endif
+    " We never show qflist: (that's why it is commented out)
+"     let msg_len		+= ((len(getqflist()) <= 7 && !t:atp_QuickFixOpen) ? len(getqflist()) : 0 )
 
     " Show messages/clist
     
@@ -447,7 +474,15 @@ function! atplib#CallBack(mode,...)
     endif
 
     let cmdheight = &l:cmdheight
-    let &l:cmdheight	= msg_len+2
+    if msg_len <= 2
+	let add=0
+    elseif msg_len <= 7
+	let add=1
+    else
+	let add=2
+    endif
+    let &l:cmdheight	= max([cmdheight, msg_len+add])
+    let g:msg_len=msg_len
     if l:clist && len(getqflist()) > 7 && !t:atp_QuickFixOpen
 	let winnr = winnr()
 	copen
@@ -479,6 +514,17 @@ function! atplib#CallBack(mode,...)
 	    echo msg[0]
 	else
 	    echo "       ".substitute(b:atp_BibtexOutput, "\n", "\n       ", "g")
+" 	    let bib_output=split(b:atp_BibtexOutput, "\n")
+" 	    let len=max([10,len(bib_output)])
+" 	    below split +setl\ buftype=nofile\ noswapfile Bibtex\ Output
+" 	    setl nospell
+" 	    setl nonumber
+" 	    setl norelativenumber
+" 	    call append(0,bib_output)
+" 	    resize 10
+" 	    redraw!
+" 	    normal gg
+" 	    nmap q :bd<CR>
 	    let g:debugCB .=" BIBTEX_output "
 	endif
     endfor
@@ -722,6 +768,9 @@ function! atplib#ServerListOfFiles()
     exe "redir! > " . g:atp_TempDir."/ServerListOfFiles.log"
     let file_list = []
     for nr in range(1, bufnr('$')-1)
+	" map fnamemodify(v:val, ":p") is not working if we are in another
+	" window with file in another dir. So we are not using this (it might
+	" happen that we end up in a wrong server though).
 	let files 	= getbufvar(nr, "ListOfFiles")
 	let main_file 	= getbufvar(nr, "atp_MainFile")
 	if string(files) != "" 
@@ -732,40 +781,78 @@ function! atplib#ServerListOfFiles()
 	endif
     endfor
     call filter(file_list, 'v:val != ""')
-    call map(file_list, "fnamemodify(v:val, ':p')") 
     redir end
     return file_list
 endfunction
 function! atplib#FindAndOpen(file, line, ...)
-    let col		= ( a:0 >= 1 ? a:1 : 1 )
+    let col		= ( a:0 >= 1 && a:1 > 0 ? a:1 : 1 )
     let file		= ( fnamemodify(a:file, ":e") == "tex" ? a:file : fnamemodify(a:file, ":p:r") . ".tex" )
+    let g:file		= file
+    let file_t		= fnamemodify(file, ":t")
+    let g:file_t	= file_t
     let server_list	= split(serverlist(), "\n")
-    exe "redir! >".g:atp_TempDir."/FindAndOpen.log"
-    echo "server list=".string(server_list)
+"     exe "redir! >".g:atp_TempDir."/FindAndOpen.log"
+    exe "redir! > /tmp/FindAndOpen.log"
     if len(server_list) == 0
 	return 1
     endif
-    let use_server	= "no_server"
+    let use_server	= ""
+    let use_servers	= []
     for server in server_list
 	let file_list=split(remote_expr(server, 'atplib#ServerListOfFiles()'), "\n")
-	echo "server " .server . " " . string(file_list)
-	if index(file_list, file) != -1
+	let cond_1 = (index(file_list, file) != "-1")
+	let cond_2 = (index(file_list, file_t) != "-1")
+	if cond_1
 	    let use_server	= server
 	    break
+	elseif cond_2
+	    call add(use_servers, server)
 	endif
     endfor
-    if use_server == "no_server"
-	let use_server=server_list[0]
+    " If we could not find file name with full path in server list use the
+    " first server where is fnamemodify(file, ":t"). 
+    if use_server == ""
+	let use_server=get(use_servers, 0, "")
     endif
-    echo "file:".file." line:".a:line. " col ".col." server name:".use_server." hitch-hiking server:".v:servername 
-    call system(v:progname." --servername ".use_server." --remote-wait +".a:line." ".fnameescape(file) . " &")
-    call remote_expr(use_server, 'cursor('.a:line.','.col.')')
-    call remote_expr(use_server, 'redraw!')
-"   call system(v:progname." --servername ".use_server." --remote-exprt \"remote_foreground('".use_server."')\"")
-"   This line is not working in DWM, but it might work in KDE (to be tested):
-"     call system(v:progname." --servername ".use_server." --remote-exprt foreground\(\)")
-    redir end
-    return "File:".file." line:".a:line." col:".col." server name:".use_server." Hitch-hiking server:".v:servername 
+    let g:use_server=use_server
+    if use_server != ""
+	call system(v:progname." --servername ".use_server." --remote-wait +".a:line." ".fnameescape(file) . " &")
+	Test this for file names with spaces
+	let bufwinnr 	= remote_expr(use_server, 'bufwinnr("'.file.'")')
+	let g:use_server=use_server
+	let g:bufwinnr = bufwinnr
+	if bufwinnr 	== "-1"
+" 	    " The buffer is in a different tab page.
+	    let tabpage	= 1
+" 	    " Find the correct tabpage:
+	    for tabnr in range(1, remote_expr(use_server, 'tabpagenr("$")'))
+		let tabbuflist = split(remote_expr(use_server, 'tabpagebuflist("'.tabnr.'")'), "\n")
+		let tabbuflist_names = split(remote_expr(use_server, 'map(tabpagebuflist("'.tabnr.'"), "bufname(v:val)")'), "\n")
+		if count(tabbuflist_names, file) || count(tabfublist_names, file_t)
+		    let tabpage = tabnr
+		    break
+		endif
+	    endfor
+	    " Goto to the tabpage:
+	    if remote_expr(use_server, 'tabpagenr()') != tabpage
+		call remote_send(use_server, '<Esc>:tabnext '.tabpage.'<CR>')
+	    endif
+	    " Check the bufwinnr once again:
+	    let bufwinnr 	= remote_expr(use_server, 'bufwinnr("'.file.'")')
+	endif
+
+	let g:bufwinnr= bufwinnr
+
+" winnr() doesn't work remotely, this is a substitute:
+	let remote_file = remote_expr(use_server, 'expand("%:t")')
+	let g:remote_file = remote_file
+	if remote_file  != file_t
+	    call remote_send(use_server, "<Esc>:".bufwinnr."wincmd w<CR>")
+	else
+	call remote_expr(use_server, 'cursor('.a:line.','.col.')')
+	call remote_send(use_server, '<Esc>:redraw<CR>')
+    endif
+    return use_server
 endfunction
 "}}}1
 
@@ -2123,7 +2210,6 @@ function! atplib#setwindow()
 	setlocal norelativenumber
  	setlocal winfixwidth
 	setlocal noswapfile	
-	setlocal window
 	setlocal nobuflisted
 	if &filetype == "bibsearch_atp"
 " 	    setlocal winwidth=30
@@ -2339,6 +2425,82 @@ function! atplib#CheckClosed(bpat, epat, line, col, limit,...)
     endif
 endfunction
 " }}}1
+" {{{1 atplib#CheckClosed_math
+" This functions makes a test if in line math is closed. This works well with
+" \(:\) and \[:\] but not yet with $:$ and $$:$$.  
+" a:mathZone	= texMathZoneV or texMathZoneW or texMathZoneX or texMathZoneY
+" The function return 1 if the mathZone is to be closed (i.e. it is not closed).
+function! atplib#CheckClosed_math(mathZone)
+    let time 		= reltime()
+    let synstack	= map(synstack(line("."), max([1, col(".")-1])), "synIDattr( v:val, 'name')")
+    let check		= 0
+    let patterns 	= { 
+		\ 'texMathZoneV' : [ '\\\@<!\\(', 	'\\\@<!\\)' 	], 
+		\ 'texMathZoneW' : [ '\\\@<!\\\[', 	'\\\@<!\\\]'	]}
+    " Limit the search to the first \par or a blank line, if not then search
+    " until the end of document:
+    let stop_line	= search('\\par\|^\s*$', 'nW') - 1
+    let stop_line	= ( stop_line == -1 ? line('$') : stop_line )
+
+    " \(:\), \[:\], $:$ and $$:$$ do not accept blank lines, thus we can limit
+    " searching/counting.
+    
+    " For \(:\) and \[:\] we use searchpair function to test if it is closed or
+    " not.
+    if (a:mathZone == 'texMathZoneV' || a:mathZone == 'texMathZoneW') && atplib#CheckSyntaxGroups(['texMathZoneV', 'texMathZoneW'])
+	if index(synstack, a:mathZone) != -1
+	    let condition = searchpair( patterns[a:mathZone][0], '', patterns[a:mathZone][1], 'cnW', '', stop_line)
+	    let check 	  = ( !condition ? 1 : check )
+	else
+	    let check	  = 0
+	endif
+
+    " $:$ and $$:$$ we are counting $ untill blank line or \par
+    " to test if it is closed or not, 
+    " then we return the number of $ modulo 2.
+    elseif ( a:mathZone == 'texMathZoneX' || a:mathZone == 'texMathZoneY' ) && atplib#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY'])
+	let saved_pos	= getpos(".")
+	let line	= line(".")	
+	let l:count	= 0
+	" count \$ if it is under the cursor
+	if search('\\\@<!\$', 'Wc', stop_line)
+	    let l:count += 1
+	endif
+	while line <= stop_line && line != 0
+	    keepjumps let line	= search('\\\@<!\$', 'W', stop_line)
+	    let l:count += 1
+	endwhile
+	keepjumps call setpos(".", saved_pos)
+	let check	= l:count%2
+    endif
+
+    let g:time_CheckClosed_math=reltimestr(reltime(time))
+    return check
+endfunction
+" atplib#CheckClosed_syntax {{{1
+" This function checks if a syntax group ends.
+" Returns 1 if the syntax group doesn't ends before a:limit_line, a:limit_col line (last character is included).
+"
+" Note, this function is slower than atplib#CheckClosed_math, which is designed
+" for texMathZone[VWXY]. (call synstack(...) inside atplib#CheckSyntaxGroups()
+" is slow) - thus it is not used anymore.
+function! atplib#CheckClosed_syntax(syntax,limit_line, limit_col)
+    let time		= reltime()
+"     let whichwrap	= &whichwrap
+"     setl whichwrap+=l
+    let line		= line(".")
+    let col		= col(".")
+    let test		= atplib#CheckSyntaxGroups(a:syntax)
+    while ( line(".") < a:limit_line || line(".") == a:limit_line && col(".") <= a:limit_col ) && test
+	normal! W
+	let test	= atplib#CheckSyntaxGroups(a:syntax)
+    endwhile
+    call cursor(line, col)
+"     let &whichwrap	= whichwrap
+    let g:time_CheckClosed_syntax=reltimestr(reltime(time))
+    return test
+endfunction
+" }}}1
 " atplib#CheckOpened {{{1
 " Usage: By default (a:0 == 0 || a:1 == 0 ) it returns line number where the
 " environment is opened if the environment is opened and is not closed (for
@@ -2408,54 +2570,6 @@ function! atplib#CheckOpened(bpat,epat,line,limit)
     return 0 
 endfunction
 " }}}1
-" This functions makes a test if in line math is closed. This works well with
-" \(:\) and \[:\] but not yet with $:$ and $$:$$.  
-" {{{1 atplib#CheckInlineMath
-" a:mathZone	= texMathZoneV or texMathZoneW or texMathZoneX or texMathZoneY
-" The function return 1 if the mathZone is not closed 
-function! atplib#CheckInlineMath(mathZone)
-    let synstack	= map(synstack(line("."), max([1, col(".")-1])), "synIDattr( v:val, 'name')")
-    let check		= 0
-    let patterns 	= { 
-		\ 'texMathZoneV' : [ '\\\@<!\\(', 	'\\\@<!\\)' 	], 
-		\ 'texMathZoneW' : [ '\\\@<!\\\[', 	'\\\@<!\\\]'	]}
-    " Limit the search to the first \par or a blank line, if not then search
-    " until the end of document:
-    let stop_line	= search('\\par\|^\s*$', 'nW') - 1
-    let stop_line	= ( stop_line == -1 ? line('$') : stop_line )
-
-    " \(:\), \[:\], $:$ and $$:$$ do not accept blank lines, thus we can limit
-    " searching/counting.
-    
-    " For \(:\) and \[:\] we use searchpair function to test if it is closed or
-    " not.
-    if (a:mathZone == 'texMathZoneV' || a:mathZone == 'texMathZoneW') && atplib#CheckSyntaxGroups(['texMathZoneV', 'texMathZoneW'])
-	if index(synstack, a:mathZone) != -1
-	    let condition = searchpair( patterns[a:mathZone][0], '', patterns[a:mathZone][1], 'cnW', '', stop_line)
-	    let check 	  = ( !condition ? 1 : check )
-	endif
-
-    " $:$ and $$:$$ we are counting $ untill blank line or \par
-    " to test if it is closed or not, 
-    " then we return the number of $ modulo 2.
-    elseif ( a:mathZone == 'texMathZoneX' || a:mathZone == 'texMathZoneY' ) && atplib#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY'])
-	let saved_pos	= getpos(".")
-	let line	= line(".")	
-	let l:count	= 0
-	" count \$ if it is under the cursor
-	if search('\\\@<!\$', 'Wc', stop_line)
-	    let l:count += 1
-	endif
-	while line <= stop_line && line != 0
-	    keepjumps let line	= search('\\\@<!\$', 'W', stop_line)
-	    let l:count += 1
-	endwhile
-	keepjumps call setpos(".", saved_pos)
-	let check	= l:count%2
-    endif
-
-    return check
-endfunction
 " {{{1 atplib#CheckSyntaxGroups
 " This functions returns one if one of the environment given in the list
 " a:zones is present in they syntax stack at line a:1 and column a:0.
@@ -2465,6 +2579,7 @@ endfunction
 " The function doesn't make any checks if the line and column supplied are
 " valid /synstack() function returns 0 rather than [] in such a case/.
 function! atplib#CheckSyntaxGroups(zones,...)
+    let time		= reltime()
     let line		= a:0 >= 1 ? a:1 : line(".")
     let col		= a:0 >= 2 ? a:2 : col(".")-1
     let col		= max([1, col])
@@ -2478,6 +2593,7 @@ function! atplib#CheckSyntaxGroups(zones,...)
 
     let synstack	= map(synstack_raw, 'synIDattr(v:val, "name")') 
 
+    let g:time_CheckSyntaxGroups=reltimestr(reltime(time))
     return max(map(zones, "count(synstack, v:val)"))
 endfunction
 " atplib#CopyIndentation {{{1
@@ -2904,9 +3020,8 @@ function! atplib#CloseLastEnvironment(...)
 
     if g:atp_debugCloseLastEnvironment
 	call atplib#Log('CloseLastEnvironment.log', '', 'init')
-	let g:CLEargs 	= l:com . " " . l:close . " " . l:env_name . " " . string(l:bpos_env)
+	let g:CLEargs 	= string(l:com) . " " . string(l:close) . " " . string(l:env_name) . " " . string(l:bpos_env)
 	silent echo "args=".g:CLEargs
-	let g:com	= l:com
 	let g:close 	= l:close
 	let g:env_name	= l:env_name
 	let g:bpos_env	= l:bpos_env
@@ -3613,7 +3728,14 @@ function! atplib#CheckBracket(bracket_dict)
     let time		= reltime()
     
     let limit_line	= max([1,(line(".")-g:atp_completion_limits[4])])
+
+    let begin_line	= max([search('\\\%(begin\|end\|par\)\>', 'bnW'), limit_line])
+    let end_line	= min([search('\\\%(begin\|end\|par\)\>', 'nW'), min([line('$'), line(".")+g:atp_completion_limits[4]])]) 
+
+
     if g:atp_debugCheckBracket
+	let g:begin_line	= begin_line
+	let g:end_line		= end_line
 	let g:limit_line	= limit_line
     endif
     let pos_saved 	= getpos(".")
@@ -3643,11 +3765,11 @@ function! atplib#CheckBracket(bracket_dict)
 	let pos		= deepcopy(pos_saved)
 	let time_{i}	= reltime()
 	if ket != '{' && ket != '(' && ket != '['
-	    if search('\\\@<!'.escape(ket,'\[]'), 'bnW', limit_line)
+	    if search('\\\@<!'.escape(ket,'\[]'), 'bnW', begin_line)
 "      	    let g:time_{i}_A  = reltimestr(reltime(time_{i}))
 		let bslash = ( ket != '{' ? '\\\@<!' : '' )
 		let pair_{i}	= searchpairpos(bslash.escape(ket,'\[]').'\zs','', bslash.escape(a:bracket_dict[ket], '\[]'). 
-			\ ( ket_pattern != "" ? '\|'.ket_pattern.'\.' : '' ) , 'bnW', "", limit_line)
+			\ ( ket_pattern != "" ? '\|'.ket_pattern.'\.' : '' ) , 'bnW', "", begin_line)
 	    else
 "      	    let g:time_{i}_A  = reltimestr(reltime(time_{i}))
 		let pair_{i}	= [0, 0]
@@ -3662,7 +3784,7 @@ function! atplib#CheckBracket(bracket_dict)
 " 	    appearing)
 		let ob=0
 		let cb=0
-		for lnr in range(limit_line, line("."))
+		for lnr in range(begin_line, line("."))
 		    if lnr == line(".")
 			let line_str=strpart(getline(lnr), 0, pos_saved[2])
 		    else
@@ -3689,7 +3811,7 @@ function! atplib#CheckBracket(bracket_dict)
 		endif
 		if ( ob != cb && first_ket == ket ) || ( ob != cb-1 && first_ket != ket )
 		    let bslash = ( ket != '{' ? '\\\@<!' : '' )
-		    let pair_{i}	= searchpairpos(bslash.escape(ket,'\[]'),'', bslash.escape(a:bracket_dict[ket], '\[]') , 'bcnW', "", limit_line)
+		    let pair_{i}	= searchpairpos(bslash.escape(ket,'\[]'),'', bslash.escape(a:bracket_dict[ket], '\[]') , 'bcnW', "", begin_line)
 		    let pair_{i}[1]	+= ( pair_{i}[1] != 0 ? 1 : 0 )
 		else
 		    let pair_{i}	= [0, 0]
@@ -3713,9 +3835,14 @@ function! atplib#CheckBracket(bracket_dict)
 " 	let check_{i}	= atplib#CheckClosed(escape(ket,'\[]'),
 " 		    \ '\%('.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', 
 " 		    \ pos[1], pos[2], g:atp_completion_limits[4],1) == '0'
-	let check_{i}	= atplib#CheckClosed(escape(ket,'\[]'),
-		    \ '\%('.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', 
-		    \ pos[1]-g:atp_completion_limits[4], 1, 2*g:atp_completion_limits[4],2) == '0'
+
+	let no_backslash = ( i == 0 || i == 2 ? '\\\@<!' : '' )
+	let check_{i}	= atplib#CheckClosed(no_backslash.escape(ket,'\[]'),
+		    \ '\%('.no_backslash.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', 
+		    \ max([0,pos[1]-g:atp_completion_limits[4]]), 1, 2*g:atp_completion_limits[4],2)
+	let check_{i} = ( check_{i} == 0 )
+" 	let g:arg_{i}=[escape(ket,'\[]'), '\%('.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', max([0,pos[1]-g:atp_completion_limits[4]]), 1, 2*g:atp_completion_limits[4],2]
+
 " 	let check_{i}	= atplib#CheckClosed(escape(ket,'\[]'),
 " 		    \ '\%('.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', 
 " 		    \ pos[1], 1, 2*g:atp_completion_limits[4],2) == '0'
@@ -3971,24 +4098,38 @@ function! atplib#GetBracket(append,...)
     let time=reltime()
     let pos=getpos(".")
     let begParen = ( a:0 >=2 ? a:2 : atplib#CheckBracket(g:atp_bracket_dict) )
-    if begParen[1] != 0  || atplib#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY']) || ( a:0 >= 1 && a:1 )
+    if begParen[1] != 0  || atplib#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY', 'texMathZoneV', 'texMathZoneW']) || ( a:0 >= 1 && a:1 )
 	if atplib#CheckSyntaxGroups(['texMathZoneV'])
 	    let pattern = '\\\@<!\\(\zs'
+	    let syntax	= 'texMathZoneV'
+	    let limit	= g:atp_completion_limits[0]
 	elseif atplib#CheckSyntaxGroups(['texMathZoneW'])
 	    let pattern = '\\\@<!\\\[\zs'
+	    let syntax	= 'texMathZoneW'
+	    let limit	= g:atp_completion_limits[1]
 	elseif atplib#CheckSyntaxGroups(['texMathZoneX'])
 	    let pattern = '\%(\\\|\$\)\@<!\$\$\@!\zs'
+	    let syntax	= 'texMathZoneX'
+	    let limit	= g:atp_completion_limits[0]
 	elseif atplib#CheckSyntaxGroups(['texMathZoneY'])
 	    let pattern = '\\\@<!\$\$\zs'
+	    let syntax	= 'texMathZoneY'
+	    let limit	= g:atp_completion_limits[1]
 	else
 	    let pattern = ''
 	endif
+
 	if !empty(pattern)
 	    let begMathZone = searchpos(pattern, 'bnW')
-	    if atplib#CompareCoordinates([ begParen[0], begParen[1] ], begMathZone)
+	    let closed_math	= atplib#CheckClosed_math(syntax)
+	    if atplib#CompareCoordinates([ begParen[0], begParen[1] ], begMathZone) && closed_math
+		" I should close it if math is not closed.
 		let bracket = atplib#CloseLastEnvironment(a:append, 'math', '', [0, 0], 1)
-	    else
+	    elseif (begParen[0] != 0 && begParen[1] !=0) && atplib#CheckSyntaxGroups(['texMathZoneV', 'texMathZoneW', 'texMathZoneX', 'texMathZoneY'], begParen[0], begParen[1]) == atplib#CheckSyntaxGroups(['texMathZoneV', 'texMathZoneW', 'texMathZoneX', 'texMathZoneY'], line("."), max([1,col(".")-1]))
+		let [s:open_line, s:open_col, s:opening_bracket]=begParen
 		let bracket = atplib#CloseLastBracket(g:atp_bracket_dict, 1, 1)
+	    else
+		let bracket = "0"
 	    endif
 	else
 	    let bracket =  atplib#CloseLastBracket(g:atp_bracket_dict, 1, 1)
@@ -4180,7 +4321,6 @@ function! atplib#TabCompletion(expert_mode,...)
 	\ !normal_mode &&
 	\ ( search('\%(\\def\>.*\|\\\%(re\)\?newcommand\>.*\|%.*\)\@<!\\begin{tikzpicture}','bnW') > search('[^%]*\\end{tikzpicture}','bnW') ||
 	\ !atplib#CompareCoordinates(searchpos('[^%]*\zs\\tikz{','bnw'),searchpos('}','bnw')) )
-	let g:debug = 1
 	"{{{4 ----------- tikzpicture keywords
 	if l =~ '\%(\s\|\[\|{\|}\|,\|\.\|=\|:\)' . tbegin . '$' &&
 		    \ !a:expert_mode
@@ -4346,10 +4486,11 @@ function! atplib#TabCompletion(expert_mode,...)
 	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
     "{{{3 --------- brackets, algorithmic, abbreviations, close environments
     else
+	let g:time_A = reltimestr(reltime(time))
 	let begParen = atplib#CheckBracket(g:atp_bracket_dict)
-" 	let g:time_B = reltimestr(reltime(time))
+	let g:time_B = reltimestr(reltime(time))
 	"{{{4 --------- abbreviations
-	if l =~ '=\w\+\*\=$' &&
+	if l =~ '=[a-zA-Z]\+\*\=$' &&
 		\ index(g:atp_completion_active_modes, 'abbreviations') != -1
 	    let completion_method='abbreviations' 
 	    let b:comp_method='abbreviations'
@@ -4358,12 +4499,20 @@ function! atplib#TabCompletion(expert_mode,...)
 	elseif begParen[1] != 0 || atplib#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY']) &&
 		\ (!normal_mode &&  index(g:atp_completion_active_modes, 'brackets') != -1 ) ||
 		\ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'brackets') != -1 )
+	    let g:time_C=reltimestr(reltime(time))
 	    let completion_method = 'brackets'
 	    let b:comp_method='brackets'
 	    let bracket=atplib#GetBracket(append, 0, begParen)
 	    let g:time_TabCompletion=reltimestr(reltime(time))
 	    let move = ( !a:expert_mode ? join(map(range(len(bracket)), '"\<Left>"'), '') : '' )
 	    return bracket.move
+	"{{{4 --------- close environments
+	elseif (!normal_mode &&  index(g:atp_completion_active_modes, 'close environments') != '-1' ) ||
+		    \ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'close environments') != '-1' )
+	    let completion_method='close_env'
+	    " DEBUG:
+	    let b:comp_method='close_env a' 
+	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	"{{{4 --------- algorithmic
 	elseif atplib#CheckBracket(g:atp_algorithmic_dict)[0] != 0 && 
 		    \ atplib#CheckSyntaxGroups(['texMathZoneALG']) && 
@@ -4374,13 +4523,6 @@ function! atplib#TabCompletion(expert_mode,...)
 		call atplib#CloseLastBracket(g:atp_algorithmic_dict, 0, 1)
 		let g:time_TabCompletion=reltimestr(reltime(time))
 		return '' 
-	"{{{4 --------- close environments
-	elseif (!normal_mode &&  index(g:atp_completion_active_modes, 'close environments') != '-1' ) ||
-		    \ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'close environments') != '-1' )
-	    let completion_method='close_env'
-	    " DEBUG:
-	    let b:comp_method='close_env a' 
-	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
 	"}}}4
 	else
 	    let g:time_TabCompletion=reltimestr(reltime(time))
@@ -4398,10 +4540,10 @@ let b:completion_method = ( exists("completion_method") ? completion_method : 'c
 " 	let g:time_A=reltimestr(reltime(time))
 
 	" Close one line math
-	if atplib#CheckInlineMath('texMathZoneV') || 
-		\ atplib#CheckInlineMath('texMathZoneW') ||
-		\ atplib#CheckInlineMath('texMathZoneX') ||
-		\ b:atp_TexFlavor == 'plaintex' && atplib#CheckInlineMath('texMathZoneY')
+	if atplib#CheckClosed_math('texMathZoneV') || 
+		\ atplib#CheckClosed_math('texMathZoneW') ||
+		\ atplib#CheckClosed_math('texMathZoneX') ||
+		\ b:atp_TexFlavor == 'plaintex' && atplib#CheckClosed_math('texMathZoneY')
 	    let b:tc_return = "close_env math"
 	    call atplib#CloseLastEnvironment(append, 'math')
 	" Close environments
@@ -4411,8 +4553,9 @@ let b:completion_method = ( exists("completion_method") ? completion_method : 'c
 	    let stopline_backward	= max([ 1, line(".") - g:atp_completion_limits[2]])
 
 	    let line_nr=line(".")
+	    let pos_saved=getpos(".")
 	    while line_nr >= stopline_backward
-		let line_nr 		= searchpair('\\begin\s*{', '', '\\end\s*{', 'bnW', 'strpart(getline("."), 0, col(".")-1) =~ "\\\\\\@<!%"', stopline_backward)
+		let [ line_nr, col_nr ] = searchpairpos('\\begin\s*{', '', '\\end\s*{', 'bW', 'strpart(getline("."), 0, col(".")-1) =~ "\\\\\\@<!%"', stopline_backward)
 		if line_nr >= stopline_backward
 		    let env_name	= matchstr(getline(line_nr), '\\begin\s*{\zs[^}]*}\ze}')
 		    if env_name		=~# '^\s*document\s*$' 
@@ -4423,11 +4566,12 @@ let b:completion_method = ( exists("completion_method") ? completion_method : 'c
 		    if line_forward == 0
 			break
 		    endif
-			
 		else
 		    let line_nr = 0
+		    break
 		endif
 	    endwhile
+	    call cursor(pos_saved[1], pos_saved[2])
 
 	    if line_nr
 	    " the env_name variable might have wrong value as it is
@@ -5283,6 +5427,7 @@ let b:completion_method = ( exists("completion_method") ? completion_method : 'c
     " DEBUG
     let b:completions=completions 
     " {{{2 COMPLETE 
+    call cursor(pos_saved[1], pos_saved[2])
     " {{{3 package, tikz libraries, environment_names, colors, bibfiles, bibstyles, documentclass, font family, font series, font shape font encoding, input files, includegraphics
     if
 		\ completion_method == 'package' 	|| 
@@ -5403,19 +5548,19 @@ let b:completion_method = ( exists("completion_method") ? completion_method : 'c
 
 	    " Check Brackets 
 	    let b:comp_method   = "brackets: 1"
-	    let cl_return 	= atplib#CloseLastBracket(g:atp_bracket_dict)
+	    let cl_return 	= atplib#GetBracket(g:atp_bracket_dict)
 
 	    " If the bracket was closed return.
 	    if cl_return != "0"
 	        let g:time_TabCompletion=reltimestr(reltime(time))
-		return ""
+		return cl_return
 	    endif
 
 	    " Check inline math:
-	    if atplib#CheckInlineMath('texMathZoneV') || 
-			\ atplib#CheckInlineMath('texMathZoneW') ||
-			\ atplib#CheckInlineMath('texMathZoneX') ||
-			\ b:atp_TexFlavor == 'plaintex' && atplib#CheckInlineMath('texMathZoneY')
+	    if atplib#CheckClosed_math('texMathZoneV') || 
+			\ atplib#CheckClosed_math('texMathZoneW') ||
+			\ atplib#CheckClosed_math('texMathZoneX') ||
+			\ b:atp_TexFlavor == 'plaintex' && atplib#CheckClosed_math('texMathZoneY')
 		let zone = 'texMathZoneVWXY' 	" DEBUG
 		call atplib#CloseLastEnvironment(append, 'math')
 
@@ -5471,19 +5616,13 @@ let b:completion_method = ( exists("completion_method") ? completion_method : 'c
 " 		    \ completion_method == 'bibfiles'
 	    let b:tc_return='close_bracket end'
 	    let b:comp_method .= " brackets: 2"
-	    call atplib#CloseLastBracket(g:atp_bracket_dict)
+	    let g:time_TabCompletion=reltimestr(reltime(time))
+	    return atplib#GetBracket(g:atp_bracket_dict)
 	endif
     endif
     "}}}3
 "}}}2
 
-    " unlet variables if there were defined.
-    if exists("completion_list")
-	unlet completion_list
-    endif
-    if exists("completions")
-	unlet completions
-    endif
     let g:time_TabCompletion=reltimestr(reltime(time))
     return ''
     "}}}2

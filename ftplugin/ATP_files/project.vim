@@ -538,6 +538,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, 
     try
 	silent! exe 'lvimgrep /^\s*\<let\>\s\+[bg]:/j ' . fnameescape(a:project_script)
     catch E486:
+    catch E480:
     endtry
     let defined_variables	= getloclist(0) 
     call map(defined_variables, 'matchstr(v:val["text"], ''^\s*let\s\+\zs[bg]:[^[:blank:]=]*'')') 

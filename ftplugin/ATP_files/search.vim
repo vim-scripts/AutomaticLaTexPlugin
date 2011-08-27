@@ -785,6 +785,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		silent echo "Positions: ".string(cur_pos)." ".string(pat_pos)." ".string(input_pos)." in branch: ".cur_branch."#".expand("%:p") . " stop_line: " . stop_line 
 		endif
 
+
 	" Down Accept:
 	" the current value of down_accept
 	let DOWN_ACCEPT = a:0 >= 2 ? a:2 : 0
@@ -999,7 +1000,6 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		echohl Normal
 	    endif
 
-
 		if g:atp_debugRS
 		silent echo "FOUND PATTERN: " . a:pattern . " time " . time
 		silent echo ""
@@ -1027,13 +1027,14 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	    let file = matchstr(getline(input_pos[0]), '\\input\s*{\zs[^}]*\ze}')
 	    let file = atplib#append_ext(file, '.tex')
 
-	    let open =  flags_supplied =~ 'b' ? 'keepalt edit + ' : 'keepalt edit +1 '
+	    let keepalt = ( @# == '' ? '' : 'keepalt' )
+	    let open =  flags_supplied =~ 'b' ? keepalt . ' edit + ' : keepalt.' edit +1 '
 	    let swapfile = globpath(fnamemodify(file, ":h"), ( has("unix") ? "." : "" ) . fnamemodify(file, ":t") . ".swp")
 
 	    if !( a:call_nr == 1 && a:wrap_nr == 1 )
 		let open = "silent keepjumps " . open
 	    endif
- 
+
 	    let projectVarDict 	= SaveProjectVariables()
 " 	    let projectScript	= SaveProjectVariables("g:atp_ProjectLocalVariables") 
 " 	    let atp_ProjectScript 	= [ exists("g:atp_ProjectScript") ? g:atp_ProjectScript : b:atp_ProjectScript, exists("g:atp_ProjectScript") ] 
@@ -1047,6 +1048,10 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	    if g:atp_debugRS >= 2
 		silent echo "TIME ***goto UP before open*** " . reltimestr(reltime(time0))
 	    endif
+
+" ERROR: When opening for the first time there are two errors which
+" I cannot figure out.
+
 	    " OPEN:
 	    if empty(swapfile) || bufexists(file)
 		if g:atp_debugRS >= 2
@@ -1061,6 +1066,7 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		exe "redir! >> ".g:atp_TempDir."/RecursiveSearch.log"
 		silent echo "TIME ***goto UP after open*** " . reltimestr(reltime(time0))
 	    endif
+
 " 	    call RestoreProjectVariables(projectScript)
 " 	    if atp_ProjectScript[1]
 " 		let g:atp_ProjectScript = atp_ProjectScript[0]
@@ -1092,8 +1098,13 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		silent echo "TIME_END:              " . reltimestr(reltime(time0))
 		endif
 
-" 	    let flag	= flags_supplied =~ 'W' ? flags_supplied : flags_supplied . 'W'
-	    keepalt keepjumps call <SID>RecursiveSearch(main_file, a:start_file, "", tree_of_files, expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, vim_options, cwd, pattern, flags_supplied, down_accept)
+
+	    let flag	= flags_supplied =~ 'W' ? flags_supplied : flags_supplied . 'W'
+	    if @# == ''
+		keepjumps call <SID>RecursiveSearch(main_file, a:start_file, "", tree_of_files, expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, vim_options, cwd, pattern, flags_supplied, down_accept)
+	    else
+		keepalt keepjumps call <SID>RecursiveSearch(main_file, a:start_file, "", tree_of_files, expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, vim_options, cwd, pattern, flags_supplied, down_accept)
+	    endif
 
 	    if g:atp_debugRS
 		redir END
@@ -1130,18 +1141,23 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 		silent! echomsg "Going to file : " . g:ATP_branch . " ( g:ATP_branch ) "
 
 	    	" restore the window and buffer!
-		silent execute "keepjumps keepalt edit #" . a:bufnr
+		let keepalt = ( @# == '' ? '' : 'keepalt' )
+		silent execute keepalt. " keepjumps edit #" . a:bufnr
 		call winrestview(a:winsaveview)
+		if g:atp_debugRS
+		    redir END
+		endif
 
 		return
 	    endif
 
 	    let next_branch = atplib#FullPath(g:ATP_branch)
 	    let swapfile = globpath(fnamemodify(next_branch, ":h"), ( has("unix") ? "." : "" ) . fnamemodify(next_branch, ":t") . ".swp")
+	    let keepalt = ( @# == '' ? '' : 'keepalt' )
 	    if a:call_nr == 1 && a:wrap_nr == 1 
-		let open =  'silent keepalt edit +'.g:ATP_branch_line." ".fnameescape(next_branch)
+		let open =  'silent '.keepalt.' edit +'.g:ATP_branch_line." ".fnameescape(next_branch)
 	    else
-		let open =  'silent keepjumps keepalt edit +'.g:ATP_branch_line." ".fnameescape(next_branch)
+		let open =  'silent keepjumps '.keepalt.' edit +'.g:ATP_branch_line." ".fnameescape(next_branch)
 	    endif
 
 	    if g:atp_debugRS >= 2
@@ -1197,7 +1213,11 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	    unlet g:ATP_branch_line
 " 	    let flag	= flags_supplied =~ 'W' ? flags_supplied : flags_supplied . 'W'
 	    if goto_s == 'DOWN'
-		keepalt keepjumps call <SID>RecursiveSearch(main_file, a:start_file, "", tree_of_files, expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, vim_options, cwd, pattern, flags_supplied)
+		if @# == ''
+		    keepjumps call <SID>RecursiveSearch(main_file, a:start_file, "", tree_of_files, expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, vim_options, cwd, pattern, flags_supplied)
+		else
+		    keepalt keepjumps call <SID>RecursiveSearch(main_file, a:start_file, "", tree_of_files, expand("%:p"), a:call_nr+1, a:wrap_nr, a:winsaveview, a:bufnr, a:strftime, vim_options, cwd, pattern, flags_supplied)
+		endif
 	    endif
 
 	" when REJECT
@@ -1212,7 +1232,9 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 
 " 	    restore the window and buffer!
 " 		it is better to remember bufnumber
-	    silent execute "keepjumps keepalt edit #" . a:bufnr
+	    let keepalt = ( @# == '' ? '' : 'keepalt' )
+	    silent execute "keepjumps ".keepalt." edit #" . a:bufnr
+
 	    call winrestview(a:winsaveview)
 
 		if g:atp_debugRS
@@ -1251,7 +1273,8 @@ function! <SID>RecursiveSearch(main_file, start_file, maketree, tree, cur_branch
 	    filetype detect
 
 	    " restore the window and buffer!
-	    silent execute "keepjumps keepalt edit #" . a:bufnr
+	    let keepalt = ( @# == '' ? '' : 'keepalt' )
+	    silent execute "keepjumps ".keepalt." edit #" . a:bufnr
 	    call winrestview(a:winsaveview)
 
 	    return 
@@ -1285,6 +1308,7 @@ function! Search(Bang, Arg)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let [ pattern, flag ] = s:GetSearchArgs(a:Arg, 'bceswW')
+    let g:pattern = pattern
 
     if pattern == ""
 	echohl ErrorMsg

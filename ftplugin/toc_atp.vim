@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Fri Aug 05 01:00  2011 W
+" Last Change: Sat Aug 27 12:00  2011 W
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 
 " if exists("b:did_ftplugin") | finish | endif
@@ -48,7 +48,7 @@ function! s:file() "{{{
 	return get(b:atp_Labels, line("."), ["", ""])[0]
     endif
 endfunction
-command! -buffer File	:echo s:file()
+" command! -buffer File	:echo s:file()
 "}}}
  
 " {{{1 s:gotowinnr
@@ -125,6 +125,7 @@ function! GotoLine(closebuffer) "{{{
 
     " window to go to
     let gotowinnr= s:gotowinnr()
+    let g:gotowinnr=gotowinnr
 
     if gotowinnr != -1
  	exe gotowinnr . " wincmd w"
@@ -132,7 +133,7 @@ function! GotoLine(closebuffer) "{{{
 	    exe "e " . fnameescape(buf)
 	endif
     else
- 	exe gotowinnr . " wincmd w"
+ 	exe " wincmd w"
 	exe "e " . fnameescape(buf)
     endif
 	
@@ -781,12 +782,74 @@ augroup ATP_CursorLine
     au CursorMoved,CursorMovedI __ToC__ call atplib#CursorLine()
 augroup END " }}}1
 
+" Fold section
+func! <SID>CompareNumbers(i1, i2)
+    return str2nr(a:i1) == str2nr(a:i2) ? 0 : str2nr(a:i1) > str2nr(a:i2) ? 1 : -1
+endfunc
+function! <SID>Section2Nr(section)
+    if a:section == 'part'
+	return 1
+    elseif a:section == 'chapter'
+	return 2
+    elseif a:section == 'section' || a:section == 'abstract'
+	return 3
+    elseif a:section == 'subsection'
+	return 4
+    elseif a:section == 'paragraph'
+	return 5
+    elseif a:section == 'subparagraph'
+	return 6
+    else
+	return 7
+    endif
+endfunction
+function! FoldClose(...) " {{{1
+    let atp_toc	= deepcopy(t:atp_toc)
+    let f_line = (a:0 >= 1 ? a:1 : line(".") )
+    let l_line = (a:0 >= 2 ? a:2 : line(".") )
+    let g:f_line = f_line
+    let g:l_line = l_line
+    " This function is not working well with sections put into chapters. Then
+    " chapters are not folded with greater fold level.
+    for line in range(f_line, l_line)
+	let beg_line = Getlinenr(line)
+	if !beg_line
+	    return
+	endif
+	let type = <SID>Section2Nr(get(get(deepcopy(atp_toc), s:file(), {}), beg_line, [''])[0])
+	let g:type = type
+	let type_dict = get(deepcopy(atp_toc), s:file(), {})
+	let g:type_dict_0 = deepcopy(type_dict)
+	call filter(map(type_dict, "<SID>Section2Nr(v:val[0])"), "str2nr(v:val) <= str2nr(type)")
+	let g:type_dict_1 = deepcopy(type_dict)
+	let line_list = sort(filter(keys(type_dict), "str2nr(v:val) >= str2nr(beg_line)"), "<SID>CompareNumbers")
+	let end_line = Getlinenr(line(".")+1)
+	" Goto file
+	let winnr = s:gotowinnr()
+	let toc_winnr = winnr()
+	exe winnr."wincmd w"
+	let end_line = get(line_list, 1, "")
+	if end_line != ""
+	    let end_line = end_line-1
+	else
+	    let end_line = line("$")
+	endif
+	echomsg beg_line." ".end_line
+	execute beg_line.",".end_line."fold"
+	exe toc_winnr."wincmd w"
+    endfor
+endfunction " }}}1
+
 " Mappings:
 " MAPPINGS {{{1
 if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
+    command! -range Fold		:call FoldClose(<q-line1>,<q-line2>)
+    nmap <silent> <buffer> zc		:call FoldClose()<CR>
+    vmap <silent> <buffer> zc		:<C-U>call FoldClose(line("'<"), line("'>"))<CR>
     map <silent> <buffer> q 		:bdelete<CR>
     map <silent> <buffer> <CR> 		:call GotoLine(1)<CR>
     map <silent> <buffer> <space> 	:call GotoLine(0)<CR>
+    map <silent> <buffer> _		:call GotoLine(0)<bar>TOC<CR>
 " This does not work: 
 "   noremap <silent> <buffer> <LeftMouse> :call GotoLine(0)<CR>
 "   when the cursor is in another buffer (and the option mousefocuse is not

@@ -71,7 +71,7 @@ debug_file      = open(script_logfile, 'w')
 # Cleanup on exit:
 def cleanup(debug_file):
     debug_file.close()
-#     shutil.rmtree(tmpdir)
+    shutil.rmtree(tmpdir)
 atexit.register(cleanup, debug_file)
 
 command         = options.command
@@ -226,7 +226,9 @@ def xpdf_server_file_dict():
                     ind=0
                 if ind != 0 and len(cmdline) >= 1:
                     server_file_dict[cmdline[ind+1]]=[cmdline[len(cmdline)-1], pr]
-        except psutil.NoSuchProcess:
+        except psutil.error.NoSuchProcess:
+            pass
+        except psutil.error.AccessDenied:
             pass
     return server_file_dict
 

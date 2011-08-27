@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 15 August 2011
+*automatic-tex-plugin.txt* 	For Vim version 7.3	Last change: 27 August 2011
 
-	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10)
+	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10.3)
 			by Marcin Szamotulski
 		    mszamot [AT] gmail [DOT] com
 		----------------------------------------
@@ -163,6 +163,19 @@ NEWS							*atp-news*
  ======================
  Changes in version 10.2
 <
+  Skim (MacOS)                  -- support for "Skim" added (forward search)
+                                   [thanks to Florian Heiderich].
+                                   Read the necessary steps in |atp-Viewers-Skim|.
+
+  Xpdf				-- support for inverse searching added (Xpdf -> vim)
+				   thus both inverse and forward searching
+				   works for Xpdf (and Okular). See
+				   |atp-Viewers-Xpdf| how to set it.
+
+  :MakeLatex [mode]		-- mode is one of silent/debug/Debug. Will
+				   also show bibtex/biber/makeidx error
+				   code/debug info.
+
   :Dictionary {word}		-- an interface to http://www.impan.pl/Dictionary/.
   					see |atp-:Dictionary| (with map =d
 					using |<cword>| under the cursor).
@@ -177,6 +190,41 @@ NEWS							*atp-news*
   'iskeyword'			-- is set using g:tex_isk variable. This is
 				   compatible with the standard tex syntax
 				   file.
+  :TexAlign!			-- bang added+some fixes, see |atp-:TexAlign|.
+
+								|atp-r|
+  Replace()			-- if |g:atp_VimCompatible| is 0 then the
+				   normal |r| will be overwritten with another
+				   function with the following feature:
+				   if you do |atp-r| over one of the brackets:
+				   (:), {:}, [:] then r(, r{, r[ (and r), r},
+				   r]) will change both: the opening and the
+				   closing bracket. Otherwise, i.e. over any
+				   other character, or rc where c is other
+				   than opening bracket at opening position or
+				   closing bracket at closing posistion,
+				   |atp-r| will work the same as |r|.
+
+  New imaps:
+  l*, L*	\wedge, \bigwedge (l = lattice theoretic, meet)
+  l+, L+	\vee,	\bigvee   (join)
+  wedge is also under #& but #ve (for \vee) and #V (for \bigvee) are removed,
+  since they were interfering with #ve for \varepsilon.
+
+  Greek Letter Maps: are disabled when the previous character is '\'. So you
+  can type '\#a' with the default value of |g:atp_imap_leader_1| and it will
+  not transform into '\\alpha'.
+
+  TOC:
+  map _				-- set section: focus main window on the
+				   section under cursor and jump back to TOC.
+  map & vmap zc			-- fold sections/chapters/... . Has one
+				   limitation: cannot fold subsection if
+				   section in which it sits is folded.
+				   You can fold several sections at once using
+				   visual mode (subsections will not be
+				   follded in right way though).
+
 >
  ======================
  Changes in version 10
@@ -577,7 +625,9 @@ To get updates it is enought to use this command:
 	{UNSTABLE} snapshots contain small fixes, and rarely, major changes
 	of important parts of ATP (what can produce new bugs).  
 
-	Requires python.
+	|atp-:UpdateATP| works well with pathogen vim plugin.
+
+	Requires python (consult the |feature-list|).
 
 							*atp-:ATPversion*
 :ATPversion	
@@ -1232,7 +1282,7 @@ map t, map <S-LeftMouse>
 	Xpdf and Xdvi with this feature (Evince is not yet supported).
 
 	Note: you can also set reverse search for Okular and Xdvi, see
-	|atp-viewers-Okular| and |atp-viewers-Xdvi| for an instruction how to
+	|atp-Viewers-Okular| and |atp-Viewers-Xdvi| for an instruction how to
 	do that. Xpdf doesn't support reverse searching.
 
 							*atp-:SyncTex_Xpdf-hack*
@@ -1525,7 +1575,7 @@ map <F6>d
 	use this command (but not the maps)!
 
 							*atp-:TexAlign*
-:TexAlign
+:TexAlign[!]
 map \a 
 	This is a wrapper around Align command of the great AutoAlign Vim plugin:
 	    http://www.vim.org/scripts/script.php?script_id=884. 
@@ -1542,9 +1592,9 @@ map \a
 	'conceallevel' is reset to 0 ATP_strlen behaves like
 	g:Align_xstrlen=2.
 
-	If *g:atp_TexAlign_join_lines* =1 then |atp-:TexAlign| will also join
-	all the lines which do not ends with \\. By default it is equal to
-	0.
+	With bang "!", |atp-:TexAlign| will join lines which do not ends with
+	'\\'. if *g:atp_TexAlign_join_lines* = 1 then the map \a will use the
+	bang.
     							*atp-:LatexTags*
 							*atp-:Tags*
 :Tags[!]
@@ -2055,13 +2105,13 @@ vmap <F4>
 (:ATPStatus[!])						*atp-:ATPStatus*
 	This comman sets the status line, which include: the name of currently
 	edited chapter (or section) the value of |b:atp_OutDir| (unless used
-	with bang!) and it will warn you if |b:atp_OutDir| variable is not
-	set. The status line will also contain the information about
-	processing compelation: see |atp-status-line-notification|,
-	|g:atp_ProgressBar|. This function is called at startup unless the
-	variable '|g:atp_statusline|=0' is set. The status is set by the
-	autocommand: >
-		au BufWinEnter *.tex :call Status()
+	with bang "!") and it will warn you if |b:atp_OutDir| variable is not
+	set. Note: this command will set the variable |g:atp_statusOutDir|.
+	The status line will also contain the information about processing
+	compelation: see |atp-status-line-notification|, |g:atp_ProgressBar|.
+	This function is called at startup unless the variable
+	'|g:atp_statusline|=0' is set. The status is set by the autocommand: >
+		au BufWinEnter *.tex :call ATPStatus()
 <	In this way every opened window with a '*.tex' file will get the correct
 	status line.
 
@@ -2070,7 +2120,9 @@ vmap <F4>
 
 							*g:atp_statusOutDir*
 	Note: if you set g:atp_statusOutDir=0 (the default is 1) then the
-	output directory will be not seen in the statusline.
+	output directory will be not seen in the statusline. This variable
+	only controls the status line at startup. If you want to remove/add
+	output directory rather use |atp-:Status| command.
 
 ToDo({keyword}, {stop}, [bufname])		*atp-function-ToDo*
 :ToDo[!] [bufname]					*atp-:ToDo*
@@ -2177,10 +2229,20 @@ TABLE OF CONTENTS WINDOW					 *atp-toc-window*
 	    's'		it splits the window with your tex source file and
 			    sets the current line to the beginning of the
 			    chapter/section under the cursor,
-	    'q' 	to quit, and finally, 
-	    <Enter> 	to go to the chapter under the cursor and close ToC.
-	    <space> 	to go to the chapter under the cursor but leave ToC
+	    'q' 	to quit, 
+	    <Enter> 	to go to the section under the cursor and close ToC.
+	    <space> 	to go to the section under the cursor but leave ToC
 			    open.
+	    '_' 	to go to the section under the cursor and return to 
+			ToC afterwards.
+	    'zc'	to fold section/chapter/... . You can mark several
+			lines in vusual mode and use 'zc' to fold them at
+			once. 
+			Limitation: ~
+			It cannot fold subsections in a right way when the
+			section is folded. In particular, this applies when
+			folding several sections with subsections in visual
+			mode.
 
 	There are also commands: ':C' and ':P', which do the same as 'c' and
 	'p' mappings. They all call the function 'Yank(<where>)', the argument
@@ -2234,8 +2296,8 @@ TABLE OF CONTENTS WINDOW					 *atp-toc-window*
 	with the file name. 
 							*atp-:Undo*
 >
- :Undo 
- nnoremap u, nnoremap U, nnoremap g-, nnoremap g+ 
+     :Undo 
+     nnoremap u, nnoremap U, nnoremap g-, nnoremap g+ 
 <	You can use undo. The :Undo command will undo in the buffer under
 	the cursor (it switches to the correct window, using the Vim undo
 	function, and runs :TOC command - so after all your back in ToC.). The
@@ -2261,9 +2323,15 @@ TABLE OF CONTENTS WINDOW					 *atp-toc-window*
 		You may want to have a map: >
 				:au FileType toc_atp nnoremap dd :DeleteSection<CR>
 <		this can be put in your '$HOME/.atp.vim' configuration file.
+							    *atp-:Fold*
+>
+    :Fold, :'<,'>Fold
+<	Fold section[s], works in the same way as 'zc' (as above) with the same
+	litmitations.
+
 
 ================================================================================
-SEARCHING IN BIB FILES 		                       		 *atp-bibsearch*
+SEARCHING IN BIB FILES						*atp-bibsearch*
 
 		___________________________
 		Table of Contents: ~
@@ -4159,7 +4227,10 @@ Note: You can list this mappings using the command |atp-:HelpMathIMaps|. You
       insert mode was inside mathematics.
 							*g:atp_imap_define_greek_letters*
 Note: If you do not want imaps for greek letters you can set
-      |g:atp_ima_define_greek_letters| = 0
+      |g:atp_imap_define_greek_letters| = 0
+Note: |g:atp_imap_leader_1| is used as a leader (with the defaul value '#').
+Note: if the previous character is '\' the mapping will not work which allows
+      writting '\#a', etc. However, there is no check for '\\'.
 imap #a 	\alpha
 imap #b 	\beta
 imap #c 	\chi
@@ -4321,8 +4392,6 @@ imap ]M 	\[\]<Left><Left>
 imap #\		\setminus
 imap #/		\frac{}{}
 imap #&		\wedge
-imap #ve	\vee
-imap #V		\Vee
 imap #N		\Nabla
 imap #=		\equiv
 imap `8		\infty		[the default '#' is not working, ` is used intead, 
@@ -4393,6 +4462,10 @@ imap s*		\cap		[    set *]
 imap S*		\bigcap		[big set *]
 imap c*		\prod		[    cat *]		/cat = categorical/
 imap c+		\coprod		[    cat +]
+imap l*		\wedge		[    lat *, meet]	/lat = lattice theoretic/ 
+imap L*		\bigwedge	[big lat *]
+imap l+		\vee		[    lat +, join]
+imap L+		\bigvee		[big lat +]
 imap <=		\leq
 imap >=		\geq
 imap ->		\rightarrow
@@ -4612,15 +4685,15 @@ EDITING TOOLS							*atp-editing*
 	and mode: <LocalLeader>sc. 
 
 	They select the current environment in two ways: >
-				i 	- inner
-				a 	- outer
-				e 	- environment 
-				p	- paragraph	  
-				m	- math zones: \(:\), $:$, \[:\], $$:$$, 
-					  or math environment \begin:\end.ard
-					  search is set by ATP
-				)	- bracket
-				s	- syntax
+	    i 	- inner
+	    a 	- outer
+	    e 	- environment 
+	    p	- paragraph	  
+	    m	- math zones: \(:\), $:$, \[:\], $$:$$, 
+		      or math environment \begin:\end.ard
+		      search is set by ATP
+	    )	- bracket
+	    s	- syntax
 <								*atp-vie* *atp-viE* *atp-vae*
 	ie, iE, ae select environment: from the nearest \begin (top) to the nearest \end (bottom).	
 
@@ -4670,7 +4743,16 @@ nmap gw
 								*atp-g>*	
 nmaps: g>, g<, 2g>, ..., 6g>  
 	A normal map to m`vipg>`` (or m`vip2g>``).
-
+								
+								*atp-r*
+nmap r   
+	If |g:atp_VimCompatible| is 0 then the normal command |r| will be over written
+	with an ATP function with the following feature: if you do |atp-r|
+	over one of the brackets: (:), {:}, [:] then r(, r{, r[ (and r), r},
+	r]) will change both: the opening and the closing bracket. Otherwise,
+	i.e. over any other character, or |atp-r| over a bracket with
+	replacing character other than opening bracket at opening position or
+	closing bracket at closing posistion, |atp-r| will work the same as |r|.
 	
 
 ================================================================================
@@ -4706,7 +4788,8 @@ NOTES ON VIEWERS                          			*atp-Viewers*
 
 See the section |atp-Viewers_Options| how to set options for viewer programs.
 
-Xpdf								*atp-Viewers-Xpdf*
+ 								*atp-Viewers-Xpdf*
+Xpdf ~
 	It is supported. It is configured in the way that when your tex file
 	have errors, Xpdf viewer will not reload your file, which I found
 	useful. Xpdf supports forward searching (vim->Xpdf) with command:
@@ -4725,17 +4808,46 @@ Xpdf								*atp-Viewers-Xpdf*
 >
 	    let b:atp_xpdfOptions="-bg Grey30 -mattecolor SlateBlue2 -papercolor White"
 <
-Evince
+
+	You can set forward searching for Xpdf (from version 3.03, already
+	available here: http://foolabs.com/xpdf/download.html):
+
+Xpdf: inverse search ~
+							(see also |atp_inverse_search|)
+	Add this line to your $HOME/.xpdfrc file: >
+	    bind shift-mousePress1 any 'run(python $HOME/.vim/ftplugin/ATP_files/atp_RevSearch.py --synctex  "%f" %i %j %k)'
+<	Note: %i, %j, %k should not be quoted.
+	Presing <Shift>+<Left_Mouse> will do forward search, i.e. it will set
+	vim according to mouse cursor position over Xpdf. See man page of xpdf
+	how to bind other keys.
+
+	Note: to use this xpdf have to be opened giving fullpath to the file.
+	This is important when you open a file from a terminal. Ohterwise
+	atp_RevSearch.py as invoked above by the run() command will look for
+	the tex file in the directory: '$HOME/.vim/ftplugin/ATP_files'.
+	Furthermore, it will make new file there whic ATP will try to process.
+	A workaround this should be to place atp_RevSearch somewhere in your
+	path and make in exec utable and change the run() comman to
+	'run(atp_RevSearch.py --synctex %f %i %j %k)'. This is not tested solution.
+
+	You can debug Xpdf if something doesn't work: open the file from terminal
+	with 'xpdf -cmd' see the man page of Xpdf.
+
+Evince ~
 	Works fine.
 								*atp-Viewers-Okular*
-Okular
+Okular ~
 	Works fine. It supports both forward (Vim->Okular) and inverse
 	(Okular->Vim) searches. Okular supports forward searching (vim->Okular)
 	with command: |atp-:SyncTex| >
 		:SyncTex
 		map t
 		map <S-LeftMouse>
-<	Here is how to CONFIGURE REVERSE SEARCHING (Okular->Vim): 
+<
+Okular: inverse search ~
+	Here is how to configure inverse searching (Okular->Vim) with
+	|atp_RevSearch.py| python script shifted with ATP: 
+
 	open Okular and go to >
 		settings>Configure Okular>Editor
 <	and set >
@@ -4745,11 +4857,6 @@ Okular
 	work other way. You can also copy the script somewhere inside your
 	$PATH but then when this script will change you have to keep in mind
 	to copy it again. 
-
-	If you set the command as above (with python before the path to
-	atp_RevSearch.py) you do not need to make atp_RevSearch.py executable.
-	Note, that otherwise whenever you update ATP you will have to make the
-	script executable!
 
 	If it is not working for you, please report it, you can also
 	use: >
@@ -4768,34 +4875,31 @@ Okular
 	Then you can use <Shift>+<Left_Mouse> in Okular to synchronize the Vim
 	(gVim) with pdf. 
 
-								*atplib#FindAndOpen()*	
-	The function atplib#FindAndOpen() asks each running gvim server if is
-	is "hosting" source of the file %f. Then it uses this server to set
-	the line (but it doesn't check if the cursor is in the right window!).
-	Note: if you like command line Vim (which has its own beauty
-	- actually I'm just typing in it :) you need to set up Vim server
-	  option on startup: >
- 		vim --servername VIM <file>
-<	{LIMITATIONS}:
-	The project files which are split into many input files are not yet
-	supported.
-	
+                                                                *atp-Viewers-Skim*
+Skim ~
+	Forward searching (vim -> Skim): ~
+        To enable forward searching you need to:
+        (1) download the skript: http://links.tedpavlic.com/shell_scripts/skim
+            put it somewhere in your $PATH and make executable.
+        (2) make a symbolic link of:
+            /Applications/Skim.app/Contents/SharedSupport/displayline
+            (or whereever Skim is installed) somewhere in the $PATH.
 
-Kpdf
+Kpdf ~
 	Works fine (moves page a little bit when updates a file).
 
-EpdfView
+EpdfView ~
 	This viewer does not support automatic reloads when the file changes
 	(but it seems that the work is in progress). You have to issue CTRL-R
 	yourself when the file is changed.
 
-AcroRead
+AcroRead ~
 	As with epdfview (with the difference that it supports automatic
 	updates, but it do not works somehow). There is a way to configure
 	forward searching (Vim->AcroRead)! but it is not supported yet, if you
 	really want it, write to me.
-
-Xdvi								*atp-Viewers-Xdvi*
+							*atp-Viewers-Xdvi*
+Xdvi ~
 	Works fine. The file will be updated after a click (or use the xdvi
 	options '-watchfile 1' see man xdvi for explanations). You can set
 	forward/reverse searching by the command |SetXdvi| then use
@@ -4822,16 +4926,80 @@ Xdvi								*atp-Viewers-Xdvi*
 	Note the watchfile switch for xdvi: with it xdvi will reload the file,
 	if needed, every second.
 
-Zathura							
+Zathura	~
 	Perfectly works (but there is no reverse/inverse searching).
 
-Mupdf
+Mupdf ~
 	It is the fastest pdf viewer program ever made, why? because it
 	renders only one page :). But it can be nicly set with ATP: via
 	autocommands and :SyncTex you can load a page where the cursor is
 	located (for example with autocmd event |CursorHold|). This might be
 	nice on a big enough monitor on which you can see both vim and mupdf
 	on one screen.
+
+================================================================================
+INVERSE SEARCHING						*atp_inverse_search*
+
+								*atp_RevSearch.py*
+	ATP comes with a python script which can do inverse searching. It is
+	based on synctex and a vim function |atplib#FindAndOpen()|. The last
+	function searches which running vim/gvim instance holds the {file},
+	and updates the cursor location. The syntax is as follows:
+
+	    atp_RevSearch.py [--gvim] {file} {line} [column]
+	    atp_RevSearch.py [--gvim] --synctex {file} {page} {x-coord} {y-coord}
+
+	First syntax will work for viewers which calls synctex themselves
+	(like Okular) and has escapes for {line} (and [column]).  The second
+	syntax is for viewers which have ony escapes characters fo {page}
+	number and the coordinates {x-coord} and {y-coord} (for example Xpdf).
+
+	Note: {x-coord} and {y-coord} counts from top left corner in big
+	points (72dpi), for example Xpdf (ver. 3.03) gives escapes for x,
+	y coordinates counting from bottom left corner)
+
+	Preferably you should call this command with >
+	    python PATH/atp_RevSearch.py  {args}
+<	Then when you update ATP you will not miss updates of |atp_RevSearch.py|. 
+	Another good solution is to link |atp_RevSearch.py| somewhere in the
+	$PATH and make it executable. If you just copy it you might miss when
+	it will be updated. If you set the command as above (with python
+	before the path to atp_RevSearch.py) you do not need to make
+	atp_RevSearch.py executable.  Note, that otherwise whenever you update
+	ATP you will have to make the script executable!
+
+	By default, the script is using gvim. If you prefer to use vim add
+	[--vim] switch: >
+	    python PATH/atp_RevSearch --gvim --synctex {file} {page} {x-coord} {y-coord}
+<
+	Note: |atp_RevSearch.py| doesn't like when you suspend an instance of
+	vim (any).
+
+	|atp_RevSearch.py| write to a debug file /tmp/atp_RevSearch.py.
+
+	Note: if inverse searching stopped working for you, try to recompile
+	the document.
+
+	Finally, |atp_RevSearch.py| will forward error messages (or error code
+	if error message was not found) back to vim. This is only possible if
+	|atp_RevSearch.py| found the correct vim server.
+
+								*atplib#FindAndOpen()*	
+	The function atplib#FindAndOpen() asks each running gvim server if is
+	is "hosting" source of the file %f. Then it uses this server to set
+	the line (but it doesn't check if the cursor is in the right window!).
+
+	Note: if you like command line Vim (which has its own beauty
+	- actually I'm just typing in it :) you need to set up Vim server
+	  option on startup: >
+ 		vim --servername VIM <file>
+
+<	|atplib#FindAndOpen()| will find a correct tabpage and window if
+	necessary and focus vim in the right one.
+	Limitations: ~
+	The project files which are split into many input files are not yet
+	supported.
+	
 
 ================================================================================
 TIPS                               				*atp-tips*
@@ -5047,6 +5215,5 @@ COPY RIGHTS							*atp-copy-rights*
 	"ftplugin/ATP_files/dictionaries/dictionary",
 	"ftplugin/ATP_files/dictionaries/SIunits" 
 <   where taken from latex-suite Vim plugin and are under Vim charity
-    |license|.
 
-	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10.2)
+ vim:tw=78:ts=8:ft=help:norl:

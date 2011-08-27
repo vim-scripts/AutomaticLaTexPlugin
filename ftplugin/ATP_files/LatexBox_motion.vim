@@ -416,7 +416,7 @@ endfunction
 " 	cursor moves).
 " 	winheight(0)			returns window height
 " 	winsaveview()['topline'] 	returns the top line
-function! s:HighlightMatchingPair()
+function! <SID>HighlightMatchingPair()
 
 	2match none
 
@@ -427,7 +427,7 @@ function! s:HighlightMatchingPair()
 " 	let open_pats 		= ['\\begin\>\ze\%(\s*{\s*document\s*}\)\@!', '\\left\>', '\c\\bigg\=\>\%((\|{\|\\{\|\[\)' ]
 " 	let close_pats 		= ['\\end\>\ze\%(\s*{\s*document\s*}\)\@!', '\\right\>', '\c\\bigg\=\>\%()\|}\|\\}\|\]\)' ]
 	let open_pats 		= ['\\begin\>\ze', '\\left\>', '\c\\bigg\=l\=\>\%((\|{\|\\{\|\[\)', '\\lceil\>', '\\lgroup\>', '\\lfloor', '\\langle' ]
-	let close_pats 		= ['\\end\>\ze', '\\right\>', '\c\\bigg\=r\=\>\%()\|}\|\\}\|\]\)', '\\rceil', '\\rgroup\>', '\\rfloor', '\\rangle' ]
+	let close_pats 		= ['\\end\>\ze', '\\right\>', '\c\\bigg\=r\=\>\%()\|}\|\\}\|\]\)', '\\rceil', '\\rgroup\>', '\\rfloor', '\\rangle']
 	let dollar_pat 		= '\\\@<!\$'
 	let two_dollar_pat 	= '\\\@<!\$\$'
 

@@ -40,6 +40,11 @@ endif
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
 if !exists("g:atp_debugMapFile")
+    " debug of atplib#CheckClosed_math function
+    " (issues errormsg when synstack() failed).
+    let g:atp_debugCheckClosed_math	= 0
+endif
+if !exists("g:atp_debugMapFile")
     " debug mappings.vim file (show which maps will not be defined).
     let g:atp_debugMapFile	= 0
 endif
@@ -311,8 +316,10 @@ let s:optionsDict= {
 		\ "atp_LastPythonPID"		: 0,
 		\ "atp_VerboseLatexInteractionMode" : "errorstopmode",
 		\ "atp_BibtexReturnCode"	: 0,
-		\ "atp_ProgressBar"		: {},
-		\ "atp_BibtexOutput"		: ""}
+		\ "atp_MakeidxReturnCode"	: 0,
+		\ "atp_BibtexOutput"		: "",
+		\ "atp_MakeidxOutput"		: "",
+		\ "atp_ProgressBar"		: {}}
 
 " 		\ "atp_BibCompiler"		: ( getline(atplib#SearchPackage('biblatex')) =~ '\<backend\s*=\s*biber\>' ? 'biber' : "bibtex" ),
 " 		\ "atp_TexCompilerVariable"	: "",
@@ -713,7 +720,7 @@ if !exists("g:atp_MapCommentLines")
     let g:atp_MapCommentLines = 1
 endif
 if !exists("g:atp_XpdfSleepTime")
-    let g:atp_XpdfSleepTime = "0.2"
+    let g:atp_XpdfSleepTime = "0"
 endif
 if !exists("g:atp_IMapCC")
     let g:atp_IMapCC = 0
@@ -795,6 +802,7 @@ if !exists("g:atp_EnvOptions_itemize")
 endif
 if !exists("g:atp_VimCompatible")
     " Used by: % (s:JumpToMatch in LatexBox_motion.vim).
+    " Remap :normal! r to <SID>Replace() (various.vim)
     let g:atp_VimCompatible = 0
     " It can be 0/1 or yes/no.
 endif 
@@ -954,6 +962,7 @@ if !exists("g:ViewerMsg_Dict")
 		\ 'xdvi'		: 'Xdvi',
 		\ 'kpdf'		: 'Kpdf',
 		\ 'okular'		: 'Okular', 
+		\ 'skim'		: 'Skim', 
 		\ 'evince'		: 'Evince',
 		\ 'acroread'		: 'AcroRead',
 		\ 'epdfview'		: 'epdfView' }
@@ -1289,7 +1298,7 @@ if !s:did_options
 	au FileType qf 	let t:atp_QuickFixOpen=1
 	" When closing the quickfix error buffer (:close, :q) also end the Debug Mode.
 	au FileType qf 	au BufUnload <buffer> let t:atp_DebugMode = g:atp_DefaultDebugMode | let t:atp_QuickFixOpen = 0
-	au FileType qf	setl nospell
+	au FileType qf	setl nospell norelativenumber nonumber
     augroup END
 endif
 "}}}
@@ -2485,6 +2494,9 @@ endfunction
     augroup END
 
     function! <SID>BufEnterCgetfile()
+	if !exists("b:atp_ErrorFormat")
+	    return
+	endif
 	if g:atp_cgetfile 
 	    try
 		cgetfile
@@ -2526,7 +2538,7 @@ endfunction
     if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
 	augroup ATP_Status
 	    au!
-	    au BufWinEnter 	*.tex 	call ATPStatus()
+	    au BufWinEnter,TabEnter 	*.tex 	call ATPStatus()
 	augroup END
     endif
 
@@ -2745,7 +2757,7 @@ function! <SID>Viewer(...)
 endfunction
 command! -buffer -nargs=? -complete=customlist,ViewerComp Viewer	:call <SID>Viewer(<q-args>)
 function! ViewerComp(A,L,P)
-    let view = [ 'okular', 'xpdf', 'xdvi', 'evince', 'epdfview', 'kpdf', 'acroread', 'zathura', 'gv',
+    let view = [ 'skim', 'okular', 'xpdf', 'xdvi', 'evince', 'epdfview', 'kpdf', 'acroread', 'zathura', 'gv',
 		\  'AcroRd32.exe', 'sumatrapdf.exe' ]
     " The names of Windows programs (second line) might be not right [sumatrapdf.exe (?)].
     call filter(view, "v:val =~ '^' . a:A")

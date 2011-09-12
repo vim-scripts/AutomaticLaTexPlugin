@@ -3,7 +3,7 @@
 " 		It is read, and written via autocommands.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change:
+" Last Change:Tue Sep 06, 2011 at 03:17  +0100
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -71,7 +71,7 @@ let s:common_project_script	= s:windows ? g:atp_CommonScriptDirectory  . '\commo
 " b:atp_PackageList is another variable that could be put into project script.
 
 " This are common variable to all tex files.
-let g:atp_ProjectGlobalVariables = ['g:atp_LatexPackages', 'g:atp_LatexClasses', 'g:atp_Library']
+let g:atp_ProjectGlobalVariables = [ 'g:atp_LatexPackages', 'g:atp_LatexClasses', 'g:atp_Library' ]
 " }}}
 
 " Autocommands:
@@ -83,7 +83,7 @@ augroup END
 " Functions: (soure once)
 if !s:sourced || g:atp_reload_functions "{{{
 " Load Script:
-"{{{ s:LoadScript(), :LoadScript, autocommads
+"{{{ s:LoadScript(), FindProjectScripts(), GetProjectScript(), s:LoadProjectScript()
 " s:LoadScript({bang}, {project_script}, {type}, {load_variables}, [silent], [ch_load])
 "
 " a:bang == "!" ignore texmf tree and ignore b:atp_ProjectScript, g:atp_ProjectScript
@@ -218,9 +218,8 @@ endfunction "}}}
 " This functoin finds recursilevy (upward) all project scripts. 
 " {{{ FindProjectScripts()
 function! FindProjectScripts()
-    let dir = fnamemodify(resolve(expand("%:p")), ":p:h")
-    let g:dir = dir
-    let cwd	= getcwd()
+    let dir 	= fnamemodify(resolve(expand("%:p")), ":p:h")
+    let cwd 	= getcwd()
     exe "lcd " . fnameescape(dir)
     while glob('*.project.vim', 1) == '' 
 	let dir_l 	= dir
@@ -247,8 +246,10 @@ function! GetProjectScript(project_files)
 	let sfile_name 	= expand("%:t")
 	try
 	    if !g:atp_RelativePath
+		let g:cmd='lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)\%(' . file_name . '\|' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)' . file_name . '\>\)/j ' . fnameescape(pfile)
 		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)\%(' . file_name . '\|' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)' . file_name . '\>\)/j ' . fnameescape(pfile)
 	    else
+		let g:cmd='lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)[^''"]*\<\%(' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)[^''"]*\<' . sfile_name . '\>\)/j ' . fnameescape(pfile)
 		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)[^''"]*\<\%(' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)[^''"]*\<' . sfile_name . '\>\)/j ' . fnameescape(pfile)
 	    endif
 	catch /E480:/ 
@@ -256,7 +257,7 @@ function! GetProjectScript(project_files)
 		silent echomsg "[ATP:] script file " . pfile . " doesn't match."
 	    endif
 	endtry
-	let loclist		= getloclist(0)
+	let loclist	= getloclist(0)
 	if len(loclist) 
 	    let bufnr 	= get(get(loclist, 0, {}), 'bufnr', 'no match')
 	    if bufnr != 'no match'
@@ -683,7 +684,6 @@ augroup ATP_WriteProjectScript
 augroup END 
 "}}}
 "}}}
-
 " Set Project Script: on/off
 " {{{ s:ProjectScript
 function! <SID>ProjectScript(...)

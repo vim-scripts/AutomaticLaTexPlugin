@@ -1,7 +1,7 @@
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=2945
 
-NOTE:
-The plugin layout may change in one of future releases. As sugessted to me it is better to place more code in autoload scripts. Then vim with ATP will open much faster. You will need to unistall ATP (remove all the files, what is easy if you used VimBall to install it (now useing :RmVimball command). You can alwas install vimball and then uninstall it with :RmVimball. In this way all the files (but not the directories) will be removed.
+NOTE: 
+The PLUGIN LAYOUT CHANGES in version 10.5. You should UNINSTALL ATP before installing new version (remove all the files, what is easy if you used VimBall to install it (now useing :RmVimball command). You can always install vimball (ver. < 10.5) and then uninstall it with :RmVimball. In this way all the files (but not the directories) will be removed.
 
 This is a complete plugin with lots of tools to make editing of TeX/LaTeX file more friendly. Its main features include: background compilation, forward and inverse search for both dvi and pdf (okular), extended completion, AMSRef query for bibliography references, font preview, support for projects with multiple tex files, and much much more. For a detailed list of features see: 
         http://atp-vim.sourceforge.net/features.shtml

@@ -1,4 +1,4 @@
-let g:atp_package_mathtools_math_commands = [ '\cramped', '\crampedllap', '\crampedclap', '\crampedrlap', '\smashoperator',
+let g:atp_mathtools_math_commands = [ '\cramped', '\crampedllap', '\crampedclap', '\crampedrlap', '\smashoperator',
 	\ '\adjustlimits', '\newtagform{', '\usetagform{', '\renewtagform{', 
 	\ '\xleftrightarrow', '\xRightarrow', '\xLeftarrow', '\xLeftrightarrow', 
 	\ '\xhookleftarrow', '\xhookrightarrow', '\xmapsto', '\underbracket{', '\overbracket{',
@@ -6,9 +6,9 @@ let g:atp_package_mathtools_math_commands = [ '\cramped', '\crampedllap', '\cram
 	\ '\shortintertext', '\lparen', '\rparen', '\vcentcolon', 
 	\ '\ordinarycolon', '\mathtoolsset{', '\prescript',
 	\ '\newgathered', '\renewgathered', '\splitfrac{', '\splitdfrac{' ]
-let g:atp_package_mathtools_commands = [ '\DeclarePairedDelimiter{', '\DeclarePairedDelimiterX{' ]
+let g:atp_mathtools_commands = [ '\DeclarePairedDelimiter{', '\DeclarePairedDelimiterX{' ]
 
-let g:atp_package_mathtools_environments = [ 'matrix*', 'pmatrix*', 'bmatrix*', 'Bmatrix*', 'vmatrix*', 'Vmatrix*', 
+let g:atp_mathtools_environments = [ 'matrix*', 'pmatrix*', 'bmatrix*', 'Bmatrix*', 'vmatrix*', 'Vmatrix*', 
 	\ 'multilined', 'dcases', 'dcases*', 'rcases', 'rcases*', 'drcases*', 'cases*', 'spreadlines',
 	\ 'lgathered', 'rgathered' ]
 

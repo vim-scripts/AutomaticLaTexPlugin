@@ -2,7 +2,7 @@
 " Author: Marcin Szamotulski
 " Based On: cite 2010/09/10
 
-let g:atp_package_cite_options 	= [
+let g:atp_cite_options 	= [
 	    \ 'nobreaks', 'superscript', 'ref', 'nospace', 'space',
 	    \ 'nosort', 'sort', 'nomove', 'move', 'noadjust', 'adjust',
 	    \ 'nocompress', 'compress', 'biblabel'

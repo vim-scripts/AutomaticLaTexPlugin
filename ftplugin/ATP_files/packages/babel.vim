@@ -2,7 +2,7 @@
 " Author: Marcin Szamotulski
 " Based On: 18/04/2011 (commands up to page 68)
 
-let g:atp_package_babel_options		= [
+let g:atp_babel_options		= [
 	    \ 'afrikaans', 'bahasa', 'indonesian', 'indon', 'bahasai',
 	    \ 'bahasam', 'meyalu', 'basque', 'breton',
 	    \ 'bulgarian', 'catalan', 'croatian', 'chech',
@@ -18,10 +18,10 @@ let g:atp_package_babel_options		= [
 	    \ 'scottish', 'spanish', 'slovak', 'slovene', 'swedish',
 	    \ 'serbian', 'turkish', 'ukrainian', 'uppersorbian', 'welsh' ]
 
-let g:atp_package_babel_environments	= [
+let g:atp_babel_environments	= [
 	    \ 'otherlanguage', 'otherlanguage*', 'hyphenrules'
 	    \ ]
-let g:atp_package_babel_commands	= [
+let g:atp_babel_commands	= [
 	    \ '\selectlanguage', '\foreignlaguage', '\languagename', '\iflanguage',
 	    \ '\useshorthands{', '\defineshorthand', '\aliasshorthand{', '\languageshorthands',
 	    \ '\shorthandon', '\shorthandoff', '\languageattribute', '\textormath{',

@@ -3,19 +3,19 @@
 " beamer loads hyperref and its options are available using
 " \documentclass[hyperref=<hyperref_option>"]{beamer}
 " The same for xcolor package.
-let g:atp_documentclass_beamer_options=["ucs", "utf8", "utf8x", "handout", "hyperref=", "xcolor=", "dvips", 
+let g:atp_beamer_options=["ucs", "utf8", "utf8x", "handout", "hyperref=", "xcolor=", "dvips", 
 	    \ "draft", "compress", "t", "c", "aspectratio=", "usepdftitle=", "envcountsect", "notheorems", "noamsthm", 
 	    \ "8pt", "9pt", '10pt', '11pt', '12pt', 'smaller', 'bigger', '14pt', '17pt', '20pt', 'trans',
 	    \ 'ignorenonframetext', 'notes']
 " usepdftitle=[true/false]
-let g:atp_package_beamer_environments = ["frame", "beamercolorbox", "onlyenv", "altenv", 
+let g:atp_beamer_environments = ["frame", "beamercolorbox", "onlyenv", "altenv", 
 	    \ "visibleenv", "uncoverenv", "invisibleenv", "overlayarea", "overprint", "actionenv",
 	    \ 'description', 'structureenv', 'alertenv', 'block', 'alertblock', 'exampleblock', 'beamercolorbox',
 	    \ 'beamerboxesrounded', 'columns', 'semiverbatim' ]
 
-let g:atp_package_beamer_commands = ["\\alert{", "\\frametitle{", "\\framesubtitle", "\\titlepage", "\\setbeamercolor{", 
+let g:atp_beamer_commands = ["\\alert{", "\\frametitle{", "\\framesubtitle", "\\titlepage", "\\setbeamercolor{", 
 		    \ "\\pause", "\\onslide", "\\only", "\\uncover", "\\visible", "\\invisible", "\\temporal", "\\alt",
-		    \ "\\usebeamercolor{", "\\usetheme{", "\\includeonlyframes{", "\\againframe", "\\setbeamersize{",
+		    \ "\\usebeamercolor{", "\\includeonlyframes{", "\\againframe", "\\setbeamersize{",
 		    \ "\\action{", "\\inserttocsection", "\\inserttocsectionumber", "\\lecture", "\\AtBeginLecture{",
 		    \ "\\appendix", "\\hypertarget", "\\beamerbutton", "\\beamerskipbutton", "\\beamerreturnbutton", 
 		    \ "\\beamergotobutton", '\hyperlinkslideprev', '\hyperlinkslidenext', '\hyperlinkframestart', 
@@ -24,8 +24,8 @@ let g:atp_package_beamer_commands = ["\\alert{", "\\frametitle{", "\\framesubtit
 		    \  '\hyperlinkappendixend', '\hyperlinkdocumentstart',  '\hyperlinkdocumentend',
 		    \ '\framezoom', '\structure', '\insertblocktitle', '\column', '\movie', '\animate', 
 		    \ '\hyperlinksound', '\hyperlinkmute',
-		    \ '\usetheme', '\usecolortheme', '\usefonttheme', '\useinnertheme', '\useoutertheme',
-		    \ '\usefonttheme', '\note', '\AtBeginNote', '\AtEndNote', '\setbeameroption{',
+		    \ '\usetheme{', '\usecolortheme{', '\useinnertheme{', '\useoutertheme{',
+		    \ '\usefonttheme{', '\note', '\AtBeginNote', '\AtEndNote', '\setbeameroption{',
 		    \ '\setbeamerfont{', "\\setbeamertemplate{", '\mode', '\insertframetitle' ]
 
     
@@ -62,7 +62,7 @@ let g:BeamerColorThemes = g:Local_BeamerColorThemes+[ "default", "structure", "s
 	    \ "dolphin" ]
 let g:BeamerFontThemes = g:Local_BeamerFontThemes+[ "default", "serif", "structurebold", "structureitalicserif",
 	    \ "structuresmallcapsserif" ]
-let g:atp_package_beamer_command_values = {
+let g:atp_beamer_command_values = {
 	    \ '\\usetheme{$' : g:BeamerThemes,
 	    \ '\\useinnertheme{$' : g:BeamerInnerThemes,
 	    \ '\\useoutertheme{$' : g:BeamerOuterThemes,

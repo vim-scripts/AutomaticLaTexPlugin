@@ -1,6 +1,6 @@
 " This file is a part of ATP.
 " Written by Marcin Szamotulski <atp-list@lists.sourceforge.net>
-let g:atp_package_hyperref_commands=[ '\hypersetup{', '\hypertarget{', '\url{', '\nolinkurl{', '\hyperbaseurl{', 
+let g:atp_hyperref_commands=[ '\hypersetup{', '\hypertarget{', '\url{', '\nolinkurl{', '\hyperbaseurl{', 
 	\ '\hyperdef{', '\hyperref', '\hyperlink{', '\phantomsection', '\autoref{', '\autopageref{', 
 	\ '\ref*{', '\autoref*{', '\autopageref*{', '\pdfstringdef{', '\pdfbookmark', 
 	\ '\curretnpdfbookmark{', '\subpdfbookmark{', '\subpdfbookmark{', '\belowpdfbookmark{',
@@ -8,7 +8,7 @@ let g:atp_package_hyperref_commands=[ '\hypersetup{', '\hypertarget{', '\url{', 
 	\ '\textField', '\CheckBox', '\ChoiceMenu', '\PushButton', '\Submit', '\Reset',
 	\ '\LayoutTextField', '\LayoutChoiceField', '\LayoutCheckField', '\MakeRadioField{', 
 	\ '\MakeCheckField{', '\MakeTextField{', '\MakeChoiceField{', '\MakeButtonField{' ]
-let g:atp_package_hyperref_options=['4=', 'a4paper', 'a5paper', 'anchorcolor=', 'b5paper', 'backref=', 'baseurl={',
+let g:atp_hyperref_options=['4=', 'a4paper', 'a5paper', 'anchorcolor=', 'b5paper', 'backref=', 'baseurl={',
 	\ 'bookmarks=', 'bookmarksnumbered=', 'bookmarksopen=', 'bookmarksopenlevel=', 'bookmarkstype=',
 	\ 'breaklinks=', 'citebordercolor=', 'citecolor=', 'colorlinks=', 'debug=', 'draft', 'dvipdf', 
 	\ 'dvipdfm', 'dvips', 'dvipsone', 'dviwindo', 'executivepaper', 'extension=', 'filebordercolor=',

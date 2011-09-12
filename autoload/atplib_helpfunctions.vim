@@ -4,11 +4,8 @@
 " Language:	tex
 " Last Change:
 
-let s:sourced = !exists("s:loaded") ? 0 : 1
-
-if !s:sourced
 " {{{1 Help Math IMAPS
-function! <SID>HelpMathIMaps()
+function! atplib_helpfunctions#HelpMathIMaps()
 
     if exists("g:no_plugin_maps") || exists("g:no_atp_maps")
 	echomsg "[ATP:] ATP maps are turned off"
@@ -46,10 +43,10 @@ function! <SID>HelpMathIMaps()
 	\."\n ".g:atp_imap_leader_3."m \\(\\)              ".g:atp_imap_leader_3."M \\[\\]           <maplocalleader> has value g:atp_imap_leader_3" 
     return g:help_mathimaps
 endfunction
-silent call <SID>HelpMathIMaps()
+silent call atplib_helpfunctions#HelpMathIMaps()
 
 " {{{1 Help Environment IMAPS
-function! <SID>HelpEnvIMaps()
+function! atplib_helpfunctions#HelpEnvIMaps()
 
     if exists("g:no_plugin_maps") || exists("g:no_atp_maps")
 	echomsg "[ATP:] ATP maps are turned off"
@@ -79,10 +76,10 @@ function! <SID>HelpEnvIMaps()
 		\."\n ".(g:atp_imap_frame != "" ? g:atp_imap_leader_3.g:atp_imap_frame." frame                " : "").(g:atp_imap_letter != "" ?  g:atp_imap_leader_3.g:atp_imap_letter." letter" : "" )
     return g:help_envimaps
 endfunction
-silent call <SID>HelpEnvIMaps()
+silent call atplib_helpfunctions#HelpEnvIMaps()
 
 " {{{1 Help VMaps
-function! <SID>HelpVMaps() 
+function! atplib_helpfunctions#HelpVMaps() 
 
     if exists("g:no_plugin_maps") || exists("g:no_atp_maps")
 	echomsg "[ATP:] ATP maps are turned off"
@@ -139,7 +136,7 @@ function! <SID>HelpVMaps()
     return g:help_vmaps 
 endfunction
 " {{{1 Help IMaps
-" function! <SID>HelpIMaps()
+" function! atplib_helpfunctions#HelpIMaps()
 " let tc_imap = maparg("<Tab>  ", 'i') =~# 'atplib#TabCompletion' ? '<Tab>' : 
 " 	    \ maparg("<F7>   ", 'i') =~# 'atplib#TabCompletion' ? '<F7>' : ""
 " let netc_imap = tc_imap == "<Tab>" ? "<S-Tab>" : tc_imap == "<F7>" ? "<S-F7>" : ""
@@ -148,15 +145,8 @@ endfunction
 " 	    \."\n ".tc_imap."            "."Completion (expert mode)"
 " 	    \."\n ".netc_imap."            "."Completion (non-expert mode)"
 " endfunction
-" silent call <SID>HelpIMaps()
-" command! -buffer HelpIMaps :echo <SID>HelpIMaps()
+" silent call atplib_helpfunctions#HelpIMaps()
+" command! -buffer HelpIMaps :echo atplib_helpfunctions#HelpIMaps()
 " }}}1
-endif
 
-" Commands:
-" {{{
-command! -buffer HelpMathIMaps 	:echo <SID>HelpMathIMaps()
-command! -buffer HelpEnvIMaps 	:echo <SID>HelpEnvIMaps()
-command! -buffer HelpVMaps 	:echo <SID>HelpVMaps()
-"}}}
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

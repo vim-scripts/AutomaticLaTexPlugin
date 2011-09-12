@@ -1,4 +1,7 @@
-let g:atp_package_textcmds_commands=[
+" This file is a part of ATP.
+" Author: Marcin Szamotulski
+
+let g:atp_textcmds_commands=[
 	    \ '\mdash', '\ndash', '\qd', '\xd', '\ldq', '\rdq', 
 	    \ '\lq', '\rq', '\bul', '\vsp', '\pdc', '\vrt', '\cir', 
 	    \ '\til', '\bsl', '\cwm',

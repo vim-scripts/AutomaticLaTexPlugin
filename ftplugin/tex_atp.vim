@@ -2,10 +2,10 @@
 " Author:		Marcin Szamotulski
 " Mailing List: 	atp-vim-list [AT] lists.sourceforge.net
 " Do NOT DELETE the line just below, it is used by :UpdateATP (':help atp-:UpdateATP')
-" Time Stamp: 27-08-11_20-30
+" Time Stamp: 12-09-11_19-35
 " (but you can edit, if there is a reason for doing this. The format is dd-mm-yy_HH-MM)
 " Language:	    tex
-" Last Change: Wed Jul 27 11:00  2011 W
+" Last Change: Mon Sep 12, 2011 at 07:34  +0100
 " GetLatestVimScripts: 2945 62 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
 " Copyright Statement: 
@@ -33,6 +33,7 @@ if exists("g:no_atp") && g:no_atp == 1
 endif
 
 let b:did_ftplugin	= 1
+let loaded_AutomaticLatexPlugin = "10.5"
 
 if !exists("g:atp_reload_functions")
 	let g:atp_reload_functions = 0
@@ -46,57 +47,31 @@ if &cpoptions =~ '<'
 	setl cpoptions-=<
 endif
 
-    " Execute the atprc file.
-    " They override cached variables
-    let s:atprc_file = globpath($HOME, '.atprc.vim', 1)
-    " They override cached variables
-    function! <SID>ReadATPRC()
-	    if filereadable(s:atprc_file) && ( has("unix") || has("max") || has("macunix") )
-
-		    " Note: in $HOME/.atprc file the user can set all the local buffer
-		    " variables without using autocommands
-		    "
-		    " Note: it must be sourced at the begining because some options handle
-		    " how atp will load (for example if we load history or not)
-		    " It also should be run at the end if the user defines mapping that
-		    " should be overwrite the ATP settings (this is done via
-		    " autocommand).
-		    let path = globpath($HOME, '.atprc.vim', 1)
-		    execute 'source ' . fnameescape(path)
-
-	    else
-		    let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), '\n'), 0, "")
-		    if path != ""
-			    execute 'source ' . fnameescape(path)
-		    endif
-	    endif
-    endfunction
-
-let reltime_project=reltime()
+	let reltime_project=reltime()
 	" Source Project Script
 	runtime ftplugin/ATP_files/project.vim
-let g:source_time_project=reltimestr(reltime(reltime_project))
+	let g:source_time_project=reltimestr(reltime(reltime_project))
 
 	" ATPRC file overwrites project settings
 	" (if the user put sth in atprc file, it means that he wants this globbaly) 
-let reltime_atprc_begin=reltime()
-	call <SID>ReadATPRC()
-let g:source_time_atprc_begin=reltimestr(reltime(reltime_atprc_begin))
+	let reltime_atprc_begin=reltime()
+	call atplib#ReadATPRC()
+	let g:source_time_atprc_begin=reltimestr(reltime(reltime_atprc_begin))
 
 	" Functions needed before setting options.
 	runtime ftplugin/ATP_files/common.vim
 
 	" Options, global and local variables, autocommands.
-let reltime_options=reltime()
+	let reltime_options=reltime()
 	runtime ftplugin/ATP_files/options.vim
-let g:source_time_options=reltimestr(reltime(reltime_options))
+	let g:source_time_options=reltimestr(reltime(reltime_options))
 
-let reltime_compiler=reltime()
+	let reltime_compiler=reltime()
 	" Compilation related stuff.
 	runtime ftplugin/ATP_files/compiler.vim
-let g:source_time_compiler=reltimestr(reltime(reltime_compiler))
+	let g:source_time_compiler=reltimestr(reltime(reltime_compiler))
 
-let reltime_LatexBox=reltime()
+	let reltime_LatexBox=reltime()
 " 	let compiler_file = findfile('compiler/tex_atp.vim', &rtp)
 " 	if compiler_file
 " 		execute 'source ' 	. fnameescape(compiler_file)
@@ -111,17 +86,17 @@ let reltime_LatexBox=reltime()
 		runtime ftplugin/ATP_files/LatexBox_latexmk.vim
 
 	endif
-let g:source_time_LatexBox=reltimestr(reltime(reltime_LatexBox))
+	let g:source_time_LatexBox=reltimestr(reltime(reltime_LatexBox))
 
-let reltime_motion=reltime()
+	let reltime_motion=reltime()
 	runtime ftplugin/ATP_files/motion.vim
 
 	runtime ftplugin/ATP_files/search.vim
 
 	runtime ftplugin/ATP_files/various.vim
-let g:source_time_motion=reltimestr(reltime(reltime_motion))
+	let g:source_time_motion=reltimestr(reltime(reltime_motion))
 
-let reltime_maps=reltime()
+	let reltime_maps=reltime()
 	" Source maps and menu files.
 	runtime ftplugin/ATP_files/mappings.vim
 
@@ -131,27 +106,24 @@ let reltime_maps=reltime()
 		runtime ftplugin/ATP_files/LatexBox_mappings.vim
 			
 	endif
-let g:source_time_maps=reltimestr(reltime(reltime_maps))
+	let g:source_time_maps=reltimestr(reltime(reltime_maps))
 
-let reltime_abbrev=reltime()
+	let reltime_abbrev=reltime()
 	" Source abbreviations.
 	runtime ftplugin/ATP_files/abbreviations.vim
-let g:source_time_abbrev=reltimestr(reltime(reltime_abbrev))
+	let g:source_time_abbrev=reltimestr(reltime(reltime_abbrev))
 
-let reltime_menu=reltime()
+	let reltime_menu=reltime()
 	" The menu.
 	runtime ftplugin/ATP_files/menu.vim
-let g:source_time_menu=reltimestr(reltime(reltime_menu))
+	let g:source_time_menu=reltimestr(reltime(reltime_menu))
 
-	" Help functions.
-	runtime ftplugin/ATP_files/helpfunctions.vim
-
-let reltime_atprc_end=reltime()
+	let reltime_atprc_end=reltime()
 	" Read ATPRC once again (to set mapps).
-	call <SID>ReadATPRC()
-let g:source_time_atprc_end=reltimestr(reltime(reltime_atprc_end))
+	call atplib#ReadATPRC()
+	let g:source_time_atprc_end=reltimestr(reltime(reltime_atprc_end))
 
-let g:source_time=reltimestr(reltime(reltime))
+	let g:source_time=reltimestr(reltime(reltime))
 command! SourceTime echo g:source_time_project." project\n".
 	    \ g:source_time_atprc_begin." begin\n".
 	    \ g:source_time_options." options\n".

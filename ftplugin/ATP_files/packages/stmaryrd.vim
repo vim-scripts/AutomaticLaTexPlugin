@@ -1,9 +1,12 @@
-let g:atp_package_stmaryrd_options = [
+" This file is a part of ATP.
+" Author: Marcin Szamotulski
+
+let g:atp_stmaryrd_options = [
 	    \ 'only', 'mapsfrom', 'Mapsto', 'Mapsfrom',
 	    \ 'longarrownot', 'Longarrownot', 'arrownot', 'Arrownot',
 	    \ 'longmapsto', 'Longmapsto', 'longmapsfrom', 'Longmapsfrom'
 	    \ ]
-let g:atp_package_stmaryrd_math_commands = [
+let g:atp_stmaryrd_math_commands = [
 	    \ '\Ydown',        '\Yleft',        '\Yright',
 	    \ '\Yup',          '\baro',         '\bbslash',
 	    \ '\binampersand', '\bindnasrepma', '\boxast',
@@ -45,6 +48,6 @@ let g:atp_package_stmaryrd_math_commands = [
 	    \ '\arrownot', '\mapsfromchar',
 	    \ ]
 if atplib#SearchPackage('amssymb')
-    call extend(g:atp_package_stmaryrd_math_commands, [ '\oast', '\ocircle' ])
+    call extend(g:atp_stmaryrd_math_commands, [ '\oast', '\ocircle' ])
 endif
 

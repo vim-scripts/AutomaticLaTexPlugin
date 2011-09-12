@@ -1,7 +1,7 @@
 " This file is based on package file of latex-suite written by
 " Andreas Wagner <Andreas dot Wagner at em dot uni-frankfurt dot de>
 " adapted to ATP by Marcin Szamotulski <atp-list@lists.sourceforge.net>
-let g:atp_package_biblatex_options=[
+let g:atp_biblatex_options=[
     \ 'style=', 'citestyle=', 'bibstyle=', 'natbib=', 'sorting=', 'sortlos=',
     \ 'sortcites=', 'maxnames=', 'minnames=', 'maxitems=', 'minitems=', 'autocite=',
     \ 'autopunct=', 'babel=', 'block=', 'hyperref=', 'backref=', 'indexing=',

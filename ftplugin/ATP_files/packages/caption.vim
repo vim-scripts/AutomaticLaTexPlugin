@@ -1,7 +1,7 @@
 " This file is a part of ATP.
 " Written by M.Szamotulski.
 " Based On: caption package documentation 2008/04/06.
-let g:atp_package_caption_options	= [
+let g:atp_caption_options	= [
 	    \ 'format=', 'indentation=',
 	    \ 'lableformat=', 'labelsep=',
 	    \ 'textformat=', 'justification=',
@@ -12,7 +12,7 @@ let g:atp_package_caption_options	= [
 	    \ 'figurename=', 'tablename=', 'listfigurename=', 
 	    \ 'listtablename=', 'figurewithin=', 'tablewithin='
 	    \ ]
-let g:atp_package_caption_options_values = {
+let g:atp_caption_options_values = {
 	    \ 'format=$' : [ 'plain', 'hang' ],
 	    \ 'labelformat=$' : [ 'default', 'empty', 'simple', 'brace', 'parens' ],
 	    \ 'textformat=$' : [ 'simple', 'period' ],
@@ -41,7 +41,7 @@ let g:atp_pacakge_caption_commands	= [
 	    \ '\DeclareCaptionJustification{', '\DeclareCaptionFont{', '\DeclareCaptionStyle{',
 	    \ '\DeclareCaptionListFormat{', '\DeclareCaptionType{'
 	    \ ]
-" let g:atp_package_cpation_commands_values = [
+" let g:atp_cpation_commands_values = [
 " 	    \ { '\\captionsetup', [ 'singlelinecheck=', 
 " 	    \ ]
 " \captionsetup{singlelinecheck=off} 

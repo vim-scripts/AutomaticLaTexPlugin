@@ -1,6 +1,6 @@
 " This file was based on geometry.pdf 2010/09/12 v5.6
 " Maintained by Marcin Szamotulski <atp-list@lists.sourceforge.net>
-let g:atp_package_geometry_options=[
+let g:atp_geometry_options=[
     \ 'verbose', 'landscape', 'portrait', 'twoside',
     \ 'includemp', 'reversemp', 'reversemarginpar', 'nohead', 'nofoot', 'noheadfoot',
     \ 'dvips', 'pdftex', 'vtex', 'truedimen', 'reset', 
@@ -25,7 +25,7 @@ let g:atp_package_geometry_options=[
     \ 'centering', 'nomarginpar', 'twocolumn', 'onecolumn', 'driver=', 'showcrop', 'showframe',
     \ 'assymetric', 'bindingoffset', 'pass'
     \ ]
-let g:atp_package_geometry_options_values = {
+let g:atp_geometry_options_values = {
     \ '\%(layout\|paper\|papername\)=$' : [ 
 	\ 'a0paper', 'a1paper', 'a2paper', 'a3paper', 'a4paper', 'a5paper', 'a6paper',
 	\ 'b0paper', 'b1paper', 'b2paper', 'b3paper', 'b4paper', 'b5paper', 'b6paper', 
@@ -35,6 +35,6 @@ let g:atp_package_geometry_options_values = {
 	\ 'letterpaper', 'executivepaper', 'legalpaper'],
     \ 'driver=$' : [ 'dvips', 'dvipdfm', 'pdftex', 'vtex', 'xetex', 'auto', 'none' ] 
     \ } 
-let g:atp_package_geometry_commands=[
+let g:atp_geometry_commands=[
     \ '\geometry{', '\newgeometry{', '\savegeometry{', '\restoregeometry', '\loadgeometry{',
     \ ]

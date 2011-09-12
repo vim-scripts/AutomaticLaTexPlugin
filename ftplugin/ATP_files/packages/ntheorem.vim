@@ -1,9 +1,9 @@
 " This file is a part of ATP.
 " Written by Marcin Szamotulski
-let g:atp_package_ntheorem_options	= [
+let g:atp_ntheorem_options	= [
 	    \ 'thmmarks', 'amsmath', 'thref' 
 	    \ ]
-let g:atp_package_ntheorem_commands	= [ 
+let g:atp_ntheorem_commands	= [ 
 	    \ '\newtheorem{', '\renewtheorem{',
 	    \ '\theorempreskipamount{', '\theorempostskipamount{',
 	    \ '\theoremstyle{', '\theoremheadfont{', '\theorembodyfont{',
@@ -14,10 +14,10 @@ let g:atp_package_ntheorem_commands	= [
 	    \ '\addtheoremline{', '\addtotheoremline{', '\newtheoremstyle{',
 	    \ '\qed', '\qedsymbol', '\NoEndMark', '\TheoremSymbol', '\thref'
 	    \ ]
-let colors = ( exists("b:atp_LocalColors") ? b:atp_LocalColors : [] )
-let g:atp_package_ntheorem_command_values = {
+let s:colors = ( exists("b:atp_LocalColors") ? b:atp_LocalColors : [] )
+let g:atp_ntheorem_command_values = {
 	    \ '\\theoremstyle{' : [ 'plain', 'break', 'change', 'changebreak', 'margin',
 				\ 'marginbreak', 'nonumberplain', 'nonumberbreak', 'empty' ],
-	    \ '\\shadecolor{' : colors, 
+	    \ '\\shadecolor{' : s:colors, 
 	    \ '\\theoremlisttype{' : [ 'all', 'allname', 'opt', 'optname' ]
 	    \ }

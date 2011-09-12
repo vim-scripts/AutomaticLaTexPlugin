@@ -1,6 +1,12 @@
 " This file is a part of ATP.
 " Written by Marcin Szamotulski.
-let g:atp_package_xcolor_options=[
+
+"This variable is a dictionary { 'package' : 'option' } which loads xcolor
+"package, when option is empty means that the package is always loading.
+"Both 'package' and 'option' are vim patterns.
+let g:atp_xcolor_loading={ '\%(tikz\|pgf\|color\)' : '' } 
+
+let g:atp_xcolor_options=[
 	    \ 'dvips', 'xdvi', 'dvipdf', 'dvipdfm', 'dvipdfmx',
 	    \ 'pdftex', 'dvipsone', 'dviwindo', 'emtex', 'dviwin',
 	    \ 'pxtexps', 'pctexwin', 'pctexhp', 'pxtex32', 'truetex',
@@ -16,7 +22,7 @@ let g:atp_package_xcolor_options=[
 	    \ ]
 " These are obsolete options:
 " 	    \ 'pst', 'override', 'usenames', 'nodvipsnames'
-let g:atp_package_xcolor_commands=[
+let g:atp_xcolor_commands=[
 	    \ '\GetGinDriver', '\GinDriver', '\xcolorcmd',
 	    \ '\rangeHsb',  '\rangeRGB', '\rangeHSB', '\rangeGray',
 	    \ '\selectcolormodel{', '\ifconvertcolorsD', '\ifconvertcolorsU',
@@ -33,8 +39,8 @@ let g:atp_package_xcolor_commands=[
 	    \ ]
 let color_models = [ 'natural', 'rgb', 'cmy', 'cmyk', 'hsb', 'gray',
 	    \ 'RGB', 'HTML', 'HSB', 'Gray', 'Hsb', 'tHsb', 'wave' ]
-let g:atp_package_xcolor_command_values={
-	    \ '\%(\\\%(text\|page\)\?color{\|\\colorbox{\|\\fcolorbox{\|\\fcolorbox{[^}]*}{\|\\testcolor{\|\\maskcolors\%(\[[^\]]*\]\|\\rowcolors\(\[[^\]]*\]\)\?{[^}]*}{\%([^}]*}{\)\?\)\?{\)$' : 'GetColors',
+let g:atp_xcolor_command_values={
+	    \ '\%(\\\%(text\|page\)\?color{\|\\colorbox{\|\\fcolorbox{\|\\fcolorbox{[^}]*}{\|\\testcolor{\|\\maskcolors\%(\[[^\]]*\]\|\\rowcolors\(\[[^\]]*\]\)\?{[^}]*}{\%([^}]*}{\)\?\)\?{\|color=\)$' : 'GetColors',
 	    \ '\%(\\selectcolormodel\s*{\|\\maskcolors\[\|\\convertcolorspec{\)$' : color_models
 	    \ }
 

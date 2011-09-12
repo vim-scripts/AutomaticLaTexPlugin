@@ -2,7 +2,7 @@
 " Description: 	This file contains all the options defined on startup of ATP
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change:
+" Last Change: Mon Sep 12, 2011 at 10:10  +0100
 
 " NOTE: you can add your local settings to ~/.atprc.vim or
 " ftplugin/ATP_files/atprc.vim file
@@ -182,11 +182,13 @@ if g:atp_indentation
 "     let prefix = expand('<sfile>:p:h:h')
 "     exe 'so '.prefix.'/indent/tex_atp.vim'
     let prefix = expand('<sfile>:p:h')    
-    exe 'so '.prefix.'/LatexBox_indent.vim'
+    exe 'source '.prefix.'/LatexBox_indent.vim'
 endif
 " }}}
 
+" Make CTRL-A, CTRL-X work over alphabetic characters:
 setl nrformats=alpha
+
 " The vim option 'iskeyword' is adjust just after g:atp_separator and
 " g:atp_no_separator variables are defined.
 setl keywordprg=texdoc\ -m
@@ -199,10 +201,10 @@ if maparg("K", "n") != ""
 endif
 
 exe "setlocal complete+=".
-	    \ "k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/greek").
-	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/dictionary").
-	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/SIunits").
-	    \ ",k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/tikz")
+	    \ "k".split(globpath(&rtp, "ftplugin/ATP_files/dictionaries/greek"), "\n")[0].
+	    \ ",k".split(globpath(&rtp, "ftplugin/ATP_files/dictionaries/dictionary"), "\n")[0].
+	    \ ",k".split(globpath(&rtp, "ftplugin/ATP_files/dictionaries/SIunits"), "\n")[0].
+	    \ ",k".split(globpath(&rtp, "ftplugin/ATP_files/dictionaries/tikz"), "\n")[0]
 
 " The ams_dictionary is added after g:atp_amsmath variable is defined.
 
@@ -379,15 +381,16 @@ function! s:SetOptions()
     let g:source_time_TREE=reltimestr(reltime(time))
 endfunction
 "}}}
-let time=reltime()
 call s:SetOptions()
-let g:source_time_OPTIONS=reltimestr(reltime(time))
 lockvar b:atp_autex_wait
 
 "}}}
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_signs")
+    let g:atp_signs = 1
+endif
 if !exists("g:atp_TexAlign_join_lines")
     let g:atp_TexAlign_join_lines = 0
 endif
@@ -756,40 +759,38 @@ if !exists("g:atp_ReloadViewers")
     let g:atp_ReloadViewers	= [ 'xpdf' ]
 endif
 if !exists("g:atp_PythonCompilerPath")
-    let g:atp_PythonCompilerPath=globpath(&rtp, 'ftplugin/ATP_files/compile.py')
+    let g:atp_PythonCompilerPath=fnamemodify(expand("<sfile>"), ":p:h")."/compile.py"
 endif
 if !exists("g:atp_cpcmd")
-    " This will avoid using -i switch which might be defined in an alias file. 
-    " This doesn't make much harm, but it might be better. 
     let g:atp_cpcmd="/bin/cp"
 endif
 " Variables for imaps, standard environment names:
-    if !exists("g:atp_EnvNameTheorem")
-	let g:atp_EnvNameTheorem="theorem"
-    endif
-    if !exists("g:atp_EnvNameDefinition")
-	let g:atp_EnvNameDefinition="definition"
-    endif
-    if !exists("g:atp_EnvNameProposition")
-	let g:atp_EnvNameProposition="proposition"
-    endif
-    if !exists("g:atp_EnvNameObservation")
-	" This mapping is defined only in old layout:
-	" i.e. if g:atp_env_maps_old == 1
-	let g:atp_EnvNameObservation="observation"
-    endif
-    if !exists("g:atp_EnvNameLemma")
-	let g:atp_EnvNameLemma="lemma"
-    endif
-    if !exists("g:atp_EnvNameNote")
-	let g:atp_EnvNameNote="note"
-    endif
-    if !exists("g:atp_EnvNameCorollary")
-	let g:atp_EnvNameCorollary="corollary"
-    endif
-    if !exists("g:atp_EnvNameRemark")
-	let g:atp_EnvNameRemark="remark"
-    endif
+if !exists("g:atp_EnvNameTheorem")
+    let g:atp_EnvNameTheorem="theorem"
+endif
+if !exists("g:atp_EnvNameDefinition")
+    let g:atp_EnvNameDefinition="definition"
+endif
+if !exists("g:atp_EnvNameProposition")
+    let g:atp_EnvNameProposition="proposition"
+endif
+if !exists("g:atp_EnvNameObservation")
+    " This mapping is defined only in old layout:
+    " i.e. if g:atp_env_maps_old == 1
+    let g:atp_EnvNameObservation="observation"
+endif
+if !exists("g:atp_EnvNameLemma")
+    let g:atp_EnvNameLemma="lemma"
+endif
+if !exists("g:atp_EnvNameNote")
+    let g:atp_EnvNameNote="note"
+endif
+if !exists("g:atp_EnvNameCorollary")
+    let g:atp_EnvNameCorollary="corollary"
+endif
+if !exists("g:atp_EnvNameRemark")
+    let g:atp_EnvNameRemark="remark"
+endif
 if !exists("g:atp_EnvOptions_enumerate")
     " add options to \begin{enumerate} for example [topsep=0pt,noitemsep] Then the
     " enumerate map <Leader>E will put \begin{enumerate}[topsep=0pt,noitemsep] Useful
@@ -868,21 +869,21 @@ if !exists("g:atp_LogSync")
     let g:atp_LogSync 		= 0
 endif
 
-	function! s:Sync(...)
-	    let arg = ( a:0 >=1 ? a:1 : "" )
-	    if arg == "on"
-		let g:atp_LogSync = 1
-	    elseif arg == "off"
-		let g:atp_LogSync = 0
-	    else
-		let g:atp_LogSync = !g:atp_LogSync
-	    endif
-	    echomsg "[ATP:] g:atp_LogSync = " . g:atp_LogSync
-	endfunction
-	command! -buffer -nargs=? -complete=customlist,s:SyncComp LogSync :call s:Sync(<f-args>)
-	function! s:SyncComp(ArgLead, CmdLine, CursorPos)
-	    return filter(['on', 'off'], "v:val =~ a:ArgLead") 
-	endfunction
+function! s:Sync(...)
+    let arg = ( a:0 >=1 ? a:1 : "" )
+    if arg == "on"
+	let g:atp_LogSync = 1
+    elseif arg == "off"
+	let g:atp_LogSync = 0
+    else
+	let g:atp_LogSync = !g:atp_LogSync
+    endif
+    echomsg "[ATP:] g:atp_LogSync = " . g:atp_LogSync
+endfunction
+command! -buffer -nargs=? -complete=customlist,s:SyncComp LogSync :call s:Sync(<f-args>)
+function! s:SyncComp(ArgLead, CmdLine, CursorPos)
+    return filter(['on', 'off'], "v:val =~ a:ArgLead") 
+endfunction
 
 if !exists("g:atp_Compare")
     " Use b:changedtick variable to run s:Compiler automatically.
@@ -1281,7 +1282,6 @@ function! s:ShowOptions(bang,...)
 endfunction
 command! -buffer -bang -nargs=* ShowOptions		:call <SID>ShowOptions(<q-bang>, <q-args>)
 "}}}
-
 " Debug Mode Variables:
 " {{{ Debug Mode
 let t:atp_DebugMode	= g:atp_DefaultDebugMode 
@@ -1293,9 +1293,10 @@ endif
 
 if !s:did_options
     augroup ATP_DebugMode
-	au FileType *.tex let t:atp_DebugMode	= g:atp_DefaultDebugMode
+	au BufEnter *.tex let t:atp_DebugMode	 = ( exists("t:atp_DebugMode") ? t:atp_DebugMode : g:atp_DefaultDebugMode )
+	au BufEnter *.tex let t:atp_QuickFixOpen = ( exists("t:atp_QuickFixOpen") ? t:atp_QuickFixOpen : 0 )
 	" When opening the quickfix error buffer:  
-	au FileType qf 	let t:atp_QuickFixOpen=1
+	au FileType qf 	let t:atp_QuickFixOpen 	 = 1
 	" When closing the quickfix error buffer (:close, :q) also end the Debug Mode.
 	au FileType qf 	au BufUnload <buffer> let t:atp_DebugMode = g:atp_DefaultDebugMode | let t:atp_QuickFixOpen = 0
 	au FileType qf	setl nospell norelativenumber nonumber
@@ -1331,7 +1332,7 @@ else "extend the existing dictionary with default values not ovverriding what is
     call extend(g:atp_keymaps, { 'ukrainian' 	: 'ukrainian-jcuken' },	'keep')
 endif
 
-" {{{1 function
+" {{{1 <SID>Babel
 function! <SID>Babel()
     " Todo: make notification.
     if &filetype != "tex" || !exists("b:atp_MainFile") || !has("keymap")
@@ -1359,7 +1360,7 @@ function! <SID>Babel()
     endif
     let default_language 	= get(languages, '-1', '') 
 	if g:atp_debugBabel
-	    echomsg "[Babel:] defualt language:" . default_language
+	    echomsg "[Babel:] defualt language: " . default_language
 	endif
     let keymap 			= get(g:atp_keymaps, default_language, '')
 
@@ -2002,7 +2003,7 @@ endif
 	endif
 	if !g:atp_no_separator
 	    " This sets iskeyword vim option (see syntax/tex.vim file)
-	    let g:tex_isk ="48-57,a-z,A-Z,192-255,".g:atp_separator
+	    let g:tex_isk ="48-57,a-z,A-Z,179-218,".g:atp_separator
 	endif
 	if !exists("g:atp_no_short_names")
 	    let g:atp_env_short_names = 1
@@ -2410,7 +2411,7 @@ if !s:did_options
 
     augroup ATP_UpdateToCLine
 	au!
-	au CursorHold *.tex nested :call UpdateToCLine()
+	au CursorHold *.tex nested :call atplib_motion#UpdateToCLine()
     augroup END
 
     function! RedrawToC()
@@ -2535,10 +2536,10 @@ endfunction
 	au InsertLeave *.tex :call <SID>UpdateTime("Leave")
     augroup END
 
-    if (exists("g:atp_statusline") && g:atp_statusline == '1') || !exists("g:atp_statusline")
+    if (exists("g:atp_StatusLine") && g:atp_StatusLine == '1') || !exists("g:atp_StatusLine")
 	augroup ATP_Status
 	    au!
-	    au BufWinEnter,TabEnter 	*.tex 	call ATPStatus()
+	    au BufEnter,BufWinEnter,TabEnter 	*.tex 	call ATPStatus()
 	augroup END
     endif
 
@@ -2919,8 +2920,10 @@ endfunction
 "}}}1
 
 " Python test if libraries are present
+" (TestPythoLibs() is not runnow, it was too slow)
 " {{{
 function! <SID>TestPythonLibs()
+let time=reltime()
 python << END
 import vim
 try:
@@ -2956,8 +2959,8 @@ if g:atp_Compiler == "python"
 	    endif
 	    sleep 2
 	endif
-    else
-	call <SID>TestPythonLibs()
+"     else
+" 	call <SID>TestPythonLibs()
     endif
 endif
 " }}}
@@ -2984,4 +2987,16 @@ if g:atp_reload_functions == 0
     call atplib#TempDir()
 endif
 
+" Set vim path option: 
+" It would be better to include project dir and all its subdirectories. But
+" this might not work for all people ... . I can note how to set this, also
+" .project.vim file can be used.
+exe "setl path+=".escape(g:texmf, ' ')."/tex,".escape(b:atp_OutDir, ' ')
+
+" Some Commands:
+" {{{
+command! -buffer HelpMathIMaps 	:echo atplib_helpfunctions#HelpMathIMaps()
+command! -buffer HelpEnvIMaps 	:echo atplib_helpfunctions#HelpEnvIMaps()
+command! -buffer HelpVMaps 	:echo atplib_helpfunctions#HelpVMaps()
+" }}}
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

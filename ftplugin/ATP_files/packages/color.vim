@@ -1,6 +1,6 @@
 " This file is a part of ATP.
 " Written by Marcin Szamotulski
-let g:atp_package_color_options=[
+let g:atp_color_options=[
 	    \ 'dvips', 'xdvi', 'dvipdf', 'dvipdfm', 'dvipdfmx',
 	    \ 'pdftex', 'dvipsone', 'dviwindo', 'emtex', 'dviwin',
 	    \ 'pxtexps', 'pctexwin', 'pctexhp', 'pxtex32', 'truetex',
@@ -12,8 +12,8 @@ let g:atp_pacakge_color_commands=[
 	    \ '\colorbox{', '\fcolorbox{', '\ExecuteOption{', '\DeclareOption{'
 	    \ ]
 let color_models = [ 'rgb', 'cmyk', 'gray', 'named' ]
-let g:atp_package_color_command_values={
-	    \ '\\ExecuteOptions{$' : g:atp_package_color_options,
+let g:atp_color_command_values={
+	    \ '\\ExecuteOptions{$' : g:atp_color_options,
 	    \ '\%(\\definecolor{[^}]*}{$\|\\%f\?colorbox\[$\|\%(text\|page\)color\[$\)' : color_models,
 	    \ '\%(\\\(text\|page\)?color{$\|\\colorbox{$\|\\fcolorbox\%({[^}]*}\)\?{$\)' :  'GetColors'
 	    \ }

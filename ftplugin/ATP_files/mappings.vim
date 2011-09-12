@@ -2,7 +2,7 @@
 " Description:  This file contains mappings defined by ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sat Aug 27 08:00  2011 W
+" Last Change: Sun Sep 11, 2011 at 09:58  +0100
 
 " Add maps, unless the user didn't want them.
 if exists("g:no_plugin_maps") && g:no_plugin_maps ||
@@ -22,11 +22,18 @@ endif
 let g:backslash=s:backslash
 
 " Dicronary map
-nmap <buffer> <silent> =d <Plug>Dictionary
+if !hasmapto("<Plug>Dictionray")
+    nmap <buffer> <silent> =d <Plug>Dictionary
+endif
 
 " Replace map
-if !g:atp_VimCompatible
+if !g:atp_VimCompatible && !hasmapto("<Plug>Replace")
     nmap <buffer> <silent> r <Plug>Replace
+endif
+
+" Unwrap map
+if !hasmapto("<Plug>Unwrap")
+    nmap <buffer> <silent> <LocalLeader>u <Plug>Unwrap
 endif
 
 " Commands to library functions (autoload/atplib.vim)
@@ -100,12 +107,12 @@ if g:atp_MapCommentLines
     if !hasmapto("<Plug>CommentLines", "v")
 	exe "vmap <buffer> <silent> ".g:atp_map_Comment."	<Plug>CommentLines"
     endif
-    if !hasmapto("<Plug>UnCommentLines", "n")
-	exe "nmap <buffer> <silent> ".g:atp_map_UnComment."	<Plug>UnCommentLines"
-    endif
-    if !hasmapto("<Plug>UnCommentLines", "v")
-	exe "vmap <buffer> <silent> ".g:atp_map_UnComment."	<Plug>UnCommentLines"
-    endif
+"     if !hasmapto("<Plug>UnCommentLines", "n")
+" 	exe "nmap <buffer> <silent> ".g:atp_map_UnComment."	<Plug>UnCommentLines"
+"     endif
+"     if !hasmapto("<Plug>UnCommentLines", "v")
+" 	exe "vmap <buffer> <silent> ".g:atp_map_UnComment."	<Plug>UnCommentLines"
+"     endif
 endif
 
 if !hasmapto("<Plug>SyncTexKeyStroke", "n")
@@ -291,10 +298,6 @@ if !exists("g:atp_no_tab_map") || g:atp_no_tab_map == 0
     if !hasmapto("atplib#TabCompletion(0,1)<CR>", 'i')
 	nnoremap <silent> <buffer> <S-Tab>	:call atplib#TabCompletion(0,1)<CR> 
     endif
-    if !hasmapto(":Wrap { } begin<CR>", 'v')
-	vnoremap <buffer> <silent> <F7> 	:Wrap { } begin<CR>
-	execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."{ 	:Wrap { } begin<CR>"
-    endif
 else 
     "Non Default Completion Maps:
     if !hasmapto("<C-R>=atplib#TabCompletion(1)<CR>", 'i')
@@ -309,9 +312,9 @@ else
     if !hasmapto(" atplib#TabCompletion(0,1)<CR>", 'n')
 	nnoremap <silent> <buffer> <S-F7>	:call atplib#TabCompletion(0,1)<CR> 
     endif
-    if !hasmapto(":Wrap { } begin<cr>", 'v')
-	execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."{ 	:Wrap { } begin<CR>"
-    endif
+endif
+if !hasmapto(":Wrap { } begin<cr>", 'v')
+    execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."{ 	:Wrap { } begin<CR>"
 endif
 
 " Fonts:
@@ -418,7 +421,7 @@ endif
 if !hasmapto(":Wrap ".s:backslash."} ".s:backslash."} end<cr>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader.s:backslash."}	:Wrap ".s:backslash."{ ".s:backslash."} end<CR>"
 endif
-" This is defined before (together with <F7> map.
+" This is defined before:
 " if !hasmapto(":Wrap { } begin<cr>", 'v')
 "     execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."{ 	:Wrap { } begin<CR>"
 " endif

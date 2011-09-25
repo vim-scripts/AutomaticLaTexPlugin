@@ -42,7 +42,7 @@ def vim_remote_expr(servername, expr):
 # Send <expr> to vim server,
 
 # expr must be well quoted:
-#       vim_remote_expr('GVIM', "atplib#TexReturnCode()")
+#       vim_remote_expr('GVIM', "atplib#callback#TexReturnCode()")
     cmd=[progname, '--servername', servername, '--remote-expr', expr]
     devnull=open(os.devnull, "w+")
     subprocess.Popen(cmd, stdout=devnull, stderr=f).wait()
@@ -110,9 +110,9 @@ if match != None:
     if synctex.returncode != 0 and vim_server != "":
         cmd=""
         if error != "":
-            vim_remote_expr(vim_server, "atplib#Echo('[ATP:] "+error+"','echomsg','WarninMsg', '1')")
+            vim_remote_expr(vim_server, "atplib#callback#Echo('[ATP:] "+error+"','echomsg','WarninMsg', '1')")
         else:
-            vim_remote_expr(vim_server, "atplib#Echo(\"[SyncTex:] synctex return with exit code: "+str(synctex.returncode)+"\",'echo','WarninMsg', '1')")
+            vim_remote_expr(vim_server, "atplib#callback#Echo(\"[SyncTex:] synctex return with exit code: "+str(synctex.returncode)+"\",'echo','WarninMsg', '1')")
 # Debug:
 if match != None:
 	f.write(">>> file        "+file+"\n>>> line        "+line+"\n>>> column      "+column+"\n>>> cmd         "+cmd+"\n")

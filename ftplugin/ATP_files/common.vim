@@ -2,7 +2,7 @@
 " Description: This script has functions which have to be called before ATP_files/options.vim 
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Sun Sep 11, 2011 at 06:54  +0100
+" Last Change: Fri Sep 23, 2011 at 12:12  +0100
 
 " This file contains set of functions which are needed to set to set the atp
 " options and some common tools.
@@ -32,7 +32,7 @@ if !exists("g:atp_texinputs") || g:atp_reload_variables
     let g:atp_texinputs	= dot . join(path_list, ',')
 endif
 " a list where tex looks for bib files
-" It must be defined before atplib_common#SetProjectName function.
+" It must be defined before atplib#common#SetProjectName function.
 if !exists("g:atp_raw_bibinputs") || g:atp_reload_variables
 
     let g:atp_raw_bibinputs=substitute(substitute(substitute(
@@ -56,8 +56,8 @@ endif
 " }}}
 
 augroup ATP_SetErrorFile
-    au BufEnter 	*.tex 	call 		atplib_common#SetErrorFile()
-    au BufRead 	$l:errorfile 	setlocal 	autoread 
+    au BufEnter 	*.tex 		call atplib#common#SetErrorFile()
+    au BufEnter 	$l:errorfile 	setl autoread 
 augroup END
 
 " TreeOfFiles
@@ -68,9 +68,9 @@ function! TreeOfFiles(main_file,...)
     let time=reltime()
     if has("python") && &filetype != "plaintex" && ( !exists("g:atp_no_python") || g:atp_no_python == 0 )
 	" It was not tested on plaintex files.
-	call atplib_common#TreeOfFiles_py(a:main_file)
+	call atplib#search#TreeOfFiles_py(a:main_file)
     else
-	call atplib_common#TreeOfFiles_vim(a:main_file, pattern, flat, run_nr)
+	call atplib#search#TreeOfFiles_vim(a:main_file, pattern, flat, run_nr)
     endif
     " Notes: vim script avrage is 0.38s, python avrage is 0.28
     return [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]
@@ -105,7 +105,7 @@ function! ATPRunning() "{{{
 	    if !exists("b:atp_".var."PIDs")
 		let b:atp_{var}PIDs = []
 	    endif
-	    call atplib#PIDsRunning("b:atp_".var."PIDs")
+	    call atplib#callback#PIDsRunning("b:atp_".var."PIDs")
 	endfor
 	if len(b:atp_LatexPIDs) > 0
 	    let atp_running= len(b:atp_LatexPIDs) 
@@ -257,22 +257,26 @@ endfunction
 
 " The main status function, it is called via autocommand defined in 'options.vim'.
 let s:errormsg = 0
-function! ATPStatus(...) "{{{
+" a:command = 1/0: 1 if run by a command, then a:1=bang, a:2=ctoc, 
+" if a:command = 0, then a:1=ctoc.
+function! ATPStatus(command,...) "{{{
 
     if expand("%") == "[Command Line]" || &l:filetype == "qf"
 	" If one uses q/ or q? this status function should not be used.
 	return
     endif
 
-    if a:0 >= 1 && a:1 != -1
+    if a:command >= 1
+"     if a:0 >= 1 && a:1 != -1
 	" This is run be the command :Status (:ATPStatus)
-	if a:1 == ""
+	if a:0 >= 1 && a:1 == ""
 	    let g:status_OutDir = s:StatusOutDir()
 	    let g:atp_statusOutDir = 1
 	else
 	    let g:status_OutDir = ""
 	    let g:atp_statusOutDir = 0
 	endif
+	let ctoc = ( a:0 >= 2 && a:2 ? 1 : 0 )
     else
 	" This is run by the autocommand group ATP_Status
 	if g:atp_statusOutDir
@@ -280,8 +284,9 @@ function! ATPStatus(...) "{{{
 	else
 	    let g:status_OutDir = ""
 	endif
+	let ctoc = ( a:0 >= 1 && a:1 ? 1 : 0 )
     endif
-    let status_CTOC	= &filetype =~ '^\(ams\)\=tex' ? 'CTOC("return")' : ''
+    let status_CTOC	= ( ctoc && &l:filetype =~ '^\(ams\)\=tex' ? '%{CTOC("return")}' : '' )
     if g:atp_statusNotifHi > 9 || g:atp_statusNotifHi < 0
 	let g:atp_statusNotifHi = 9
 	if !s:errormsg
@@ -296,13 +301,13 @@ function! ATPStatus(...) "{{{
     let status_Notif	= ( g:atp_statusNotif 			? '%{ATPRunning()}' 	: '' )
     let status_KeyMap	= ( has("keymap") && g:atp_babel && exists("b:keymap_name") 	
 								\ ? b:keymap_name 	: '' )
-    let g:atp_StatusLine= '%<%f '.status_KeyMap.'%(%h%m%r%) '.status_NotifHi.status_Notif.status_NotifHiPost.'%= %{'.status_CTOC.'} %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
+    let g:atp_StatusLine= '%<%f '.status_KeyMap.'%(%h%m%r%) '.status_NotifHi.status_Notif.status_NotifHiPost.'%= '.status_CTOC.' %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
     set statusline=%!g:atp_StatusLine
 endfunction
 try
-    command -buffer -bang Status	:call ATPStatus(<q-bang>) 
+    command -buffer -bang Status	:call ATPStatus(1,<q-bang>) 
 catch /E174:/
-    command! -buffer -bang ATPStatus	:call ATPStatus(<q-bang>) 
+    command! -buffer -bang ATPStatus	:call ATPStatus(1,<q-bang>) 
 endtry
 " }}}
 "}}}
@@ -311,7 +316,7 @@ endtry
 " 		that must be sources for each file
 " 		+ sets g:atp_inputfile_pattern variable)
 " {{{1
-call atplib_common#SetProjectName()
+call atplib#common#SetProjectName()
 
 " The pattern g:atp_inputfile_pattern should match till the begining of the file name
 " and shouldn't use \zs:\ze. 
@@ -319,12 +324,12 @@ if !exists("g:atp_inputfile_pattern") || g:atp_reload_variables
     if &filetype == 'plaintex'
 	let g:atp_inputfile_pattern = '^[^%]*\\input\>\s*'
     else
-	if atplib#SearchPackage("subfiles")
+	if atplib#search#SearchPackage("subfiles")
 	    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{\|subfile\s*{'
 	else
 	    let g:atp_inputfile_pattern = '^[^%]*\\\(input\s*{\=\|include\s*{'
 	endif
-	if atplib#SearchPackage("biblatex")
+	if atplib#search#SearchPackage("biblatex")
 	    let g:atp_inputfile_pattern .= '\)'
 	else
 	    let g:atp_inputfile_pattern .= '\|bibliography\s*{\)'
@@ -333,27 +338,27 @@ if !exists("g:atp_inputfile_pattern") || g:atp_reload_variables
 endif
 
 
-call atplib_common#SetOutDir(0, 1)
+call atplib#common#SetOutDir(0, 1)
 if expand("%:e") == "tex"
     " cls and sty files also have filetype 'tex', this prevents from setting the error
     " file for them.
-    call atplib_common#SetErrorFile()
+    call atplib#common#SetErrorFile()
 endif "}}}1
 
 " Commands:
 "{{{1
-command! -buffer -bang SetProjectName	:call atplib_common#SetProjectName(<q-bang>, 0)
-command! -buffer SetErrorFile		:call atplib_common#SetErrorFile()
-command! -buffer SetOutDir		:call atplib_common#SetOutDir(1)
-command! -buffer InputFiles 		:call atplib_common#UpdateMainFile() | :call atplib_common#FindInputFiles(atplib#FullPath(b:atp_MainFile)) | echo join([b:atp_MainFile]+b:ListOfFiles, "\n")
+command! -buffer -bang SetProjectName	:call atplib#common#SetProjectName(<q-bang>, 0)
+command! -buffer SetErrorFile		:call atplib#common#SetErrorFile()
+command! -buffer SetOutDir		:call atplib#common#SetOutDir(1)
+command! -buffer InputFiles 		:call atplib#search#UpdateMainFile() | :call atplib#search#FindInputFiles(atplib#FullPath(b:atp_MainFile)) | echo join([b:atp_MainFile]+b:ListOfFiles, "\n")
 
-" This should set the variables and run atplib_common#SetNotificationColor function
-command! -buffer SetNotificationColor :call atplib_common#SetNotificationColor()
+" This should set the variables and run atplib#common#SetNotificationColor function
+command! -buffer SetNotificationColor :call atplib#common#SetNotificationColor()
 augroup ATP_SetStatusLineNotificationColor
     au!
-    au VimEnter 	*.tex 	:call s:SetNotificationColor()
-    au BufEnter 	*.tex 	:call s:SetNotificationColor()
-    au ColorScheme 	* 	:call s:SetNotificationColor()
+    au VimEnter 		*.tex 	:call s:SetNotificationColor()
+    au BufEnter 		*.tex 	:call s:SetNotificationColor()
+    au ColorScheme 		* 	:call s:SetNotificationColor()
 augroup END
 "}}}
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

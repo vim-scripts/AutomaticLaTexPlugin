@@ -604,7 +604,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, 
     " Delete the variables which where unlet:
     for var in deleted_variables
 	try 
-	    exe 'silent! %g/^\s*let\s\+' . var . '\>/d'
+	    exe 'silent! %g/^\s*let\s\+' . var . '\>/d_'
 	catch /E48\%(6\|0\):/
 	endtry
     endfor
@@ -620,7 +620,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, 
 	if exists(lvar)
 
 	    try 
-		 exe 'silent! %g/^\s*let\s\+' . var . '\>/d'
+		exe 'silent! %g/^\s*let\s\+' . var . '\>/d_'
 	    catch /E486:/
 	    endtry
 	    call append('$', 'let ' . var . ' = ' . string({lvar}))

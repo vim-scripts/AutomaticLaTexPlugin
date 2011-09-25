@@ -19,12 +19,12 @@ function! LocalCommands(write, ...)
     let bang	= a:0 >= 2 ? a:2 : '' 
 
     if has("python") && ( !exists("g:atp_no_python") || g:atp_no_python == 0 )
-	call atplib_search#LocalCommands_py(a:write, '' , bang)
+	call atplib#search#LocalCommands_py(a:write, '' , bang)
     else
-	call atplib_search#LocalCommands_vim(pattern, bang)
+	call atplib#search#LocalCommands_vim(pattern, bang)
     endif
     if !(exists("g:atp_no_local_abbreviations") && g:atp_no_local_abbreviations == 1)
-	call atplib_search#LocalAbbreviations()
+	call atplib#search#LocalAbbreviations()
     endif
     let g:time_LocalCommands=reltimestr(reltime(time))
 endfunction
@@ -38,7 +38,7 @@ let g:bibmatchgroup		='String'
 let g:defaultbibflags		= 'tabejsyu'
 let g:defaultallbibflags	= 'tabejfsvnyPNSohiuHcp'
 let b:lastbibflags		= g:defaultbibflags	" Set the lastflags variable to the default value on the startup.
-let g:bibflagsdict=atplib#bibflagsdict
+let g:bibflagsdict=atplib#bibsearch#bibflagsdict
 " These two variables were s:... but I switched to atplib ...
 let g:bibflagslist		= keys(g:bibflagsdict)
 let g:bibflagsstring		= join(g:bibflagslist,'')
@@ -56,13 +56,13 @@ let g:kwflagsdict={ 	  '@a' : '@article',
 "}}}
 
 " Mappings:
-nnoremap <silent> <Plug>BibSearchLast		:call atplib_search#BibSearch("", b:atp_LastBibPattern, b:atp_LastBibFlags)<CR>
+nnoremap <silent> <Plug>BibSearchLast		:call atplib#search#BibSearch("", b:atp_LastBibPattern, b:atp_LastBibFlags)<CR>
 "
 " Commands And Highlightgs:
 " {{{
-command! -buffer -bang -complete=customlist,SearchHistCompletion -nargs=* S 	:call atplib_search#Search(<q-bang>, <q-args>) | let v:searchforward = ( atplib_search#GetSearchArgs(<q-args>, 'bceswW')[1] =~# 'b' ? 0 : 1 )
-nmap <buffer> <silent> <Plug>RecursiveSearchn 	:call atplib_search#RecursiveSearch(atplib#FullPath(b:atp_MainFile), expand("%:p"), (exists("b:TreeOfFiles") ? "" : "make_tree"), (exists("b:TreeOfFiles") ? b:TreeOfFiles : {}), expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, 'no_cwd', @/, v:searchforward ? "" : "b") <CR>
-nmap <buffer> <silent> <Plug>RecursiveSearchN 	:call atplib_search#RecursiveSearch(atplib#FullPath(b:atp_MainFile), expand("%:p"), (exists("b:TreeOfFiles") ? "" : "make_tree"), (exists("b:TreeOfFiles") ? b:TreeOfFiles : {}), expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, 'no_cwd', @/, !v:searchforward ? "" : "b") <CR>
+command! -buffer -bang -complete=customlist,atplib#search#SearchHistCompletion -nargs=* S 	:call atplib#search#Search(<q-bang>, <q-args>) | let v:searchforward = ( atplib#search#GetSearchArgs(<q-args>, 'bceswW')[1] =~# 'b' ? 0 : 1 )
+nmap <buffer> <silent> <Plug>RecursiveSearchn 	:call atplib#search#RecursiveSearch(atplib#FullPath(b:atp_MainFile), expand("%:p"), (exists("b:TreeOfFiles") ? "" : "make_tree"), (exists("b:TreeOfFiles") ? b:TreeOfFiles : {}), expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, 'no_cwd', @/, v:searchforward ? "" : "b") <CR>
+nmap <buffer> <silent> <Plug>RecursiveSearchN 	:call atplib#search#RecursiveSearch(atplib#FullPath(b:atp_MainFile), expand("%:p"), (exists("b:TreeOfFiles") ? "" : "make_tree"), (exists("b:TreeOfFiles") ? b:TreeOfFiles : {}), expand("%:p"), 1, 1, winsaveview(), bufnr("%"), reltime(), { 'no_options' : 'no_options' }, 'no_cwd', @/, !v:searchforward ? "" : "b") <CR>
 
 if g:atp_mapNn
 " These two maps behaves now like n (N): after forward search n (N) acts as forward (backward), after
@@ -71,13 +71,13 @@ if g:atp_mapNn
     nmap <buffer> <silent> n		<Plug>RecursiveSearchn
     nmap <buffer> <silent> N		<Plug>RecursiveSearchN
 
-    " Note: the final step if the mapps n and N are made is in atplib_search#LoadHistory 
+    " Note: the final step if the mapps n and N are made is in atplib#search#LoadHistory 
 endif
 
 command! -buffer -bang 		LocalCommands					:call LocalCommands(1, "", <q-bang>)
-command! -buffer -bang -nargs=* -complete=customlist,DsearchComp Dsearch	:call atplib_search#Dsearch(<q-bang>, <q-args>)
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleNn	:call atplib_search#ATP_ToggleNn(<f-args>)
-command! -buffer -bang -nargs=* BibSearch					:call atplib_search#BibSearch(<q-bang>, <q-args>)
+command! -buffer -bang -nargs=* -complete=customlist,DsearchComp Dsearch	:call atplib#search#Dsearch(<q-bang>, <q-args>)
+command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleNn	:call atplib#search#ATP_ToggleNn(<f-args>)
+command! -buffer -bang -nargs=* BibSearch					:call atplib#search#BibSearch(<q-bang>, <q-args>)
 
 " Hilighlting:
 hi link BibResultsFileNames 	Title	

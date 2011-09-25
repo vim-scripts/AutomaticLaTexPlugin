@@ -2,7 +2,7 @@
 " Description:  This file contains mappings defined by ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sun Sep 11, 2011 at 09:58  +0100
+" Last Change: Sat Sep 24, 2011 at 12:16  +0100
 
 " Add maps, unless the user didn't want them.
 if exists("g:no_plugin_maps") && g:no_plugin_maps ||
@@ -49,44 +49,43 @@ exe "cmap <buffer> <M-c> ^".s:backslash."%([^%]".s:bbackslash."|".s:bbackslash."
 if has("gui")
     if &l:cpoptions =~# "B"
 	if g:atp_cmap_space
-	    cmap <buffer> <expr> <space> 	( g:atp_cmap_space && getcmdtype() =~ '[\/?]' ? '\_s\+' : ' ' )
+	    cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[\/?]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
 	endif
-	cmap <expr> <buffer> <C-Space> getcmdtype() =~ '[?/]' ? '\_s\+' : ' ' 
-	cmap <expr> <buffer> <C-_> getcmdtype() =~ '[?/]' ? '\_s\+' : ' '
+	cmap <expr> <buffer> <C-Space> ( getcmdtype() =~ '[?/]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) ) 
+	cmap <expr> <buffer> <C-_> ( getcmdtype() =~ '[?/]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
     else
 	if g:atp_cmap_space
-	    cmap <buffer> <expr> <space> 	( g:atp_cmap_space && getcmdtype() =~ '[\\/?]' ? '\\_s\\+' : ' ' )
+	    cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[\/?]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
 	endif
-	cmap <expr> <buffer> <C-Space> getcmdtype() =~ '[?/]' ? '\\_s\\+' : ' '
-	cmap <expr> <buffer> <C-_> getcmdtype() =~ '[?/]' ? '\\_s\\+' : ' '
+	cmap <expr> <buffer> <C-Space> ( getcmdtype() =~ '[?/]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
+	cmap <expr> <buffer> <C-_> ( getcmdtype() =~ '[?/]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
     endif
 else
     if &l:cpoptions =~# "B"
 	if g:atp_cmap_space
-	    cmap <buffer> <expr> <space> 	( g:atp_cmap_space && getcmdtype() =~ '[\/?]' ? '\_s\+' : ' ' )
+	    cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[\/?]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
 	endif
-	cmap <expr> <buffer> <C-@> getcmdtype() =~ '[?/]' ? '\_s\+' : ' '
-	cmap <expr> <buffer> <C-_> getcmdtype() =~ '[?/]' ? '\_s\+' : ' '
+	cmap <expr> <buffer> <C-@> ( getcmdtype() =~ '[?/]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
+	cmap <expr> <buffer> <C-_> ( getcmdtype() =~ '[?/]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
     else
 	if g:atp_cmap_space
-	    cmap <buffer> <expr> <space> 	( g:atp_cmap_space && getcmdtype() =~ '[\\/?]' ? '\\_s\\+' : ' ' )
+	    cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[\/?]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
 	endif
-	cmap <expr> <buffer> <C-@> getcmdtype() =~ '[?/]' ? '\\_s\\+' : ' '
-	cmap <expr> <buffer> <C-_> getcmdtype() =~ '[?/]' ? '\\_s\\+' : ' '
+	cmap <expr> <buffer> <C-@> ( g:atp_cmap_space && getcmdtype() =~ '[\/?]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
+	cmap <expr> <buffer> <C-_> ( g:atp_cmap_space && getcmdtype() =~ '[\/?]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
     endif
 endif
 if maparg("<F2>", "n") == ""
     nmap <buffer> <F2>	:echo ATP_ToggleSpace()<CR>
 endif
 
-command! -buffer -bang -nargs=* FontSearch	:call atplib#FontSearch(<q-bang>, <f-args>)
-command! -buffer -bang -nargs=* FontPreview	:call atplib#FontPreview(<q-bang>,<f-args>)
-command! -buffer -nargs=1 -complete=customlist,atplib#Fd_completion OpenFdFile	:call atplib#OpenFdFile(<f-args>) 
-command! -buffer -nargs=* CloseLastEnvironment	:call atplib#CloseLastEnvironment(<f-args>)
-command! -buffer 	  CloseLastBracket	:call atplib#CloseLastBracket()
+command! -buffer -bang -nargs=* FontSearch	:call atplib#fontpreview#FontSearch(<q-bang>, <f-args>)
+command! -buffer -bang -nargs=* FontPreview	:call atplib#fontpreview#FontPreview(<q-bang>,<f-args>)
+command! -buffer -nargs=1 -complete=customlist,atplib#Fd_completion OpenFdFile	:call atplib#tools#OpenFdFile(<f-args>) 
+command! -buffer -nargs=* CloseLastEnvironment	:call atplib#complete#CloseLastEnvironment(<f-args>)
+command! -buffer 	  CloseLastBracket	:call atplib#complete#CloseLastBracket()
 
 " MAPS:
-
 if !hasmapto("\"SSec") && !hasmapto("'SSec")
     exe "nmap <buffer> <silent>	".g:atp_goto_section_leader."S		:<C-U>keepjumps exe v:count1.\"SSec\"<CR>"
 endif
@@ -119,7 +118,7 @@ if !hasmapto("<Plug>SyncTexKeyStroke", "n")
     nmap <buffer> <silent> t 			<Plug>SyncTexKeyStroke
 endif
 if !hasmapto("<LeftMouse><Plug>SyncTexMouse", "n")
-    nmap <buffer> <silent> <S-LeftMouse> 	<LeftMouse><Plug>SyncTexMouse
+    nmap <buffer> <S-LeftMouse> 	<LeftMouse><Plug>SyncTexMouse
 endif
 
 " Move Around Comments:
@@ -165,7 +164,7 @@ if !hasmapto(":PInput<CR>")
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."gf	:PInput<CR>"
 endif
 
-" Syntax motions:
+" Motions:
 " imap <C-j> <Plug>TexSyntaxMotionForward
 " imap <C-k> <Plug>TexSyntaxMotionBackward
 " nmap <C-j> <Plug>TexSyntaxMotionForward
@@ -281,36 +280,36 @@ endif
 
 " Goto File Map:
 if has("path_extra") && !hasmapto(" GotoFile(", 'n')
-	nnoremap <buffer> <silent> gf		:call GotoFile("", "")<CR>
+	nnoremap <buffer> <silent> gf		:call atplib#motion#GotoFile("", "")<CR>
 endif
 
 if !exists("g:atp_no_tab_map") || g:atp_no_tab_map == 0
     "Default Completion Maps:
-    if !hasmapto("<C-R>=atplib#TabCompletion(1)<CR>", 'i')
-	imap <silent> <buffer> <Tab> 		<C-R>=atplib#TabCompletion(1)<CR>
+    if !hasmapto("<C-R>=atplib#complete#TabCompletion(1)<CR>", 'i')
+	imap <silent> <buffer> <Tab> 		<C-R>=atplib#complete#TabCompletion(1)<CR>
     endif
-    if !hasmapto("<C-R>=atplib#TabCompletion(0)<CR>", 'i')
-	imap <silent> <buffer> <S-Tab> 		<C-R>=atplib#TabCompletion(0)<CR>
+    if !hasmapto("<C-R>=atplib#complete#TabCompletion(0)<CR>", 'i')
+	imap <silent> <buffer> <S-Tab> 		<C-R>=atplib#complete#TabCompletion(0)<CR>
     endif
-" 	if !hasmapto("atplib#TabCompletion(1,1)<CR>", 'n')
-" 	    nmap <silent> <buffer> <Tab>		:call atplib#TabCompletion(1,1)<CR>
+" 	if !hasmapto("atplib#complete#TabCompletion(1,1)<CR>", 'n')
+" 	    nmap <silent> <buffer> <Tab>		:call atplib#complete#TabCompletion(1,1)<CR>
 " 	endif
-    if !hasmapto("atplib#TabCompletion(0,1)<CR>", 'i')
-	nnoremap <silent> <buffer> <S-Tab>	:call atplib#TabCompletion(0,1)<CR> 
+    if !hasmapto("atplib#complete#TabCompletion(0,1)<CR>", 'i')
+	nnoremap <silent> <buffer> <S-Tab>	:call atplib#complete#TabCompletion(0,1)<CR> 
     endif
 else 
     "Non Default Completion Maps:
-    if !hasmapto("<C-R>=atplib#TabCompletion(1)<CR>", 'i')
-	imap <silent> <buffer> <F7> 		<C-R>=atplib#TabCompletion(1)<CR>
+    if !hasmapto("<C-R>=atplib#complete#TabCompletion(1)<CR>", 'i')
+	imap <silent> <buffer> <F7> 		<C-R>=atplib#complete#TabCompletion(1)<CR>
     endif
-    if !hasmapto(" atplib#TabCompletion(1,1)<CR>", 'n')
-	nnoremap <silent> <buffer> <F7>		:call atplib#TabCompletion(1,1)<CR>
+    if !hasmapto(" atplib#complete#TabCompletion(1,1)<CR>", 'n')
+	nnoremap <silent> <buffer> <F7>		:call atplib#complete#TabCompletion(1,1)<CR>
     endif
-    if !hasmapto("<C-R>=atplib#TabCompletion(0)<CR>", 'i')
-	imap <silent> <buffer> <S-F7> 		<C-R>=atplib#TabCompletion(0)<CR>
+    if !hasmapto("<C-R>=atplib#complete#TabCompletion(0)<CR>", 'i')
+	imap <silent> <buffer> <S-F7> 		<C-R>=atplib#complete#TabCompletion(0)<CR>
     endif
-    if !hasmapto(" atplib#TabCompletion(0,1)<CR>", 'n')
-	nnoremap <silent> <buffer> <S-F7>	:call atplib#TabCompletion(0,1)<CR> 
+    if !hasmapto(" atplib#complete#TabCompletion(0,1)<CR>", 'n')
+	nnoremap <silent> <buffer> <S-F7>	:call atplib#complete#TabCompletion(0,1)<CR> 
     endif
 endif
 if !hasmapto(":Wrap { } begin<cr>", 'v')
@@ -365,10 +364,10 @@ if !hasmapto(":<C-U>Wrap ".s:backslash."textmd{<CR>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."md	:<C-U>Wrap ".s:backslash."textmd{<CR>"
 endif
 if !hasmapto(":<C-U>Wrap ".s:backslash."underline{<CR>", 'v')
-    execute "vnoremap <silent> <buffer> ".g:atp_imap_over_leader."un	:<C-U>Wrap ".s:backslash."underline{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_imap_over_leader."u	:<C-U>Wrap ".s:backslash."underline{<CR>"
 endif
 if !hasmapto(":<C-U>Wrap ".s:backslash."overline{<CR>", 'v')
-    execute "vnoremap <silent> <buffer> ".g:atp_imap_over_leader."ov	:<C-U>Wrap ".s:backslash."overline{<CR>"
+    execute "vnoremap <silent> <buffer> ".g:atp_imap_over_leader."o	:<C-U>Wrap ".s:backslash."overline{<CR>"
 endif
 if !hasmapto(":<C-U>InteligentWrapSelection ['".s:backslash."textnormal{'],['".s:backslash."mathnormal{']<CR>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."no	:<C-U>InteligentWrapSelection ['".s:backslash."textnormal{'],['".s:backslash."mathnormal{']<CR>"
@@ -402,7 +401,7 @@ if !hasmapto(':<C-U>Wrap '.s:backslash.'[ '.s:backslash.']<CR>', 'v')
     exe "vmap <silent> <buffer> M				:<C-U>Wrap ".s:backslash."[ ".s:backslash."]<CR>"
 endif
 
-    " Brackets:
+" Brackets:
 if !hasmapto(":Wrap ( ) begin<cr>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."( 	:Wrap ( ) begin<CR>"
 endif
@@ -578,9 +577,9 @@ if !hasmapto("v<Plug>vSelectComment", "n")
 endif
 " Select Frame: (beamer)
 " This is done by a function, because it has to be run through an autocommand
-" otherwise atplib#DocumentClass is not working.
+" otherwise atplib#search#DocumentClass is not working.
 function! <SID>BeamerOptions()
-    if atplib#DocumentClass(b:atp_MainFile) == "beamer"
+    if atplib#search#DocumentClass(b:atp_MainFile) == "beamer"
 	
 	" _f
 	if !exists("g:atp_MapSelectFrame")
@@ -603,9 +602,6 @@ endfunction
 au BufEnter *.tex 	call <SID>BeamerOptions()
 
 " Normal Mode Maps: (most of them)
-if mapcheck('<LocalLeader>v') == "" && !hasmapto("<Plug>ATP_ViewOutput", "n")
-    nmap  <silent> <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput
-endif
 
 " Enabling this requires uncommenting augroup ATP_Cmdwin in options.vim
 " exe "nnoremap  <silent> <buffer> <Plug>QForwardSearch 	q".s:backslash.":call ATP_CmdwinToggleSpace(1)<CR>i"
@@ -657,10 +653,11 @@ endif
 " 	nmap <silent> <buffer> <F3>			:call <Sid>ChangeEnv()<CR>
 "     endif
 if !hasmapto("<Plug>ATP_ViewOutput", "n")
-    nmap  <silent> <buffer> <F3>        		<Plug>ATP_ViewOutput
+    nmap  <silent> <buffer> <F3>        		<Plug>ATP_ViewOutput_sync
+    nmap  <silent> <buffer> <LocalLeader>v		<Plug>ATP_ViewOutput_nosync
 endif
 if !hasmapto("<Plug>ATP_ViewOutput", "i")
-    imap  <silent> <buffer> <F3> 			<C-O><Plug>ATP_ViewOutput
+    imap  <silent> <buffer> <F3> 			<C-O><Plug>ATP_ViewOutput_sync
 endif
 if !hasmapto("<Plug>Getpid", "n")
     nmap  <silent> <buffer> <LocalLeader>g 		<Plug>Getpid
@@ -912,9 +909,6 @@ endif
 
 " Miscellaneous Mathematical Maps:
 if !exists("g:atp_imap_math_misc") || g:atp_reload_variables
-    if !exists("g:atp_infty_leader")
-	let g:atp_infty_leader = (g:atp_imap_leader_1 == '#' ? '`' : g:atp_imap_leader_1 ) 
-    endif
 let g:atp_imap_math_misc = [
 \ [ 'inoremap', '<silent> <buffer> <expr>', '+',	      '+', 
 	\ '!atplib#IsLeft("^")&&!atplib#IsLeft("_") ? '''.s:backslash.'sum'' : "++"',
@@ -1124,10 +1118,10 @@ if !exists("g:atp_imap_math") || g:atp_reload_variables
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "s>", "atplib#IsInMath() ? '".s:backslash."supseteq' 	: 's>'", "g:atp_imap_define_math",		'\\supseteq'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<=", "atplib#IsInMath() ? '".s:backslash."leq' 	: '<='", "g:atp_imap_define_math",		'\\leq'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", ">=", "atplib#IsInMath() ? '".s:backslash."geq' 	: '>='", "g:atp_imap_define_math",		'\\geq'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "->", "atplib#IsInMath('!') ? '".s:backslash."rightarrow' 	: '->'", "g:atp_imap_define_math",		'\\rightarrow'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<-", "atplib#IsInMath('!') ? '".s:backslash."leftarrow' 	: '<-'", "g:atp_imap_define_math",		'\\leftarrow'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<_", "atplib#IsInMath('!') ? '".s:backslash."Leftarrow' 	: '<-'", "g:atp_imap_define_math",		'\\leftarrow'],
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", "_>", "atplib#IsInMath('!') ? '".s:backslash."Rightarrow' 	: '->'", "g:atp_imap_define_math",		'\\rightarrow'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "->", "atplib#IsInMath('!') ? '".s:backslash."rightarrow' 	: ( atplib#complete#CheckSyntaxGroups(['texMathZoneT']) && getline('.')[1:col('.')] !~ '\\[[^\\]]*$' ? '\\draw[->]' : '->' )", "g:atp_imap_define_math",		'\\rightarrow'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<-", "atplib#IsInMath('!') ? '".s:backslash."leftarrow' 	: ( atplib#complete#CheckSyntaxGroups(['texMathZoneT']) && getline('.')[1:col('.')] !~ '\\[[^\\]]*$' ? '\\draw[<-]' : '<-' )", "g:atp_imap_define_math",		'\\leftarrow'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<_", "atplib#IsInMath('!') ? '".s:backslash."Leftarrow' 	: '<-'", "g:atp_imap_define_math",		'\\Leftarrow'],
+	\ [ "inoremap", "<buffer> <silent> <expr>", "", "_>", "atplib#IsInMath('!') ? '".s:backslash."Rightarrow' 	: '->'", "g:atp_imap_define_math",		'\\Rightarrow'],
 	\ ]
 endif
 

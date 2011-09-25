@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Mon Jun 06 10:00  2011 W
+" Last Change: Sun Sep 18, 2011 at 11:56  +0100
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 "{{{ Load Once
 if exists("b:did_ftplugin") | finish | endif
@@ -23,7 +23,7 @@ endif
 "{{{ ShowFonts
 function! ShowFonts(fd_file)
 
-    let font_commands	= atplib#ShowFonts(a:fd_file)
+    let font_commands	= atplib#fontpreview#ShowFonts(a:fd_file)
 
     let message		= ""
     for fcom in font_commands
@@ -52,7 +52,7 @@ function! Preview(keep_tex)
 	let fd_files	= [g:fd_matches[(max([line("."),'2'])-2)]]
     endif
 
-    call atplib#Preview(fd_files, keep_tex)
+    call atplib#fontpreview#Preview(fd_files, keep_tex)
 
 endfunction
 "}}}
@@ -63,7 +63,7 @@ if bufname("%") =~ 'fd_list'
     map <buffer> <Enter> 			:call OpenFile()<CR>
     map <buffer> <Tab>				:call ShowFonts(g:fd_matches[(max([line("."),'2'])-2)])<CR>
 else
-    command! -buffer -nargs=1 Preview		:call atplib#Preview(["buffer"],<f-args>)
+    command! -buffer -nargs=1 Preview		:call atplib#fontpreview#Preview(["buffer"],<f-args>)
 endif
 "}}}
 "{{{ Maps

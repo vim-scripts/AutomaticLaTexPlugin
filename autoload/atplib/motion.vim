@@ -18,7 +18,7 @@
 " 		    :DeleteSection command /
 "
 " {{{2 s:find_toc_lines
-function! atplib_motion#find_toc_lines()
+function! atplib#motion#find_toc_lines()
     let toc_lines_nr=[]
     let toc_lines=[]
 
@@ -49,10 +49,10 @@ function! atplib_motion#find_toc_lines()
     endfor
     return toc_lines
 endfunction
-" {{{2 atplib_motion#maketoc 
+" {{{2 atplib#motion#maketoc 
 " this will store information: 
 " { 'linenumber' : ['chapter/section/..', 'sectionnumber', 'section title', '0/1=not starred/starred'] }
-function! atplib_motion#maketoc(filename)
+function! atplib#motion#maketoc(filename)
     let toc={}
 
     " if the dictinary with labels is not defined, define it
@@ -80,7 +80,7 @@ function! atplib_motion#maketoc(filename)
     endfor
     " make a filter
     let j = 0
-    let biblatex	= ( atplib#SearchPackage("biblatex") )
+    let biblatex	= ( atplib#search#SearchPackage("biblatex") )
     " When \usepackge{biblatex} do not search for \bibliography{} commands -- they are placed in ther preambule.
     let key_list 	= ( biblatex ? filter(keys(g:atp_sections), "v:val != 'bibliography'") : keys(g:atp_sections) ) 
     for section in key_list
@@ -235,12 +235,12 @@ function! atplib_motion#maketoc(filename)
 "     return t:atp_toc
     return { a:filename : toc }
 endfunction
-" {{{2 atplib_motion#buflist
+" {{{2 atplib#motion#buflist
 if !exists("t:atp_toc_buflist")
     let t:atp_toc_buflist=[]
 endif
-function! atplib_motion#buflist()
-    " this names are used in TOC and passed to atplib_motion#maketoc, which
+function! atplib#motion#buflist()
+    " this names are used in TOC and passed to atplib#motion#maketoc, which
     " makes a dictionary whose keys are the values of name defined
     " just below:
     if !exists("t:atp_toc_buflist")
@@ -252,8 +252,8 @@ function! atplib_motion#buflist()
     endif
     return t:atp_toc_buflist
 endfunction
-" {{{2 RemoveFromBufList
-function! atplib_motion#RemoveFromToC(file)
+" {{{2 tplib#motion#RemoveFromBufList
+function! atplib#motion#RemoveFromToC(file)
     if a:file == ""
 	let g:debug = 1
 	if exists("b:atp_MainFile")
@@ -288,15 +288,15 @@ function! atplib_motion#RemoveFromToC(file)
     endif
     let winnr=winnr()
     if index(map(tabpagebuflist(), 'bufname(v:val)'), '__ToC__') != -1
-	call atplib_motion#TOC("!", 0)
+	call atplib#motion#TOC("!", 0)
     endif
     exe winnr."wincmd w"
 endfunction
-function! RemoveFromToCComp(A, B, C)
+function! atplib#motion#RemoveFromToCComp(A, B, C)
     return join(t:atp_toc_buflist,"\n")
 endfunction
-" {{{2 atplib_motion#showtoc
-function! atplib_motion#showtoc(toc)
+" {{{2 atplib#motion#showtoc
+function! atplib#motion#showtoc(toc)
 
     " this is a dictionary of line numbers where a new file begins.
     let cline=line(".")
@@ -502,7 +502,7 @@ function! atplib_motion#showtoc(toc)
 " 	t:atp_bufname is the full path to the current buffer.
     let num = get(numberdict, t:atp_bufname, 'no_number')
     if num == 'no_number'
-" 	call atplib_motion#TOC("")
+" 	call atplib#motion#TOC("")
 	return
     endif
     let sorted		= sort(keys(a:toc[t:atp_bufname]), "atplib#CompareNumbers")
@@ -534,17 +534,17 @@ function! atplib_motion#showtoc(toc)
     endif
     lockvar 3 b:atp_Toc
 endfunction
-" {{{2 ToCbufnr()
+" {{{2 atplib#motion#ToCbufnr()
 " This function returns toc buffer number if toc window is not open returns -1.
-function! atplib_motion#ToCbufnr() 
+function! atplib#motion#ToCbufnr() 
     return index(map(tabpagebuflist(), 'bufname(v:val)'), '__ToC__')
 endfunction
 " {{{2 UpdateToCLine
-function! atplib_motion#UpdateToCLine(...)
+function! atplib#motion#UpdateToCLine(...)
     if !g:atp_UpdateToCLine
 	return
     endif
-    let toc_bufnr	= atplib_motion#ToCbufnr()
+    let toc_bufnr	= atplib#motion#ToCbufnr()
     let check_line 	= (a:0>=1 ? a:1 : -1) 
     if toc_bufnr == -1 || check_line != -1 && 
 		\ getline(line(".")+check_line) !~# '\\\%(part\|chapter\|\%(sub\)\{0,2}section\)\s*{'
@@ -565,7 +565,7 @@ function! atplib_motion#UpdateToCLine(...)
 	    let num+=1
 	endif
 	keepjumps call setpos('.',[bufnr(""),num,1,0])
-	call atplib#CursorLine()
+	call atplib#tools#CursorLine()
     endfor
 
     let eventignore=&eventignore
@@ -575,35 +575,35 @@ function! atplib_motion#UpdateToCLine(...)
 endfunction
 " This is User Front End Function 
 "{{{2 TOC
-function! atplib_motion#TOC(bang,...)
+function! atplib#motion#TOC(bang,...)
     " skip generating t:atp_toc list if it exists and if a:0 != 0
     if &l:filetype != 'tex' && &l:filetype != 'toc_atp'   
 	echoerr "Wrong 'filetype'. This command works only for latex documents."
 	return
     endif
     if a:0 == 0 
-	call atplib_motion#buflist()
+	call atplib#motion#buflist()
     endif
-    " for each buffer in t:atp_toc_buflist (set by atplib_motion#buflist)
+    " for each buffer in t:atp_toc_buflist (set by atplib#motion#buflist)
     if ( a:bang == "!" || !exists("t:atp_toc") )
 	let t:atp_toc = {}
 	for buffer in t:atp_toc_buflist 
-" 	    let t:atp_toc=atplib_motion#maketoc(buffer)
-	    call extend(t:atp_toc, atplib_motion#maketoc(buffer))
+" 	    let t:atp_toc=atplib#motion#maketoc(buffer)
+	    call extend(t:atp_toc, atplib#motion#maketoc(buffer))
 	endfor
     endif
-    call atplib_motion#showtoc(t:atp_toc)
+    call atplib#motion#showtoc(t:atp_toc)
 endfunction
-nnoremap <Plug>ATP_TOC			:call atplib_motion#TOC("")<CR>
+nnoremap <Plug>ATP_TOC			:call atplib#motion#TOC("")<CR>
 
 " This finds the name of currently eddited section/chapter units. 
 " {{{2 Current TOC
 " ToDo: make this faster!
-" {{{2 atplib_motion#NearestSection
+" {{{2 atplib#motion#NearestSection
 " This function finds the section name of the current section unit with
 " respect to the dictionary a:section={ 'line number' : 'section name', ... }
 " it returns the [ section_name, section line, next section line ]
-function! atplib_motion#NearestSection(section)
+function! atplib#motion#NearestSection(section)
     let cline=line('.')
 
     let sorted=sort(keys(a:section), "atplib#CompareNumbers")
@@ -624,8 +624,8 @@ function! atplib_motion#NearestSection(section)
 	return ['', '0', line('$')]
     endif
 endfunction
-" {{{2 s:ctoc
-function! atplib_motion#ctoc()
+" {{{2 atplib#motion#ctoc
+function! atplib#motion#ctoc()
     if &l:filetype != 'tex' 
 " TO DO:
 " 	if  exists(g:tex_flavor)
@@ -634,7 +634,7 @@ function! atplib_motion#ctoc()
 " 	    endif
 " 	endif
 	" Set the status line once more, to remove the CTOC() function.
-	call ATPStatus()
+	call ATPStatus(0,0)
 	return []
     endif
     " resolve the full path:
@@ -645,7 +645,7 @@ function! atplib_motion#ctoc()
 	if !exists("t:atp_toc")
 	    let t:atp_toc={}
 	endif
-	silent call extend(t:atp_toc, atplib_motion#maketoc(t:atp_bufname))
+	silent call extend(t:atp_toc, atplib#motion#maketoc(t:atp_bufname))
     endif
 
     " l:count where the preambule ends
@@ -695,19 +695,19 @@ function! atplib_motion#ctoc()
     endfor
 
     " Remove $ from chapter/section/subsection names to save the space.
-    let chapter_name=substitute(atplib_motion#NearestSection(chapter)[0],'\$\|\\(\|\\)','','g')
-    let chapter_line=atplib_motion#NearestSection(chapter)[1]
-    let chapter_nline=atplib_motion#NearestSection(chapter)[2]
+    let chapter_name=substitute(atplib#motion#NearestSection(chapter)[0],'\$\|\\(\|\\)','','g')
+    let chapter_line=atplib#motion#NearestSection(chapter)[1]
+    let chapter_nline=atplib#motion#NearestSection(chapter)[2]
 
-    let section_name=substitute(atplib_motion#NearestSection(section)[0],'\$\|\\(\|\\)','','g')
-    let section_line=atplib_motion#NearestSection(section)[1]
-    let section_nline=atplib_motion#NearestSection(section)[2]
-"     let b:section=atplib_motion#NearestSection(section)		" DEBUG
+    let section_name=substitute(atplib#motion#NearestSection(section)[0],'\$\|\\(\|\\)','','g')
+    let section_line=atplib#motion#NearestSection(section)[1]
+    let section_nline=atplib#motion#NearestSection(section)[2]
+"     let b:section=atplib#motion#NearestSection(section)		" DEBUG
 
-    let subsection_name=substitute(atplib_motion#NearestSection(subsection)[0],'\$\|\\(\|\\)','','g')
-    let subsection_line=atplib_motion#NearestSection(subsection)[1]
-    let subsection_nline=atplib_motion#NearestSection(subsection)[2]
-"     let b:ssection=atplib_motion#NearestSection(subsection)		" DEBUG
+    let subsection_name=substitute(atplib#motion#NearestSection(subsection)[0],'\$\|\\(\|\\)','','g')
+    let subsection_line=atplib#motion#NearestSection(subsection)[1]
+    let subsection_nline=atplib#motion#NearestSection(subsection)[2]
+"     let b:ssection=atplib#motion#NearestSection(subsection)		" DEBUG
 
     let names	= [ chapter_name ]
     if (section_line+0 >= chapter_line+0 && section_line+0 <= chapter_nline+0) || chapter_name == '' 
@@ -719,20 +719,20 @@ function! atplib_motion#ctoc()
 endfunction
 " Labels Front End Finction. The search engine/show function are in autoload/atplib.vim script
 " library.
-" {{{1 Labels
+" {{{1 atplib#motion#Labels
 " a:bang = "!" do not regenerate labels if not necessary
-function! atplib_motion#Labels(bang)
+function! atplib#motion#Labels(bang)
     let t:atp_bufname	= bufname("%")
     let error		= ( exists("b:atp_TexReturnCode") ? b:atp_TexReturnCode : 0 )
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     " Generate the dictionary with labels
     if a:bang == "" || ( a:bang == "!" && !exists("t:atp_labels") )
-	let [ t:atp_labels, b:ListOfFiles ] =  atplib#generatelabels(atp_MainFile, 1)
+	let [ t:atp_labels, b:ListOfFiles ] =  atplib#tools#generatelabels(atp_MainFile, 1)
     endif
 
     " Show the labels in seprate window
-    call atplib#showlabels([ t:atp_labels, map(extend([b:atp_MainFile], copy(b:ListOfFiles)), 'atplib#FullPath(v:val)')])
+    call atplib#tools#showlabels([ t:atp_labels, map(extend([b:atp_MainFile], copy(b:ListOfFiles)), 'atplib#FullPath(v:val)')])
 
     if error
 	echohl WarningMsg
@@ -741,19 +741,19 @@ function! atplib_motion#Labels(bang)
 	echohl Normal
     endif
 endfunction
-nnoremap <Plug>ATP_Labels		:call atplib_motion#Labels("")<CR>
+nnoremap <Plug>ATP_Labels		:call atplib#motion#Labels("")<CR>
 
-" GotoLabel & GotoLabelCompletion {{{1
+" atplib#motion#GotoLabel & atplib#motion#GotoLabelCompletion {{{1
 " a:bang = "!" do not regenerate labels if not necessary
 " This is developed for one tex project in a vim.
-function! GotoLabel(bang,...)
+function! atplib#motion#GotoLabel(bang,...)
 
     let alabel = ( a:0 == 0 ? "" : a:1 )
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     " Generate the dictionary with labels
     if a:bang == "" || ( a:bang == "!" && ( !exists("b:ListOfFiles") || !exists("t:atp_labels") ) )
-	let [ t:atp_labels, b:ListOfFiles ] =  atplib#generatelabels(atp_MainFile, 1)
+	let [ t:atp_labels, b:ListOfFiles ] =  atplib#tools#generatelabels(atp_MainFile, 1)
     endif
 
     let matches = []
@@ -813,12 +813,12 @@ function! GotoLabel(bang,...)
     endif
 endfunction
 
-function! GotoLabelCompletion(ArgLead, CmdLine, CursorPos)
+function! atplib#motion#GotoLabelCompletion(ArgLead, CmdLine, CursorPos)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     " Generate the dictionary with labels (only if it doesn't exist)
     if !exists("t:atp_labels") || t:atp_labels == {} || !exists("b:ListOfFiles") || a:CmdLine !~# '^GotoLabel!'
-	let [ t:atp_labels, b:ListOfFiles ] =  atplib#generatelabels(atp_MainFile, 1)
+	let [ t:atp_labels, b:ListOfFiles ] =  atplib#tools#generatelabels(atp_MainFile, 1)
 " It would be nice to delete the ! from the cmdline after this step. There are
 " only getcmdline(), getcmdpos() and setcmdpos() functions available.
 	let cmd_line=substitute(getcmdline(), "GotoLabel!", "GotoLabel", "")
@@ -837,8 +837,8 @@ function! GotoLabelCompletion(ArgLead, CmdLine, CursorPos)
     return map(labels, "v:val.'\\>'")
 endfunction
 " {{{1 TAGS
-function! atplib_motion#LatexTags(bang)
-    let hyperref_cmd = ( atplib#SearchPackage("hyperref") ? " --hyperref " : "" )
+function! atplib#motion#LatexTags(bang)
+    let hyperref_cmd = ( atplib#search#SearchPackage("hyperref") ? " --hyperref " : "" )
     if has("clientserver")
 	let servername 	= " --servername ".v:servername." "
 	let progname	= " --progname ".v:progname." " 
@@ -866,9 +866,9 @@ function! atplib_motion#LatexTags(bang)
 	let bib= " --bibtags_env "
     endif
     let dir 	= expand("%:p:h")
-    if atplib#SearchPackage("biblatex")
+    if atplib#search#SearchPackage("biblatex")
 	let cite = " --cite biblatex "
-    elseif atplib#SearchPackage("natbib")
+    elseif atplib#search#SearchPackage("natbib")
 	let cite = " --cite natbib "
     else
 	let cite = " "
@@ -885,8 +885,8 @@ function! atplib_motion#LatexTags(bang)
     endif
     call system(cmd)
 endfunction
-"{{{1 GotoDestination
-function! atplib_motion#GotoNamedDestination(destination)
+"{{{1 atplib#motion#GotoDestination
+function! atplib#motion#GotoNamedDestination(destination)
     if b:atp_Viewer !~ '^\s*xpdf\>' 
 	echomsg "[ATP:] this only works with Xpdf viewer."
 	return 0
@@ -894,7 +894,7 @@ function! atplib_motion#GotoNamedDestination(destination)
     let cmd='xpdf -remote '.b:atp_XpdfServer.' -exec gotoDest\("'.a:destination.'"\)'
     call system(cmd)
 endfunction
-function! atplib_motion#FindDestinations()
+function! atplib#motion#FindDestinations()
     let files = [ b:atp_MainFile ]
     if !exists("b:TypeDict")
 	call TreeOfFiles(b:atp_MainFile)
@@ -916,8 +916,8 @@ function! atplib_motion#FindDestinations()
     endfor
     return dests
 endfunction
-function! atplib_motion#CompleteDestinations(ArgLead, CmdLine, CursorPos)
-    let dests=atplib_motion#FindDestinations()
+function! atplib#motion#CompleteDestinations(ArgLead, CmdLine, CursorPos)
+    let dests=atplib#motion#FindDestinations()
     return join(dests, "\n")
 endfunction
 
@@ -926,7 +926,7 @@ endfunction
 " Go to next environment "{{{2
 " which name is given as the argument. Do not wrap
 " around the end of the file.
-function! atplib_motion#GotoEnvironment(flag,count,...)
+function! atplib#motion#GotoEnvironment(flag,count,...)
 
     " Options :
     let env_name 	= ( a:0 >= 1 && a:1 != ""  ? a:1 : '[^}]*' )
@@ -1005,10 +1005,10 @@ function! atplib_motion#GotoEnvironment(flag,count,...)
 	    if getline(".")[col(".")-1] == "$" 
 		if ( get(split(getline("."), '\zs'), col(".")-1, '') == "$" && get(split(getline("."), '\zs'), col("."), '') == "$" )
 		    "check $$
-		    let rerun = !atplib#CheckSyntaxGroups(['texMathZoneY'], line("."), col(".")+1 )
+		    let rerun = !atplib#complete#CheckSyntaxGroups(['texMathZoneY'], line("."), col(".")+1 )
 		elseif get(split(getline("."), '\zs'), col(".")-1, '') == "$" 
 		    "check $
-		    let rerun = !atplib#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY'], line("."), col(".") )
+		    let rerun = !atplib#complete#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY'], line("."), col(".") )
 		endif
 		if rerun
 		    silent! execute search_cmd . pattern . search_cmd_e
@@ -1018,10 +1018,10 @@ function! atplib_motion#GotoEnvironment(flag,count,...)
 	    if getline(".")[col(".")-1] == "$" 
 		if ( get(split(getline("."), '\zs'), col(".")-1, '') == "$" && get(split(getline("."), '\zs'), col(".")-2, '') == "$" )
 		    "check $$
-		    let rerun = atplib#CheckSyntaxGroups(['texMathZoneY'], line("."), col(".")-3 )
+		    let rerun = atplib#complete#CheckSyntaxGroups(['texMathZoneY'], line("."), col(".")-3 )
 		elseif get(split(getline("."), '\zs'), col(".")-1, '') == "$" 
 		    "check $
-		    let rerun = atplib#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY'], line("."), col(".")-2 )
+		    let rerun = atplib#complete#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY'], line("."), col(".")-2 )
 		endif
 		if rerun
 		    silent! execute search_cmd . pattern . search_cmd_e
@@ -1030,37 +1030,37 @@ function! atplib_motion#GotoEnvironment(flag,count,...)
 	endif
     endfor
 
-    call atplib_motion#UpdateToCLine()
+    call atplib#motion#UpdateToCLine()
     silent! call histadd("search", pattern)
     silent! let @/ 	 = pattern
     return ""
 endfunction
-" {{{2 GotoFrame
-function! atplib_motion#GotoFrame(f, count)
+" {{{2 atplib#motion#GotoFrame
+function! atplib#motion#GotoFrame(f, count)
     let g:Count=a:count
     let lz=&lazyredraw
     set lazyredraw
     if a:f == "backward"
-	call atplib_motion#GotoEnvironment('bsW', a:count, 'frame')
+	call atplib#motion#GotoEnvironment('bsW', a:count, 'frame')
     else
-	call atplib_motion#GotoEnvironment('sW', a:count, 'frame')
+	call atplib#motion#GotoEnvironment('sW', a:count, 'frame')
     endif
     normal! zt
     let &lz=lz
 endfunction
-nnoremap <Plug>NextFrame	:<C-U>call atplib_motion#GotoFrame('forward', v:count1)<CR>
-nnoremap <Plug>PreviousFrame	:<C-U>call atplib_motion#GotoFrame('backward', v:count1)<CR>
-"{{{2 JumptoEnvironment
-" function! atplib_motion#GotoEnvironmentB(flag,count,...)
+nnoremap <Plug>NextFrame	:<C-U>call atplib#motion#GotoFrame('forward', v:count1)<CR>
+nnoremap <Plug>PreviousFrame	:<C-U>call atplib#motion#GotoFrame('backward', v:count1)<CR>
+"{{{2 atplib#motion#JumptoEnvironment
+" function! atplib#motion#GotoEnvironmentB(flag,count,...)
 "     let env_name 	= (a:0 >= 1 && a:1 != ""  ? a:1 : '[^}]*')
 "     for i in range(1,a:count)
 " 	let flag 	= (i!=1?substitute(a:flag, 's', '', 'g'):a:flag)
-" 	call atplib_motion#GotoEnvironment(flag,1,env_name)
+" 	call atplib#motion#GotoEnvironment(flag,1,env_name)
 "     endfor
 " endfunction
 " Jump over current \begin and go to next one.
 " i.e. if on line =~ \begin => % and then search, else search
-function! atplib_motion#JumptoEnvironment(backward)
+function! atplib#motion#JumptoEnvironment(backward)
     call setpos("''", getpos("."))
     let lazyredraw=&l:lazyredraw
     set lazyredraw
@@ -1091,7 +1091,7 @@ endfunction
 " the default is: 
 " 	if g:atp_mapNn then use 'atp'
 " 	else use 'vim'.
-function! atplib_motion#GotoSection(bang, count, flag, secname, ...)
+function! atplib#motion#GotoSection(bang, count, flag, secname, ...)
     let search_tool		= ( a:0 >= 1 ? a:1	: ( g:atp_mapNn ? 'atp' : 'vim' ) )
     let mode			= ( a:0 >= 2 ? a:2	: 'n' )
     let title_pattern 		= ( a:0 >= 3 ? a:3	: ''  )
@@ -1126,11 +1126,11 @@ function! atplib_motion#GotoSection(bang, count, flag, secname, ...)
 	endif
     endfor
 
-    call atplib_motion#UpdateToCLine()
+    call atplib#motion#UpdateToCLine()
     call histadd("search", pattern)
     let @/	= pattern
 endfunction
-function! Env_compl(A,P,L) 
+function! atplib#motion#Env_compl(A,P,L) 
     let envlist=sort(['algorithm', 'algorithmic', 'abstract', 'definition', 'equation', 'proposition', 
 		\ 'theorem', 'lemma', 'array', 'tikzpicture', 
 		\ 'tabular', 'table', 'align', 'alignat', 'proof', 
@@ -1149,7 +1149,7 @@ function! Env_compl(A,P,L)
     return returnlist
 endfunction
 
-function! atplib_motion#ggGotoSection(count,section)
+function! atplib#motion#ggGotoSection(count,section)
     let mark  = getpos("''")
     if a:section == "part"
 	let secname = '\\part\>'
@@ -1175,13 +1175,13 @@ function! atplib_motion#ggGotoSection(count,section)
 	    call cursor(1,1)
 	endif
     endif
-    call atplib_motion#UpdateToCLine()
-    call atplib_motion#GotoSection("", a:count, 'Ws', secname)
+    call atplib#motion#UpdateToCLine()
+    call atplib#motion#GotoSection("", a:count, 'Ws', secname)
     call setpos("''",mark)
 endfunction
 
-" {{{2 Input() function
-function! atplib_motion#Input(flag)
+" {{{2 atplib#motion#Input()
+function! atplib#motion#Input(flag)
     let pat 	= ( &l:filetype == "plaintex" ? '\\input\s*{' : '\%(\\input\>\|\\include\s*{\)' )
     let @/	= '^\([^%]\|\\\@<!\\%\)*' . pat
     if g:atp_mapNn
@@ -1189,7 +1189,7 @@ function! atplib_motion#Input(flag)
     else
 	call search('^\([^%]\|\\\@<!\\%\)*' . pat, a:flag)
     endif
-    call atplib_motion#UpdateToCLine()
+    call atplib#motion#UpdateToCLine()
     "     This pattern is quite simple and it might be not neccesary to add it to
     "     search history.
     "     call histadd("search", pat)
@@ -1206,7 +1206,7 @@ try
 
     " It correctly sets b:atp_MainFile, and TreeOfFiles, ... variables in the new
     " buffer.
-function! GotoFile(bang,args,...)
+function! atplib#motion#GotoFile(bang,args,...)
 
     let edit_args = matchstr(a:args, '\zs\%(++\=\%(\%(\\\@<!\s\)\@<!.\)*\s*\)\=')
     let find_args = matchstr(a:args, '+/\(\(\\\@<!\s\)\@<!.\)*')
@@ -1261,7 +1261,7 @@ function! GotoFile(bang,args,...)
 	    let ext 	= '.sty'
 
 	    let fname   = atplib#append_ext(strpart(getline("."), bcol, col-bcol-1), ext)
-	    let file 	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, 1)
+	    let file 	= atplib#search#KpsewhichFindFile('tex', fname, g:atp_texinputs, 1)
 	    let file_l	= [ file ]
 
 	    let message = "Pacakge: "
@@ -1277,7 +1277,7 @@ function! GotoFile(bang,args,...)
 
 	    " The 'file . ext' might be already a full path.
 	    if fnamemodify(fname, ":p") != fname
-		let file_l 	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\|miktex\)')
+		let file_l 	= atplib#search#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\|miktex\)')
 		let file	= get(file_l, 0, 'file_missing')
 	    else
 		let file_l	= [ fname ] 
@@ -1291,7 +1291,7 @@ function! GotoFile(bang,args,...)
     elseif line =~ '\\input\s*{\@!'
 	let method = "input"
 	    let fname	= atplib#append_ext(matchstr(getline(line(".")), '\\input\s*\zs\f*\ze'), '.tex')
-	    let file_l	= atplib#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\)')
+	    let file_l	= atplib#search#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\)')
 	    let file	= get(file_l, 0, "file_missing")
 	    let options = ' +setl\ ft=' . &l:filetype  
 
@@ -1308,7 +1308,7 @@ function! GotoFile(bang,args,...)
 	let classname 	= strpart(getline("."), bcol, ecol-bcol-1)
 
 	let fname	= atplib#append_ext(classname, '.cls')
-	let file	= atplib#KpsewhichFindFile('tex', fname,  g:atp_texinputs, ':p')
+	let file	= atplib#search#KpsewhichFindFile('tex', fname,  g:atp_texinputs, ':p')
 	let file_l	= [ file ]
 	let options	= ""
     else
@@ -1478,7 +1478,7 @@ function! GotoFile(bang,args,...)
 endfunction
 catch /E127:/
 endtry
-function! atplib_motion#GotoFileComplete(ArgLead, CmdLine, CursorPos)
+function! atplib#motion#GotoFileComplete(ArgLead, CmdLine, CursorPos)
     let bang = ( a:CmdLine =~ '^\w*!' ? '!' : '')
     if bang == "!" || !exists("b:TreeOfFiles") || !exists("b:ListOfFiles") || !exists("b:TypeDict") || !exists("b:LevelDict") 
 	let [tree_d, file_l, type_d, level_d ] 	= TreeOfFiles(atp_MainFile)
@@ -1497,7 +1497,7 @@ endfunction
 " Note: the 's' search flag is passed by the associated commands.
 " This can be extended: 
 " 	(1) skip empty lines between comments
-function! atplib_motion#SkipComment(flag, mode, ...)
+function! atplib#motion#SkipComment(flag, mode, ...)
     let flag 	= ( a:flag =~ 'b' ? 'b' : '' ) 
     let nr	= ( a:flag =~ 'b' ? '-1' : 1 )
     call search('^\zs\s*%', flag)
@@ -1530,8 +1530,8 @@ function! atplib_motion#SkipComment(flag, mode, ...)
 endfunction
 
 " Syntax motion
-" {{{1 TexSyntaxMotion
-function! TexSyntaxMotion(forward, how, ...)
+" {{{1 atplib#motion#TexSyntaxMotion
+function! atplib#motion#TexSyntaxMotion(forward, how, ...)
 
     " If the function is used in imap.
     let in_imap	= ( a:0 >= 1 ? a:1 : 0 )
@@ -1697,7 +1697,7 @@ endfunction
 " ctrl-j motion
 " {{{1 ctrl-j motion
 " New <Ctrl-j> motion
-function! JMotion(flag)
+function! atplib#motion#JMotion(flag)
 " 	Note: pattern to match only commands which do not have any arguments:
 " 	'\(\\\w\+\>\s*{\)\@!\\\w\+\>'
     let line = getline(".")

@@ -1,4 +1,4 @@
-*bibtex_atp.txt* 			For Vim version 7	Last change: 7 November 2010
+*bibtex_atp.txt* BibTeX filetype plugin (ATP)		Last change: 7 November 2010
 
 			HELP file for BIBTEX file type plugin of 
 			    Automatic TeX Plugin

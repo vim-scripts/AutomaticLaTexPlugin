@@ -47,7 +47,7 @@ let g:atp_stmaryrd_math_commands = [
 	    \ '\Arrownot', '\Mapsfromchar', '\Mapstochar',
 	    \ '\arrownot', '\mapsfromchar',
 	    \ ]
-if atplib#SearchPackage('amssymb')
+if atplib#search#SearchPackage('amssymb')
     call extend(g:atp_stmaryrd_math_commands, [ '\oast', '\ocircle' ])
 endif
 

@@ -2,7 +2,7 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Sun Sep 11, 2011 at 06:56  +0100
+" Last Change: Tue Sep 20, 2011 at 09:53  +0100
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 "{{{ ATP_strlen
@@ -28,6 +28,7 @@ function! ATP_strlen(x)
 	    let x = substitute(x, gletter, hide, 'g')
 	endfor
     endif
+"     let g:x_1 = x
     let s:texMathList=[
         \ '|', 'angle', 'approx', 'ast', 'asymp', 'backepsilon', 'backsimeq', 'barwedge', 'because',
         \ 'between', 'bigcap', 'bigcup', 'bigodot', 'bigoplus', 'bigotimes', 'bigsqcup', 'bigtriangledown', 'bigvee',
@@ -67,50 +68,52 @@ function! ATP_strlen(x)
 	    " The pattern must end with '\>', since there are commands with
 	    " the same begining, for example \le and \left, etc...
 	endfor
-	let g:x = x
 	for symb in s:texMathDelimList
 	    let x=substitute(x, '\\[Bb]igg\=[lr]\>'.symb, hide, 'g') 
 	endfor
 	let x=substitute(x, '\\\%(left\|right\)\>', '', 'g')
     endif
+"     let g:x_2 = x
     if &enc == 'utf-8' && g:tex_conceal =~# 's'
 	let x=substitute(x, '\\\@<![_^]\%({.\)\=', '', 'g')
     endif
+"     let g:x_3 = x
     if &enc == 'utf-8' && g:tex_conceal =~# 'a'
 	for accent in [
-		    \ '\\[`''\^"~kruv]{\=[aA]}\=',
-		    \ '\\[`''\^"~kruv]{\=[aA]}\=',
-		    \ '\\[`\^.cv]{\=[cC]}\=',
-		    \ '\\[v]{\=[dD]}\=',
-		    \ '\\[`''\^"~.ckuv]{\=[eE]}\=',
-		    \ '\\[`.cu]{\=[gG]}\=',
-		    \ '\\[`''\^"~.u]{\=[iI]}\=',
-		    \ '\\[''\^"cv]{\=[lL]}\=',
-		    \ '\\[''~cv]{\=[nN]}\=',
-		    \ '\\[`''\^"~.Hku]{\=[oO]}\=',
-		    \ '\\[''cv]{\=[rR]}\=',
-		    \ '\\[''\^cv]{\=[sS]}\=',
-		    \ '\\[''cv]{\=[tT]}\=',
-		    \ '\\[`''\^"~Hru]{\=[uU]}\=',
-		    \ '\\[\^]{\=[wW]}\=',
-		    \ '\\[`''\^"~]{\=[yY]}\=',
-		    \ '\\[''.v]{\=[zZ]}\=',
-		    \ '\\[`''\^"~.cHkruv]{\=[aA]}\=',
-		    \ '\\[`''\^"~.u]{\=\\i}\=',
+		    \ '\\[`''\^"~kruv]{\=[aA]}\=\>',
+		    \ '\\[`''\^"~kruv]{\=[aA]}\=\>',
+		    \ '\\[`\^.cv]{\=[cC]}\=\>',
+		    \ '\\[v]{\=[dD]}\=\>',
+		    \ '\\[`''\^"~.ckuv]{\=[eE]}\=\>',
+		    \ '\\[`.cu]{\=[gG]}\=\>',
+		    \ '\\[`''\^"~.u]{\=[iI]}\=\>',
+		    \ '\\[''\^"cv]{\=[lL]}\=\>',
+		    \ '\\[''~cv]{\=[nN]}\=\>',
+		    \ '\\[`''\^"~.Hku]{\=[oO]}\=\>',
+		    \ '\\[''cv]{\=[rR]}\=\>',
+		    \ '\\[''\^cv]{\=[sS]}\=\>',
+		    \ '\\[''cv]{\=[tT]}\=\>',
+		    \ '\\[`''\^"~Hru]{\=[uU]}\=\>',
+		    \ '\\[\^]{\=[wW]}\=\>',
+		    \ '\\[`''\^"~]{\=[yY]}\=\>',
+		    \ '\\[''.v]{\=[zZ]}\=\>',
+		    \ '\\[`''\^"~.cHkruv]{\=[aA]}\=\>',
+		    \ '\\[`''\^"~.u]{\=\\i}\=\>',
 		    \ '\\AA\>', '\\[oO]\>', '\\AE\>', '\\ae\>', '\\OE\>', '\\ss\>' ]
 	    let x=substitute(x, accent, hide, 'g')
 	endfor
     endif
     " Add custom concealed symbols.
-    let g:x=x
+"     let g:x_4 = x
     let x=substitute(x,'.','x','g')
+"     let g:x=x
     return strlen(x)
 endfunction
 "}}}
 " Insert() function, which is used to insert text depending on mode: text/math. 
 " {{{ Insert()
 " Should be called via an imap:
-" imap <lhs> 	<Esc>:call atplib_various#Insert(text, math)<CR>a
+" imap <lhs> 	<Esc>:call atplib#various#Insert(text, math)<CR>a
 " a:text	= text to insert in text mode
 " a:math	= text to insert in math mode	
 " a:1		= how much to move cursor to the left after inserti
@@ -126,7 +129,7 @@ function! Insert(text, math, ...)
     let MathZones = copy(g:atp_MathZones)
 
     " select the correct wrapper
-    if atplib#CheckSyntaxGroups(MathZones, line("."), col("."))
+    if atplib#complete#CheckSyntaxGroups(MathZones, line("."), col("."))
 	let insert	= a:math
     else
 	let insert	= a:text
@@ -402,65 +405,65 @@ endfunction
 
 " COMMANDS AND MAPS:
 " Maps: "{{{1
-nmap 	<buffer> <silent>	<Plug>Unwrap		:call atplib_various#Unwrap()<CR>
-nmap 	<buffer> <silent> 	<Plug>Dictionary	:call atplib_various#Dictionary(expand("<cword>"))<CR>
-map 	<buffer> 		<Plug>CommentLines	:call atplib_various#Comment(1)<CR>
-map 	<buffer> 		<Plug>UnCommentLines 	:call atplib_various#Comment(0)<CR>
-vmap 	<buffer> 		<Plug>WrapSelection	:<C-U>call atplib_various#WrapSelection('')<CR>i
-vmap	<buffer> <silent> 	<Plug>WrapEnvironment	:<C-U>call atplib_various#WrapEnvironment('', 1)<CR>
-vmap 	<buffer> 	<Plug>InteligentWrapSelection	:<C-U>call atplib_various#InteligentWrapSelection('')<CR>i
-nmap 				<Plug>TexAlign		:call atplib_various#TexAlign(( g:atp_TexAlign_join_lines ? "!" : "" ))<CR>
-nnoremap 			<Plug>Replace		:call atplib_various#Replace()<CR>
-nnoremap <silent> <buffer> 	<Plug>ToggleStar	:call atplib_various#ToggleStar()<CR>
-nnoremap <silent> <buffer> 	<Plug>ToggleEnvForward	:call atplib_various#ToggleEnvironment(0, 1)<CR>
-nnoremap <silent> <buffer> 	<Plug>ToggleEnvBackward	:call atplib_various#ToggleEnvironment(0, -1)<CR>
-nnoremap <silent> <buffer> 	<Plug>ChangeEnv		:call atplib_various#ToggleEnvironment(1)<CR>
+nmap 	<buffer> <silent>	<Plug>Unwrap		:call atplib#various#Unwrap()<CR>
+nmap 	<buffer> <silent> 	<Plug>Dictionary	:call atplib#various#Dictionary(expand("<cword>"))<CR>
+map 	<buffer> 		<Plug>CommentLines	:call atplib#various#Comment(1)<CR>
+map 	<buffer> 		<Plug>UnCommentLines 	:call atplib#various#Comment(0)<CR>
+vmap 	<buffer> 		<Plug>WrapSelection	:<C-U>call atplib#various#WrapSelection('')<CR>i
+vmap	<buffer> <silent> 	<Plug>WrapEnvironment	:<C-U>call atplib#various#WrapEnvironment('', 1)<CR>
+vmap 	<buffer> 	<Plug>InteligentWrapSelection	:<C-U>call atplib#various#InteligentWrapSelection('')<CR>i
+nmap 				<Plug>TexAlign		:call atplib#various#TexAlign(( g:atp_TexAlign_join_lines ? "!" : "" ))<CR>
+nnoremap 			<Plug>Replace		:call atplib#various#Replace()<CR>
+nnoremap <silent> <buffer> 	<Plug>ToggleStar	:call atplib#various#ToggleStar()<CR>
+nnoremap <silent> <buffer> 	<Plug>ToggleEnvForward	:call atplib#various#ToggleEnvironment(0, 1)<CR>
+nnoremap <silent> <buffer> 	<Plug>ToggleEnvBackward	:call atplib#various#ToggleEnvironment(0, -1)<CR>
+nnoremap <silent> <buffer> 	<Plug>ChangeEnv		:call atplib#various#ToggleEnvironment(1)<CR>
 nnoremap <silent> <buffer> 	<Plug>TexDoc		:TexDoc 
 " Commands: "{{{1
-command! -nargs=? -bang -complete=file  Open call atplib#Open(<q-bang>, g:atp_LibraryPath, g:atp_OpenTypeDict, <q-args>)
+command! -nargs=? -bang -complete=file  Open call atplib#tools#Open(<q-bang>, g:atp_LibraryPath, g:atp_OpenTypeDict, <q-args>)
 let g:atp_open_completion = []
-command! -buffer Unwrap	:call atplib_various#Unwrap()
-command! -buffer -nargs=1 -complete=custom,atplib_various#Complete_Dictionary Dictionary :call atplib_various#Dictionary(<f-args>)
-command! -buffer -nargs=* SetUpdateTime				:call atplib_various#UpdateTime(<f-args>)
-command! -buffer -nargs=* -complete=file Wdiff			:call atplib_various#Wdiff(<f-args>)
-command! -buffer -nargs=* -complete=custom,atplib_various#WrapSelection_compl -range Wrap			:call atplib_various#WrapSelection(<f-args>)
-command! -buffer -nargs=? -complete=customlist,atplib_various#EnvCompletion -range WrapEnvironment		:call atplib_various#WrapEnvironment(<f-args>)
-command! -buffer -nargs=? -range InteligentWrapSelection	:call atplib_various#InteligentWrapSelection(<args>)
-command! -buffer -bang	TexAlign				:call atplib_various#TexAlign(<q-bang>)
-command! -buffer 	ToggleStar   				:call atplib_various#ToggleStar()<CR>
-command! -buffer -nargs=? ToggleEnv	   			:call atplib_various#ToggleEnvironment(0, <f-args>)
-command! -buffer -nargs=* -complete=customlist,atplib_various#EnvCompletion ChangeEnv				:call atplib_various#ToggleEnvironment(1, <f-args>)
-command! -buffer -nargs=* -complete=customlist,atplib_various#TeXdoc_complete TexDoc 	:call atplib_various#TexDoc(<f-args>)
-command! -buffer -bang 	Delete					:call atplib_various#Delete(<q-bang>)
-nmap <silent> <buffer>	 <Plug>Delete				:call atplib_various#Delete("")<CR>
-command! -buffer 	OpenLog					:call atplib_various#OpenLog()
-nnoremap <silent> <buffer> <Plug>OpenLog			:call atplib_various#OpenLog()<CR>
-command! -buffer 	TexLog					:call atplib_various#TexLog()
-nnoremap <silent> <buffer> <Plug>TexLog				:call atplib_various#TexLog()<CR>
-command! -buffer 	PdfFonts				:call atplib_various#PdfFonts()
-nnoremap <silent> <buffer> <Plug>PdfFonts			:call atplib_various#PdfFonts()<CR>
-command! -complete=custom,atplib_various#Complete_lpr  -buffer -nargs=* SshPrint 	:call atplib_various#SshPrint("", <f-args>)
-command! -complete=custom,atplib_various#CompleteLocal_lpr  -buffer -nargs=* Lpr	:call atplib_various#Lpr(<f-args>)
+command! -buffer Unwrap	:call atplib#various#Unwrap()
+command! -buffer -nargs=1 -complete=custom,atplib#various#Complete_Dictionary Dictionary :call atplib#various#Dictionary(<f-args>)
+command! -buffer -nargs=* SetUpdateTime				:call atplib#various#UpdateTime(<f-args>)
+command! -buffer -nargs=* -complete=file Wdiff			:call atplib#various#Wdiff(<f-args>)
+command! -buffer -nargs=* -complete=custom,atplib#various#WrapSelection_compl -range Wrap			:call atplib#various#WrapSelection(<f-args>)
+command! -buffer -nargs=? -complete=customlist,atplib#various#EnvCompletion -range WrapEnvironment		:call atplib#various#WrapEnvironment(<f-args>)
+command! -buffer -nargs=? -range InteligentWrapSelection	:call atplib#various#InteligentWrapSelection(<args>)
+command! -buffer -bang	TexAlign				:call atplib#various#TexAlign(<q-bang>)
+command! -buffer 	ToggleStar   				:call atplib#various#ToggleStar()<CR>
+command! -buffer -nargs=? ToggleEnv	   			:call atplib#various#ToggleEnvironment(0, <f-args>)
+command! -buffer -nargs=* -complete=customlist,atplib#various#EnvCompletion ChangeEnv				:call atplib#various#ToggleEnvironment(1, <f-args>)
+command! -buffer -nargs=* -complete=customlist,atplib#various#TeXdoc_complete TexDoc 	:call atplib#various#TexDoc(<f-args>)
+command! -buffer -bang 	Delete					:call atplib#various#Delete(<q-bang>)
+nmap <silent> <buffer>	 <Plug>Delete				:call atplib#various#Delete("")<CR>
+command! -buffer 	OpenLog					:call atplib#various#OpenLog()
+nnoremap <silent> <buffer> <Plug>OpenLog			:call atplib#various#OpenLog()<CR>
+command! -buffer 	TexLog					:call atplib#various#TexLog()
+nnoremap <silent> <buffer> <Plug>TexLog				:call atplib#various#TexLog()<CR>
+command! -buffer 	PdfFonts				:call atplib#various#PdfFonts()
+nnoremap <silent> <buffer> <Plug>PdfFonts			:call atplib#various#PdfFonts()<CR>
+command! -complete=custom,atplib#various#Complete_lpr  -buffer -nargs=* SshPrint 	:call atplib#various#SshPrint("", <f-args>)
+command! -complete=custom,atplib#various#CompleteLocal_lpr  -buffer -nargs=* Lpr	:call atplib#various#Lpr(<f-args>)
 nnoremap <buffer> 	<Plug>SshPrint				:SshPrint 
-command! -buffer 	Lpstat					:call atplib_various#Lpstat()
-nnoremap <silent> <buffer> <Plug>Lpstat				:call atplib_various#Lpstat()<CR>
-command! -buffer 	ListPrinters				:echo atplib_various#ListPrinters("", "", "")
+command! -buffer 	Lpstat					:call atplib#various#Lpstat()
+nnoremap <silent> <buffer> <Plug>Lpstat				:call atplib#various#Lpstat()<CR>
+command! -buffer 	ListPrinters				:echo atplib#various#ListPrinters("", "", "")
 " List Packages:
-command! -buffer 	ShowPackages				:let b:atp_PackageList = atplib#GrepPackageList() | echo join(b:atp_PackageList, "\n")
+command! -buffer 	ShowPackages				:let b:atp_PackageList = atplib#search#GrepPackageList() | echo join(b:atp_PackageList, "\n")
 if &l:cpoptions =~# 'B'
-    command! -buffer -nargs=? -complete=buffer -bang ToDo			:call ToDo('\c\<to\s*do:\>','\s*%\s*$\|\s*%\c.*\<note:\>',<q-bang>, <f-args>)
-    command! -buffer -nargs=? -complete=buffer -bang Note			:call ToDo('\c\<note:\>','\s*%\s*$\|\s*%\c.*\<to\s*do:\>', <q-bang>, <f-args>)
+    command! -buffer -nargs=? -complete=buffer -bang ToDo	:call ToDo('\c\<to\s*do:\>','\s*%\s*$\|\s*%\c.*\<note:\>',<q-bang>, <f-args>)
+    command! -buffer -nargs=? -complete=buffer -bang Note	:call ToDo('\c\<note:\>','\s*%\s*$\|\s*%\c.*\<to\s*do:\>', <q-bang>, <f-args>)
 else
-    command! -buffer -nargs=? -complete=buffer ToDo			:call ToDo('\\c\\<to\\s*do:\\>','\\s*%\\s*$\\|\\s*%\\c.*\\<note:\\>',<f-args>)
-    command! -buffer -nargs=? -complete=buffer Note			:call ToDo('\\c\\<note:\\>','\\s*%\\s*$\\|\\s*%\\c.*\\<to\\s*do:\\>',<f-args>)
+    command! -buffer -nargs=? -complete=buffer ToDo		:call ToDo('\\c\\<to\\s*do:\\>','\\s*%\\s*$\\|\\s*%\\c.*\\<note:\\>',<f-args>)
+    command! -buffer -nargs=? -complete=buffer Note		:call ToDo('\\c\\<note:\\>','\\s*%\\s*$\\|\\s*%\\c.*\\<to\\s*do:\\>',<f-args>)
 endif
-command! -buffer ReloadATP					:call atplib_various#ReloadATP("!")
-command! -bang -buffer -nargs=1 AMSRef				:call atplib_various#AMSRef(<q-bang>, <q-args>)
-command! -buffer	Preamble				:call atplib_various#Preamble()
-command! -bang		WordCount				:call atplib_various#ShowWordCount(<q-bang>)
-command! -buffer -bang	UpadteATP				:call atplib_various#UpdateATP(<q-bang>)
-command! -buffer	ATPversion				:echo atplib_various#ATPversion()
+command! -buffer ReloadATP					:call atplib#various#ReloadATP("!")
+command! -bang -buffer -nargs=1 AMSRef				:call atplib#various#AMSRef(<q-bang>, <q-args>)
+command! -buffer	Preamble				:call atplib#various#Preamble()
+command! -bang		WordCount				:call atplib#various#ShowWordCount(<q-bang>)
+command! -buffer -bang	UpadteATP				:call atplib#various#UpdateATP(<q-bang>)
+command! -buffer	ATPversion				:echo atplib#various#ATPversion()
 if has("unix") && g:atp_atpdev
-    command! -nargs=? -complete=custom,atplib_various#DebugPrintComp DebugPrint	:call atplib_various#DebugPrint(<q-args>)
+    command! -nargs=? -complete=custom,atplib#various#DebugPrintComp DebugPrint	:call atplib#various#DebugPrint(<q-args>)
 endif 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

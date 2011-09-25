@@ -174,7 +174,7 @@ def latex_progress_bar(cmd):
 
     child = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     pid   = child.pid
-    vim_remote_expr(servername, "atplib#LatexPID("+str(pid)+")")
+    vim_remote_expr(servername, "atplib#callback#LatexPID("+str(pid)+")")
     debug_file.write("latex pid "+str(pid)+"\n")
     stack = deque([])
     while True:
@@ -195,10 +195,10 @@ def latex_progress_bar(cmd):
                 stack.popleft()
             match = re.match('\[(\n?\d(\n|\d)*)({|\])',str(''.join(stack)))
             if match:
-                vim_remote_expr(servername, "atplib#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
+                vim_remote_expr(servername, "atplib#callback#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
     child.wait()
-    vim_remote_expr(servername, "atplib#ProgressBar('end',"+str(pid)+")")
-    vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_LatexPIDs\")")
+    vim_remote_expr(servername, "atplib#callback#ProgressBar('end',"+str(pid)+")")
+    vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_LatexPIDs\")")
     return child
 
 def xpdf_server_file_dict():
@@ -237,7 +237,7 @@ def vim_remote_expr(servername, expr):
 # Send <expr> to vim server,
 
 # expr must be well quoted:
-#       vim_remote_expr('GVIM', "atplib#TexReturnCode()")
+#       vim_remote_expr('GVIM', "atplib#callback#TexReturnCode()")
     cmd=[progname, '--servername', servername, '--remote-expr', expr]
     devnull=open(os.devnull, "w+")
     subprocess.Popen(cmd, stdout=devnull, stderr=debug_file).wait()
@@ -273,7 +273,7 @@ output_fp       = os.path.splitext(mainfile_fp)[0]+extension
 try:
     # Send pid to ATP:
     if verbose != "verbose":
-        vim_remote_expr(servername, "atplib#PythonPID("+str(os.getpid())+")")
+        vim_remote_expr(servername, "atplib#callback#PythonPID("+str(os.getpid())+")")
 ####################################
 #
 #       Make temporary directory,
@@ -339,16 +339,16 @@ try:
         debug_file.write("\nBIBTEX1"+str([bibcommand, bibfname])+"\n")
         os.chdir(tmpdir)
         bibtex_popen=subprocess.Popen([bibcommand, bibfname], stdout=subprocess.PIPE)
-        vim_remote_expr(servername, "atplib#BibtexPID('"+str(bibtex_popen.pid)+"')")
-        vim_remote_expr(servername, "atplib#redrawstatus()")
+        vim_remote_expr(servername, "atplib#callback#BibtexPID('"+str(bibtex_popen.pid)+"')")
+        vim_remote_expr(servername, "atplib#callback#redrawstatus()")
         bibtex_popen.wait()
-        vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_BibtexPIDs\")")
+        vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_BibtexPIDs\")")
         os.chdir(mainfile_dir)
         bibtex_returncode=bibtex_popen.returncode
         bibtex_output=re.sub('"', '\\"', bibtex_popen.stdout.read())
         debug_file.write("BIBTEX RET CODE "+str(bibtex_returncode)+"\nBIBTEX OUTPUT\n"+bibtex_output+"\n")
         if verbose != 'verbose':
-            vim_remote_expr(servername, "atplib#BibtexReturnCode('"+str(bibtex_returncode)+"',\""+str(bibtex_output)+"\")")
+            vim_remote_expr(servername, "atplib#callback#BibtexReturnCode('"+str(bibtex_returncode)+"',\""+str(bibtex_output)+"\")")
         else:
             print(bibtex_output)
         # We need run latex at least 2 times
@@ -387,17 +387,17 @@ try:
             else:
                 latex = subprocess.Popen(latex_cmd, stdout=subprocess.PIPE)
                 pid   = latex.pid
-                vim_remote_expr(servername, "atplib#LatexPID("+str(pid)+")")
+                vim_remote_expr(servername, "atplib#callback#LatexPID("+str(pid)+")")
                 debug_file.write("latex pid "+str(pid)+"\n")
                 latex.wait()
-                vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_LatexPIDs\")")
+                vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_LatexPIDs\")")
             latex_returncode=latex.returncode
             debug_file.write("latex return code "+str(latex_returncode)+"\n")
             tempdir_list = os.listdir(tmpdir)
             debug_file.write("JUST AFTER LATEX ls tmpdir "+str(tempdir_list)+"\n")
         # Return code of compilation:
         if verbose != "verbose":
-            vim_remote_expr(servername, "atplib#TexReturnCode('"+str(latex_returncode)+"')")
+            vim_remote_expr(servername, "atplib#callback#TexReturnCode('"+str(latex_returncode)+"')")
         if bibtex and i == 1:
             if bibcommand == 'biber':
                 bibfname = basename
@@ -409,16 +409,16 @@ try:
             debug_file.write("ls tmpdir "+str(tempdir_list)+"\n")
             os.chdir(tmpdir)
             bibtex_popen=subprocess.Popen([bibcommand, bibfname], stdout=subprocess.PIPE)
-            vim_remote_expr(servername, "atplib#BibtexPID('"+str(bibtex_popen.pid)+"')")
-            vim_remote_expr(servername, "atplib#redrawstatus()")
+            vim_remote_expr(servername, "atplib#callback#BibtexPID('"+str(bibtex_popen.pid)+"')")
+            vim_remote_expr(servername, "atplib#callback#redrawstatus()")
             bibtex_popen.wait()
-            vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_BibtexPIDs\")")
+            vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_BibtexPIDs\")")
             os.chdir(mainfile_dir)
             bibtex_returncode=bibtex_popen.returncode
             bibtex_output=re.sub('"', '\\"', bibtex_popen.stdout.read())
             debug_file.write("BIBTEX2 RET CODE"+str(bibtex_returncode)+"\n")
             if verbose != 'verbose':
-                vim_remote_expr(servername, "atplib#BibtexReturnCode('"+str(bibtex_returncode)+"',\""+str(bibtex_output)+"\")")
+                vim_remote_expr(servername, "atplib#callback#BibtexReturnCode('"+str(bibtex_returncode)+"',\""+str(bibtex_output)+"\")")
             else:
                 print(bibtex_output)
 # If bibtex had errors we stop, 
@@ -442,7 +442,7 @@ try:
             shutil.copy(file_cp, mainfile_dir)
 
 # Copy aux file if there were no compilation errors or if it doesn't exists in mainfile_dir.
-# copy aux file to _aux file (for atplib#GrepAuxFile)
+# copy aux file to _aux file (for atplib#tools#GrepAuxFile)
     if latex_returncode == 0 or not os.path.exists(os.path.join(mainfile_dir, basename+".aux")):
         file_cp=basename+".aux"
         if os.path.exists(file_cp):
@@ -458,8 +458,8 @@ try:
 #
 ####################################
     if verbose != "verbose":
-        debug_file.write("CALL BACK "+"atplib#CallBack('"+str(verbose)+"','"+aucommand+"','"+str(options.bibtex)+"')"+"\n")
-        vim_remote_expr(servername, "atplib#CallBack('"+str(verbose)+"','"+aucommand+"','"+str(options.bibtex)+"')")
+        debug_file.write("CALL BACK "+"atplib#callback#CallBack('"+str(verbose)+"','"+aucommand+"','"+str(options.bibtex)+"')"+"\n")
+        vim_remote_expr(servername, "atplib#callback#CallBack('"+str(verbose)+"','"+aucommand+"','"+str(options.bibtex)+"')")
         # return code of compelation is returned before (after each compilation).
 
 
@@ -504,6 +504,6 @@ try:
 except Exception:
     error_str=re.sub("'", "''",re.sub('"', '\\"', traceback.format_exc()))
     traceback.print_exc(None, debug_file)
-    vim_remote_expr(servername, "atplib#Echo(\"[ATP:] error in compile.py, catched python exception:\n"+error_str+"[ATP info:] this error message is recorded in compile.py.log under g:atp_TempDir\",'echo','ErrorMsg')")
+    vim_remote_expr(servername, "atplib#callback#Echo(\"[ATP:] error in compile.py, catched python exception:\n"+error_str+"[ATP info:] this error message is recorded in compile.py.log under g:atp_TempDir\",'echo','ErrorMsg')")
 
 sys.exit(latex_returncode)

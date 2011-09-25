@@ -18,7 +18,7 @@ let g:atp_color_command_values={
 	    \ '\%(\\\(text\|page\)?color{$\|\\colorbox{$\|\\fcolorbox\%({[^}]*}\)\?{$\)' :  'GetColors'
 	    \ }
 
-" This function will be run by TabCompletion (atplib#TabCompletion() in
+" This function will be run by TabCompletion (atplib#complete#TabCompletion() in
 " autoloac/atplib.vim) to get the color names.
 function! GetColors()
     " Colors which always are defined:
@@ -28,7 +28,7 @@ function! GetColors()
 	let colors=[]
     endif
     let colors=extend(colors,[ 'red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'black', 'gray', 'white', 'darkgray', 'lightgray', 'brown', 'lime', 'olive', 'orange', 'pink', 'purple', 'teal', 'violet' ])
-    let line=getline(atplib#SearchPackage('color'))
+    let line=getline(atplib#search#SearchPackage('color'))
     if line =~ '\\usepackage\[[^\]]*\<dvipsnames\*\?\>'
 	let add_colors = [
 		    \	'Apricot',        'Cyan',        'Mahogany',     'ProcessBlue', 'SpringGreen',

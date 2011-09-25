@@ -637,7 +637,7 @@ function! s:SelectCurrentParagraph(seltype)
 	endif
 	while true
 	    let [ bline, bcol ] = s:InnerSearchPos(1, bline, bcol, i)
-	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, bline, bcol) && strpart(getline(bline), bcol-1) !~ '^\\\[\|^\\begin\>'
+	    let true = atplib#complete#CheckSyntaxGroups(g:atp_MathZones, bline, bcol) && strpart(getline(bline), bcol-1) !~ '^\\\[\|^\\begin\>'
 	    if g:atp_debugSelectCurrentParagraph
 		call atplib#Log("SelectCurrentParagraph.log",i . ") " . string([bline, bcol]) . " pos:" . string([line("."), col(".")]) . " true: " . true)
 	    endif
@@ -703,8 +703,8 @@ function! s:SelectCurrentParagraph(seltype)
 	    call atplib#Log("SelectCurrentParagraph.log", "eline=".eline." ecol=".ecol)
 	endif
 	let line = strpart(getline(eline), ecol-1)
-	let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\s*\\\]\|^\s*\\end\>\|^\s*\\begin\>\>'
-" 	let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\s*\\\]\|^\s*\\end\>'
+	let true = atplib#complete#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\s*\\\]\|^\s*\\end\>\|^\s*\\begin\>\>'
+" 	let true = atplib#complete#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\s*\\\]\|^\s*\\end\>'
 	let i = 2
 	if g:atp_debugSelectCurrentParagraph
 	    call atplib#Log("SelectCurrentParagraph.log", " E pos:" . string([line("."), col(".")]) . " e-pos:" . string([eline, ecol]) . " true: " . true)
@@ -721,8 +721,8 @@ function! s:SelectCurrentParagraph(seltype)
 		break
 	    endif
 	    let [ eline, ecol ] = s:InnerSearchPos(0, eline, ecol, i)
-	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\s*\\\]\|^\s*\\end\>\|^\s*\\begin\>\>'
-" 	    let true = atplib#CheckSyntaxGroups(g:atp_MathZones, eline, ecol)
+	    let true = atplib#complete#CheckSyntaxGroups(g:atp_MathZones, eline, ecol) && line !~ '^\s*\\\]\|^\s*\\end\>\|^\s*\\begin\>\>'
+" 	    let true = atplib#complete#CheckSyntaxGroups(g:atp_MathZones, eline, ecol)
 	    if g:atp_debugSelectCurrentParagraph
 		call atplib#Log("SelectCurrentParagraph.log", i . ") " . string([eline, ecol]) . " pos:" . string([line("."), col(".")]) . " true: " . true)
 	    endif

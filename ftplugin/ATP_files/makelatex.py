@@ -194,7 +194,7 @@ def latex_progress_bar(cmd):
     pid   = child.pid
     pids.append(pid)
 
-    vim_remote_expr(servername, "atplib#LatexPID("+str(pid)+")")
+    vim_remote_expr(servername, "atplib#callback#LatexPID("+str(pid)+")")
     stack = deque([])
     while True:
         try:
@@ -213,10 +213,10 @@ def latex_progress_bar(cmd):
                 stack.popleft()
             match = re.match('\[(\n?\d(\n|\d)*)({|\])',''.join(stack))
             if match:
-                vim_remote_expr(servername, "atplib#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
+                vim_remote_expr(servername, "atplib#callback#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
     child.wait()
-    vim_remote_expr(servername, "atplib#ProgressBar('end',"+str(pid)+")")
-    vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_LatexPIDs\")")
+    vim_remote_expr(servername, "atplib#callback#ProgressBar('end',"+str(pid)+")")
+    vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_LatexPIDs\")")
     return child
 
 def xpdf_server_file_dict():
@@ -289,7 +289,7 @@ def copy_back(tmpdir, latex_returncode):
 
 try:
     # Send pid to ATP:
-    vim_remote_expr(servername, "atplib#PythonPID("+str(os.getpid())+")")
+    vim_remote_expr(servername, "atplib#callback#PythonPID("+str(os.getpid())+")")
     cwd = getcwd()
     os.chdir(texfile_dir)
 
@@ -332,7 +332,7 @@ try:
     latex=latex_progress_bar([cmd, '-interaction=nonstopmode', '-output-directory='+tmpdir]+tex_options+[texfile])
     run  += 1
     latex.wait()
-    vim_remote_expr(servername, "atplib#TexReturnCode('"+str(latex.returncode)+"')")
+    vim_remote_expr(servername, "atplib#callback#TexReturnCode('"+str(latex.returncode)+"')")
     os.chdir(tmpdir)
     if not output_exists:
         copy_back_output(tmpdir)
@@ -438,14 +438,14 @@ try:
                     if re.search(bibcmd, '^\s*biber'):
                         auxfile = basename
                     bibtex=subprocess.Popen([bibcmd, auxfile], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                    vim_remote_expr(servername, "atplib#BibtexPID('"+str(bibtex.pid)+"')")
-                    vim_remote_expr(servername, "atplib#redrawstatus()")
+                    vim_remote_expr(servername, "atplib#callback#BibtexPID('"+str(bibtex.pid)+"')")
+                    vim_remote_expr(servername, "atplib#callback#redrawstatus()")
                     pids.append(bibtex.pid)
                     bibtex.wait()
-                    vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_BibtexPIDs\")")
+                    vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_BibtexPIDs\")")
                     bibtex_output=re.sub('"', '\\"', bibtex.stdout.read().decode())
                     bibtex_returncode=bibtex.returncode
-                    vim_remote_expr(servername, "atplib#BibtexReturnCode('"+str(bibtex_returncode)+"',\""+str(bibtex_output)+"\")")
+                    vim_remote_expr(servername, "atplib#callback#BibtexReturnCode('"+str(bibtex_returncode)+"',\""+str(bibtex_output)+"\")")
                     os.chdir(texfile_dir)
 # MAKEINDEX
                 if makeidx:
@@ -453,14 +453,14 @@ try:
                     did_makeidx=True
                     os.chdir(tmpdir)
                     index=subprocess.Popen(['makeindex', idxfile], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                    vim_remote_expr(servername, "atplib#MakeindexPID('"+str(index.pid)+"')")
-                    vim_remote_expr(servername, "atplib#redrawstatus()")
+                    vim_remote_expr(servername, "atplib#callback#MakeindexPID('"+str(index.pid)+"')")
+                    vim_remote_expr(servername, "atplib#callback#redrawstatus()")
                     pids.append(index.pid)
                     index.wait()
-                    vim_remote_expr(servername, "atplib#PIDsRunning(\"b:atp_MakeindexPIDs\")")
+                    vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_MakeindexPIDs\")")
                     makeidx_output=re.sub('"', '\\"', index.stdout.read().decode())
                     index_returncode=index.returncode
-                    vim_remote_expr(servername, "atplib#MakeidxReturnCode('"+str(index_returncode)+"',\""+str(makeidx_output)+"\")")
+                    vim_remote_expr(servername, "atplib#callback#MakeidxReturnCode('"+str(index_returncode)+"',\""+str(makeidx_output)+"\")")
                     os.chdir(texfile_dir)
 
 # LATEX
@@ -525,16 +525,16 @@ try:
 except Exception:
     error_str=re.sub("'", "''",re.sub('"', '\\"', traceback.format_exc()))
     traceback.print_exc(None, debug_file)
-    vim_remote_expr(servername, "atplib#Echo(\"[ATP:] error in makelatex.py, catched python exception:\n"+error_str+"[ATP info:] this error message is recorded in makelatex.log under g:atp_TempDir\",'echo','ErrorMsg')")
+    vim_remote_expr(servername, "atplib#callback#Echo(\"[ATP:] error in makelatex.py, catched python exception:\n"+error_str+"[ATP info:] this error message is recorded in makelatex.log under g:atp_TempDir\",'echo','ErrorMsg')")
 
 debug_file.write("PIDS="+str(pids))
-vim_remote_expr(servername, "atplib#Echo('[ATP:] MakeLatex finished.', 'echomsg', 'Normal')")
+vim_remote_expr(servername, "atplib#callback#Echo('[ATP:] MakeLatex finished.', 'echomsg', 'Normal')")
 if did_bibtex and bibtex_returncode != 0:
-    vim_remote_expr(servername, "atplib#Echo('[MakeLatex:] bibtex returncode "+str(bibtex_returncode)+".', 'echo', 'Normal')")
+    vim_remote_expr(servername, "atplib#callback#Echo('[MakeLatex:] bibtex returncode "+str(bibtex_returncode)+".', 'echo', 'Normal')")
 if did_makeidx and index_returncode != 0:
-    vim_remote_expr(servername, "atplib#Echo('[MakeLatex:] makeidx returncode "+str(index_returncode)+".', 'echo', 'Normal')")
+    vim_remote_expr(servername, "atplib#callback#Echo('[MakeLatex:] makeidx returncode "+str(index_returncode)+".', 'echo', 'Normal')")
 print("did_bibtex="+str(did_bibtex))
 print("did_makeidx="+str(did_makeidx))
 print("verbose="+str(options.verbose))
-vim_remote_expr(servername, "atplib#CallBack('"+str(options.verbose)+"','COM','"+str(did_bibtex)+"','"+str(did_makeidx)+"')")
+vim_remote_expr(servername, "atplib#callback#CallBack('"+str(options.verbose)+"','COM','"+str(did_bibtex)+"','"+str(did_makeidx)+"')")
 sys.exit(latex.returncode)

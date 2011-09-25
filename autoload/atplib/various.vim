@@ -2,17 +2,16 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Mon Sep 12, 2011 at 10:19  +0100
+" Last Change: Sat Sep 24, 2011 at 12:55  +0100
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
 " Replace function (like :normal! r)
-function! atplib_various#Replace() "{{{
+function! atplib#various#Replace() "{{{
     " It will not work with <:> since with the default settings "normal %" is not
     " working with <:>, possibly because g:atp_bracket_dict doesn't contain this
     " pair.
     let char =  nr2char(getchar())
-    let g:char = char
     let f_char = getline(line("."))[col(".")-1]
     if f_char =~ '^[(){}\[\]]$'
 	if f_char =~ '^[({\[]$'
@@ -30,8 +29,12 @@ function! atplib_various#Replace() "{{{
 	    return
 	endif
 	let [b_line, b_col] = [line("."), col(".")]
-	exe "normal %"
+	exe "normal! %"
 	let [e_line, e_col] = [line("."), col(".")]
+	if b_line == e_line && b_col == e_col
+	    exe "normal! r".char
+	    return
+	endif
 	call cursor(b_line, b_col)
 	exe "normal! r".char
 	call cursor(e_line, e_col)
@@ -46,7 +49,7 @@ endfunction
 
 " This is the wrap selection function.
 " {{{ WrapSelection
-function! atplib_various#WrapSelection(...)
+function! atplib#various#WrapSelection(...)
 
     let wrapper		= ( a:0 >= 1 ? a:1 : '{' )
     let end_wrapper 	= ( a:0 >= 2 ? a:2 : '}' )
@@ -102,7 +105,7 @@ function! atplib_various#WrapSelection(...)
 	else
 " 	    let b:debug=1
 	    " in seprate lines
-	    let l:indent=atplib#CopyIndentation(l:begin_line)
+	    let l:indent=atplib#complete#CopyIndentation(l:begin_line)
 	    if l:bbegin_line !~ '^\s*$'
 		let l:begin_choice=1
 		call setline(l:begin[1],l:bbegin_line)
@@ -166,7 +169,7 @@ function! atplib_various#WrapSelection(...)
 	    let b:middle_l=l:middle_l
 	    let b:end_l=l:end_l
 
-	    let l:indent=atplib#CopyIndentation(l:begin_line)
+	    let l:indent=atplib#complete#CopyIndentation(l:begin_line)
 
 	    if l:begin_l =~ '\S' 
 		call setline(l:begin[1],l:begin_l)
@@ -200,12 +203,12 @@ function! atplib_various#WrapSelection(...)
 	keepjumps call setpos(".",l:begin)
     endif
 endfunction
-function! atplib_various#WrapSelection_compl(ArgLead, CmdLine, CursorPos)
+function! atplib#various#WrapSelection_compl(ArgLead, CmdLine, CursorPos)
     let variables = ["g:atp_Commands"]
     if searchpair('\\begin\s*{picture}','','\\end\s*{picture}','bnW',"", max([ 1, (line(".")-g:atp_completion_limits[2])]))
 	call add(variables, "g:atp_picture_commands")
     endif
-    if atplib#SearchPackage('hyperref')
+    if atplib#search#SearchPackage('hyperref')
 	call add(variables, "g:atp_package_hyperref_commands")
     endif
     if atplib#IsInMath()
@@ -214,25 +217,25 @@ function! atplib_various#WrapSelection_compl(ArgLead, CmdLine, CursorPos)
 	call add(variables, "g:atp_math_commands_non_expert_mode")
 	call add(variables, "g:atp_amsmath_commands")
     endif
-    if atplib#SearchPackage("fancyhdr")
+    if atplib#search#SearchPackage("fancyhdr")
 	call add(variables, "g:atp_fancyhdr_commands")
     endif
-    if atplib#SearchPackage("makeidx")
+    if atplib#search#SearchPackage("makeidx")
 	call add(variables, "g:atp_makeidx_commands")
     endif
 "     Tikz dosn't have few such commands (in libraries)
-"     if atplib#SearchPackage(#\(tikz\|pgf\)')
-" 	let in_tikz=searchpair('\\begin\s*{tikzpicture}','','\\end\s*{tikzpicture}','bnW',"", max([1,(line(".")-g:atp_completion_limits[2])])) || atplib#CheckOpened('\\tikz{','}',line("."),g:atp_completion_limits[0])
+"     if atplib#search#SearchPackage(#\(tikz\|pgf\)')
+" 	let in_tikz=searchpair('\\begin\s*{tikzpicture}','','\\end\s*{tikzpicture}','bnW',"", max([1,(line(".")-g:atp_completion_limits[2])])) || atplib#complete#CheckOpened('\\tikz{','}',line("."),g:atp_completion_limits[0])
 " 	    call add(variables, "g:atp_tikz_commands")
 " 	endif
 "     endif
-    if atplib#DocumentClass(b:atp_MainFile) == "beamer"
+    if atplib#search#DocumentClass(b:atp_MainFile) == "beamer"
 	call add(variables, "g:atp_package_beamer_commands")
     endif
-    if atplib#SearchPackage("mathtools")
+    if atplib#search#SearchPackage("mathtools")
 	call add(variables, "g:atp_package_mathtools_commands")
     endif
-    if atplib#SearchPackage("todonotes")
+    if atplib#search#SearchPackage("todonotes")
 	call add(variables, "g:atp_TodoNotes_commands")
     endif
 "     if !exists("b:atp_LocalCommands")
@@ -257,7 +260,7 @@ endfunction
 " a:math_wrapper	= [ 'begin_math_wrapper', 'end_math_wrapper' ] 
 " if end_(math\|text)_wrapper is not given '}' is used (but neverthe less both
 " arguments must be lists).
-function! atplib_various#InteligentWrapSelection(text_wrapper, math_wrapper, ...)
+function! atplib#various#InteligentWrapSelection(text_wrapper, math_wrapper, ...)
 
     let cursor_pos	= ( a:0 >= 1 ? a:2 : 'end' )
     let new_line	= ( a:0 >= 2 ? a:3 : 0 )
@@ -276,13 +279,13 @@ function! atplib_various#InteligentWrapSelection(text_wrapper, math_wrapper, ...
 	return
     endif
 
-    call atplib_various#WrapSelection(begin_wrapper, end_wrapper, cursor_pos, new_line) 
+    call atplib#various#WrapSelection(begin_wrapper, end_wrapper, cursor_pos, new_line) 
 endfunction
 "}}}
 " WrapEnvironment "{{{
 " a:1 = 0 (or not present) called by a command
 " a:1 = 1 called by a key map (ask for env)
-function! atplib_various#WrapEnvironment(...)
+function! atplib#various#WrapEnvironment(...)
     let env_name = ( a:0 == 0 ? '' : a:1 )
     let map = ( a:0 <= 1 ? 0 : a:2 ) 
     if !map
@@ -314,11 +317,11 @@ function! atplib_various#WrapEnvironment(...)
 	else
 	    let env_name=env
 	endif
-	call atplib_various#WrapSelection('\begin{'.env_name.'}','\end{'.env_name.'}','0', '1')
+	call atplib#various#WrapSelection('\begin{'.env_name.'}','\end{'.env_name.'}','0', '1')
     endif
 endfunction "}}}
 " Unwrap {{{
-function! atplib_various#Unwrap()
+function! atplib#various#Unwrap()
     
     " If the character under the cursor is not a bracket return:
     if getline(".")[col(".")-1] !~ '\%(\[\|\]\|{\|}\|(\|)\)'
@@ -365,7 +368,7 @@ function! atplib_various#Unwrap()
 endfunction "}}}
 
 " SetUpdateTimes
-function! atplib_various#UpdateTime(...)
+function! atplib#various#UpdateTime(...)
     if a:0 == 0
 	" Show settings
 	echo "'updatetime' is set to:\nb:atp_updatetime_normal=".b:atp_updatetime_normal."\nb:atp_updatetime_insert=".b:atp_updatetime_insert
@@ -380,7 +383,7 @@ endfunction
 " Inteligent Aling
 " TexAlign {{{
 " This needs Aling vim plugin.
-function! atplib_various#TexAlign(bang)
+function! atplib#various#TexAlign(bang)
     let save_pos = getpos(".")
     let synstack = map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
 
@@ -541,7 +544,7 @@ endif
 "{{{ ToggleStar
 " this function adds a star to the current environment
 " todo: to doc.
-function! atplib_various#ToggleStar()
+function! atplib#various#ToggleStar()
 
     " limit:
     let from_line=max([1,line(".")-g:atp_completion_limits[2]])
@@ -549,7 +552,7 @@ function! atplib_various#ToggleStar()
 
     " omit pattern
     let no_star=copy(g:atp_no_star_environments)
-    let cond = atplib#SearchPackage('mdwlist')
+    let cond = atplib#search#SearchPackage('mdwlist')
     if cond || exists("b:atp_LocalEnvironments") && index(b:atp_LocalEnvironments, 'enumerate*') != -1
 	call remove(no_star, index(no_star, 'enumerate'))
     endif
@@ -604,7 +607,7 @@ endfunction
 " the argument specifies the speed (if -1 then toggle back)
 " default is '1' or the new environment name
 try
-function! atplib_various#ToggleEnvironment(ask, ...)
+function! atplib#various#ToggleEnvironment(ask, ...)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     " l:add might be a number or an environment name
@@ -750,7 +753,7 @@ endtry "}}}
 
 " This is completion for input() inside ToggleEnvironment which uses
 " b:atp_LocalEnvironments variable.
-function! atplib_various#EnvCompletion(ArgLead, CmdLine, CursorPos) "{{{
+function! atplib#various#EnvCompletion(ArgLead, CmdLine, CursorPos) "{{{
     if !exists("b:atp_LocalEnvironments")
 	call LocalCommands(1)
     endif
@@ -758,13 +761,13 @@ function! atplib_various#EnvCompletion(ArgLead, CmdLine, CursorPos) "{{{
     let env_list = copy(b:atp_LocalEnvironments)
     " add standard and ams environment if not present.
     let env_list=atplib#Extend(env_list, g:atp_Environments)
-    if atplib#SearchPackage('amsmath')
+    if atplib#search#SearchPackage('amsmath')
 	let env_list=atplib#Extend(env_list, g:atp_amsmath_environments)
     endif
     call filter(env_list, "v:val =~# '^' .a:ArgLead")
     return env_list
 endfunction "}}}
-function! atplib_various#EnvCompletionWithoutStarEnvs(ArgLead, CmdLine, CursorPos) "{{{
+function! atplib#various#EnvCompletionWithoutStarEnvs(ArgLead, CmdLine, CursorPos) "{{{
     if !exists("b:atp_LocalEnvironments")
 	call LocalCommands(1)
     endif
@@ -772,13 +775,13 @@ function! atplib_various#EnvCompletionWithoutStarEnvs(ArgLead, CmdLine, CursorPo
     let env_list = copy(b:atp_LocalEnvironments)
     " add standard and ams environment if not present.
     let env_list=atplib#Extend(env_list, g:atp_Environments)
-    if atplib#SearchPackage('amsmath')
+    if atplib#search#SearchPackage('amsmath')
 	let env_list=atplib#Extend(env_list, g:atp_amsmath_environments)
     endif
     call filter(env_list, "v:val =~# '^' .a:ArgLead")
     return env_list
 endfunction "}}}
-function! atplib_various#F_compl(ArgLead, CmdLine, CursorPos) "{{{
+function! atplib#various#F_compl(ArgLead, CmdLine, CursorPos) "{{{
     " This is like EnvCompletion but without stared environments and with: chapter, section, ...
     if !exists("b:atp_LocalEnvironments")
 	call LocalCommands(1)
@@ -788,7 +791,7 @@ function! atplib_various#F_compl(ArgLead, CmdLine, CursorPos) "{{{
     " add standard and ams environment if not present.
     let env_list=atplib#Extend(env_list, g:atp_Environments)
     let env_list=atplib#Extend(env_list, ['part', 'chapter', 'section', 'subsection', 'subsubsection'])
-    if atplib#SearchPackage('amsmath') || atplib#SearchPackage('amsthm')
+    if atplib#search#SearchPackage('amsmath') || atplib#search#SearchPackage('amsthm')
 	let env_list=atplib#Extend(env_list, g:atp_amsmath_environments)
     endif
     call filter(env_list+['math'], "v:val !~ '\*$'")
@@ -799,7 +802,7 @@ endfunction "}}}
 " This is non interactive !, use :!texdoc for interactive command.
 " But it simulates it with a nice command completion (Ctrl-D, <Tab>)
 " based on alias files for texdoc.
-function! atplib_various#TexDoc(...)
+function! atplib#various#TexDoc(...)
     let texdoc_arg	= ""
     for i in range(1,a:0)
 	let texdoc_arg.=" " . a:{i}
@@ -817,7 +820,7 @@ function! atplib_various#TexDoc(...)
     echo system("texdoc " . texdoc_arg . " 2>/dev/null")
 endfunction
 
-function! atplib_various#TeXdoc_complete(ArgLead, CmdLine, CursorPos)
+function! atplib#various#TeXdoc_complete(ArgLead, CmdLine, CursorPos)
     let texdoc_alias_files=split(system("texdoc -f"), '\n')
     call filter(texdoc_alias_files, "v:val =~ 'active'")
     call map(texdoc_alias_files, "substitute(substitute(v:val, '^[^/]*\\ze', '', ''), '\/\/\\+', '/', 'g')")
@@ -825,9 +828,11 @@ function! atplib_various#TeXdoc_complete(ArgLead, CmdLine, CursorPos)
     for file in texdoc_alias_files
 	call extend(aliases, readfile(file))
     endfor
+    let local_list = map(split(globpath(g:texmf.'/doc', '*'), "\n"), 'fnamemodify(v:val, ":t:r")')
 
     call filter(aliases, "v:val =~ 'alias'")
     call filter(map(aliases, "matchstr(v:val, '^\\s*alias\\s*\\zs\\S*\\ze\\s*=')"),"v:val !~ '^\\s*$'")
+    call extend(aliases, local_list)
     if exists("g:atp_LatexPackages")
 	call extend(aliases, g:atp_LatexPackages)
     endif
@@ -839,7 +844,7 @@ endfunction
 " This function deletes tex specific output files (exept the pdf/dvi file, unless
 " bang is used - then also delets the current output file)
 " {{{ Delete
-function! atplib_various#Delete(delete_output)
+function! atplib#various#Delete(delete_output)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     call atplib#outdir()
@@ -877,8 +882,8 @@ endfunction
 "}}}
 
 "{{{ OpenLog, TexLog, TexLog Buffer Options, PdfFonts, YesNoCompletion
-"{{{ atplib_various#Search function for Log Buffer
-function! atplib_various#Search(pattern, flag, ...)
+"{{{ atplib#various#Search function for Log Buffer
+function! atplib#various#Search(pattern, flag, ...)
     echo ""
     let center 	= ( a:0 >= 1 ? a:1 : 1 )
     let @/	= a:pattern
@@ -914,7 +919,7 @@ function! atplib_various#Search(pattern, flag, ...)
 "     endif
 endfunction
 
-function! atplib_various#Searchpair(start, middle, end, flag, ...)
+function! atplib#various#Searchpair(start, middle, end, flag, ...)
     let center 	= ( a:0 >= 1 ? a:1 : 1 )
     if getline(".")[col(".")-1] == ')' 
 	let flag= a:flag.'b'
@@ -927,7 +932,7 @@ function! atplib_various#Searchpair(start, middle, end, flag, ...)
 "     endif
 endfunction
 "}}}
-function! atplib_various#OpenLog()
+function! atplib#various#OpenLog()
     if filereadable(&l:errorfile)
 
 	let projectVarDict = SaveProjectVariables()
@@ -939,25 +944,25 @@ function! atplib_various#OpenLog()
 	call RestoreProjectVariables(projectVarDict)
 
 	map <buffer> q :bd!<CR>
-	nnoremap <silent> <buffer> ]m :call atplib_various#Search('\CWarning\\|^!', 'W')<CR>
-	nnoremap <silent> <buffer> [m :call atplib_various#Search('\CWarning\\|^!', 'bW')<CR>
-	nnoremap <silent> <buffer> ]w :call atplib_various#Search('\CWarning', 'W')<CR>
-	nnoremap <silent> <buffer> [w :call atplib_various#Search('\CWarning', 'bW')<CR>
-	nnoremap <silent> <buffer> ]c :call atplib_various#Search('\CLaTeX Warning: Citation', 'W')<CR>
-	nnoremap <silent> <buffer> [c :call atplib_various#Search('\CLaTeX Warning: Citation', 'bW')<CR>
-	nnoremap <silent> <buffer> ]r :call atplib_various#Search('\CLaTeX Warning: Reference', 'W')<CR>
-	nnoremap <silent> <buffer> [r :call atplib_various#Search('\CLaTeX Warning: Reference', 'bW')<CR>
-	nnoremap <silent> <buffer> ]e :call atplib_various#Search('^[^!].*\n\zs!', 'W')<CR>
-	nnoremap <silent> <buffer> [e :call atplib_various#Search('^[^!].*\n\zs!', 'bW')<CR>
-	nnoremap <silent> <buffer> ]f :call atplib_various#Search('\CFont \%(Info\\|Warning\)', 'W')<CR>
-	nnoremap <silent> <buffer> [f :call atplib_various#Search('\CFont \%(Info\\|Warning\)', 'bW')<CR>
-	nnoremap <silent> <buffer> ]p :call atplib_various#Search('\CPackage', 'W')<CR>
-	nnoremap <silent> <buffer> [p :call atplib_various#Search('\CPackage', 'bW')<CR>
-	nnoremap <silent> <buffer> ]P :call atplib_variousatplib_various#
-	nnoremap <silent> <buffer> [P :call atplib_various#Search('\[\_d\+\zs', 'bW')<CR>
-	nnoremap <silent> <buffer> ]i :call atplib_various#Search('\CInfo', 'W')<CR>
-	nnoremap <silent> <buffer> [i :call atplib_various#Search('\CInfo', 'bW')<CR>
-	nnoremap <silent> <buffer> % :call atplib_various#Searchpair('(', '', ')', 'W')<CR>
+	nnoremap <silent> <buffer> ]m :call atplib#various#Search('\CWarning\\|^!', 'W')<CR>
+	nnoremap <silent> <buffer> [m :call atplib#various#Search('\CWarning\\|^!', 'bW')<CR>
+	nnoremap <silent> <buffer> ]w :call atplib#various#Search('\CWarning', 'W')<CR>
+	nnoremap <silent> <buffer> [w :call atplib#various#Search('\CWarning', 'bW')<CR>
+	nnoremap <silent> <buffer> ]c :call atplib#various#Search('\CLaTeX Warning: Citation', 'W')<CR>
+	nnoremap <silent> <buffer> [c :call atplib#various#Search('\CLaTeX Warning: Citation', 'bW')<CR>
+	nnoremap <silent> <buffer> ]r :call atplib#various#Search('\CLaTeX Warning: Reference', 'W')<CR>
+	nnoremap <silent> <buffer> [r :call atplib#various#Search('\CLaTeX Warning: Reference', 'bW')<CR>
+	nnoremap <silent> <buffer> ]e :call atplib#various#Search('^[^!].*\n\zs!', 'W')<CR>
+	nnoremap <silent> <buffer> [e :call atplib#various#Search('^[^!].*\n\zs!', 'bW')<CR>
+	nnoremap <silent> <buffer> ]f :call atplib#various#Search('\CFont \%(Info\\|Warning\)', 'W')<CR>
+	nnoremap <silent> <buffer> [f :call atplib#various#Search('\CFont \%(Info\\|Warning\)', 'bW')<CR>
+	nnoremap <silent> <buffer> ]p :call atplib#various#Search('\CPackage', 'W')<CR>
+	nnoremap <silent> <buffer> [p :call atplib#various#Search('\CPackage', 'bW')<CR>
+	nnoremap <silent> <buffer> ]P :call atplib#various#Search('\[\_d\+\zs', 'W')<CR>
+	nnoremap <silent> <buffer> [P :call atplib#various#Search('\[\_d\+\zs', 'bW')<CR>
+	nnoremap <silent> <buffer> ]i :call atplib#various#Search('\CInfo', 'W')<CR>
+	nnoremap <silent> <buffer> [i :call atplib#various#Search('\CInfo', 'bW')<CR>
+	nnoremap <silent> <buffer> % :call atplib#various#Searchpair('(', '', ')', 'W')<CR>
 
 "	This prevents vim from reloading with 'autoread' option: the buffer is
 "	modified outside and inside vim.
@@ -967,25 +972,25 @@ function! atplib_various#OpenLog()
 	catch /E486:/ 
 	endtry
 		   
-	command! -buffer -bang SyncTex		:call atplib_various#SyncTex(<q-bang>)
+	command! -buffer -bang SyncTex		:call atplib#various#SyncTex(<q-bang>)
 	map <buffer> <Enter>			:SyncTex<CR>
 " 	nnoremap <buffer> <LocalLeader>g	:SyncTex<CR>	
 	augroup ATP_SyncLog
-	    au CursorMoved *.log :call atplib_various#SyncTex("", 1)
+	    au CursorMoved *.log :call atplib#various#SyncTex("", 1)
 	augroup END
 
-	command! -buffer SyncXpdf 	:call atplib_various#SyncXpdfLog(0)
-	command! -buffer Xpdf 		:call atplib_various#SyncXpdfLog(0)
+	command! -buffer SyncXpdf 	:call atplib#various#SyncXpdfLog(0)
+	command! -buffer Xpdf 		:call atplib#various#SyncXpdfLog(0)
 	map <buffer> <silent> <F3> 	:SyncXpdf<CR>
 	augroup ATP_SyncXpdfLog
-	    au CursorMoved *.log :call atplib_various#SyncXpdfLog(1)
+	    au CursorMoved *.log :call atplib#various#SyncXpdfLog(1)
 	augroup END
 
     else
 	echo "No log file"
     endif
 endfunction
-function! atplib_various#SyncXpdfLog(...)
+function! atplib#various#SyncXpdfLog(...)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     " check the value of g:atp_SyncXpdfLog
@@ -1003,7 +1008,7 @@ function! atplib_various#SyncXpdfLog(...)
 	call system(cmd)
     endif
 endfunction
-function! atplib_various#SyncTex(bang,...)
+function! atplib#various#SyncTex(bang,...)
 
     let cwd = getcwd()
     exe "lcd " . fnameescape(b:atp_ProjectDir)
@@ -1210,7 +1215,7 @@ if &buftype == 'quickfix'
 	setlocal modifiable
 	setlocal autoread
 endif	
-function! atplib_various#TexLog(options)
+function! atplib#various#TexLog(options)
     if executable("texloganalyser")
        let s:command="texloganalyser " . a:options . " " . &l:errorfile
        echo system(s:command)
@@ -1219,7 +1224,7 @@ function! atplib_various#TexLog(options)
     endif
 endfunction
 
-function! atplib_various#PdfFonts()
+function! atplib#various#PdfFonts()
     if b:atp_OutDir !~ "\/$"
 	b:atp_OutDir=b:atp_OutDir . "/"
     endif
@@ -1232,7 +1237,7 @@ function! atplib_various#PdfFonts()
     endif
 endfunction	
 
-" function! atplib_various#setprintexpr()
+" function! atplib#various#setprintexpr()
 "     if b:atp_TexCompiler == "pdftex" || b:atp_TexCompiler == "pdflatex"
 " 	let s:ext = ".pdf"
 "     else
@@ -1242,7 +1247,7 @@ endfunction
 " endfunction
 " call s:setprintexpr()
 
-function! atplib_various#YesNoCompletion(A,P,L)
+function! atplib#various#YesNoCompletion(A,P,L)
     return ['yes','no']
 endfunction
 "}}}
@@ -1253,7 +1258,7 @@ endfunction
 " a:1   = file to print		(if not given printing the output file)
 " a:3	= printing options	(give printing optinos or 'default' then use
 " 				the variable g:printingoptions)
- function! atplib_various#SshPrint(...)
+ function! atplib#various#SshPrint(...)
 
     call atplib#outdir()
 
@@ -1308,7 +1313,7 @@ endfunction
     endif
 endfunction
 
-function! atplib_various#Lpr(...)
+function! atplib#various#Lpr(...)
     call atplib#outdir()
 
     " set the extension of the file to print
@@ -1347,7 +1352,7 @@ function! atplib_various#Lpr(...)
     call system(cmd)
 endfunction
 " The command only prints the output file.
-fun! atplib_various#Lpstat()
+fun! atplib#various#Lpstat()
     if exists("g:apt_ssh") 
 	let server=strpart(g:atp_ssh,stridx(g:atp_ssh,"@")+1)
     else
@@ -1361,7 +1366,7 @@ fun! atplib_various#Lpstat()
 endfunction
 
 " This function is used for completetion of the command SshPrint
-function! atplib_various#ListPrinters(A,L,P)
+function! atplib#various#ListPrinters(A,L,P)
     if exists("g:atp_ssh") && g:atp_ssh !~ '@localhost' && g:atp_ssh != ""
 	let cmd="ssh -q " . g:atp_ssh . " lpstat -a | awk '{print $1}'"
     else
@@ -1370,16 +1375,16 @@ function! atplib_various#ListPrinters(A,L,P)
     return system(cmd)
 endfunction
 
-function! atplib_various#ListLocalPrinters(A,L,P)
+function! atplib#various#ListLocalPrinters(A,L,P)
     let cmd="lpstat -a | awk '{print $1}'"
     return system(cmd)
 endfunction
 
 " custom style completion
-function! atplib_various#Complete_lpr(ArgLead, CmdLine, CPos)
+function! atplib#various#Complete_lpr(ArgLead, CmdLine, CPos)
     if a:CmdLine =~ '-[Pd]\s\+\w*$'
 	" complete printers
-	return atplib_various#ListPrinters(a:ArgLead, "", "")
+	return atplib#various#ListPrinters(a:ArgLead, "", "")
     elseif a:CmdLine =~ '-o\s\+[^=]*$'
 	" complete option
 	return join(g:atp_CupsOptions, "\n")
@@ -1404,10 +1409,10 @@ function! atplib_various#Complete_lpr(ArgLead, CmdLine, CPos)
     return ""
 endfunction
 
-function! atplib_various#CompleteLocal_lpr(ArgLead, CmdLine, CPos)
+function! atplib#various#CompleteLocal_lpr(ArgLead, CmdLine, CPos)
     if a:CmdLine =~ '-[Pd]\s\+\w*$'
 	" complete printers
-	return atplib_various#ListLocalPrinters(a:ArgLead, "", "")
+	return atplib#various#ListLocalPrinters(a:ArgLead, "", "")
     elseif a:CmdLine =~ '-o\s\+[^=]*$'
 	" complete option
 	return join(g:atp_CupsOptions, "\n")
@@ -1446,7 +1451,7 @@ endfunction
 " ReloadATP() - reload all the tex_atp functions and delete all autoload functions from
 " autoload/atplib.vim
 try
-function! atplib_various#ReloadATP(bang)
+function! atplib#various#ReloadATP(bang)
     " First source the option file
     let common_file	= split(globpath(&rtp, 'ftplugin/ATP_files/common.vim'), "\n")[0]
     let options_file	= split(globpath(&rtp, 'ftplugin/ATP_files/options.vim'), "\n")[0]
@@ -1456,18 +1461,16 @@ function! atplib_various#ReloadATP(bang)
 	execute "source " . options_file 
 
 	" Then source atprc file
-	if filereadable(split(globpath($HOME, '/.atprc.vim', 1), "\n")[0]) && has("unix")
-
-		" Note: in $HOME/.atprc file the user can set all the local buffer
-		" variables without using autocommands
-		let path = split(globpath($HOME, '/.atprc.vim', 1), "\n")[0]
-		execute 'source ' . fnameescape(path)
-
+	let path = get(split(globpath($HOME, '/.atprc.vim', 1), "\n"), 0, "")
+	if filereadable(path) && has("unix")
+	    " Note: in $HOME/.atprc file the user can set all the local buffer
+	    " variables without using autocommands
+	    execute 'source ' . fnameescape(path)
 	else
-		let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), "\n"), 0, "")
-		if path != ""
-			execute 'source ' . fnameescape(path)
-		endif
+	    let path	= get(split(globpath(&rtp, "**/ftplugin/ATP_files/atprc.vim"), "\n"), 0, "")
+	    if path != ""
+		execute 'source ' . fnameescape(path)
+	    endif
 	endif
     else
 	" Reload all functions and variables, 
@@ -1499,7 +1502,7 @@ endtry
 
 " This functions prints preamble 
 " {{{ Preambule
-function! atplib_various#Preamble()
+function! atplib#various#Preamble()
     let loclist = getloclist(0)
     let winview = winsaveview()
     exe '1lvimgrep /^[^%]*\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
@@ -1525,7 +1528,7 @@ endfunction
 " {{{ AMSGet
 
 try
-function! atplib_various#GetAMSRef(what, bibfile)
+function! atplib#various#GetAMSRef(what, bibfile)
     let what = substitute(a:what, '\s\+', ' ',	'g') 
     let what = substitute(what, '%',	'%25',	'g')
     let what = substitute(what, ',',	'%2C',	'g') 
@@ -1653,9 +1656,9 @@ endfunction
 catch /E127/
 endtry
 
-function! atplib_various#AMSRef(bang, what)
+function! atplib#various#AMSRef(bang, what)
     if !exists("b:AllBibFiles")
-	call atplib_common#FindInputFiles(b:atp_MainFile)
+	call atplib#search#FindInputFiles(b:atp_MainFile)
     endif
     if len(b:AllBibFiles) > 1
 	let bibfile = inputlist(extend("Which bib file to use?", b:AllBibFiles))
@@ -1665,7 +1668,7 @@ function! atplib_various#AMSRef(bang, what)
 	let bibfile = "nobibfile"
     endif
 
-    let return=atplib_various#GetAMSRef(a:what, bibfile)
+    let return=atplib#various#GetAMSRef(a:what, bibfile)
     if a:bang == "" && bibfile != "nobibfile" && return != [0] && return != ['NoUniqueMatch']
 	silent! w
 	silent! bd
@@ -1685,7 +1688,7 @@ endfunction
 
 " Dictionary (of J.Trzeciak IMPAN)
 "{{{ Dictionary
-function! atplib_various#Dictionary(word)
+function! atplib#various#Dictionary(word)
     redraw
     let URLquery_path 	= split(globpath(&rtp, 'ftplugin/ATP_files/url_query.py'), "\n")[0]
     let url		= "http://www.impan.pl/cgi-bin/dictsearch?q=".a:word
@@ -1742,7 +1745,7 @@ function! atplib_various#Dictionary(word)
     let g:wget_file 	= wget_file
 endfunction
 
-function! atplib_various#Complete_Dictionary(ArgLead, CmdLine, CursorPos)
+function! atplib#various#Complete_Dictionary(ArgLead, CmdLine, CursorPos)
     let word_list = [ 'across', 'afford', 'alternative', 'appear',
 \ 'ask', 'abbreviate', 'act', 'afield', 'alternatively', 'appearance', 'aspect',
 \ 'abbreviation', 'action', 'aforementioned', 'although', 'applicability', 'assert', 'able',
@@ -1991,7 +1994,7 @@ function! atplib_various#Complete_Dictionary(ArgLead, CmdLine, CursorPos)
     return join(word_list, "\n")
 endfunction
 
-function! atplib_various#MakeListOfWords()
+function! atplib#various#MakeListOfWords()
     echo "[ATP:] This takes a while ..."
     let word_list 	= []
     let loclist		= getloclist(0)
@@ -2023,7 +2026,7 @@ endfunction
 
 " Count Words
 " {{{ WordCount() ShowWordCount()
-function! atplib_various#WordCount(bang)
+function! atplib#various#WordCount(bang)
 
     call atplib#write()
 
@@ -2043,9 +2046,9 @@ function! atplib_various#WordCount(bang)
     return wc_sum
 endfunction
 
-function! atplib_various#ShowWordCount(bang)
+function! atplib#various#ShowWordCount(bang)
 
-    let wc = atplib_various#WordCount(a:bang)
+    let wc = atplib#various#WordCount(a:bang)
     let c = 0
     if a:bang == "!"
 	echo g:atp_WordCount[b:atp_MainFile] . "\t" . b:atp_MainFile
@@ -2066,7 +2069,7 @@ endfunction "}}}
 " Wdiff
 " {{{
 " Needs wdiff program.
-function! atplib_various#Wdiff(new_file, old_file)
+function! atplib#various#Wdiff(new_file, old_file)
 
     if !executable("wdiff")
 	echohl WarningMsg
@@ -2174,9 +2177,9 @@ function! atplib_various#Wdiff(new_file, old_file)
     normal "zt"
     map ]s /\\{[=+]\_.*[+=]\\}<CR>
     map [s ?\\{[=+]\_.*[+=]\\}<CR>
-    command! -buffer NiceDiff :call atplib_various#NiceDiff()
+    command! -buffer NiceDiff :call atplib#various#NiceDiff()
 endfunction
-function! atplib_various#NiceDiff()
+function! atplib#various#NiceDiff()
     let saved_pos=getpos(".")
     keepjumps %s/\\{=\(\%(=\\}\@!\|=\\\@!}\|=\@!\\}\|[^}=\\]\|=\\\@!\|\\}\@!\|=\@<!\\\|\\}\@!\|\\\@<!}\)*\)=\\}/\\textcolor{red}{\1}/g
     keepjumps %s/\\{+\(\%(+\\}\@!\|+\\\@!}\|+\@!\\}\|[^}+\\]\|+\\\@!\|\\}\@!\|+\@<!\\\|\\}\@!\|\\\@<!}\)*\)+\\}/\\textcolor{blue}{\1}/g
@@ -2189,7 +2192,7 @@ endfunction "}}}
 
 " ATPUpdate
 try "{{{ UpdateATP
-function! atplib_various#UpdateATP(bang)
+function! atplib#various#UpdateATP(bang)
     "DONE: add bang -> get stable/unstable latest release.
     "DONE: check if the current version is newer than the available one
     "		if not do not download and install (this saves time).
@@ -2256,9 +2259,9 @@ function! atplib_various#UpdateATP(bang)
 	    endif
 	endfor
 	if a:bang == "!"
-	    let sorted_list = sort(keys(dict), "atplib_various#CompareStamps")
+	    let sorted_list = sort(keys(dict), "atplib#various#CompareStamps")
 	else
-	    let sorted_list = sort(keys(dict), "atplib_various#CompareVersions")
+	    let sorted_list = sort(keys(dict), "atplib#various#CompareVersions")
 	endif
 	if g:atp_debugUpdateATP
 	    silent echo "dict=".string(dict)
@@ -2312,9 +2315,9 @@ function! atplib_various#UpdateATP(bang)
 	" if o_stamp is >= than n_stamp  ==> return
 	let l:return = 1
 	if a:bang == "!"
-	    let compare = atplib_various#CompareStamps(new_stamp, old_stamp)
+	    let compare = atplib#various#CompareStamps(new_stamp, old_stamp)
 	else
-	    let compare = atplib_various#CompareVersions(new_stamp, old_stamp) 
+	    let compare = atplib#various#CompareVersions(new_stamp, old_stamp) 
 	endif
 	if a:bang == "!"
 	    if  compare == 1 || compare == 0
@@ -2349,9 +2352,9 @@ function! atplib_various#UpdateATP(bang)
 	endif
 
 	redraw
-	call  atplib_various#GetLatestSnapshot(a:bang, dict[sorted_list[0]])
+	call  atplib#various#GetLatestSnapshot(a:bang, dict[sorted_list[0]])
 	echo "[ATP:] installing ..." 
-	call atplib_various#Tar(s:atp_tempname, dir)
+	call atplib#various#Tar(s:atp_tempname, dir)
 	call delete(s:atp_tempname)
 
 	exe "helptags " . finddir("doc", dir)
@@ -2370,7 +2373,7 @@ function! atplib_various#UpdateATP(bang)
 endfunction 
 catch E127:
 endtry
-function! atplib_various#GetLatestSnapshot(bang,url)
+function! atplib#various#GetLatestSnapshot(bang,url)
     " Get latest snapshot/version
     let url = a:url
 
@@ -2396,7 +2399,7 @@ function! atplib_various#GetLatestSnapshot(bang,url)
     endif
     call system(cmd)
 endfunction
-function! atplib_various#CompareStamps(new, old)
+function! atplib#various#CompareStamps(new, old)
     " newer stamp is smaller 
     " vim sort() function puts smaller items first.
     " new > old => -1
@@ -2406,7 +2409,7 @@ function! atplib_various#CompareStamps(new, old)
     let old=substitute(a:old, '\.', '', 'g')
     return ( new == old ? 0 : new > old ? -1 : 1 )
 endfunction
-function! atplib_various#CompareVersions(new, old)
+function! atplib#various#CompareVersions(new, old)
     " newer stamp is smaller 
     " vim sort() function puts smaller items first.
     " new > old => -1
@@ -2427,7 +2430,7 @@ function! atplib_various#CompareVersions(new, old)
 
 "     return ( new == old ? 0 : new > old ? -1 : 1 )
 endfunction
-function! atplib_various#GetTimeStamp(file)
+function! atplib#various#GetTimeStamp(file)
 python << END
 import vim, tarfile, re
 
@@ -2453,7 +2456,7 @@ except AttributeError:
 vim.command("let g:atp_stamp='"+stamp+"'")
 END
 endfunction
-function! atplib_various#Tar(file,path)
+function! atplib#various#Tar(file,path)
 python << END
 import tarfile, vim
 file_n=vim.eval("a:file")
@@ -2473,7 +2476,7 @@ endfunction
 " file_o.extractall(path)
 " END
 " endfunction
-function! atplib_various#ATPversion()
+function! atplib#various#ATPversion()
     " This function is used in opitons.vim
     let saved_loclist = getloclist(0)
     try
@@ -2498,7 +2501,7 @@ endfunction
 "}}}
 
 " Comment Lines
-function! atplib_various#Comment(arg) "{{{
+function! atplib#various#Comment(arg) "{{{
 
     " remember the column of the cursor
     let col=col('.')
@@ -2517,7 +2520,7 @@ endfunction "}}}
 " DebugPrint
 " cat files under g:atp_TempDir (with ATP debug info)
 " {{{
-function! atplib_various#DebugPrint(file)
+function! atplib#various#DebugPrint(file)
     if a:file == ""
 	return
     endif
@@ -2530,7 +2533,7 @@ function! atplib_various#DebugPrint(file)
     endif
     exe "lcd ".escape(dir, ' ')
 endfunction
-function! atplib_various#DebugPrintComp(A,C,L)
+function! atplib#various#DebugPrintComp(A,C,L)
     let list = split(globpath(g:atp_TempDir, "*"), "\n")
     let dir = getcwd()
     exe "lcd ".g:atp_TempDir

@@ -2,7 +2,7 @@
 " Description: 	This file contains all the options defined on startup of ATP
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Mon Sep 12, 2011 at 10:10  +0100
+" Last Change: Sat Sep 24, 2011 at 23:38:38  +0100
 
 " NOTE: you can add your local settings to ~/.atprc.vim or
 " ftplugin/ATP_files/atprc.vim file
@@ -39,8 +39,11 @@ endif
 
 " ATP Debug Variables: (to debug atp behaviour)
 " {{{ debug variables
+if !exists("g:atp_debugCheckClosed")
+    let g:atp_debugCheckClosed = 0
+endif
 if !exists("g:atp_debugMapFile")
-    " debug of atplib#CheckClosed_math function
+    " debug of atplib#complete#CheckClosed_math function
     " (issues errormsg when synstack() failed).
     let g:atp_debugCheckClosed_math	= 0
 endif
@@ -119,7 +122,7 @@ if !exists("g:atp_debugST")
     let g:atp_debugST 		= 0
 endif
 if !exists("g:atp_debugCloseLastEnvironment")
-    " Debug atplib#CloseLastEnvironment()
+    " Debug atplib#complete#CloseLastEnvironment()
     let g:atp_debugCloseLastEnvironment	= 0
 endif
 if !exists("g:atp_debugMainScript")
@@ -135,20 +138,20 @@ if !exists("g:atp_debugProject")
     let g:atp_debugProject 	= 0
 endif
 if !exists("g:atp_debugChekBracket")
-    " atplib#CheckBracket()
+    " atplib#complete#CheckBracket()
     let g:atp_debugCheckBracket 		= 0
 endif
 if !exists("g:atp_debugClostLastBracket")
-    " atplib#CloseLastBracket()
+    " atplib#complete#CloseLastBracket()
     let g:atp_debugCloseLastBracket 		= 0
 endif
 if !exists("g:atp_debugTabCompletion")
-    " atplib#TabCompletion()
+    " atplib#complete#TabCompletion()
     let g:atp_debugTabCompletion 		= 0
 endif
 if !exists("g:atp_debugBS")
-    " atplib#searchbib()
-    " atplib#showresults()
+    " atplib#bibsearch#searchbib()
+    " atplib#bibsearch#showresults()
     " BibSearch() in ATP_files/search.vim
     " log file: /tmp/ATP_log 
     let g:atp_debugBS 		= 0
@@ -188,6 +191,7 @@ endif
 
 " Make CTRL-A, CTRL-X work over alphabetic characters:
 setl nrformats=alpha
+setl backupskip+=*.project.vim
 
 " The vim option 'iskeyword' is adjust just after g:atp_separator and
 " g:atp_no_separator variables are defined.
@@ -303,7 +307,7 @@ let s:optionsDict= {
 		\ "atp_OutDir" 			: substitute(fnameescape(fnamemodify(resolve(expand("%:p")),":h")) . "/", '\\\s', ' ' , 'g'),
 		\ "atp_TempDir"			: substitute(b:atp_OutDir . "/.tmp", '\/\/', '\/', 'g'),
 		\ "atp_TexCompiler" 		: s:TexCompiler,
-		\ "atp_BibCompiler"		: ( getline(atplib#SearchPackage('biblatex')) =~ '\<backend\s*=\s*biber\>' ? 'biber' : "bibtex" ),
+		\ "atp_BibCompiler"		: ( getline(atplib#search#SearchPackage('biblatex')) =~ '\<backend\s*=\s*biber\>' ? 'biber' : "bibtex" ),
 		\ "atp_auruns"			: "1",
 		\ "atp_TruncateStatusSection"	: "40", 
 		\ "atp_LastBibPattern"		: "",
@@ -323,7 +327,7 @@ let s:optionsDict= {
 		\ "atp_MakeidxOutput"		: "",
 		\ "atp_ProgressBar"		: {}}
 
-" 		\ "atp_BibCompiler"		: ( getline(atplib#SearchPackage('biblatex')) =~ '\<backend\s*=\s*biber\>' ? 'biber' : "bibtex" ),
+" 		\ "atp_BibCompiler"		: ( getline(atplib#search#SearchPackage('biblatex')) =~ '\<backend\s*=\s*biber\>' ? 'biber' : "bibtex" ),
 " 		\ "atp_TexCompilerVariable"	: "",
 " 			\.";TEXINPUT="
 " 			\.($TEXINPUTS == "" ? b:atp_OutDir : b:atp_OutDir.":".$TEXINPUTS)
@@ -388,6 +392,15 @@ lockvar b:atp_autex_wait
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_folding")
+    let g:atp_folding = 0
+endif
+if !exists("g:atp_devversion")
+    let g:atp_devversion = 0
+endif
+if !exists("g:atp_completion_tikz_expertmode")
+    let g:atp_completion_tikz_expertmode = 1
+endif
 if !exists("g:atp_signs")
     let g:atp_signs = 1
 endif
@@ -894,12 +907,12 @@ if !exists("g:atp_babel")
 endif
 " if !exists("g:atp_closebracket_checkenv")
     " This is a list of environment names. They will be checked by
-    " atplib#CloseLastBracket() function (if they are opened/closed:
+    " atplib#complete#CloseLastBracket() function (if they are opened/closed:
     " ( \begin{array} ... <Tab>       will then close first \begin{array} and then ')'
     try
 	let g:atp_closebracket_checkenv	= [ 'array' ]
 	" Changing this variable is not yet supported *see ToDo: in
-	" atplib#CloseLastBracket() (autoload/atplib.vim)
+	" atplib#complete#CloseLastBracket() (autoload/atplib.vim)
 	lockvar g:atp_closebracket_checkenv
     catch /E741:/
     endtry
@@ -986,6 +999,9 @@ endif
 if !exists("g:atp_imap_leader_1")
     let g:atp_imap_leader_1	= "#"
 endif
+if !exists("g:atp_infty_leader")
+    let g:atp_infty_leader = (g:atp_imap_leader_1 == '#' ? '`' : g:atp_imap_leader_1 ) 
+endif
 if !exists("g:atp_imap_leader_2")
     let g:atp_imap_leader_2= "##"
 endif
@@ -995,13 +1011,11 @@ endif
 if !exists("g:atp_imap_leader_4")
     let g:atp_imap_leader_4= "["
 endif
-" todo: to doc.
 if !exists("g:atp_completion_font_encodings")
     let g:atp_completion_font_encodings	= ['T1', 'T2', 'T3', 'T5', 'OT1', 'OT2', 'OT4', 'UT1']
 endif
-" todo: to doc.
 if !exists("g:atp_font_encoding")
-    let s:line=atplib#SearchPackage('fontenc')
+    let s:line=atplib#search#SearchPackage('fontenc')
     if s:line != 0
 	" the last enconding is the default one for fontenc, this we will
 	" use
@@ -1052,9 +1066,9 @@ if !exists("g:atp_env_maps_old")
     let g:atp_env_maps_old	= 0
 endif
 if !exists("g:atp_amsmath")
-    let g:atp_amsmath=atplib#SearchPackage('ams')
+    let g:atp_amsmath=atplib#search#SearchPackage('ams')
 endif
-if atplib#SearchPackage('amsmath') || g:atp_amsmath != 0 || atplib#DocumentClass(b:atp_MainFile) =~ '^ams'
+if atplib#search#SearchPackage('amsmath') || g:atp_amsmath != 0 || atplib#search#DocumentClass(b:atp_MainFile) =~ '^ams'
     exe "setlocal complete+=k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/ams_dictionary")
 endif
 if !exists("g:atp_no_math_command_completion")
@@ -1117,7 +1131,7 @@ if !exists("t:atp_labels_window_width")
     endif
 endif
 if !exists("g:atp_completion_limits")
-    let g:atp_completion_limits	= [40,60,80,120,20]
+    let g:atp_completion_limits	= [40,60,80,120,30]
 endif
 if !exists("g:atp_long_environments")
     let g:atp_long_environments	= []
@@ -1141,7 +1155,6 @@ endif
 if !exists("g:atp_completion_truncate")
     let g:atp_completion_truncate	= 4
 endif
-" ToDo: to doc.
 " add server call back (then automatically reads errorfiles)
 if !exists("g:atp_statusNotif")
     if has('clientserver') && !empty(v:servername) 
@@ -1162,11 +1175,6 @@ if !exists("g:atp_callback")
 	let g:atp_callback	= 0
     endif
 endif
-" ToDo: to doc.
-" I switched this off.
-" if !exists("g:atp_complete_math_env_first")
-"     let g:atp_complete_math_env_first=0
-" endif
 " }}}
 
 " Project Settings:
@@ -1800,13 +1808,13 @@ augroup END
 " {{{ ATP_ToggleTab
 " switches on/off the <Tab> map for TabCompletion
 function! ATP_ToggleTab(...)
-    if mapcheck('<F7>','i') !~ 'atplib#TabCompletion'
-	let on	= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) : mapcheck('<Tab>','i') !~# 'atplib#TabCompletion' )
+    if mapcheck('<F7>','i') !~ 'atplib#complete#TabCompletion'
+	let on	= ( a:0 >=1 ? ( a:1 == 'on'  ? 1 : 0 ) : mapcheck('<Tab>','i') !~# 'atplib#complete#TabCompletion' )
 	if !on 
 	    iunmap <buffer> <Tab>
 	    echo '[ATP:] <Tab> map OFF'
 	else
-	    imap <buffer> <Tab> <C-R>=atplib#TabCompletion(1)<CR>
+	    imap <buffer> <Tab> <C-R>=atplib#complete#TabCompletion(1)<CR>
 	    echo '[ATP:] <Tab> map ON'
 	endif
     endif
@@ -1857,8 +1865,8 @@ function! ATP_ToggleIMaps(insert_enter, bang,...)
 "     endif
 endfunction
 " }}}
-" }}}
 endif
+" }}}
  
 " Some Commands And Maps:
 "{{{
@@ -1941,7 +1949,7 @@ if !exists("g:atp_sort_completion_list")
 endif
 
 " Note: to remove completions: 'inline_math' or 'displayed_math' one has to
-" remove also: 'close_environments' /the function atplib#CloseLastEnvironment can
+" remove also: 'close_environments' /the function atplib#complete#CloseLastEnvironment can
 " close math instead of an environment/.
 
 " ToDo: make list of complition commands from the input files.
@@ -2243,7 +2251,7 @@ endif
 		    \ 'solid', 'phase', 'loosly', 'dashed', 'dotted' , 'densly', 
 		    \ 'latex', 'diamond', 'double', 'smooth', 'cycle', 'coordinates', 'distance',
 		    \ 'even', 'odd', 'rule', 'pattern', 
-		    \ 'stars', 'shading', 'ball', 'axis', 'middle', 'outer', 'transorm',
+		    \ 'stars', 'shading', 'ball', 'axis', 'middle', 'outer', 'transorm', 'fill',
 		    \ 'fading', 'horizontal', 'vertical', 'light', 'dark', 'button', 'postaction', 'out',
 		    \ 'circular', 'shadow', 'scope', 'borders', 'spreading', 'false', 'position', 'midway',
 		    \ 'paint', 'from', 'to', 'solution=', 'global', 'delta' ]
@@ -2408,10 +2416,10 @@ endfunction
 " {{{ Autocommands:
 
 if !s:did_options
-
+    
     augroup ATP_UpdateToCLine
 	au!
-	au CursorHold *.tex nested :call atplib_motion#UpdateToCLine()
+	au CursorHold *.tex nested :call atplib#motion#UpdateToCLine()
     augroup END
 
     function! RedrawToC()
@@ -2539,7 +2547,7 @@ endfunction
     if (exists("g:atp_StatusLine") && g:atp_StatusLine == '1') || !exists("g:atp_StatusLine")
 	augroup ATP_Status
 	    au!
-	    au BufEnter,BufWinEnter,TabEnter 	*.tex 	call ATPStatus()
+	    au BufEnter,BufWinEnter,TabEnter 	*.tex 	call ATPStatus(0,1)
 	augroup END
     endif
 
@@ -2647,7 +2655,7 @@ function! SetMathVimOptions(...)
 
 	" check if the current (and 3 steps back) cursor position is in math
 	" or use a:1
-" 	let check	= a:0 == 0 ? atplib#CheckSyntaxGroups(MathZones) + atplib#CheckSyntaxGroups(MathZones, line("."), max([ 1, col(".")-3])) : a:1
+" 	let check	= a:0 == 0 ? atplib#complete#CheckSyntaxGroups(MathZones) + atplib#complete#CheckSyntaxGroups(MathZones, line("."), max([ 1, col(".")-3])) : a:1
 	let check	= a:0 == 0 ? atplib#IsInMath() : a:1
 
 	if check
@@ -2687,14 +2695,14 @@ function! <SID>ATP_SyntaxGroups()
 	return
     endif
     " add texMathZoneT syntax group for tikzpicture environment:
-    if atplib#SearchPackage('tikz') || atplib#SearchPackage('pgfplots')
+    if atplib#search#SearchPackage('tikz') || atplib#search#SearchPackage('pgfplots')
 	try
 	    call TexNewMathZone("T", "tikzpicture", 0)
 	catch /E117:/
 	endtry
     endif
     " add texMathZoneALG syntax group for algorithmic environment:
-    if atplib#SearchPackage('algorithmic')
+    if atplib#search#SearchPackage('algorithmic')
 	try
 	    call TexNewMathZone("ALG", "algorithmic", 0)
 	catch /E117:/ 
@@ -2988,15 +2996,15 @@ if g:atp_reload_functions == 0
 endif
 
 " Set vim path option: 
-" It would be better to include project dir and all its subdirectories. But
-" this might not work for all people ... . I can note how to set this, also
-" .project.vim file can be used.
-exe "setl path+=".escape(g:texmf, ' ')."/tex,".escape(b:atp_OutDir, ' ')
+exe "setlocal path+=".substitute(g:texmf."/tex,".join(filter(split(globpath(b:atp_ProjectDir, '**'), "\n"), "isdirectory(expand(v:val))"), ","), ' ', '\\\\\\\ ', 'g')
 
 " Some Commands:
 " {{{
-command! -buffer HelpMathIMaps 	:echo atplib_helpfunctions#HelpMathIMaps()
-command! -buffer HelpEnvIMaps 	:echo atplib_helpfunctions#HelpEnvIMaps()
-command! -buffer HelpVMaps 	:echo atplib_helpfunctions#HelpVMaps()
+command! -buffer HelpMathIMaps 	:echo atplib#helpfunctions#HelpMathIMaps()
+command! -buffer HelpEnvIMaps 	:echo atplib#helpfunctions#HelpEnvIMaps()
+command! -buffer HelpVMaps 	:echo atplib#helpfunctions#HelpVMaps()
 " }}}
+
+" Help:
+silent call atplib#helpfunctions#HelpEnvIMaps()
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

@@ -5,7 +5,7 @@
 " Last Change:
 
 " {{{1 Help Math IMAPS
-function! atplib_helpfunctions#HelpMathIMaps()
+function! atplib#helpfunctions#HelpMathIMaps()
 
     if exists("g:no_plugin_maps") || exists("g:no_atp_maps")
 	echomsg "[ATP:] ATP maps are turned off"
@@ -43,10 +43,10 @@ function! atplib_helpfunctions#HelpMathIMaps()
 	\."\n ".g:atp_imap_leader_3."m \\(\\)              ".g:atp_imap_leader_3."M \\[\\]           <maplocalleader> has value g:atp_imap_leader_3" 
     return g:help_mathimaps
 endfunction
-silent call atplib_helpfunctions#HelpMathIMaps()
+silent call atplib#helpfunctions#HelpMathIMaps()
 
 " {{{1 Help Environment IMAPS
-function! atplib_helpfunctions#HelpEnvIMaps()
+function! atplib#helpfunctions#HelpEnvIMaps()
 
     if exists("g:no_plugin_maps") || exists("g:no_atp_maps")
 	echomsg "[ATP:] ATP maps are turned off"
@@ -76,10 +76,9 @@ function! atplib_helpfunctions#HelpEnvIMaps()
 		\."\n ".(g:atp_imap_frame != "" ? g:atp_imap_leader_3.g:atp_imap_frame." frame                " : "").(g:atp_imap_letter != "" ?  g:atp_imap_leader_3.g:atp_imap_letter." letter" : "" )
     return g:help_envimaps
 endfunction
-silent call atplib_helpfunctions#HelpEnvIMaps()
 
 " {{{1 Help VMaps
-function! atplib_helpfunctions#HelpVMaps() 
+function! atplib#helpfunctions#HelpVMaps() 
 
     if exists("g:no_plugin_maps") || exists("g:no_atp_maps")
 	echomsg "[ATP:] ATP maps are turned off"
@@ -136,17 +135,17 @@ function! atplib_helpfunctions#HelpVMaps()
     return g:help_vmaps 
 endfunction
 " {{{1 Help IMaps
-" function! atplib_helpfunctions#HelpIMaps()
-" let tc_imap = maparg("<Tab>  ", 'i') =~# 'atplib#TabCompletion' ? '<Tab>' : 
-" 	    \ maparg("<F7>   ", 'i') =~# 'atplib#TabCompletion' ? '<F7>' : ""
+" function! atplib#helpfunctions#HelpIMaps()
+" let tc_imap = maparg("<Tab>  ", 'i') =~# 'atplib#complete#TabCompletion' ? '<Tab>' : 
+" 	    \ maparg("<F7>   ", 'i') =~# 'atplib#complete#TabCompletion' ? '<F7>' : ""
 " let netc_imap = tc_imap == "<Tab>" ? "<S-Tab>" : tc_imap == "<F7>" ? "<S-F7>" : ""
 "     let g:help_imaps = ''
 " 	    \."\n <maplocalleader> has value g:atp_vmap_text_font_leader"
 " 	    \."\n ".tc_imap."            "."Completion (expert mode)"
 " 	    \."\n ".netc_imap."            "."Completion (non-expert mode)"
 " endfunction
-" silent call atplib_helpfunctions#HelpIMaps()
-" command! -buffer HelpIMaps :echo atplib_helpfunctions#HelpIMaps()
+" silent call atplib#helpfunctions#HelpIMaps()
+" command! -buffer HelpIMaps :echo atplib#helpfunctions#HelpIMaps()
 " }}}1
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

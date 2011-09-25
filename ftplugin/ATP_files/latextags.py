@@ -41,7 +41,7 @@ def vim_remote_expr(servername, expr):
 # Send <expr> to vim server,
 
 # expr must be well quoted:
-#       vim_remote_expr('GVIM', "atplib#TexReturnCode()")
+#       vim_remote_expr('GVIM', "atplib#callback#TexReturnCode()")
     cmd=[options.progname, '--servername', servername, '--remote-expr', expr]
     subprocess.Popen(cmd)
 
@@ -220,6 +220,6 @@ tag_file.close()
 
 # Communicate to Vim:
 if options.servername != "":
-    vim_remote_expr(options.servername, "atplib#Echo(\"[LatexTags:] tags file written.\",'echo','')")
+    vim_remote_expr(options.servername, "atplib#callback#Echo(\"[LatexTags:] tags file written.\",'echo','')")
 if ioerror:
-    vim_remote_expr(options.servername, "atplib#Echo(\"[LatexTags:] no aux file.\",'echomsg', 'WarningMsg')")
+    vim_remote_expr(options.servername, "atplib#callback#Echo(\"[LatexTags:] no aux file.\",'echomsg', 'WarningMsg')")

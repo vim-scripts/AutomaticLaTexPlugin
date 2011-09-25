@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Sat Aug 27 12:00  2011 W
+" Last Change: Thu Sep 22, 2011 at 08:48  +0100
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 
 " if exists("b:did_ftplugin") | finish | endif
@@ -21,7 +21,6 @@ setlocal statusline=%{ATP_TOC_StatusLine()}
 function! Getlinenr(...)
     let line 	=  a:0 >= 1 ? a:1 : line('.')
     let labels 	=  a:0 >= 2 ? a:2 : expand("%") == "__Labels__" ? 1 : 0
-    let g:line	= line 
 
     if labels == 0
 	return get(b:atp_Toc, line, ["", ""])[1]
@@ -73,7 +72,7 @@ function! s:gotowinnr()
     let labels_window	= ( expand("%") == "__Labels__" ? 1 : 0 )
 
     " This is the line number to which we will go.
-    let l:nr=atplib#getlinenr(line("."), labels_window)
+    let l:nr=atplib#tools#getlinenr(line("."), labels_window)
     " t:atp_bufname
     " t:atp_winnr		were set by TOC(), they should also be set by
     " 			autocommands
@@ -121,11 +120,10 @@ function! GotoLine(closebuffer) "{{{
     let tocbufnr= bufnr("")
 
     " line to go to
-    let nr	= atplib#getlinenr(line("."), labels_window)
+    let nr	= atplib#tools#getlinenr(line("."), labels_window)
 
     " window to go to
     let gotowinnr= s:gotowinnr()
-    let g:gotowinnr=gotowinnr
 
     if gotowinnr != -1
  	exe gotowinnr . " wincmd w"
@@ -164,15 +162,14 @@ function! <SID>yank(arg) " {{{
     if !labels_window
 	if exists("t:atp_labels") || get(t:atp_labels, file_name, "nofile") != "nofile"	 
 	    " set t:atp_labels variable
-	    let g:file=s:file()
-	    call atplib#generatelabels(getbufvar(s:file(), 'atp_MainFile'), 0)
+	    call atplib#tools#generatelabels(getbufvar(s:file(), 'atp_MainFile'), 0)
 	endif
 
-	let line	= atplib#getlinenr(line("."), labels_window)
+	let line	= atplib#tools#getlinenr(line("."), labels_window)
 	let choice	= get(get(filter(get(deepcopy(t:atp_labels), file_name, []), 'v:val[0] ==  line'), 0, []), 1 , 'nokey')
     else
 	if exists("t:atp_labels") || get(t:atp_labels, file_name, "nofile") != "nofile"
-	    let line_nr		= atplib#getlinenr(line("."), labels_window)
+	    let line_nr		= atplib#tools#getlinenr(line("."), labels_window)
 	    let choice_list	= filter(get(deepcopy(t:atp_labels), file_name), "v:val[0] == line_nr" )
 	    " There should be just one element in the choice list
 	    " unless there are two labels in the same line.
@@ -306,9 +303,7 @@ function! ShowLabelContext()
     let buf_name	= s:file()
     let buf_nr		= bufnr("^" . buf_name . "$")
     let win_nr		= bufwinnr(buf_name)
-    let g:buf_name	= buf_name
-    let g:win_nr	= win_nr
-    let line		= atplib#getlinenr(line("."), labels_window)
+    let line		= atplib#tools#getlinenr(line("."), labels_window)
     if !exists("t:atp_labels")
 	let t:atp_labels=UpdateLabels(buf_name)
     endif
@@ -328,7 +323,7 @@ function! EchoLine()
 
     " If we are not on a toc/label line 
     " return
-    if !atplib#getlinenr(line("."))
+    if !atplib#tools#getlinenr(line("."))
 	return 0
     endif
 
@@ -345,9 +340,8 @@ function! EchoLine()
     if !exists("t:atp_labels")
 	let t:atp_labels[buf_name]	= UpdateLabels(buf_name)[buf_name]
     endif
-    let line		= atplib#getlinenr(line("."), labels_window)
+    let line		= atplib#tools#getlinenr(line("."), labels_window)
     let sec_line	= join(getbufline(buf_name,line))
-    	let g:sec_line	= sec_line
     let sec_type	= ""
 
     if sec_line =~ '\\subparagraph[^\*]'
@@ -442,7 +436,7 @@ if expand("%") == "__ToC__"
 	" to operato on
 	let file_name	= s:file()
 
-	let begin_line	= atplib#getlinenr()
+	let begin_line	= atplib#tools#getlinenr()
 	let section_nr	= s:getsectionnr()
 	let toc		= deepcopy(t:atp_toc[file_name]) 
 	let type	= toc[begin_line][0]
@@ -546,7 +540,7 @@ if expand("%") == "__ToC__"
 	" to operato on
 	let file_name	= s:file()
 
-	let begin_line	= atplib#getlinenr()
+	let begin_line	= atplib#tools#getlinenr()
 	let section_nr	= s:getsectionnr()
 	let toc		= deepcopy(t:atp_toc[file_name]) 
 	let type	= toc[begin_line][0]
@@ -659,7 +653,6 @@ if expand("%") == "__ToC__"
     function! s:PasteSection(type, ...)
 
 	let stack_number = a:0 >= 1 ? a:1-1 : 0 
-	let g:stack_number = stack_number
 
 	if !len(t:atp_SectionStack)
 	    sleep 750m
@@ -671,14 +664,13 @@ if expand("%") == "__ToC__"
 
     "     if a:after 
 	if a:type ==# "P" || line(".") == 1
-	    let begin_line	= atplib#getlinenr((line(".")))
+	    let begin_line	= atplib#tools#getlinenr((line(".")))
 	else
-	    let begin_line	= atplib#getlinenr((line(".")+1))
+	    let begin_line	= atplib#tools#getlinenr((line(".")+1))
 	    if begin_line	== ""
 		let begin_line	= "last_line"
 	    endif
 	endif
-	let g:begin_line = begin_line
 
 	" Window to go to
 	let gotowinnr	= s:gotowinnr()
@@ -779,7 +771,7 @@ endfunction " }}}1
 " {{{1
 
 augroup ATP_CursorLine
-    au CursorMoved,CursorMovedI __ToC__ call atplib#CursorLine()
+    au CursorMoved,CursorMovedI __ToC__ call atplib#tools#CursorLine()
 augroup END " }}}1
 
 " Fold section
@@ -807,8 +799,6 @@ function! FoldClose(...) " {{{1
     let atp_toc	= deepcopy(t:atp_toc)
     let f_line = (a:0 >= 1 ? a:1 : line(".") )
     let l_line = (a:0 >= 2 ? a:2 : line(".") )
-    let g:f_line = f_line
-    let g:l_line = l_line
     " This function is not working well with sections put into chapters. Then
     " chapters are not folded with greater fold level.
     for line in range(f_line, l_line)
@@ -817,11 +807,8 @@ function! FoldClose(...) " {{{1
 	    return
 	endif
 	let type = <SID>Section2Nr(get(get(deepcopy(atp_toc), s:file(), {}), beg_line, [''])[0])
-	let g:type = type
 	let type_dict = get(deepcopy(atp_toc), s:file(), {})
-	let g:type_dict_0 = deepcopy(type_dict)
 	call filter(map(type_dict, "<SID>Section2Nr(v:val[0])"), "str2nr(v:val) <= str2nr(type)")
-	let g:type_dict_1 = deepcopy(type_dict)
 	let line_list = sort(filter(keys(type_dict), "str2nr(v:val) >= str2nr(beg_line)"), "<SID>CompareNumbers")
 	let end_line = Getlinenr(line(".")+1)
 	" Goto file

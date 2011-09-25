@@ -14,7 +14,7 @@ let g:atp_pacakge_cite_commands = [
 	    \ '\citemidpenalty', '\citeprepenalty', '\CiteMoveChars',
 	    \ ]
 
-if atplib#SearchPackage('cite')
+if atplib#search#SearchPackage('cite')
     syn region texRefZone         matchgroup=texStatement start="\\citen\([tp]\*\=\)\={"   keepend end="}\|%stopzone\>"  contains=texComment,texDelimiter
     syn region texRefZone         matchgroup=texStatement start="\\citenum\([tp]\*\=\)\={"   keepend end="}\|%stopzone\>"  contains=texComment,texDelimiter
     syn region texRefZone         matchgroup=texStatement start="\\citeonline\([tp]\*\=\)\={"   keepend end="}\|%stopzone\>"  contains=texComment,texDelimiter

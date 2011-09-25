@@ -4,12 +4,11 @@
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
 
-
 " Internal Variables
 " {{{
 " This limits how many consecutive runs there can be maximally.
 " Note: compile.py script has hardcoded the same value.
-let atplib_compiler#runlimit		= 9
+let atplib#compiler#runlimit		= 9
 
 try
     compiler tex
@@ -19,14 +18,14 @@ endtry
 
 " This is the function to view output. It calls compiler if the output is a not
 " readable file.
-" {{{ ViewOutput
+" {{{ atplib#compiler#ViewOutput
 " a:1 == "RevSearch" 	if run from RevSearch() function and the output file doesn't
 " exsists call compiler and RevSearch().
-function! atplib_compiler#ViewOutput(...)
+function! atplib#compiler#ViewOutput(bang,...)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
-    let fwd_search	= ( a:0 == 1 && a:1 =~? 'sync' ? 1 : 0 )
+    let fwd_search	= ( a:bang == "!" ? 1 : 0 )
 
     call atplib#outdir()
 
@@ -74,42 +73,42 @@ function! atplib_compiler#ViewOutput(...)
 	echomsg "[ATP:] output file do not exists. Calling " . b:atp_TexCompiler
 	if fwd_search
 	    if g:atp_Compiler == 'python'
-		call atplib_compiler#PythonCompiler( 0, 2, 1, 'silent' , "AU" , atp_MainFile, "")
+		call atplib#compiler#PythonCompiler( 0, 2, 1, 'silent' , "AU" , atp_MainFile, "")
 	    else
-		call atplib_compiler#Compiler( 0, 2, 1, 'silent' , "AU" , atp_MainFile, "")
+		call atplib#compiler#Compiler( 0, 2, 1, 'silent' , "AU" , atp_MainFile, "")
 	    endif
 	else
 	    if g:atp_Compiler == 'python'
-		call atplib_compiler#PythonCompiler( 0, 1, 1, 'silent' , "AU" , atp_MainFile, "")
+		call atplib#compiler#PythonCompiler( 0, 1, 1, 'silent' , "AU" , atp_MainFile, "")
 	    else
-		call atplib_compiler#Compiler( 0, 1, 1, 'silent' , "AU" , atp_MainFile, "")
+		call atplib#compiler#Compiler( 0, 1, 1, 'silent' , "AU" , atp_MainFile, "")
 	    endif
 	endif
     endif
-"     if fwd_search
-" 	let msg = "[SyncTex:] waiting for the viewer "
-" 	let i=1
-" 	while !atplib_compiler#IsRunning(viewer, outfile) && i<10
-" 	    echo msg
-" 	    sleep 100m
-" 	    redraw
-" 	    let msg.="."
-" 	    let i+=1
-" 	endwhile
-" 	if i<15
-" 	    call atplib_compiler#SyncTex(0)
-" 	else
-" 	    echohl WarningMsg
-" 	    echomsg "[SyncTex:] viewer is not running"
-" 	    echohl Normal
-" 	endif
-"     endif
+    if fwd_search
+	let msg = "[SyncTex:] waiting for the viewer "
+	let i=1
+	while !atplib#compiler#IsRunning(viewer, outfile) && i<10
+	    echo msg
+	    sleep 100m
+	    redraw
+	    let msg.="."
+	    let i+=1
+	endwhile
+	if i<15
+	    call atplib#compiler#SyncTex("", 0)
+	else
+	    echohl WarningMsg
+	    echomsg "[SyncTex:] viewer is not running"
+	    echohl Normal
+	endif
+    endif
 endfunction
 "}}}
 
-" Forward Search
-" {{{ GetSyncData
-function! atplib_compiler#GetSyncData(line, col)
+" Forward Search:
+" {{{ atplib#compiler#GetSyncData
+function! atplib#compiler#GetSyncData(line, col)
 
      	if !filereadable(fnamemodify(atplib#FullPath(b:atp_MainFile), ":r").'.synctex.gz') 
 	    redraw!
@@ -172,7 +171,7 @@ function! atplib_compiler#GetSyncData(line, col)
 	let [ b:atp_synctex_pagenr, b:atp_synctex_ycoord, b:atp_synctex_xcoord ] = [ page_nr, y_coord, x_coord ]
 	return [ page_nr, y_coord, x_coord ]
 endfunction
-function! atplib_compiler#SyncShow( page_nr, y_coord)
+function! atplib#compiler#SyncShow( page_nr, y_coord)
     if a:y_coord < 300
 	let height="top"
     elseif a:y_coord < 500
@@ -189,8 +188,8 @@ function! atplib_compiler#SyncShow( page_nr, y_coord)
 	echohl Normal
     endif
 endfunction "}}}
-" {{{ SyncTex
-function! atplib_compiler#SyncTex(bang, mouse, ...)
+" {{{ atplib#compiler#SyncTex
+function! atplib#compiler#SyncTex(bang, mouse, ...)
     if g:atp_debugSyncTex
 	exe "redir! > ".g:atp_TempDir."/SyncTex.log"
     endif
@@ -207,7 +206,7 @@ function! atplib_compiler#SyncTex(bang, mouse, ...)
 	" Here should be a test if viewer is running, this can be made with python.
 	" this is way viewer starts not well when using :SyncTex command while Viewer
 	" is not running.
-"        call atplib_compiler#ViewOutput("sync")
+"        call atplib#compiler#ViewOutput("sync")
 "        if g:atp_debugSyncTex
 " 	   silent echo "ViewOutput sync"
 " 	   redir END
@@ -227,7 +226,7 @@ function! atplib_compiler#SyncTex(bang, mouse, ...)
     endif
 
     if IsRunning_check
-	if (!atplib_compiler#IsRunning(b:atp_Viewer, atplib#FullPath(outfile), b:atp_XpdfServer) && output_check) 
+	if (!atplib#compiler#IsRunning(b:atp_Viewer, atplib#FullPath(outfile), b:atp_XpdfServer) && output_check) 
 	    "Note: I should test here if Xpdf is not holding a file (it might be not
 	    "visible through cmdline arguments -> this happens if file is opened in
 	    "another server. We can use: xpdf -remote b:atp_XpdfServer "run('echo %f')"
@@ -239,42 +238,32 @@ function! atplib_compiler#SyncTex(bang, mouse, ...)
     endif
 
     if b:atp_Viewer == "xpdf"
-	let [ page_nr, y_coord, x_coord ] = atplib_compiler#GetSyncData(line, col)
+	let [ page_nr, y_coord, x_coord ] = atplib#compiler#GetSyncData(line, col)
 	let sync_cmd_page = "xpdf -remote " . shellescape(b:atp_XpdfServer) . " -exec 'gotoPage(".page_nr.")'"
 	let sync_cmd_y 	= "xpdf -remote " . shellescape(b:atp_XpdfServer) . " -exec 'scrollDown(".y_coord.")'"
         let sync_cmd_x 	= "xpdf -remote " . shellescape(b:atp_XpdfServer) . " -exec 'scrollRight(".x_coord.")'"
-	"There is a bug in xpdf. We need to sleep between sending commands to it.:
+	" There is a bug in xpdf. We need to sleep between sending commands:
 	let sleep    = ( g:atp_XpdfSleepTime ? 'sleep '.string(g:atp_XpdfSleepTime).'s;' : '' )
-" 	let sync_cmd = "(".sync_cmd_page.";".sleep.sync_cmd_y.";".sleep.sync_cmd_x.")&"
 	let sync_cmd = "(".sync_cmd_page.";".sleep.sync_cmd_y.")&"
 	if !dryrun
 	    call system(sync_cmd)
-	    call atplib_compiler#SyncShow(page_nr, y_coord)
-	endif
-	if g:atp_debugSyncTex
-	    silent echo "sync_cmd=".sync_cmd
+	    call atplib#compiler#SyncShow(page_nr, y_coord)
 	endif
     elseif b:atp_Viewer == "okular"
-	let [ page_nr, y_coord, x_coord ] = atplib_compiler#GetSyncData(line, col)
+	let [ page_nr, y_coord, x_coord ] = atplib#compiler#GetSyncData(line, col)
 	" This will not work in project files. (so where it is mostly needed.) 
 	let sync_cmd = "okular --unique ".shellescape(expand("%:p:r")).".pdf\\#src:".line.shellescape(expand("%:p"))." &"
 	let sync_args = " ".shellescape(expand("%:p:r")).".pdf\\#src:".line.shellescape(expand("%:p"))." "
 	if !dryrun
 	    call system(sync_cmd)
-	    call atplib_compiler#SyncShow(page_nr, y_coord)
-	endif
-	if g:atp_debugSyncTex
-	    silent echo "sync_cmd=".sync_cmd
+	    call atplib#compiler#SyncShow(page_nr, y_coord)
 	endif
     elseif b:atp_Viewer == "skim"
-	let [ page_nr, y_coord, x_coord ] = atplib_compiler#GetSyncData(line, col)
+	let [ page_nr, y_coord, x_coord ] = atplib#compiler#GetSyncData(line, col)
 	let sync_cmd = "displayline ".line." ".shellescape(expand("%:p:r")).".pdf ".shellescape(expand("%:p"))." &"
 	if !dryrun
 	    call system(sync_cmd)
-	    call atplib_compiler#SyncShow(page_nr, y_coord)
-	endif
-	if g:atp_debugSyncTex
-	    silent echo "sync_cmd=".sync_cmd
+	    call atplib#compiler#SyncShow(page_nr, y_coord)
 	endif
 "     elseif b:atp_Viewer == "evince"
 " 	let rev_searchcmd="synctex view -i ".line(".").":".col(".").":".fnameescape(b:atp_MainFile). " -o ".fnameescape(fnamemodify(b:atp_MainFile, ":p:r").".pdf") . " -x 'evince %{output} -i %{page}'"
@@ -299,6 +288,9 @@ function! atplib_compiler#SyncTex(bang, mouse, ...)
 	    silent echo "sync_cmd=EMPTY"
 	endif
     endif
+    if g:atp_debugSyncTex
+	let g:sync_cmd = sync_cmd
+    endif
    if g:atp_debugSyncTex
        redir END
    endif
@@ -309,14 +301,14 @@ endfunction
 " This function gets the pid of the running compiler
 " ToDo: review LatexBox has a better approach!
 "{{{ Get PID Functions
-function! atplib_compiler#getpid()
-	let atplib_compiler#command="ps -ef | grep -v " . $SHELL  . " | grep " . b:atp_TexCompiler . " | grep -v grep | grep " . fnameescape(expand("%")) . " | awk 'BEGIN {ORS=\" \"} {print $2}'" 
-	let atplib_compiler#var	= system(atplib_compiler#command)
-	return atplib_compiler#var
+function! atplib#compiler#getpid()
+	let atplib#compiler#command="ps -ef | grep -v " . $SHELL  . " | grep " . b:atp_TexCompiler . " | grep -v grep | grep " . fnameescape(expand("%")) . " | awk 'BEGIN {ORS=\" \"} {print $2}'" 
+	let atplib#compiler#var	= system(atplib#compiler#command)
+	return atplib#compiler#var
 endfunction
 " The same but using python (it is not used)
 " TODO: end this.
-function! atplib_compiler#PythonGetPID() 
+function! atplib#compiler#PythonGetPID() 
 python << EOF
 import psutil
 latex = vim.eval("b:atp_TexCompiler")
@@ -339,22 +331,22 @@ for pr in ps_list:
 		pass
 
 if latex_running:
-	vim.command("let atplib_compiler#var="+str(latex_pid))
+	vim.command("let atplib#compiler#var="+str(latex_pid))
 else:
-	vim.command("let atplib_compiler#var=''")
+	vim.command("let atplib#compiler#var=''")
 EOF
 endfunction
-function! atplib_compiler#GetPID()
+function! atplib#compiler#GetPID()
     if g:atp_Compiler == "bash"
-	let atplib_compiler#var=atplib_compiler#getpid()
-	if atplib_compiler#var != ""
-	    echomsg "[ATP:] ".b:atp_TexCompiler . " pid(s): " . atplib_compiler#var 
+	let atplib#compiler#var=atplib#compiler#getpid()
+	if atplib#compiler#var != ""
+	    echomsg "[ATP:] ".b:atp_TexCompiler . " pid(s): " . atplib#compiler#var 
 	else
 	    let b:atp_running	= 0
 	    echomsg "[ATP:] ".b:atp_TexCompiler . " is not running"
 	endif
     else
-	call atplib#PIDsRunning("b:atp_LatexPIDs")
+	call atplib#callback#PIDsRunning("b:atp_LatexPIDs")
 	if len(b:atp_LatexPIDs) > 0
 	    echomsg "[ATP:] ".b:atp_TexCompiler . " pid(s): " . join(b:atp_LatexPIDs, ", ") 
 	else
@@ -365,10 +357,9 @@ function! atplib_compiler#GetPID()
 endfunction
 "}}}
 
-
 " This function compares two files: file written on the disk a:file and the current
 " buffer
-"{{{ atplib_compiler#compare
+"{{{ atplib#compiler#compare
 " relevant variables:
 " g:atp_compare_embedded_comments
 " g:atp_compare_double_empty_lines
@@ -378,7 +369,7 @@ endfunction
 	" Maybe just compare current line!
 	" 		(search for the current line in the written
 	" 		file with vimgrep)
-function! atplib_compiler#compare(file)
+function! atplib#compiler#compare(file)
     let l:buffer=getbufline(bufname("%"),"1","$")
 
     " rewrite l:buffer to remove all comments 
@@ -444,13 +435,13 @@ function! atplib_compiler#compare(file)
 
     return l:file !=# l:buffer
 endfunction
-" function! atplib_compiler#sompare(file) 
+" function! atplib#compiler#sompare(file) 
 "     return Compare(a:file)
 " endfunction
 " This is very fast (0.002 sec on file with 2500 lines) 
 " but the proble is that vimgrep greps the buffer rather than the file! 
 " so it will not indicate any differences.
-function! atplib_compiler#NewCompare()
+function! atplib#compiler#NewCompare()
     let line 		= getline(".")
     let lineNr		= line(".")
     let saved_loclist 	= getloclist(0)
@@ -467,28 +458,108 @@ endfunction
 "}}}
 
 " This function copies the file a:input to a:output
-"{{{ atplib_compiler#copy
-function! atplib_compiler#copy(input,output)
+"{{{ atplib#compiler#copy
+function! atplib#compiler#copy(input,output)
 	call writefile(readfile(a:input),a:output)
 endfunction
 "}}}
-
-"{{{ GetSid, SidWrap
-function! atplib_compiler#GetSid() "{{{
+"{{{ atplib#compiler#GetSid
+function! atplib#compiler#GetSid()
     return matchstr(expand('<sfile>'), '\zs<SNR>\d\+_\ze.*$')
 endfunction 
-let atplib_compiler#compiler_SID = atplib_compiler#GetSid() "}}}
-
-function! atplib_compiler#SidWrap(func) "{{{
-    return atplib_compiler#compiler_SID . a:func
+let atplib#compiler#compiler_SID = atplib#compiler#GetSid() "}}}
+"{{{ atplib#compiler#SidWrap
+function! atplib#compiler#SidWrap(func)
+    return atplib#compiler#compiler_SID . a:func
 endfunction "}}}
-" }}}
+" {{{ atplib#compiler#SetBiberSettings
+function! atplib#compiler#SetBiberSettings()
+    if b:atp_BibCompiler !~# '^\s*biber\>'
+	return
+    elseif !exists("atplib#compiler#biber_keep_done")
+	let atplib#compiler#biber_keep_done = 1
+	if index(g:atp_keep, "run.xml") == -1
+	    let g:atp_keep += [ "run.xml" ]
+	endif
+	if index(g:atp_keep, "bcf") == -1
+	    let g:atp_keep += [ "bcf" ]
+	endif
+    endif
+endfunction "}}}
+" {{{ atplib#compiler#IsRunning
+" This function checks if program a:program is running a file a:file.
+" a:file should be full path to the file.
+function! atplib#compiler#IsRunning(program, file, ...)
+    " Since there is an issue in psutil on OS X, we cannot run this function:
+    " http://code.google.com/p/psutil/issues/detail?id=173
+    " Reported by F.Heiderich.
+    if has("mac") || has("gui_mac")
+	let atplib#compiler#running=1
+	return atplib#compiler#running
+    endif
 
+let s:return_is_running=0
+python << EOF
+import vim, psutil, os, pwd
+from psutil import NoSuchProcess
+x=0
+program =vim.eval("a:program")
+f       =vim.eval("a:file")
+pat     ="|".join(vim.eval("a:000"))
+for pid in psutil.get_pid_list():
+    try:
+        p=psutil.Process(pid)
+        if p.username == pwd.getpwuid(os.getuid())[0] and re.search(program, p.cmdline[0]):
+            for arg in p.cmdline:
+                if arg == f or re.search(pat, arg):
+                    x=1
+                    break
+        if x:
+            break
+    except psutil.error.NoSuchProcess:
+        pass
+    except psutil.error.AccessDenied:
+        pass
+    except IndexError:
+        pass
+vim.command("let s:return_is_running="+str(x))
+EOF
+let l:return=s:return_is_running
+unlet s:return_is_running
+return l:return
+endfunction
+" }}}
+"{{{ atplib#compiler#KillAll
+" This function kills all running latex processes.
+" a slightly better approach would be to kill compile.py scripts
+" the argument is a list of pids
+" a:1 if present supresses a message.
+function! atplib#compiler#Kill(bang)
+    if !has("python")
+	if a:bang != "!"
+	    echohl WarningMsg
+	    echomsg "[ATP:] you need python suppor" 
+	    echohl Normal
+	endif
+	return
+    endif
+    if len(b:atp_LatexPIDs)
+	call atplib#KillPIDs(b:atp_LatexPIDs)
+    endif
+    if len(b:atp_PythonPIDs)
+	call atplib#KillPIDs(b:atp_PythonPIDs)
+    endif
+    let b:atp_ProgressBar={}
+endfunction
+
+"}}}
+
+" THE MAIN COMPILER FUNCTIONs:
 " This function is called to run TeX compiler and friends as many times as necessary.
 " Makes references and bibliographies (supports bibtex), indexes.  
-"{{{ MakeLatex
+"{{{ atplib#compiler#MakeLatex
 " Function Arguments:
-function! atplib_compiler#MakeLatex(bang, mode, start)
+function! atplib#compiler#MakeLatex(bang, mode, start)
 
     if a:mode =~# '^s\%[ilent]$'
 	let mode = 'silent'
@@ -555,92 +626,8 @@ function! atplib_compiler#MakeLatex(bang, mode, start)
 endfunction
 
 "}}}
-
-" This function kills all running latex processes.
-" a slightly better approach would be to kill compile.py scripts
-"{{{ atplib_compiler#KillAll
-" the argument is a list of pids
-" a:1 if present supresses a message.
-function! atplib_compiler#Kill(bang)
-    if !has("python")
-	if a:bang != "!"
-	    echohl WarningMsg
-	    echomsg "[ATP:] you need python suppor" 
-	    echohl Normal
-	endif
-	return
-    endif
-    if len(b:atp_LatexPIDs)
-	call atplib#KillPIDs(b:atp_LatexPIDs)
-    endif
-    if len(b:atp_PythonPIDs)
-	call atplib#KillPIDs(b:atp_PythonPIDs)
-    endif
-    let b:atp_ProgressBar={}
-endfunction
-
-"}}}
-
-function! atplib_compiler#SetBiberSettings()
-    if b:atp_BibCompiler !~# '^\s*biber\>'
-	return
-    elseif !exists("atplib_compiler#biber_keep_done")
-	let atplib_compiler#biber_keep_done = 1
-	if index(g:atp_keep, "run.xml") == -1
-	    let g:atp_keep += [ "run.xml" ]
-	endif
-	if index(g:atp_keep, "bcf") == -1
-	    let g:atp_keep += [ "bcf" ]
-	endif
-    endif
-endfunction
-
-" This function checks if program a:program is running a file a:file.
-" a:file should be full path to the file.
-" {{{ atplib_compiler#IsRunning
-function! atplib_compiler#IsRunning(program, file, ...)
-    " Since there is an issue in psutil on OS X, we cannot run this function:
-    " http://code.google.com/p/psutil/issues/detail?id=173
-    " Reported by F.Heiderich.
-    if has("mac") || has("gui_mac")
-	let atplib_compiler#running=1
-	return atplib_compiler#running
-    endif
-
-let s:return_is_running=0
-python << EOF
-import vim, psutil, os, pwd
-from psutil import NoSuchProcess
-x=0
-program =vim.eval("a:program")
-f       =vim.eval("a:file")
-pat     ="|".join(vim.eval("a:000"))
-for pid in psutil.get_pid_list():
-    try:
-        p=psutil.Process(pid)
-        if p.username == pwd.getpwuid(os.getuid())[0] and re.search(program, p.cmdline[0]):
-            for arg in p.cmdline:
-                if arg == f or re.search(pat, arg):
-                    x=1
-                    break
-        if x:
-            break
-    except psutil.error.NoSuchProcess:
-        pass
-    except psutil.error.AccessDenied:
-        pass
-    except IndexError:
-        pass
-vim.command("let s:return_is_running="+str(x))
-EOF
-let l:return=s:return_is_running
-unlet s:return_is_running
-return l:return
-endfunction
-" }}}
-" THE MAIN COMPILER FUNCTIONs:
-" {{{ atplib_compiler#PythonCompiler
-function! atplib_compiler#PythonCompiler(bibtex, start, runs, verbose, command, filename, bang)
+" {{{ atplib#compiler#PythonCompiler
+function! atplib#compiler#PythonCompiler(bibtex, start, runs, verbose, command, filename, bang)
 
     " Kill comiple.py scripts if there are too many of them.
     if len(b:atp_PythonPIDs) >= b:atp_MaxProcesses && b:atp_MaxProcesses
@@ -661,7 +648,7 @@ function! atplib_compiler#PythonCompiler(bibtex, start, runs, verbose, command, 
     endif
 
     " Set biber setting on the fly
-    call atplib_compiler#SetBiberSettings()
+    call atplib#compiler#SetBiberSettings()
 
     if !has('gui') && a:verbose == 'verbose' && len(b:atp_LatexPIDs) > 0
 	redraw!
@@ -796,7 +783,7 @@ function! atplib_compiler#PythonCompiler(bibtex, start, runs, verbose, command, 
     endif
 endfunction
 " }}}
-" {{{ atplib_compiler#Compiler 
+" {{{ atplib#compiler#Compiler 
 " This is the MAIN FUNCTION which sets the command and calls it.
 " NOTE: the <filename> argument is not escaped!
 " a:verbose	= silent/verbose/debug
@@ -807,10 +794,10 @@ endfunction
 " 		1 start viewer
 " 		2 start viewer and make reverse search
 "
-function! atplib_compiler#Compiler(bibtex, start, runs, verbose, command, filename, bang)
+function! atplib#compiler#Compiler(bibtex, start, runs, verbose, command, filename, bang)
     
     " Set biber setting on the fly
-    call atplib_compiler#SetBiberSettings()
+    call atplib#compiler#SetBiberSettings()
 
     if !has('gui') && a:verbose == 'verbose' && b:atp_running > 0
 	redraw!
@@ -845,11 +832,11 @@ function! atplib_compiler#Compiler(bibtex, start, runs, verbose, command, filena
 	    echomsg "       b:atp_Viewer=" . b:atp_Viewer	
 	endif
 
-	" there is no need to run more than atplib_compiler#runlimit (=5) consecutive runs
+	" there is no need to run more than atplib#compiler#runlimit (=5) consecutive runs
 	" this prevents from running tex as many times as the current line
 	" what can be done by a mistake using the range for the command.
-	if a:runs > atplib_compiler#runlimit
-	    let runs = atplib_compiler#runlimit
+	if a:runs > atplib#compiler#runlimit
+	    let runs = atplib#compiler#runlimit
 	else
 	    let runs = a:runs
 	endif
@@ -899,7 +886,7 @@ function! atplib_compiler#Compiler(bibtex, start, runs, verbose, command, filena
 	for i in list
 	    let ftc	= b:atp_OutDir . fnamemodify(basename,":t:r") . "." . i
 	    if filereadable(ftc)
-		call atplib_compiler#copy(ftc,tmpfile . "." . i)
+		call atplib#compiler#copy(ftc,tmpfile . "." . i)
 	    endif
 	endfor
 
@@ -911,10 +898,10 @@ function! atplib_compiler#Compiler(bibtex, start, runs, verbose, command, filena
 		let Reload_Viewer = b:atp_Viewer . " -remote " . shellescape(b:atp_XpdfServer) . " " . shellescape(outfile) . " ; "
 	    else
 " TIME: this take 1/3 of time! 0.039
-		call atplib_compiler#xpdfpid()
-		" I could use here atplib_compiler#XpdPid(), the reason to not use it is that
+		call atplib#compiler#xpdfpid()
+		" I could use here atplib#compiler#XpdPid(), the reason to not use it is that
 		" then there is a way to run ATP without python.
-		if atplib_compiler#xpdfpid != ""
+		if atplib#compiler#xpdfpid != ""
 		    "if xpdf is running (then we want to reload it).
 		    "This is where I use 'ps' command to check if xpdf is
 		    "running.
@@ -933,7 +920,7 @@ function! atplib_compiler#Compiler(bibtex, start, runs, verbose, command, filena
 		" If run through RevSearch command use source specials rather than
 		" just reload:
 		if str2nr(a:start) == 2
-		    let synctex		= atplib_compiler#SidWrap('SyncTex')
+		    let synctex		= atplib#compiler#SidWrap('SyncTex')
 		    let callback_rs_cmd = v:progname . " --servername " . v:servername . " --remote-expr " . "'".synctex."()' ; "
 		    let Reload_Viewer	= callback_rs_cmd
 		endif
@@ -987,7 +974,7 @@ function! atplib_compiler#Compiler(bibtex, start, runs, verbose, command, filena
 	if a:bibtex == 1
 	    " this should be decided using the log file as well.
 	    if filereadable(outaux)
-" 		call atplib_compiler#copy(outaux,tmpfile . ".aux")
+" 		call atplib#compiler#copy(outaux,tmpfile . ".aux")
 		let texcomp="bibtex " . shellescape(fnamemodify(outaux, ":t")) . "; ".g:atp_cpcmd." ".shellescape(outbbl)." ".shellescape(tmpbbl).";" . comp . "  1>/dev/null 2>&1 "
 	    else
 		let texcomp=comp.";clear;".g:atp_cpcmd." ".shellescape(tmpaux)." ".shellescape(outaux)."; bibtex ".shellescape(fnamemodify(outaux, ":t")).";".g:atp_cpcmd." ".shellescape(outbbl)." ".shellescape(tmpbbl)."; ".comp." 1>/dev/null 2>&1 "
@@ -1003,7 +990,7 @@ function! atplib_compiler#Compiler(bibtex, start, runs, verbose, command, filena
 	if has('clientserver') && v:servername != "" && g:atp_callback == 1
 
 	    let catchstatus_cmd = v:progname . ' --servername ' . v:servername . ' --remote-expr ' . 
-			\ shellescape('atplib#TexReturnCode')  . '\($?\) ; ' 
+			\ shellescape('atplib#callback#TexReturnCode')  . '\($?\) ; ' 
 	else
 	    let catchstatus_cmd = ''
 	endif
@@ -1070,9 +1057,9 @@ function! atplib_compiler#Compiler(bibtex, start, runs, verbose, command, filena
 	" Callback:
 	if has('clientserver') && v:servername != "" && g:atp_callback == 1
 
-" 	    let callback	= atplib_compiler#SidWrap('CallBack')
+" 	    let callback	= atplib#compiler#SidWrap('CallBack')
 	    let callback_cmd 	= v:progname . ' --servername ' . v:servername . ' --remote-expr ' . 
-				    \ shellescape('atplib#CallBack').'\(\"'.a:verbose.'\",\"'.a:command.'\",\"'.a:bibtex.'\"\)'. " ; "
+				    \ shellescape('atplib#callback#CallBack').'\(\"'.a:verbose.'\",\"'.a:command.'\",\"'.a:bibtex.'\"\)'. " ; "
 
 	    let command = command . " " . callback_cmd
 
@@ -1118,9 +1105,648 @@ function! atplib_compiler#Compiler(bibtex, start, runs, verbose, command, filena
     endif
 endfunction
 "}}}
+"{{{ aptlib#compiler#ThreadedCompiler
+function! atplib#compiler#ThreadedCompiler(bibtex, start, runs, verbose, command, filename, bang)
 
+    " Write file:
+    if g:atp_debugPythonCompiler
+	call atplib#Log("ThreadedCompiler.log", "", "init")
+	call atplib#Log("ThreadedCompiler.log", "PRE WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
+    endif
+
+    call atplib#write("silent")
+
+    if g:atp_debugPythonCompiler
+	call atplib#Log("ThreadedCompiler.log", "POST WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
+    endif
+
+    " Kill comiple.py scripts if there are too many of them.
+    if len(b:atp_PythonPIDs) >= b:atp_MaxProcesses && b:atp_MaxProcesses
+	let a=copy(b:atp_LatexPIDs)
+	try
+	    if b:atp_KillYoungest
+		" Remove the newest PIDs (the last in the b:atp_PythonPIDs)
+		let pids=remove(b:atp_LatexPIDs, b:atp_MaxProcesses, -1) 
+	    else
+		" Remove the oldest PIDs (the first in the b:atp_PythonPIDs) /works nicely/
+		let pids=remove(b:atp_LatexPIDs, 0, max([len(b:atp_PythonPIDs)-b:atp_MaxProcesses-1,0]))
+	    endif
+	    echomsg string(a)." ".string(pids)." ".string(b:atp_LatexPIDs)
+	    call atplib#KillPIDs(pids)
+	catch E684:
+	endtry
+	echomsg string(b:atp_LatexPIDs)
+    endif
+
+    " Set biber setting on the fly
+    call atplib#compiler#SetBiberSettings()
+
+    if !has('gui') && a:verbose == 'verbose' && len(b:atp_LatexPIDs) > 0
+	redraw!
+	echomsg "[ATP:] please wait until compilation stops."
+	return
+
+	" This is not working: (I should kill compile.py scripts)
+	echomsg "[ATP:] killing all instances of ".get(g:CompilerMsg_Dict,b:atp_TexCompiler,'TeX')
+	call atplib#KillPIDs(b:atp_LatexPIDs,1)
+	sleep 1
+	PID
+    endif
+
+    " Debug varibles
+    " On Unix the output of compile.py run by this function is available at
+    " g:atp_TempDir/compiler.py.log
+    if g:atp_debugPythonCompiler
+	call atplib#Log("ThreadedCompiler.log", "", "init")
+	call atplib#Log("ThreadedCompiler.log", "a:bibtex=".a:bibtex)
+	call atplib#Log("ThreadedCompiler.log", "a:start=".a:start)
+	call atplib#Log("ThreadedCompiler.log", "a:runs=".a:runs)
+	call atplib#Log("ThreadedCompiler.log", "a:verbose=".a:verbose)
+	call atplib#Log("ThreadedCompiler.log", "a:command=".a:command)
+	call atplib#Log("ThreadedCompiler.log", "a:filename=".a:filename)
+	call atplib#Log("ThreadedCompiler.log", "a:bang=".a:bang)
+    endif
+
+    if !exists("t:atp_DebugMode")
+	let t:atp_DebugMode = g:atp_DefaultDebugMode
+    endif
+
+    if t:atp_DebugMode != 'verbose' && a:verbose != 'verbose'
+	let b:atp_LastLatexPID = -1
+    endif
+    
+    if t:atp_DebugMode != "silent" && b:atp_TexCompiler !~ "luatex" &&
+		\ (b:atp_TexCompiler =~ "^\s*\%(pdf\|xetex\)" && b:atp_Viewer == "xdvi" ? 1 :  
+		\ b:atp_TexCompiler !~ "^\s*pdf" && b:atp_TexCompiler !~ "xetex" &&  (b:atp_Viewer == "xpdf" || b:atp_Viewer == "epdfview" || b:atp_Viewer == "acroread" || b:atp_Viewer == "kpdf"))
+	 
+	echohl WaningMsg | echomsg "[ATP:] your ".b:atp_TexCompiler." and ".b:atp_Viewer." are not compatible:" 
+	echomsg "       b:atp_TexCompiler=" . b:atp_TexCompiler	
+	echomsg "       b:atp_Viewer=" . b:atp_Viewer	
+    endif
+    if !has('clientserver')
+	if has("win16") || has("win32") || has("win64") || has("win95")
+	    echohl WarningMsg
+	    echomsg "[ATP:] ATP needs +clientserver vim compilation option."
+	    echohl Normal
+	else
+	    echohl WarningMsg
+	    echomsg "[ATP:] python compiler needs +clientserver vim compilation option."
+	    echomsg "       falling back to g:atp_Compiler=\"bash\""
+	    echohl Normal
+	    let g:atp_Compiler = "bash"
+	    return
+	endif
+    endif
+
+
+    " Set options for compile.py
+    let interaction 		= ( a:verbose=="verbose" ? b:atp_VerboseLatexInteractionMode : 'nonstopmode' )
+    let tex_options		= b:atp_TexOptions.',-interaction='.interaction
+"     let g:tex_options=tex_options
+    let ext			= get(g:atp_CompilersDict, matchstr(b:atp_TexCompiler, '^\s*\zs\S\+\ze'), ".pdf") 
+    let ext			= substitute(ext, '\.', '', '')
+
+    let global_options 		= join((exists("g:atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") ? g:atp_{matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')}Options : []), ";") 
+    let local_options 		= join(( exists("atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") ? getbufvar(bufnr("%"), "atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") : []), ";")
+    if global_options !=  "" 
+	let viewer_options  	= global_options.";".local_options
+    else
+	let viewer_options  	= local_options
+    endif
+    let file                    = atplib#FullPath(a:filename)
+    let bang 			= ( a:bang == '!' ? ' --bang ' : '' ) 
+    let bibtex 			= ( a:bibtex ? ' --bibtex ' : '' )
+    let reload_on_error 	= ( b:atp_ReloadOnError ? ' --reload-on-error ' : '' )
+    let gui_running 		= ( has("gui_running") ? ' --gui-running ' : '' )
+    let reload_viewer 		= ( index(g:atp_ReloadViewers, b:atp_Viewer)+1  ? ' --reload-viewer ' : '' )
+    let aucommand 		= ( a:command == "AU" ? ' --aucommand ' : '' )
+    let no_progress_bar 	= ( g:atp_ProgressBar ? '' : ' --no-progress-bar ' )
+    let bibliographies 		= join(keys(filter(copy(b:TypeDict), "v:val == 'bib'")), ',')
+    let autex_wait		= ( b:atp_autex_wait ? ' --autex_wait ' : '') 
+    let keep                    = join(g:atp_keep, ',')
+
+python << ENDPYTHON
+import vim, threading
+import sys, errno, os.path, shutil, subprocess, psutil, re, tempfile, optparse, glob
+import traceback, atexit
+
+from os import chdir, mkdir, putenv, devnull
+from collections import deque
+
+####################################
+#
+#       Functions:   
+#
+####################################
+
+def nonempty(string):
+    if str(string) == '':
+        return False
+    else:
+        return True
+
+def decode_list(byte):
+    return byte.decode()
+
+def latex_progress_bar(cmd):
+# Run latex and send data for progress bar,
+
+    child = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    pid   = child.pid
+    vim.eval("atplib#callback#LatexPID("+str(pid)+")")
+    debug_file.write("latex pid "+str(pid)+"\n")
+    stack = deque([])
+    while True:
+        try:
+            out = child.stdout.read(1).decode()
+        except UnicodeDecodeError:
+            debug_file.write("UNICODE DECODE ERROR:\n")
+            debug_file.write(child.stdout.read(1))
+            debug_file.write("\n")
+            debug_file.write("stack="+''.join(stack)+"\n")
+            out = ""
+        if out == '' and child.poll() != None:
+            break
+        if out != '':
+            stack.append(out)
+
+            if len(stack)>10:
+                stack.popleft()
+            match = re.match('\[(\n?\d(\n|\d)*)({|\])',str(''.join(stack)))
+            if match:
+                vim.eval("atplib#callback#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
+    child.wait()
+    vim.eval("atplib#callback#ProgressBar('end',"+str(pid)+")")
+    vim.eval("atplib#callback#PIDsRunning(\"b:atp_LatexPIDs\")")
+    return child
+
+def xpdf_server_file_dict():
+# Make dictionary of the type { xpdf_servername : [ file, xpdf_pid ] },
+
+# to test if the server host file use:
+# basename(xpdf_server_file_dict().get(server, ['_no_file_'])[0]) == basename(file)
+# this dictionary always contains the full path (Linux).
+# TODO: this is not working as I want to:
+#    when the xpdf was opened first without a file it is not visible in the command line
+#    I can use 'xpdf -remote <server> -exec "run('echo %f')"'
+#    where get_filename is a simple program which returns the filename. 
+#    Then if the file matches I can just reload, if not I can use:
+#          xpdf -remote <server> -exec "openFile(file)"
+    ps_list=psutil.get_pid_list()
+    server_file_dict={}
+    for pr in ps_list:
+        try:
+            name=psutil.Process(pr).name
+            cmdline=psutil.Process(pr).cmdline
+            if name == 'xpdf':
+                try:
+                    ind=cmdline.index('-remote')
+                except:
+                    ind=0
+                if ind != 0 and len(cmdline) >= 1:
+                    server_file_dict[cmdline[ind+1]]=[cmdline[len(cmdline)-1], pr]
+        except psutil.error.NoSuchProcess:
+            pass
+        except psutil.error.AccessDenied:
+            pass
+    return server_file_dict
+
+
+####################################
+#
+#       Options:   
+#
+####################################
+tex_file        = vim.eval("b:atp_MainFile")
+command         = vim.eval("b:atp_TexCompiler")
+bibcommand      = vim.eval("b:atp_BibCompiler")
+progname        = vim.eval("v:progname")
+if vim.eval("aucommand") == ' --aucommand ':
+    aucommand_bool  = True
+    aucommand="AU"
+else:
+    aucommand_bool  = False
+    aucommand="COM"
+command_opt     = list(filter(nonempty,re.split('\s*,\s*', vim.eval("tex_options"))))
+mainfile_fp     = vim.eval("file")
+output_format   = vim.eval("ext")
+if output_format == "pdf":
+    extension = ".pdf"
+else:
+    extension = ".dvi"
+runs            = int(vim.eval("a:runs"))
+servername      = vim.eval("v:servername")
+start           = str(vim.eval("a:start"))
+viewer          = vim.eval("b:atp_Viewer")
+if vim.eval("autex_wait") == "--autex_wait":
+    autex_wait      = True
+else:
+    autex_wait      = False
+XpdfServer      = vim.eval("b:atp_XpdfServer")
+viewer_rawopt   = re.split('\s*;\s*', vim.eval("viewer_options"))
+viewer_it       = list(filter(nonempty, viewer_rawopt))
+viewer_opt      =[]
+for opt in viewer_it:
+    viewer_opt.append(opt)
+viewer_rawopt   = viewer_opt
+if viewer == "xpdf" and XpdfServer != None:
+    viewer_opt.extend(["-remote", XpdfServer])
+verbose         = vim.eval("a:verbose")
+keep            = vim.eval("keep").split(',')
+keep            = list(filter(nonempty, keep))
+
+def keep_filter_aux(string):
+    if string == 'aux':
+        return False
+    else:
+        return True
+
+def keep_filter_log(string):
+    if string == 'log':
+        return False
+    else:
+        return True
+
+def mysplit(string):
+        return re.split('\s*=\s*', string)
+
+env             = list(map(mysplit, list(filter(nonempty, re.split('\s*;\s*',vim.eval("b:atp_TexCompilerVariable"))))))
+
+# Boolean options
+if vim.eval("reload_viewer") == ' --reload-viewer ':
+    reload_viewer   = True
+else:
+    reload_viewer   = False
+if vim.eval("bibtex") == ' --bibtex ':
+    bibtex          = True
+else:
+    bibtex          = False
+bibliographies  = vim.eval("bibliographies").split(",")
+bibliographies  = list(filter(nonempty, bibliographies))
+if vim.eval("a:bang") == "!":
+    bang            = True
+else:
+    bang            = False
+if vim.eval("reload_on_error") == ' --reload-on-error ':
+    reload_on_error = True
+else:
+    reload_on_error = False
+if vim.eval("gui_running") == ' --gui-running ':
+    gui_running     = True
+else:
+    gui_running     = False
+if vim.eval("no_progress_bar") == ' --no-progress-bar ':
+    progress_bar    = False
+else:
+    progress_bar    = True
+
+# Debug file should be changed for sth platform independent
+# There should be a switch to get debug info.
+logdir          = vim.eval("g:atp_TempDir")
+script_logfile  = os.path.join(logdir, 'compile.log')
+debug_file      = open(script_logfile, 'w')
+
+debug_file.write("COMMAND "+command+"\n")
+debug_file.write("BIBCOMMAND "+bibcommand+"\n")
+debug_file.write("BIBCOMMAND "+bibcommand+"\n")
+debug_file.write("AUCOMMAND "+aucommand+"\n")
+debug_file.write("PROGNAME "+progname+"\n")
+debug_file.write("COMMAND_OPT "+str(command_opt)+"\n")
+debug_file.write("MAINFILE_FP "+str(mainfile_fp)+"\n")
+debug_file.write("OUTPUT FORMAT "+str(output_format)+"\n")
+debug_file.write("EXT "+extension+"\n")
+debug_file.write("RUNS "+str(runs)+"\n")
+debug_file.write("VIM_SERVERNAME "+str(servername)+"\n")
+debug_file.write("START "+str(start)+"\n")
+debug_file.write("VIEWER "+str(viewer)+"\n")
+debug_file.write("XPDF_SERVER "+str(XpdfServer)+"\n")
+debug_file.write("VIEWER_OPT "+str(viewer_opt)+"\n")
+debug_file.write("DEBUG MODE (verbose) "+str(verbose)+"\n")
+debug_file.write("KEEP "+str(keep)+"\n")
+debug_file.write("BIBLIOGRAPHIES "+str(bibliographies)+"\n")
+# debug_file.write("ENV OPTION "+str(options.env)+"\n")
+debug_file.write("ENV "+str(env)+"\n")
+debug_file.write("*BIBTEX "+str(bibtex)+"\n")
+debug_file.write("*BANG "+str(bang)+"\n")
+debug_file.write("*RELOAD_VIEWER "+str(reload_viewer)+"\n")
+debug_file.write("*RELOAD_ON_ERROR "+str(reload_on_error)+"\n")
+debug_file.write("*GUI_RUNNING "+str(gui_running)+"\n")
+debug_file.write("*PROGRESS_BAR "+str(progress_bar)+"\n")
+
+class LatexThread( threading.Thread ):
+    def run( self ):
+# Author: Marcin Szamotulski <mszamot[@]gmail[.]com>
+# This file is a part of Automatic TeX Plugin for Vim.
+
+
+
+# readlink is not available on Windows.
+        readlink=True
+        try:
+            from os import readlink
+        except ImportError:
+            readlink=False
+
+# Cleanup on exit:
+        def cleanup(debug_file):
+            debug_file.close()
+            shutil.rmtree(tmpdir)
+#         atexit.register(cleanup, debug_file)
+
+####################################
+#
+#       Arguments:   
+#
+####################################
+        global tex_file, command, bibcommand, progname, aucommand_bool, aucommand
+        global command_opt, mainfile_fp, output_format, extension, runs, servername, start
+        global viewer, autex_wait, XpdfServer, viewer_rawopt, viewer_it, viewer_opt
+        global viewer_rawopt, verbose, keep, env
+        global reload_viewer, bibtex, bibliographies, bang, reload_on_error, gui_running, progress_bar
+
+# If mainfile_fp is not a full path make it. 
+#     glob=glob.glob(os.path.join(os.getcwd(),mainfile_fp))
+#     if len(glob) != 0:
+#         mainfile_fp = glob[0]
+        mainfile        = os.path.basename(mainfile_fp)
+        mainfile_dir    = os.path.dirname(mainfile_fp)
+        if mainfile_dir == "":
+            mainfile_fp = os.path.join(os.getcwd(), mainfile)
+            mainfile    = os.path.basename(mainfile_fp)
+            mainfile_dir= os.path.dirname(mainfile_fp)
+        if os.path.islink(mainfile_fp):
+            if readlink:
+                mainfile_fp = os.readlink(mainfile_fp)
+            # The above line works if the symlink was created with full path. 
+            mainfile    = os.path.basename(mainfile_fp)
+            mainfile_dir= os.path.dirname(mainfile_fp)
+
+        mainfile_dir    = os.path.normcase(mainfile_dir)
+        [basename, ext] = os.path.splitext(mainfile)
+        output_fp       = os.path.splitext(mainfile_fp)[0]+extension
+
+        try:
+            # Send pid to ATP:
+            if verbose != "verbose":
+                vim.eval("atplib#callback#PythonPID("+str(os.getpid())+")")
+####################################
+#
+#       Make temporary directory,
+#       Copy files and Set Environment:
+#
+####################################
+            cwd     = os.getcwd()
+            if not os.path.exists(os.path.join(mainfile_dir,".tmp")):
+                    # This is the main tmp dir (./.tmp) 
+                    # it will not be deleted by this script
+                    # as another instance might be using it.
+                    # it is removed by Vim on exit.
+                os.mkdir(os.path.join(mainfile_dir,".tmp"))
+            tmpdir  = tempfile.mkdtemp(dir=os.path.join(mainfile_dir,".tmp"),prefix="")
+            debug_file.write("TMPDIR: "+tmpdir+"\n")
+            tmpaux  = os.path.join(tmpdir,basename+".aux")
+
+            command_opt.append('-output-directory='+tmpdir)
+            latex_cmd      = [command]+command_opt+[mainfile_fp]
+            debug_file.write("COMMAND "+str(latex_cmd)+"\n")
+            debug_file.write("COMMAND "+" ".join(latex_cmd)+"\n")
+
+# Copy important files to output directory:
+# /except the log file/
+            os.chdir(mainfile_dir)
+            for ext in filter(keep_filter_log,keep):
+                file_cp=basename+"."+ext
+                if os.path.exists(file_cp):
+                    shutil.copy(file_cp, tmpdir)
+
+            tempdir_list = os.listdir(tmpdir)
+            debug_file.write("\nls tmpdir "+str(tempdir_list)+"\n")
+
+# Set environment
+            for var in env:
+                debug_file.write("ENV "+var[0]+"="+var[1]+"\n")
+                os.putenv(var[0], var[1])
+
+# Link local bibliographies:
+            for bib in bibliographies:
+                if os.path.exists(os.path.join(mainfile_dir,os.path.basename(bib))):
+                    os.symlink(os.path.join(mainfile_dir,os.path.basename(bib)),os.path.join(tmpdir,os.path.basename(bib)))
+
+####################################
+#
+#       Compile:   
+#
+####################################
+# Start Xpdf (this can be done before compelation, because we can load file
+# into afterwards) in this way Xpdf starts faster (it is already running when
+# file compiles). 
+# TODO: this might cause problems when the tex file is very simple and short.
+# Can we test if xpdf started properly?  okular doesn't behave nicely even with
+# --unique switch.
+
+# Latex might not run this might happedn with bibtex (?)
+            latex_returncode=0
+            if bibtex and os.path.exists(tmpaux):
+                if bibcommand == 'biber':
+                    bibfname = basename
+                else:
+                    bibfname = basename+".aux"
+                debug_file.write("\nBIBTEX1"+str([bibcommand, bibfname])+"\n")
+                os.chdir(tmpdir)
+                bibtex_popen=subprocess.Popen([bibcommand, bibfname], stdout=subprocess.PIPE)
+                vim.eval("atplib#callback#BibtexPID('"+str(bibtex_popen.pid)+"')")
+                vim.eval("atplib#callback#redrawstatus()")
+                bibtex_popen.wait()
+                vim.eval("atplib#callback#PIDsRunning(\"b:atp_BibtexPIDs\")")
+                os.chdir(mainfile_dir)
+                bibtex_returncode=bibtex_popen.returncode
+                bibtex_output=re.sub('"', '\\"', bibtex_popen.stdout.read())
+                debug_file.write("BIBTEX RET CODE "+str(bibtex_returncode)+"\nBIBTEX OUTPUT\n"+bibtex_output+"\n")
+                if verbose != 'verbose':
+                    vim.eval("atplib#callback#BibtexReturnCode('"+str(bibtex_returncode)+"',\""+str(bibtex_output)+"\")")
+                else:
+                    print(bibtex_output)
+                # We need run latex at least 2 times
+                bibtex=False
+                runs=max([runs, 2])
+# If bibtex contained errros we stop:
+#     if not bibtex_returncode:
+#         runs=max([runs, 2])
+#     else:
+#         runs=1
+            elif bibtex:
+                # we need run latex at least 3 times
+                runs=max([runs, 3])
+
+            debug_file.write("\nRANGE="+str(range(1,runs+1))+"\n")
+            debug_file.write("RUNS="+str(runs)+"\n")
+            for i in range(1, runs+1):
+                debug_file.write("RUN="+str(i)+"\n")
+                debug_file.write("DIR="+str(os.getcwd())+"\n")
+                tempdir_list = os.listdir(tmpdir)
+                debug_file.write("ls tmpdir "+str(tempdir_list)+"\n")
+                debug_file.write("BIBTEX="+str(bibtex)+"\n")
+
+                if verbose == 'verbose' and i == runs:
+#       <SIS>compiler() contains here ( and not bibtex )
+                    debug_file.write("VERBOSE"+"\n")
+                    latex=subprocess.Popen(latex_cmd)
+                    pid=latex.pid
+                    debug_file.write("latex pid "+str(pid)+"\n")
+                    latex.wait()
+                    latex_returncode=latex.returncode
+                    debug_file.write("latex ret code "+str(latex_returncode)+"\n")
+                else:
+                    if progress_bar and verbose != 'verbose':
+                        latex=latex_progress_bar(latex_cmd)
+                    else:
+                        latex = subprocess.Popen(latex_cmd, stdout=subprocess.PIPE)
+                        pid   = latex.pid
+                        vim.eval("atplib#callback#LatexPID("+str(pid)+")")
+                        debug_file.write("latex pid "+str(pid)+"\n")
+                        latex.wait()
+                        vim.eval("atplib#callback#PIDsRunning(\"b:atp_LatexPIDs\")")
+                    latex_returncode=latex.returncode
+                    debug_file.write("latex return code "+str(latex_returncode)+"\n")
+                    tempdir_list = os.listdir(tmpdir)
+                    debug_file.write("JUST AFTER LATEX ls tmpdir "+str(tempdir_list)+"\n")
+                # Return code of compilation:
+                if verbose != "verbose":
+                    vim.eval("atplib#callback#TexReturnCode('"+str(latex_returncode)+"')")
+                if bibtex and i == 1:
+                    if bibcommand == 'biber':
+                        bibfname = basename
+                    else:
+                        bibfname = basename+".aux"
+                    debug_file.write("BIBTEX2 "+str([bibcommand, bibfname])+"\n")
+                    debug_file.write(os.getcwd()+"\n")
+                    tempdir_list = os.listdir(tmpdir)
+                    debug_file.write("ls tmpdir "+str(tempdir_list)+"\n")
+                    os.chdir(tmpdir)
+                    bibtex_popen=subprocess.Popen([bibcommand, bibfname], stdout=subprocess.PIPE)
+                    vim.eval("atplib#callback#BibtexPID('"+str(bibtex_popen.pid)+"')")
+                    vim.eval("atplib#callback#redrawstatus()")
+                    bibtex_popen.wait()
+                    vim.eval("atplib#callback#PIDsRunning(\"b:atp_BibtexPIDs\")")
+                    os.chdir(mainfile_dir)
+                    bibtex_returncode=bibtex_popen.returncode
+                    bibtex_output=re.sub('"', '\\"', bibtex_popen.stdout.read())
+                    debug_file.write("BIBTEX2 RET CODE"+str(bibtex_returncode)+"\n")
+                    if verbose != 'verbose':
+                        vim.eval("atplib#callback#BibtexReturnCode('"+str(bibtex_returncode)+"',\""+str(bibtex_output)+"\")")
+                    else:
+                        print(bibtex_output)
+# If bibtex had errors we stop, 
+# at this point tex file was compiled at least once.
+#         if bibtex_returncode:
+#             debug_file.write("BIBTEX BREAKE "+str(bibtex_returncode)+"\n")
+#             break
+
+####################################
+#
+#       Copy Files:
+#
+####################################
+
+# Copy files:
+            os.chdir(tmpdir)
+            for ext in list(filter(keep_filter_aux,keep))+[output_format]:
+                file_cp=basename+"."+ext
+                if os.path.exists(file_cp):
+                    debug_file.write(file_cp+' ')
+                    shutil.copy(file_cp, mainfile_dir)
+
+# Copy aux file if there were no compilation errors or if it doesn't exists in mainfile_dir.
+# copy aux file to _aux file (for atplib#tools#GrepAuxFile)
+            if latex_returncode == 0 or not os.path.exists(os.path.join(mainfile_dir, basename+".aux")):
+                file_cp=basename+".aux"
+                if os.path.exists(file_cp):
+                    shutil.copy(file_cp, mainfile_dir)
+            file_cp=basename+".aux"
+            if os.path.exists(file_cp):
+                shutil.copy(file_cp, os.path.join(mainfile_dir, basename+"._aux"))
+            os.chdir(cwd)
+
+####################################
+#
+#       Call Back Communication:   
+#
+####################################
+            if verbose != "verbose":
+                debug_file.write("CALL BACK "+"atplib#callback#CallBack('"+str(verbose)+"','"+aucommand+"','"+str(bibtex)+"')"+"\n")
+                vim.eval("atplib#callback#CallBack('"+str(verbose)+"','"+aucommand+"','"+str(bibtex)+"')")
+                # return code of compelation is returned before (after each compilation).
+
+
+####################################
+#
+#       Reload/Start Viewer:   
+#
+####################################
+            if re.search(viewer, '^\s*xpdf\e') and reload_viewer:
+                # The condition tests if the server XpdfServer is running
+                xpdf_server_dict=xpdf_server_file_dict()
+                cond = xpdf_server_dict.get(XpdfServer, ['_no_file_']) != ['_no_file_']
+                debug_file.write("XPDF SERVER DICT="+str(xpdf_server_dict)+"\n")
+                debug_file.write("COND="+str(cond)+":"+str(reload_on_error)+":"+str(bang)+"\n")
+                debug_file.write("COND="+str( not reload_on_error or bang )+"\n")
+                debug_file.write(str(xpdf_server_dict)+"\n")
+                if start == 1:
+                    run=['xpdf']
+                    run.extend(viewer_opt)
+                    run.append(output_fp)
+                    debug_file.write("D1: "+str(run)+"\n")
+                    subprocess.Popen(run)
+                elif cond and ( reload_on_error or latex_returncode == 0 or bang ):
+                    run=['xpdf', '-remote', XpdfServer, '-reload']
+                    subprocess.Popen(run, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    debug_file.write("D2: "+str(['xpdf',  '-remote', XpdfServer, '-reload'])+"\n")
+            else:
+                if start >= 1:
+                    run=[viewer]
+                    run.extend(viewer_opt)
+                    run.append(output_fp)
+                    debug_file.write("RUN "+str(run)+"\n")
+                    subprocess.Popen(run, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                if start == 2:
+                    vim.eval("atplib#SyncTex()")
+
+####################################
+#
+#       Clean:
+#
+####################################
+        except Exception:
+            error_str=re.sub("'", "''",re.sub('"', '\\"', traceback.format_exc()))
+            traceback.print_exc(None, debug_file)
+            vim.eval("atplib#callback#Echo(\"[ATP:] error in compile.py, catched python exception:\n"+error_str+"[ATP info:] this error message is recorded in compile.py.log under g:atp_TempDir\",'echo','ErrorMsg')")
+
+# 	cleanup(debug_file)
+#         return(latex_returncode)
+
+LatexThread().start()
+ENDPYTHON
+endfunction "}}}
+" {{{ atplib#compiler#tex [test function]
+function! atplib#compiler#tex()
+python << ENDPYTHON
+import vim, threading
+import sys, errno, os.path, shutil, subprocess, psutil, re, tempfile, optparse, glob
+import traceback, atexit
+
+from os import chdir, mkdir, putenv, devnull
+from collections import deque
+
+class LatexThread( threading.Thread ):
+    def run( self ):
+
+        file=vim.eval("b:atp_MainFile")
+        subprocess.Popen(['pdflatex', file], stdout=subprocess.PIPE)
+ LatexThread().start()
+ENDPYTHON
+endfunction "}}}
 " AUTOMATIC TEX PROCESSING:
-" {{{ atplib_compiler#auTeX
+" {{{ atplib#compiler#auTeX
 " This function calls the compilers in the background. It Needs to be a global
 " function (it is used in options.vim, there is a trick to put function into
 " a dictionary ... )
@@ -1130,7 +1756,7 @@ augroup ATP_changedtick
     au BufWritePost 	*.tex 	:let b:atp_changedtick = b:changedtick
 augroup END 
 
-function! atplib_compiler#auTeX(...)
+function! atplib#compiler#auTeX(...)
 
     if g:atp_debugauTeX
 	echomsg "*****************"
@@ -1155,11 +1781,11 @@ function! atplib_compiler#auTeX(...)
 "     if index(split(g:atp_autex_wait, ','), mode()) != -1
 " " 	\ !b:atp_autex_wait
 " 	if g:atp_Compiler == "python"
-" 	    call atplib#PIDsRunning("b:atp_PythonPIDs")
+" 	    call atplib#callback#PIDsRunning("b:atp_PythonPIDs")
 " 	else
-" 	    call atplib#PIDsRunning("b:atp_LatexPIDs")
+" 	    call atplib#callback#PIDsRunning("b:atp_LatexPIDs")
 " 	endif
-" 	call atplib#PIDsRunning("b:atp_BibtexPIDs")
+" 	call atplib#callback#PIDsRunning("b:atp_BibtexPIDs")
 " 	echo string(b:atp_BibtexPIDs)
 " 	if g:atp_Compiler == "python" && len(b:atp_PythonPIDs) ||
 " 	    \ g:atp_Compiler == "bash" && len(b:atp_LatexPIDs) ||
@@ -1205,7 +1831,7 @@ function! atplib_compiler#auTeX(...)
 	if g:atp_Compare ==? "changedtick"
 	    let cond = ( b:changedtick != b:atp_changedtick )
 	else
-	    let cond = ( atplib_compiler#compare(readfile(expand("%"))) )
+	    let cond = ( atplib#compiler#compare(readfile(expand("%"))) )
 	endif
 	if g:atp_debugauTeX
 	    let g:cond=cond
@@ -1216,20 +1842,24 @@ function! atplib_compiler#auTeX(...)
 	if cond
 	    " This is for changedtick only
 	    let b:atp_changedtick = b:changedtick + 1
-	    " +1 because atplib_compiler#Compiler saves the file what increases b:changedtick by 1.
+	    " +1 because atplib#compiler#Compiler saves the file what increases b:changedtick by 1.
 	    " this is still needed as I use not nesting BufWritePost autocommand to set
 	    " b:atp_changedtick (by default autocommands do not nest). Alternate solution is to
-	    " run atplib_compiler#AuTeX() with nested autocommand (|autocmd-nested|). But this seems
+	    " run atplib#compiler#AuTeX() with nested autocommand (|autocmd-nested|). But this seems
 	    " to be less user friendly, nested autocommands allows only 10 levels of
 	    " nesting (which seems to be high enough).
 	    
 "
-" 	if atplib_compiler#NewCompare()
+" 	if atplib#compiler#NewCompare()
 	let g:debug=0
 	    if g:atp_Compiler == 'python'
-		call atplib_compiler#PythonCompiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
+                if g:atp_devversion == 0
+                    call atplib#compiler#PythonCompiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
+                else
+                    call atplib#compiler#ThreadedCompiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
+                endif
 	    else
-		call atplib_compiler#Compiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
+		call atplib#compiler#Compiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 	    endif
 	    redraw
 	    if g:atp_debugauTeX
@@ -1267,9 +1897,9 @@ function! atplib_compiler#auTeX(...)
 	    return " E382"
 	endtry
 	if g:atp_Compiler == 'python'
-	    call atplib_compiler#PythonCompiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
+	    call atplib#compiler#PythonCompiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 	else
-	    call atplib_compiler#Compiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
+	    call atplib#compiler#Compiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 	endif
 	redraw
 	if g:atp_debugauTeX
@@ -1283,25 +1913,25 @@ function! atplib_compiler#auTeX(...)
     return "files does not differ"
 endfunction
 " function! ATP_auTeX()
-"     call atplib_compiler#auTeX()
+"     call atplib#compiler#auTeX()
 " endfunction
 
 " This is set by SetProjectName (options.vim) where it should not!
 augroup ATP_auTeX
     au!
-    au CursorHold 	*.tex call atplib_compiler#auTeX()
-    au CursorHoldI 	*.tex call atplib_compiler#auTeX()
+    au CursorHold 	*.tex call atplib#compiler#auTeX()
+    au CursorHoldI 	*.tex call atplib#compiler#auTeX()
 augroup END 
 "}}}
 
 " Related Functions
-" {{{ TeX
+" {{{ atplib#compiler#TeX
 
 " a:runs	= how many consecutive runs
 " a:1		= one of 'default','silent', 'debug', 'verbose'
 " 		  if not specified uses 'default' mode
 " 		  (g:atp_DefaultDebugMode).
-function! atplib_compiler#TeX(runs, bang, ...)
+function! atplib#compiler#TeX(runs, bang, ...)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
@@ -1346,23 +1976,27 @@ function! atplib_compiler#TeX(runs, bang, ...)
 	elseif a:runs == 1
 	    echo "[ATP:] ".Compiler . " will run once."
 	elseif a:runs > 5
-	    echo "[ATP:] ".Compiler . " will run " . atplib_compiler#runlimit . " times."
+	    echo "[ATP:] ".Compiler . " will run " . atplib#compiler#runlimit . " times."
 	endif
     endif
     if g:atp_Compiler == 'python'
-	call atplib_compiler#PythonCompiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
+        if g:atp_devversion == 0
+            call atplib#compiler#PythonCompiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
+        else
+            call atplib#compiler#ThreadedCompiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
+        endif
     else
-	call atplib_compiler#Compiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
+	call atplib#compiler#Compiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
     endif
 endfunction
-" command! -buffer -count=1	VTEX		:call atplib_compiler#TeX(<count>, 'verbose') 
+" command! -buffer -count=1	VTEX		:call atplib#compiler#TeX(<count>, 'verbose') 
 "}}}
-"{{{ atplib_compiler#DebugComp()
-function! atplib_compiler#DebugComp(A,L,P)
+"{{{ atplib#compiler#DebugComp()
+function! atplib#compiler#DebugComp(A,L,P)
     return "silent\ndebug\nDebug\nverbose"
-endfunction
-"{{{ Bibtex
-function! atplib_compiler#SimpleBibtex()
+endfunction "}}}
+"{{{ atplib#compiler#Bibtex
+function! atplib#compiler#SimpleBibtex()
     let bibcommand 	= b:atp_BibCompiler." "
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     if b:atp_BibCompiler =~ '^\s*biber\>'
@@ -1389,7 +2023,7 @@ function! atplib_compiler#SimpleBibtex()
     exe "lcd " . fnameescape(saved_cwd)
 endfunction
 
-function! atplib_compiler#Bibtex(bang, ...)
+function! atplib#compiler#Bibtex(bang, ...)
     if a:0 >= 1 && a:1 =~# '^o\%[utput]$'
 	redraw!
 	if exists("b:atp_BibtexReturnCode")
@@ -1402,7 +2036,7 @@ function! atplib_compiler#Bibtex(bang, ...)
 	endif
 	return
     elseif a:bang == ""
-	call atplib_compiler#SimpleBibtex()
+	call atplib#compiler#SimpleBibtex()
 	return
     endif
 
@@ -1428,12 +2062,16 @@ function! atplib_compiler#Bibtex(bang, ...)
     endif
 
     if g:atp_Compiler == 'python'
-	call atplib_compiler#PythonCompiler(1, 0, 0, mode, "COM", atp_MainFile, "")
+        if g:atp_devversion == 0
+            call atplib#compiler#PythonCompiler(1, 0, 0, mode, "COM", atp_MainFile, "")
+        else
+            call atplib#compiler#ThreadedCompiler(1, 0, 0, mode, "COM", atp_MainFile, "")
+        endif
     else
-	call atplib_compiler#Compiler(1, 0, 0, mode, "COM", atp_MainFile, "")
+	call atplib#compiler#Compiler(1, 0, 0, mode, "COM", atp_MainFile, "")
     endif
 endfunction
-function! atplib_compiler#BibtexComp(A,L,P)
+function! atplib#compiler#BibtexComp(A,L,P)
 	return "silent\ndebug\nDebug\nverbose\noutput"
 endfunction
 "}}}
@@ -1453,10 +2091,10 @@ endfunction
 " F	- files
 " p	- package info messages
 
-" {{{ atplib_compiler#SetErrorFormat
+" {{{ atplib#compiler#SetErrorFormat
 " first argument is a word in flags 
 " the default is a:1=e /show only error messages/
-function! atplib_compiler#SetErrorFormat(...)
+function! atplib#compiler#SetErrorFormat(...)
 
     let l:cgetfile = ( a:0 >=2 ? a:2 : 0 )
     " This l:cgetfile == 1 only if run by the command :ErrorFormat 
@@ -1660,12 +2298,12 @@ function! atplib_compiler#SetErrorFormat(...)
 endfunction
 "}}}
 "{{{ ShowErrors
-" each argument can be a word in flags as for atplib_compiler#SetErrorFormat (except the
+" each argument can be a word in flags as for atplib#compiler#SetErrorFormat (except the
 " word 'whole') + two other flags: all (include all errors) and ALL (include
 " all errors and don't ignore any line - this overrides the variables
 " g:atp_ignore_unmatched and g:atp_show_all_lines.
-function! atplib_compiler#ShowErrors(...)
-    " It is not atplib_compiler# because it is run from atplib#CallBack()
+function! atplib#compiler#ShowErrors(...)
+    " It is not atplib#compiler# because it is run from atplib#callback#CallBack()
 
     let errorfile	= &l:errorfile
     " read the log file and merge warning lines 
@@ -1701,7 +2339,7 @@ function! atplib_compiler#ShowErrors(...)
 	echo b:atp_BibtexOutput
 	return
     endif
-    call atplib_compiler#SetErrorFormat(l:arg)
+    call atplib#compiler#SetErrorFormat(l:arg)
     let show_message = ( a:0 >= 2 ? a:2 : 1 )
 
     " read the log file
@@ -1709,7 +2347,7 @@ function! atplib_compiler#ShowErrors(...)
 
     " signs
     if g:atp_signs
-	call atplib#Signs()
+	call atplib#callback#Signs()
     endif
 
     " final stuff
@@ -1725,27 +2363,16 @@ function! atplib_compiler#ShowErrors(...)
 endfunction
 "}}}
 if !exists("*ListErrorsFlags")
-function! atplib_compiler#ListErrorsFlags(A,L,P)
+function! atplib#compiler#ListErrorsFlags(A,L,P)
     return "all\nAll\nc\ne\nF\nf\nfi\no\nr\nw\nb"
 endfunction
 endif
 if !exists("*ListErrorsFlags_A")
-function! atplib_compiler#ListErrorsFlags_A(A,L,P)
+function! atplib#compiler#ListErrorsFlags_A(A,L,P)
     " This has no o flag.
     return "all\nAll\nc\ne\nF\nf\nfi\nr\nw\nb"
 endfunction
 endif
 "}}}
-" function! atplib_compiler#SetErrorFormat(efm)
-" 
-"     if a:efm == ""
-" 	return
-"     endif
-" 
-"     unlockvar b:atp_ErrorFormat
-"     let b:atp_ErrorFormat = a:efm
-"     cgetfile
-" 
-" endfunction
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

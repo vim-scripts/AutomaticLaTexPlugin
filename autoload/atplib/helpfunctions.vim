@@ -147,5 +147,76 @@ endfunction
 " silent call atplib#helpfunctions#HelpIMaps()
 " command! -buffer HelpIMaps :echo atplib#helpfunctions#HelpIMaps()
 " }}}1
+function! atplib#helpfunctions#MapSearch(bang,rhs_pattern,...)
+    let mode = ( a:0 >= 1 ? a:1 : '' )
+    let more = &more
+    setl nomore
+    redir => maps
+	exe "silent ".mode."map"
+    redir end
+    let &l:more = more
+    let list = split(maps, "\n")
+    let rhs_list  = ( a:bang == "" ? map(copy(list), 'matchstr(v:val, ''.\s\+\S\+\s\+\zs.*'')') :
+		\ map(copy(list), 'matchstr(v:val, ''.\s\+\zs\S\+\s\+.*'')') )
+    if a:bang == "!"
+	let pure_rhs_list = map(copy(list), 'matchstr(v:val, ''.\s\+\S\+\s\+\zs.*'')')
+    else
+	let pure_rhs_list = rhs_list
+    endif
+    let g:rhs_list_0 = copy(rhs_list)
+    let g:pure_rhs_list = copy(pure_rhs_list)
+    if mode == 'i'
+	let g:added =[]
+	let g:add   =[]
+	let j=0
+	for entry in g:atp_imap_greek_letters
+		    \ +g:atp_imap_math_misc
+		    \ +g:atp_imap_diacritics
+		    \ +g:atp_imap_environments
+		    \ +g:atp_imap_math
+		    \ +g:atp_imap_fonts 
+	    let entry_tab = substitute(entry[4], "\t", '<Tab>', 'g')
+	    let entry_tab = substitute(entry_tab, "", '<C-R>', 'g')
+	    if index(pure_rhs_list, entry_tab)	== -1 &&
+			\ index(pure_rhs_list, "*".entry_tab) == -1 &&
+			\ index(pure_rhs_list, "@".entry_tab) == -1 &&
+			\ index(pure_rhs_list, "*@".entry_tab) == -1 
+		" Debug:
+		    call add(g:added, j." ".entry[2].entry[3]."    ".entry_tab)
+		    let j+=1
+		    call add(g:add, entry_tab)
+		let space = join(map(range(max([12-len(entry[2].entry[3]),1])), "' '"), "")
+		call add(list, 'i  '.entry[2].entry[3].space.entry_tab)
+		if a:bang == ""
+		    call add(rhs_list, entry_tab)
+		else
+		    call add(rhs_list, 'i  '.entry[2].entry[3].space.entry_tab)
+		endif
+	    endif
+	endfor
+    endif
+    let g:rhs_list = copy(rhs_list)
+    let i = 0
+    let i_list = []
+    for rhs in rhs_list
+	if rhs =~ a:rhs_pattern
+	    call add(i_list, i)
+	endif
+	let i+=1
+    endfor
+
+    let found_maps = []
+    for i in i_list
+	call add(found_maps, list[i])
+    endfor
+    if len(found_maps) > 0
+	echo join(found_maps, "\n")
+    else
+	echohl WarningMsg
+	echo "No such map"
+	echohl Normal
+    endif
+"     return found_maps
+endfunction
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

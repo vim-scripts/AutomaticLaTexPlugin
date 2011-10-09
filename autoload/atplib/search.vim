@@ -1032,9 +1032,6 @@ function! atplib#search#RecursiveSearch(main_file, start_file, maketree, tree, c
 	    endif
 
 	    let projectVarDict 	= SaveProjectVariables()
-" 	    let projectScript	= SaveProjectVariables("g:atp_ProjectLocalVariables") 
-" 	    let atp_ProjectScript 	= [ exists("g:atp_ProjectScript") ? g:atp_ProjectScript : b:atp_ProjectScript, exists("g:atp_ProjectScript") ] 
-" 	    let g:atp_ProjectScript 	= 0
 	    if g:atp_debugRS >= 3
 		silent echo "projectVarDict : " . string(projectVarDict) 
 		let g:projectVarDict = projectVarDict
@@ -1063,12 +1060,6 @@ function! atplib#search#RecursiveSearch(main_file, start_file, maketree, tree, c
 		silent echo "TIME ***goto UP after open*** " . reltimestr(reltime(time0))
 	    endif
 
-" 	    call RestoreProjectVariables(projectScript)
-" 	    if atp_ProjectScript[1]
-" 		let g:atp_ProjectScript = atp_ProjectScript[0]
-" 	    else
-" 		unlet g:atp_ProjectScript
-" 	    endif
 	    call RestoreProjectVariables(projectVarDict)
 	    if g:atp_debugRS >= 2
 		silent echo "TIME ***goto UP restore variables *** " . reltimestr(reltime(time0))
@@ -1160,9 +1151,6 @@ function! atplib#search#RecursiveSearch(main_file, start_file, maketree, tree, c
 		silent echo "TIME ***goto DOWN before open*** " . reltimestr(reltime(time0))
 	    endif
 	    let projectVarDict 	= SaveProjectVariables()
-" 	    let projectScript	= SaveProjectVariables("g:atp_ProjectLocalVariables")
-" 	    let atp_ProjectScript 	= [ exists("g:atp_ProjectScript") ? g:atp_ProjectScript : b:atp_ProjectScript, exists("g:atp_ProjectScript") ] 
-" 	    let g:atp_ProjectScript 	= 0
 	    if empty(swapfile) || bufexists(next_branch)
 		if g:atp_debugRS >= 2
 		silent echo "Alternate (before open) " . bufname("#")
@@ -1175,12 +1163,6 @@ function! atplib#search#RecursiveSearch(main_file, start_file, maketree, tree, c
 	    if g:atp_debugRS >= 2
 		silent echo "TIME ***goto DOWN after open*** " . reltimestr(reltime(time0))
 	    endif
-" 	    call RestoreProjectVariables(projectScript)
-" 	    if atp_ProjectScript[1]
-" 		let g:atp_ProjectScript = atp_ProjectScript[0]
-" 	    else
-" 		unlet g:atp_ProjectScript
-" 	    endif
 	    call RestoreProjectVariables(projectVarDict)
 	    if g:atp_debugRS >= 2
 		silent echo "TIME ***goto DOWN restore project variables *** " . reltimestr(reltime(time0))

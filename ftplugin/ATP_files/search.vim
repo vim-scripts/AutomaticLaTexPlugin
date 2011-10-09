@@ -79,6 +79,15 @@ command! -buffer -bang -nargs=* -complete=customlist,DsearchComp Dsearch	:call a
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleNn	:call atplib#search#ATP_ToggleNn(<f-args>)
 command! -buffer -bang -nargs=* BibSearch					:call atplib#search#BibSearch(<q-bang>, <q-args>)
 
+" Search map:
+command! -buffer -bang -nargs=? Map	:call atplib#helpfunctions#MapSearch(<q-bang>,<q-args>, '')
+command! -buffer -bang -nargs=? Nmap	:call atplib#helpfunctions#MapSearch(<q-bang>,<q-args>, 'n')
+command! -buffer -bang -nargs=? Imap	:call atplib#helpfunctions#MapSearch(<q-bang>,<q-args>, 'i')
+command! -buffer -bang -nargs=? Cmap	:call atplib#helpfunctions#MapSearch(<q-bang>,<q-args>, 'c')
+command! -buffer -bang -nargs=? Vmap	:call atplib#helpfunctions#MapSearch(<q-bang>,<q-args>, 'v')
+command! -buffer -bang -nargs=? Smap	:call atplib#helpfunctions#MapSearch(<q-bang>,<q-args>, 's')
+command! -buffer -bang -nargs=? Omap	:call atplib#helpfunctions#MapSearch(<q-bang>,<q-args>, 'o')
+command! -buffer -bang -nargs=? Lmap	:call atplib#helpfunctions#MapSearch(<q-bang>,<q-args>, 'l')
 " Hilighlting:
 hi link BibResultsFileNames 	Title	
 hi link BibResultEntry		ModeMsg

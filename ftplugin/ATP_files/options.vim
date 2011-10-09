@@ -2,7 +2,7 @@
 " Description: 	This file contains all the options defined on startup of ATP
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sat Sep 24, 2011 at 23:38:38  +0100
+" Last Change: Thu Oct 06, 2011 at 08:42:36  +0100
 
 " NOTE: you can add your local settings to ~/.atprc.vim or
 " ftplugin/ATP_files/atprc.vim file
@@ -261,8 +261,9 @@ endif
 " This was throwing all autocommand groups to the command line on startup.
 " Anyway this is not very good.
 "     augroup ATP_makeprg
+" 	au!
 " 	au VimEnter *.tex let &l:makeprg="vim --servername " . v:servername . " --remote-expr 'Make()'"
-"     augroup
+"     augroup END
 
 " }}}
 
@@ -355,7 +356,7 @@ function! s:SetOptions()
 
 	    " set b:atp_OutDir and the value of errorfile option
 	    if !exists("b:atp_OutDir")
-		call s:SetOutDir(1)
+		call atplib#common#SetOutDir(1)
 	    endif
 	    let s:ask["ask"] 	= 1
 	endif
@@ -1131,7 +1132,7 @@ if !exists("t:atp_labels_window_width")
     endif
 endif
 if !exists("g:atp_completion_limits")
-    let g:atp_completion_limits	= [40,60,80,120,30]
+    let g:atp_completion_limits	= [40,60,80,120,60]
 endif
 if !exists("g:atp_long_environments")
     let g:atp_long_environments	= []
@@ -1182,44 +1183,33 @@ endif
 if !exists("g:atp_ProjectLocalVariables")
     " This is a list of variable names which will be preserved in project files
     let g:atp_ProjectLocalVariables = [
-		\ "b:atp_MainFile", 	"g:atp_mapNn", 		"b:atp_autex", 
-		\ "b:atp_TexCompiler", 	"b:atp_TexOptions", 	"b:atp_TexFlavor", 	
-		\ "b:atp_OutDir", 	"b:atp_auruns", 	"b:atp_ReloadOnError", 	
-		\ "b:atp_OpenViewer", 	"b:atp_XpdfServer",	"b:atp_ProjectDir", 	
-		\ "b:atp_Viewer", 	"b:TreeOfFiles",	"b:ListOfFiles", 	
-		\ "b:TypeDict", 	"b:LevelDict", 		"b:atp_BibCompiler", 
-		\ "b:atp_StarEnvDefault", 	"b:atp_StarMathEnvDefault", 
+		\ "b:atp_MainFile", 	"g:atp_mapNn", 		"b:atp_autex",
+		\ "b:atp_TexCompiler", 	"b:atp_TexOptions", 	"b:atp_TexFlavor", 
+		\ "b:atp_auruns", 	"b:atp_ReloadOnError",
+		\ "b:atp_OpenViewer", 	"b:atp_XpdfServer",
+		\ "b:atp_Viewer", 	"b:TreeOfFiles",	"b:ListOfFiles",
+		\ "b:TypeDict", 	"b:LevelDict", 		"b:atp_BibCompiler",
+		\ "b:atp_StarEnvDefault", 	"b:atp_StarMathEnvDefault",
 		\ "b:atp_updatetime_insert", 	"b:atp_updatetime_normal",
 		\ ] 
     if !has("python")
 	call extend(g:atp_ProjectLocalVariables, ["b:atp_LocalCommands", "b:atp_LocalEnvironments", "b:atp_LocalColors"])
     endif
 endif
-" the variable a:1 is the name of the variable which stores the list of variables to
-" save.
-function! SaveProjectVariables(...)
-    let variables_List	= ( a:0 >= 1 ? {a:1} : g:atp_ProjectLocalVariables )
-    let variables_Dict 	= {}
-    for var in variables_List
-	if exists(var)
-	    call extend(variables_Dict, { var : {var} })
-	endif
-    endfor
-    return variables_Dict
-endfunction
-function! RestoreProjectVariables(variables_Dict)
-    for var in keys(a:variables_Dict)
- 	let cmd =  "let " . var . "=" . string(a:variables_Dict[var])
-	try
-	    exe cmd
-	catch E741:
-	    "if the variable was locked
-	    exe "unlockvar ".var
-	    exe cmd
-	    exe "lockvar ".var 
-	endtry
-    endfor
-endfunction
+" This variable is used by atplib#motion#GotoFile (atp-:Edit command):c
+let g:atp_SavedProjectLocalVariables = [
+		\ "b:atp_MainFile", 	"g:atp_mapNn", 		"b:atp_autex",
+		\ "b:atp_TexCompiler", 	"b:atp_TexOptions", 	"b:atp_TexFlavor", 
+		\ "b:atp_ProjectDir", 	"b:atp_auruns", 	"b:atp_ReloadOnError",
+		\ "b:atp_OutDir",	"b:atp_OpenViewer", 	"b:atp_XpdfServer",
+		\ "b:atp_Viewer", 	"b:TreeOfFiles",	"b:ListOfFiles",
+		\ "b:TypeDict", 	"b:LevelDict", 		"b:atp_BibCompiler",
+		\ "b:atp_StarEnvDefault", 	"b:atp_StarMathEnvDefault",
+		\ "b:atp_updatetime_insert", 	"b:atp_updatetime_normal", 
+		\ "b:atp_ErrorFormat", 	"b:atp_LastLatexPID",	"b:atp_LatexPIDs",
+		\ "b:atp_LatexPIDs",	"b:atp_BibtexPIDs",	"b:atp_MakeindexPIDs",
+		\ "b:atp_ProgressBar"]
+
 " }}}1
 
 " This is to be extended into a nice function which shows the important options
@@ -1301,6 +1291,7 @@ endif
 
 if !s:did_options
     augroup ATP_DebugMode
+	au!
 	au BufEnter *.tex let t:atp_DebugMode	 = ( exists("t:atp_DebugMode") ? t:atp_DebugMode : g:atp_DefaultDebugMode )
 	au BufEnter *.tex let t:atp_QuickFixOpen = ( exists("t:atp_QuickFixOpen") ? t:atp_QuickFixOpen : 0 )
 	" When opening the quickfix error buffer:  
@@ -2696,10 +2687,7 @@ function! <SID>ATP_SyntaxGroups()
     endif
     " add texMathZoneT syntax group for tikzpicture environment:
     if atplib#search#SearchPackage('tikz') || atplib#search#SearchPackage('pgfplots')
-	try
-	    call TexNewMathZone("T", "tikzpicture", 0)
-	catch /E117:/
-	endtry
+	syntax region texMathZoneT start='\\begin\s*{\s*tikzpicture\s*}' end='\\end\s*{\s*tikzpicture\s*}' keepend contains=@texMathZoneGroup,@texMathZones
     endif
     " add texMathZoneALG syntax group for algorithmic environment:
     if atplib#search#SearchPackage('algorithmic')
@@ -2710,33 +2698,35 @@ function! <SID>ATP_SyntaxGroups()
     endif
 endfunction
 
-augroup ATP_AddSyntaxGroups
+augroup ATP_SyntaxGroups
+    au!
     au BufEnter *.tex :call <SID>ATP_SyntaxGroups()
 augroup END
 
 augroup ATP_Devel
+    au!
     au BufEnter *.sty	:setl nospell	
     au BufEnter *.cls	:setl nospell
     au BufEnter *.fd	:setl nospell
 augroup END
 "}}}1
-
 "{{{1 Highlightings in help file
 augroup ATP_HelpFile_Highlight
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_FileName') ? "atp_FileName" : "Title",  'highlight atp_FileName\s\+Title')
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_LineNr') 	? "atp_LineNr"   : "LineNr", 'highlight atp_LineNr\s\+LineNr')
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Number') 	? "atp_Number"   : "Number", 'highlight atp_Number\s\+Number')
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Chapter') 	? "atp_Chapter"  : "Label",  'highlight atp_Chapter\s\+Label')
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Section') 	? "atp_Section"  : "Label",  'highlight atp_Section\s\+Label')
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_SubSection') ? "atp_SubSection": "Label", 'highlight atp_SubSection\s\+Label')
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Abstract')	? "atp_Abstract" : "Label", 'highlight atp_Abstract\s\+Label')
+    au!
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_FileName') ? "atp_FileName" : "Title",  'highlight atp_FileName\s\+Title')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_LineNr') 	? "atp_LineNr"   : "LineNr", 'highlight atp_LineNr\s\+LineNr')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Number') 	? "atp_Number"   : "Number", 'highlight atp_Number\s\+Number')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Chapter') 	? "atp_Chapter"  : "Label",  'highlight atp_Chapter\s\+Label')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Section') 	? "atp_Section"  : "Label",  'highlight atp_Section\s\+Label')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_SubSection') ? "atp_SubSection": "Label", 'highlight atp_SubSection\s\+Label')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_Abstract')	? "atp_Abstract" : "Label", 'highlight atp_Abstract\s\+Label')
 
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_FileName') 	? "atp_label_FileName" 	: "Title",	'^\s*highlight atp_label_FileName\s\+Title\s*$')
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_LineNr') 	? "atp_label_LineNr" 	: "LineNr",	'^\s*highlight atp_label_LineNr\s\+LineNr\s*$')
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_Name') 	? "atp_label_Name" 	: "Label",	'^\s*highlight atp_label_Name\s\+Label\s*$')
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_Counter') 	? "atp_label_Counter" 	: "Keyword",	'^\s*highlight atp_label_Counter\s\+Keyword\s*$')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_FileName') 	? "atp_label_FileName" 	: "Title",	'^\s*highlight atp_label_FileName\s\+Title\s*$')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_LineNr') 	? "atp_label_LineNr" 	: "LineNr",	'^\s*highlight atp_label_LineNr\s\+LineNr\s*$')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_Name') 	? "atp_label_Name" 	: "Label",	'^\s*highlight atp_label_Name\s\+Label\s*$')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('atp_label_Counter') 	? "atp_label_Counter" 	: "Keyword",	'^\s*highlight atp_label_Counter\s\+Keyword\s*$')
 
-au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('bibsearchInfo')	? "bibsearchInfo"	: "Number",	'^\s*highlight bibsearchInfo\s*$')
+    au BufEnter automatic-tex-plugin.txt call matchadd(hlexists('bibsearchInfo')	? "bibsearchInfo"	: "Number",	'^\s*highlight bibsearchInfo\s*$')
 augroup END
 "}}}1
 

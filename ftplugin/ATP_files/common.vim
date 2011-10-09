@@ -2,7 +2,7 @@
 " Description: This script has functions which have to be called before ATP_files/options.vim 
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Fri Sep 23, 2011 at 12:12  +0100
+" Last Change: Tue Sep 27, 2011 at 20:42:16  +0100
 
 " This file contains set of functions which are needed to set to set the atp
 " options and some common tools.
@@ -61,7 +61,7 @@ augroup ATP_SetErrorFile
 augroup END
 
 " TreeOfFiles
-function! TreeOfFiles(main_file,...)
+function! TreeOfFiles(main_file,...) "{{{1
     let pattern		= a:0 >= 1 	? a:1 : g:atp_inputfile_pattern
     let flat		= a:0 >= 2	? a:2 : 0	
     let run_nr		= a:0 >= 3	? a:3 : 1 
@@ -74,7 +74,7 @@ function! TreeOfFiles(main_file,...)
     endif
     " Notes: vim script avrage is 0.38s, python avrage is 0.28
     return [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]
-endfunction
+endfunction "}}}1
 
 " All Status Line related things:
 "{{{ Status Line

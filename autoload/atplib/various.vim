@@ -2,7 +2,7 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Sat Sep 24, 2011 at 12:55  +0100
+" Last Change: Sun Oct 09, 2011 at 09:02:52  +0100
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -55,15 +55,16 @@ function! atplib#various#WrapSelection(...)
     let end_wrapper 	= ( a:0 >= 2 ? a:2 : '}' )
     let cursor_pos	= ( a:0 >= 3 ? a:3 : 'end' )
     let new_line	= ( a:0 >= 4 ? a:4 : 0 )
+    let marks		= ( a:0 >= 5 ? a:5 : ["'<", "'>"])
 
 "     let b:new_line=new_line
 "     let b:cursor_pos=cursor_pos
 "     let b:end_wrapper=end_wrapper
 
-    let l:begin=getpos("'<")
+    let l:begin=getpos(marks[0])
     " todo: if and on 'ą' we should go one character further! (this is
     " a multibyte character)
-    let l:end=getpos("'>")
+    let l:end=getpos(marks[1])
     let l:pos_save=getpos(".")
 
     " hack for that:
@@ -936,14 +937,13 @@ function! atplib#various#OpenLog()
     if filereadable(&l:errorfile)
 
 	let projectVarDict = SaveProjectVariables()
-	let g:projectVarDict = projectVarDict
 	let s:winnr	= bufwinnr("")
 	let atp_TempDir	= b:atp_TempDir
 	exe "rightbelow split +setl\\ nospell\\ ruler\\ syn=log_atp\\ autoread " . fnameescape(&l:errorfile)
 	let b:atp_TempDir = atp_TempDir
 	call RestoreProjectVariables(projectVarDict)
 
-	map <buffer> q :bd!<CR>
+	map <buffer> q :<C-U>bd!<CR>
 	nnoremap <silent> <buffer> ]m :call atplib#various#Search('\CWarning\\|^!', 'W')<CR>
 	nnoremap <silent> <buffer> [m :call atplib#various#Search('\CWarning\\|^!', 'bW')<CR>
 	nnoremap <silent> <buffer> ]w :call atplib#various#Search('\CWarning', 'W')<CR>
@@ -973,19 +973,18 @@ function! atplib#various#OpenLog()
 	endtry
 		   
 	command! -buffer -bang SyncTex		:call atplib#various#SyncTex(<q-bang>)
-	map <buffer> <Enter>			:SyncTex<CR>
-" 	nnoremap <buffer> <LocalLeader>g	:SyncTex<CR>	
+	nnoremap <buffer> <Enter>		:<C-U>SyncTex<CR>
+	nnoremap <buffer> <LocalLeader>f	:<C-U>SyncTex<CR>	
 	augroup ATP_SyncLog
 	    au CursorMoved *.log :call atplib#various#SyncTex("", 1)
 	augroup END
 
 	command! -buffer SyncXpdf 	:call atplib#various#SyncXpdfLog(0)
 	command! -buffer Xpdf 		:call atplib#various#SyncXpdfLog(0)
-	map <buffer> <silent> <F3> 	:SyncXpdf<CR>
+	map <buffer> <silent> <F3> 	:<C-U>SyncXpdf<CR>
 	augroup ATP_SyncXpdfLog
 	    au CursorMoved *.log :call atplib#various#SyncXpdfLog(1)
 	augroup END
-
     else
 	echo "No log file"
     endif
@@ -1121,9 +1120,9 @@ function! atplib#various#SyncTex(bang,...)
 	let [ startline_o, startcol_o ] = deepcopy([ startline, startcol ])
     endwhile
     keepjumps call setpos(".", saved_pos)
-	if g:atp_debugST
-	    let g:fname_post = fname
-	endif
+    if g:atp_debugST
+	let g:fname_post = fname
+    endif
 
     " if the file is under texmf directory return unless g:atp_developer = 1
     " i.e. do not visit packages and classes.
@@ -1190,8 +1189,6 @@ function! atplib#various#SyncTex(bang,...)
 
     " highlight the error
     if exists("error") && error != ""
-" 		let error_pat = escape(error, '\.')
-" 		call matchadd("ErrorMsg", '\%'.lineNr.'l' . error_pat) 
 	let matchID =  matchadd("Error", error, 15) 
     endif
 
@@ -1199,9 +1196,6 @@ function! atplib#various#SyncTex(bang,...)
 	setl cursorline
 	" Unset 'cursorline' option when entering the window. 
 	exe 'au! WinEnter ' . expand("%:p")  . " setl nocursorline"
-" 		if exists("matchID")
-" 		    exe 'au! WinEnter ' . expand("%:p")  . " call matchdelete(".matchID.")"
-" 		endif
 	exe log_winnr . ' wincmd w'
     else
 	setl nocursorline
@@ -1478,18 +1472,21 @@ function! atplib#various#ReloadATP(bang)
 	execute "source " . tex_atp_file
 
 	" delete functions from autoload/atplib.vim:
-	let atplib_file	= split(globpath(&rtp, 'autoload/atplib.vim'), "\n")[0]
+	let atplib_files = join(map(split(globpath(&rtp, 'autoload/atplib.vim')."\n".globpath(&rtp, 'autoload/atplib/*.vim'), "\n"), "fnameescape(v:val)"), " ")
 	let saved_loclist = getloclist(0)
 	try
-	    exe 'silent! lvimgrep /^\s*fun\%[ction]!\=\s\+/gj '.atplib_file
+	    exe 'silent! lvimgrep /^\s*fun\%[ction]!\=\s\+/gj '.atplib_files
 	catch E486:
 	endtry
 	let list=map(getloclist(0), 'v:val["text"]')
 	call setloclist(0,saved_loclist)
 	call map(list, 'matchstr(v:val, ''^\s*fun\%[ction]!\=\s\+\zsatplib#\S\+\ze\s*('')')
 	for fname in list
-	    if fname != ""
-		exe 'delfunction '.fname
+	    if fname != "" && fname != "atplib#various#ReloadATP"
+		try
+		    exe 'delfunction '.fname
+		catch /E130:/
+		endtry
 	    endif
 	endfor
     endif
@@ -1723,7 +1720,6 @@ function! atplib#various#Dictionary(word)
     let entry		= substitute(entry, '&nbsp;', ' ', 'g')
     let entry		= substitute(entry, 'Lists of words starting with.*', '', 'g')
     let entry		= substitute(entry, '\.\{4,}', '...', 'g')
-    let g:entry=entry
     let entry_list	= split(entry, "\n")
     let i=0
     redraw
@@ -1741,8 +1737,6 @@ function! atplib#various#Dictionary(word)
 	endif
 	let i+=1
     endfor
-"     let g:url		= url
-    let g:wget_file 	= wget_file
 endfunction
 
 function! atplib#various#Complete_Dictionary(ArgLead, CmdLine, CursorPos)

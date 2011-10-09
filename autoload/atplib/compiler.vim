@@ -1252,6 +1252,8 @@ def latex_progress_bar(cmd):
 # Run latex and send data for progress bar,
 
     child = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    # If I remove the code below and only put child.wait() 
+    # then vim crashes.
     pid   = child.pid
     vim.eval("atplib#callback#LatexPID("+str(pid)+")")
     debug_file.write("latex pid "+str(pid)+"\n")
@@ -1729,6 +1731,13 @@ ENDPYTHON
 endfunction "}}}
 " {{{ atplib#compiler#tex [test function]
 function! atplib#compiler#tex()
+" Notes:
+" this goes well untill status line is calling functions or functions which
+" are called via autocommands. Strange errors occur, for example: 
+" Error detected while processing function <SNR>106_HighlightMatchingPair..LatexBox_InComment:
+" line 3:
+" E121: Undefined variable: a:var 
+" and other similar errors. Mainly (if not only) errors E121.
 python << ENDPYTHON
 import vim, threading
 import sys, errno, os.path, shutil, subprocess, psutil, re, tempfile, optparse, glob
@@ -1737,12 +1746,41 @@ import traceback, atexit
 from os import chdir, mkdir, putenv, devnull
 from collections import deque
 
+def latex_progress_bar(cmd):
+# Run latex and send data for progress bar,
+
+    child = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    # If I remove the code below and only put child.wait() 
+    # then vim crashes.
+    pid   = child.pid
+    vim.eval("atplib#callback#LatexPID("+str(pid)+")")
+    stack = deque([])
+    while True:
+        try:
+            out = child.stdout.read(1).decode()
+        except UnicodeDecodeError:
+            out = ""
+        if out == '' and child.poll() != None:
+            break
+        if out != '':
+            stack.append(out)
+
+            if len(stack)>10:
+                stack.popleft()
+            match = re.match('\[(\n?\d(\n|\d)*)({|\])',str(''.join(stack)))
+            if match:
+                vim.eval("atplib#callback#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
+    child.wait()
+    vim.eval("atplib#callback#ProgressBar('end',"+str(pid)+")")
+    vim.eval("atplib#callback#PIDsRunning(\"b:atp_LatexPIDs\")")
+    return child
+
 class LatexThread( threading.Thread ):
     def run( self ):
 
         file=vim.eval("b:atp_MainFile")
-        subprocess.Popen(['pdflatex', file], stdout=subprocess.PIPE)
- LatexThread().start()
+	latex_progress_bar(['pdflatex', file])
+LatexThread().start()
 ENDPYTHON
 endfunction "}}}
 " AUTOMATIC TEX PROCESSING:

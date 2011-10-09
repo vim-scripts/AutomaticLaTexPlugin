@@ -74,16 +74,14 @@ else:
     synctex.wait()
     synctex_output      = synctex.stdout.read()
     synctex_error       = synctex.stderr.read()
-#     f.write("SyncTex ERROR:\n"+synctex_error+"\n")
     synctex_error_list  = re.split('\n',synctex_error)
     error               = ""
+    f.write('>>> synctex return code: '+str(synctex.returncode)+"\n")
     for error_line in synctex_error_list:
         if re.match('SyncTeX ERROR', error_line):
             error=error_line
-            print(error)
+            f.write(">>> synctex error      : "+error+"\n")
             break
-    f.write('>>> synctex return code: '+str(synctex.returncode)+"\n")
-    f.write(">>> synctex error      : "+error+"\n")
     if synctex.returncode == 0:
         match_pos=re.findall("(?:Line:(-?\d+)|Column:(-?\d+))",synctex_output)
         line=match_pos[0][0]

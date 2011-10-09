@@ -82,8 +82,10 @@ function! LatexBox_Latexmk(force)
 	let vimcmd = g:vim_program . ' --servername ' . v:servername . ' --remote-expr ' . 
 				\ shellescape(callback) . '\(\"' . fnameescape(basename) . '\",$?\)'
 
-	silent execute '! ( ' . vimsetpid . ' ; ( ' . cmd . ' ) ; ' . vimcmd . ' ) &'
-	exe "lcd " . fnameescape(pwd)
+	silent execute '! ( ' . vimsetpid . ' ; ( ' . cmd . ' ) ; ' . vimcmd . ' ) >&/dev/null &'
+	if !has("gui_running")
+		redraw!
+	endif
 endfunction
 " }}}
 
@@ -150,8 +152,14 @@ function! LatexBox_LatexmkClean(cleanall)
 		let l:options = '-c'
 	endif
 
-	let l:cmd = 'cd ' . shellescape(LatexBox_GetTexRoot()) . ' ; latexmk ' . l:options
-				\	. ' ' . shellescape(LatexBox_GetMainTexFile())
+	silent execute '! cd ' . shellescape(LatexBox_GetTexRoot()) . ' ; latexmk ' . l:options
+				\	. ' ' . shellescape(LatexBox_GetMainTexFile()) . ' >&/dev/null'
+	if !has("gui_running")
+		redraw!
+	endif
+
+	echomsg "[LatexBox:] latexmk clean finished"
+
 
 	silent execute '! ' . l:cmd
 	echomsg "[LatexBox:] latexmk clean finished"
@@ -189,8 +197,8 @@ endif
 
 " Commands {{{
 command! -buffer -bang Latexmk			call LatexBox_Latexmk((<q-bang> == "!" ? 1 : 0))
-command! -buffer -bang LatexmkClean			call LatexBox_LatexmkClean((<q-bang> == "!" ? 1 : 0))
-command! -buffer -bang LatexmkStatus			call LatexBox_LatexmkStatus((<q-bang> == "!" ? 1 : 0))
+command! -buffer -bang LatexmkClean		call LatexBox_LatexmkClean((<q-bang> == "!" ? 1 : 0))
+command! -buffer -bang LatexmkStatus		call LatexBox_LatexmkStatus((<q-bang> == "!" ? 1 : 0))
 command! -buffer LatexmkStop			call LatexBox_LatexmkStop()
 " }}}
 

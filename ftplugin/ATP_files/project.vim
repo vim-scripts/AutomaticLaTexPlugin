@@ -139,7 +139,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 	return
     endif
 
-    let cond_A	= get(s:project_Load, expand("%:p"), 0)
+    let cond_A	= get(s:project_Load, expand("%:p"), {}) != {}
     let cond_B	= get(get(s:project_Load, expand("%:p"), []), a:type, 0)
     if empty(expand("%:p"))
 	if g:atp_debugProject
@@ -153,9 +153,9 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
     if cond_B
 	let s:project_Load[expand("%:p")][a:type][0] += 1 
     elseif cond_A
-	let s:project_Load[expand("%:p")] =  { a:type : 1 }
+	call extend(s:project_Load[expand("%:p")], { a:type : 1 })
     else
-	let s:hisotory_Load= { expand("%:p") : { a:type : 1 } }
+	let s:project_Load= { expand("%:p") : { a:type : 1 } }
     endif
 
     if a:bang == "" && expand("%:p") =~ 'texmf' 
@@ -220,7 +220,11 @@ endfunction "}}}
 function! FindProjectScripts()
     let dir 	= fnamemodify(resolve(expand("%:p")), ":p:h")
     let cwd 	= getcwd()
-    exe "lcd " . fnameescape(dir)
+    try
+	exe "lcd " . fnameescape(dir)
+    catch /E344:/
+	return [] 
+    endtry
     while glob('*.project.vim', 1) == '' 
 	let dir_l 	= dir
 	let dir 	= fnamemodify(dir, ":h")
@@ -748,6 +752,31 @@ endfunction
 "     let history_file
 " endfunction
 " }}}
+
+" Save and Restore Project Variables (used by atplib#motion#GotoFile()).
+function! SaveProjectVariables(...) "{{{
+    let variables_List	= ( a:0 >= 1 ? {a:1} : g:atp_SavedProjectLocalVariables )
+    let variables_Dict 	= {}
+    for var in variables_List
+	if exists(var)
+	    call extend(variables_Dict, { var : {var} })
+	endif
+    endfor
+    return variables_Dict
+endfunction "}}}
+function! RestoreProjectVariables(variables_Dict) "{{{
+    for var in keys(a:variables_Dict)
+ 	let cmd =  "let " . var . "=" . string(a:variables_Dict[var])
+	try
+	    exe cmd
+	catch E741:
+	    " if the variable was locked:
+	    exe "unlockvar ".var
+	    exe cmd
+	    exe "lockvar ".var 
+	endtry
+    endfor
+endfunction "}}}
 endif "}}}
 
 " The Script:

@@ -474,9 +474,15 @@ function! atplib#tools#getlinenr(...) "{{{
     let labels 	=  a:0 >= 2 ? a:2 : expand("%") == "__Labels__" ? 1 : 0
 
     if labels == 0
-	return get(b:atp_Toc, line, ["", ""])[1]
+	let bnr = bufnr("_ToC_")
+	if string(getbufvar(bnr, "atp_Toc")) != ""
+	    return get(getbufvar(bnr, "atp_Toc"), line, ["", ""])[1]
+	endif
     else
-	return get(b:atp_Labels, line, ["", ""])[1]
+	let bnr = bufnr("_Labels_")
+	if string(getbufvar(bnr, "atp_Lables")) != ""
+	    return get(getbufvar(bnr, "atp_Labels"), line, ["", ""])[1]
+	endif
     endif
 endfunction "}}}
 function! atplib#tools#CursorLine() "{{{

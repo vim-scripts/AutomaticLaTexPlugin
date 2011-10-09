@@ -23,6 +23,7 @@
 " after testing I shall remove method 0
 " Method 2 doesn't makes less mistakes than method 1 (which makes them :/) but it is only for
 " brackets, returns >0 if the bracket is closed 0 if it is not. 
+try
 function! atplib#complete#CheckClosed(bpat, epat, line, col, limit,...)
 
 "     NOTE: THIS IS MUCH FASTER !!! or SLOWER !!! ???            
@@ -126,7 +127,6 @@ function! atplib#complete#CheckClosed(bpat, epat, line, col, limit,...)
 	let l:begin_line	= getline(a:line)
 	let l:begin_line_nr	= line(a:line)
 
-        let g:line              = a:line
 
 	" Find number of closed brackets which are opened before the a:line
 	call cursor(a:line, 1)
@@ -141,8 +141,10 @@ function! atplib#complete#CheckClosed(bpat, epat, line, col, limit,...)
 	call cursor(saved_pos[1], saved_pos[2])
 	if g:atp_debugCheckClosed
 	    call atplib#Log("CheckClosed.log", "l:closed_before_count=".l:closed_before_count)
+	    let g:nr_cc 	= l:nr
+	    let g:line_cc 	= a:line
+	    let g:limit_cc 	= l:limit
 	endif
-	let g:nr_2 = l:nr
 	while l:nr <= a:line+l:limit
 	    let l:line		= getline(l:nr)
 	    if l:nr == a:line+l:limit
@@ -181,12 +183,20 @@ function! atplib#complete#CheckClosed(bpat, epat, line, col, limit,...)
 		    call atplib#Log("CheckClosed.log", ">> cline=".cline."> cpos_bpat_count=".cpos_bpat_count." cpos_epat_count=".cpos_epat_count)
 		endif
 	    endif
+	    " Strip comments:
+	    let comment_match = match(l:line, '\%(\\\\\|\\\@<!\)%')
+	    if comment_match != -1
+		let l:line = strpart(l:line, 0, comment_match)
+	    endif
 	    call cursor(saved_pos[1], saved_pos[2])
 	    let l:bpat_count+=atplib#count(l:line,a:bpat, 1)
 	    let l:epat_count+=atplib#count(l:line,a:epat, 1)
 	    let cond = l:epat_count - l:closed_before_count - l:bpat_count >= 0
 	    if g:atp_debugCheckClosed
-		call atplib#Log("CheckClosed.log", l:nr." l:bpat_count=".l:bpat_count." l:epat_count=".l:epat_count)
+		call atplib#Log("CheckClosed.log", l:nr." l:bpat_count=".l:bpat_count." l:epat_count=".l:epat_count." ".l:line)
+		if l:nr == saved_pos[1]
+		    call atplib#Log("CheckClosed.log", l:nr." l:closed_before_count=".l:closed_before_count)
+		endif
 		if l:nr >= saved_pos[1]
 		    call atplib#Log("CheckClosed.log", "cond (closed-opened)=".cond." value=".(l:epat_count - l:closed_before_count - l:bpat_count))
 		endif	
@@ -242,6 +252,8 @@ function! atplib#complete#CheckClosed(bpat, epat, line, col, limit,...)
 	return 1
     endif
 endfunction
+catch /E127:/
+endtry
 " }}}1
 " {{{1 atplib#complete#CheckClosed_math
 " This functions makes a test if in line math is closed. This works well with
@@ -1164,20 +1176,21 @@ endfunction
 " for the {:} pair.
 " to make it faster I could first count the number of { and } and compare
 " them.
+try
 function! atplib#complete#CheckBracket(bracket_dict)
 
     let time		= reltime()
-    
     let limit_line	= max([1,(line(".")-g:atp_completion_limits[4])])
-
-    let begin_line	= max([search('\\\%(begin\|end\|par\)\>', 'bnW'), limit_line])
-    let end_line	= min([search('\\\%(begin\|end\|par\)\>', 'nW'), min([line('$'), line(".")+g:atp_completion_limits[4]])]) 
+    let begin_line	= max([search('\%(\\\%(begin\|end\|par\)\>\|^\s*$\)', 'bnW'), limit_line])
+    let end_line	= min([search('\%(\\\%(begin\|end\|par\)\>\|^\s*$\)', 'nW'), min([line('$'), line(".")+g:atp_completion_limits[4]])]) 
+    let length 		= end_line-begin_line
 
 
     if g:atp_debugCheckBracket
 	let g:begin_line	= begin_line
 	let g:end_line		= end_line
 	let g:limit_line	= limit_line
+	let g:length		= length
     endif
     let pos_saved 	= getpos(".")
 
@@ -1266,35 +1279,28 @@ function! atplib#complete#CheckBracket(bracket_dict)
 	endif
 	let pos[1]	= pair_{i}[0]
 	let pos[2]	= pair_{i}[1]
-	" check_{i} is 1 if the bracket is closed
-" 	let bslash = ( ket != '{' ? '\\\@<!' : '' )
-" 	let check_{i}	= atplib#complete#CheckClosed(escape(ket,'\[]'),
-" 		    \ '\%('.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', 
-" 		    \ pos[1], pos[2], g:atp_completion_limits[4],1) == '0'
 
 	let no_backslash = ( i == 0 || i == 2 ? '\\\@<!' : '' )
-	if i == 2
+	if i == 3
 	    let g:atp_debugCheckClosed = 1
-	    let g:d = pos
-	    let g:c = max([0,pos[1]-g:atp_completion_limits[4]])
 	else
 	    let g:atp_debugCheckClosed = 0
 	endif
 	if pos[1] != 0
-	    let check_{i}	= atplib#complete#CheckClosed(no_backslash.escape(ket,'\[]'),
+" 	    let check_{i} = atplib#complete#CheckClosed(no_backslash.escape(ket,'\[]'),
+" 			\ '\%('.no_backslash.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', 
+" 			\ max([0,pos[1]-g:atp_completion_limits[4]]), 1, 2*g:atp_completion_limits[4],2)
+	    let check_{i} = atplib#complete#CheckClosed(no_backslash.escape(ket,'\[]'),
 			\ '\%('.no_backslash.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', 
-			\ max([0,pos[1]-g:atp_completion_limits[4]]), 1, 2*g:atp_completion_limits[4],2)
+			\ begin_line, 1, length,2)
 	    let check_{i} = ( check_{i} == 0 )
 	else
 	    let check_{i} = 0
 	endif
-" 	let g:arg_{i}=[escape(ket,'\[]'), '\%('.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', max([0,pos[1]-g:atp_completion_limits[4]]), 1, 2*g:atp_completion_limits[4],2]
 
-" 	let check_{i}	= atplib#complete#CheckClosed(escape(ket,'\[]'),
-" 		    \ '\%('.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', 
-" 		    \ pos[1], 1, 2*g:atp_completion_limits[4],2) == '0'
 	if g:atp_debugCheckBracket >= 1
 	    call atplib#Log("CheckBracket.log", ket." check_".i."=".string(check_{i}))
+	    let g:arg_{i}=[escape(ket,'\[]'), '\%('.escape(a:bracket_dict[ket],'\[]').'\|\\\.\)', max([0,pos[1]-g:atp_completion_limits[4]]), 1, 2*g:atp_completion_limits[4],2]
 	endif
 	" check_dot_{i} is 1 if the bracket is closed with a dot (\right.) . 
 " 	let check_dot_{i} = atplib#complete#CheckClosed('\\\@<!'.escape(ket, '\[]'), '\\\.', line("."), pos[1], g:atp_completion_limits[4], 1) == '0'
@@ -1331,6 +1337,8 @@ function! atplib#complete#CheckBracket(bracket_dict)
 "     let g:time=g:time+str2float(substitute(g:time_CheckBracket, '\.', ',', ''))
     return [ open_line, open_col, bracket_list[open_bracket_nr] ]
 endfunction
+catch /E127:/
+endtry
 " }}}1
 " {{{1 atplib#complete#CloseLastBracket
 "
@@ -1383,7 +1391,6 @@ function! atplib#complete#CloseLastBracket(bracket_dict, ...)
     let [ open_line, open_col, opening_bracket ] = ( tab_completion ? 
 		\ deepcopy([ s:open_line, s:open_col, s:opening_bracket ]) : atplib#complete#CheckBracket(a:bracket_dict) )
     call cursor(line("."), pos_saved[2])
-    let open_col = ( open_col > 1 ? open_col-1 : open_col )
 
     " Check and Close Environment:
     for env_name in g:atp_closebracket_checkenv
@@ -1417,7 +1424,7 @@ function! atplib#complete#CloseLastBracket(bracket_dict, ...)
 
    if open_col 
 	let line	= getline(open_line)
-	let bline	= strpart(line,0,open_col)
+	let bline	= strpart(line,0,open_col-1)
 	if g:atp_debugCloseLastBracket
 	    let g:bline = bline
 	    call atplib#Log("CloseLastBracket.log", "bline=".bline)
@@ -1526,6 +1533,7 @@ endfunction
 " This function is used in atplib#complete#TabCompletion in several places.
 " It combines both above atplib#complete#CloseLastEnvironment and
 " atplib#complete#CloseLastBracket functions.
+try
 function! atplib#complete#GetBracket(append,...)
     " a:1 = 0  - pass through first if (it might be checked already).
     " a:2 = atplib#complete#CheckBracket(g:atp_bracket_dict)
@@ -1533,22 +1541,23 @@ function! atplib#complete#GetBracket(append,...)
     let pos=getpos(".")
     call cursor(line("."), col(".")-1)
     let begParen = ( a:0 >=2 ? a:2 : atplib#complete#CheckBracket(g:atp_bracket_dict) )
+    let g:begParen = begParen
     call cursor(line("."), pos[2])
     if begParen[1] != 0  || atplib#complete#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY', 'texMathZoneV', 'texMathZoneW']) || ( a:0 >= 1 && a:1 )
 	if atplib#complete#CheckSyntaxGroups(['texMathZoneV'])
-	    let pattern = '\\\@<!\\(\zs'
+	    let pattern = '\\\@<!\\\zs('
 	    let syntax	= 'texMathZoneV'
 	    let limit	= g:atp_completion_limits[0]
 	elseif atplib#complete#CheckSyntaxGroups(['texMathZoneW'])
-	    let pattern = '\\\@<!\\\[\zs'
+	    let pattern = '\\\@<!\\\zs\['
 	    let syntax	= 'texMathZoneW'
 	    let limit	= g:atp_completion_limits[1]
 	elseif atplib#complete#CheckSyntaxGroups(['texMathZoneX'])
-	    let pattern = '\%(\\\|\$\)\@<!\$\$\@!\zs'
+	    let pattern = '\%(\\\|\$\)\@<!\zs\$\$\@!'
 	    let syntax	= 'texMathZoneX'
 	    let limit	= g:atp_completion_limits[0]
 	elseif atplib#complete#CheckSyntaxGroups(['texMathZoneY'])
-	    let pattern = '\\\@<!\$\$\zs'
+	    let pattern = '\\\@<!\$\zs\$'
 	    let syntax	= 'texMathZoneY'
 	    let limit	= g:atp_completion_limits[1]
 	else
@@ -1556,7 +1565,6 @@ function! atplib#complete#GetBracket(append,...)
 	endif
 
 	let g:pattern = pattern
-	let g:debug = 0
 	if !empty(pattern)
 	    let begMathZone = searchpos(pattern, 'bnW')
 	    let g:begMathZone = copy(begMathZone)
@@ -1565,17 +1573,14 @@ function! atplib#complete#GetBracket(append,...)
 	    if atplib#CompareCoordinates([ begParen[0], begParen[1] ], begMathZone) && closed_math
 		" I should close it if math is not closed.
 		let bracket = atplib#complete#CloseLastEnvironment(a:append, 'math', '', [0, 0], 1)
-		let g:debug = 1
 	    elseif (begParen[0] != 0 && begParen[1] !=0) && atplib#complete#CheckSyntaxGroups(['texMathZoneV', 'texMathZoneW', 'texMathZoneX', 'texMathZoneY'], begParen[0], begParen[1]) == atplib#complete#CheckSyntaxGroups(['texMathZoneV', 'texMathZoneW', 'texMathZoneX', 'texMathZoneY'], line("."), max([1,col(".")-1]))
-		let g:debug = 2
 		let [s:open_line, s:open_col, s:opening_bracket]=begParen
+		let g:debug = s:open_line." ".s:open_col 
 		let bracket = atplib#complete#CloseLastBracket(g:atp_bracket_dict, 1, 1)
 	    else
-		let g:debug = 3
 		let bracket = "0"
 	    endif
 	else
-	    let g:debug = 4
 	    let bracket =  atplib#complete#CloseLastBracket(g:atp_bracket_dict, 1, 1)
 	endif
 	call setpos(".", pos)
@@ -1589,6 +1594,8 @@ function! atplib#complete#GetBracket(append,...)
     let g:time_GetBrackets=reltimestr(reltime(time))
     return ''
 endfunction
+catch /E127:/
+endtry
 "}}}1
 
 " Tab Completion:
@@ -1638,12 +1645,11 @@ try
 " Main tab completion function
 function! atplib#complete#TabCompletion(expert_mode,...)
 
-    let time=reltime()
-
     if g:atp_debugTabCompletion
 	call atplib#Log("TabCompletion.log", "", "init")
     endif
 
+    let time=reltime()
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     " {{{2 Match the completed word 
     let normal_mode=0
@@ -1982,9 +1988,7 @@ function! atplib#complete#TabCompletion(expert_mode,...)
 	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
     "{{{3 --------- brackets, algorithmic, abbreviations, close environments
     else
-	let g:time_A = reltimestr(reltime(time))
 	let begParen = atplib#complete#CheckBracket(g:atp_bracket_dict)
-	let g:time_B = reltimestr(reltime(time))
 	"{{{4 --------- abbreviations
 	if l =~ '=[a-zA-Z]\+\*\=$' &&
 		\ index(g:atp_completion_active_modes, 'abbreviations') != -1
@@ -1995,7 +1999,6 @@ function! atplib#complete#TabCompletion(expert_mode,...)
 	elseif begParen[1] != 0 || atplib#complete#CheckSyntaxGroups(['texMathZoneX', 'texMathZoneY']) &&
 		\ (!normal_mode &&  index(g:atp_completion_active_modes, 'brackets') != -1 ) ||
 		\ (normal_mode && index(g:atp_completion_active_modes_normal_mode, 'brackets') != -1 )
-	    let g:time_C=reltimestr(reltime(time))
 	    let completion_method = 'brackets'
 	    let b:comp_method='brackets'
 	    let bracket=atplib#complete#GetBracket(append, 0, begParen)
@@ -2026,10 +2029,8 @@ function! atplib#complete#TabCompletion(expert_mode,...)
 	endif
 	"}}}3
     endif
+    let b:completion_method = ( exists("completion_method") ? completion_method : 'completion_method does not exists' )
 "}}}2
-let b:completion_method = ( exists("completion_method") ? completion_method : 'completion_method does not exists' )
-" if the \[ is not closed, first close it and then complete the commands, it
-" is better as then automatic tex will have better file to operate on.
 " {{{2 close environments
     if completion_method=='close_env'
 

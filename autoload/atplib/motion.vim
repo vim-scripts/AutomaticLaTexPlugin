@@ -17,7 +17,7 @@
 " 		    which works in all situations, while this is important for 
 " 		    :DeleteSection command /
 "
-" {{{2 s:find_toc_lines
+" {{{2 atplib#motion#find_toc_lines
 function! atplib#motion#find_toc_lines()
     let toc_lines_nr=[]
     let toc_lines=[]
@@ -318,10 +318,10 @@ function! atplib#motion#showtoc(toc)
 	endif
 	let toc_winnr=bufwinnr(bufnr("__Labels__"))
 	if toc_winnr == -1
-	    let openbuffer="keepalt " . t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nofile\\ nobuflisted\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
+	    let openbuffer="keepalt " . t:toc_window_width . "vsplit +setl\\ wiw=15\\ buftype=nowrite\\ nobuflisted\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
 	else
 	    exe toc_winnr."wincmd w"
-	    let l:openbuffer= "keepalt above split +setl\\ buftype=nofile\\ nobuflisted\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
+	    let l:openbuffer= "keepalt above split +setl\\ buftype=nowrite\\ nobuflisted\\ tabstop=1\\ filetype=toc_atp\\ nowrap __ToC__"
 	endif
 	keepalt silent exe  openbuffer
 	" We are setting the address from which we have come.
@@ -1221,7 +1221,7 @@ function! atplib#motion#GotoFile(bang,args,...)
 
     if !has("path_extra")
 	echoerr "Needs +path_extra vim feature."
-	exe "lcs " . cwd
+	exe "lcd " . cwd
 	return
     endif	
 
@@ -1338,12 +1338,10 @@ function! atplib#motion#GotoFile(bang,args,...)
 	    if exists("level_d")
 		let space = ""
 		if g:atp_RelativePath
-		    let cwd = getcwd()
 		    exe "lcd " . fnameescape(b:atp_ProjectDir)
 		    let level = get(level_d,fnamemodify(f, ':.'), get(level_d, f, 1))
 		    exe "lcd " . fnameescape(cwd)
 		else
-		    let cwd = getcwd()
 		    exe "lcd " . fnameescape(b:atp_ProjectDir)
 		    let level = get(level_d,f, get(level_d,fnamemodify(f, ':.'), 1))
 		    exe "lcd " . fnameescape(cwd)
@@ -1415,7 +1413,7 @@ function! atplib#motion#GotoFile(bang,args,...)
     endif
 
 "     DEBUG
-    let g:fname  = fname
+"     let g:fname  = fname
 "     let g:file   = file 
 "     let g:file_l = file_l
 "     let g:choice = choice 
@@ -1431,35 +1429,16 @@ function! atplib#motion#GotoFile(bang,args,...)
 	" So that bib, cls, sty files will have their file type (bib/plaintex).
 	let filetype	= &l:filetype
 	let old_file	= expand("%:p")
-	let atp_ErrorFormat	= b:atp_ErrorFormat
-	let atp_LastLatexPID 	= ( exists("b:atp_LastLatexPID") 	? b:atp_LastLatexPID 	: 0 )
-	let atp_LatexPIDs	= ( exists("b:atp_LatexPIDs") 		? b:atp_LatexPIDs 	: [] )
-	let atp_BibtexPIDs	= ( exists("b:atp_BibtexPIDs") 		? b:atp_BibtexPIDs 	: [] )
-	let atp_MakeindexPIDs	= ( exists("b:atp_MakeindexPIDs") 	? b:atp_MakeindexPIDs 	: [] )
-	let atp_ProgressBar	= ( exists("b:atp_ProgressBar") 	? b:atp_ProgressBar 	: {} )
 	execute "edit ".edit_args." ".escape(find_args, '\')." ".fnameescape(file)
 	call RestoreProjectVariables(projectVarDict)
 	if &l:filetype =~ 'tex$' && file =~ '\.tex$' && &l:filetype != filetype  
 	    let &l:filetype	= filetype
-	" If the filetype is 'bib' we should source some portion of ATP, so
-	" that if the bib file is changed tex will process that file
-	" 	The best approach is to source only compiler.vim and add an
-	" 	autocommand.
-" 	elseif &l:filetype == 'bib'
-" 	    source ~/.vim/ftplugin/tex_atp.vim
 	endif
 
 	" Set the main file variable and pass the TreeOfFiles variables to the new
 	" buffer.
 	if exists("b:atp_ErrorFormat")
 	    unlockvar b:atp_ErrorFormat
-	endif
-	let b:atp_ErrorFormat	= atp_ErrorFormat
-	let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]	= deepcopy([tree_d, file_l_orig, type_d, level_d ])
-	let [ b:atp_LastLatexPID, b:atp_LatexPIDs, b:atp_ProgressBar ] = [ atp_LastLatexPID, atp_LatexPIDs, atp_ProgressBar ]
-	let [ b:atp_BibtexPIDs, b:atp_MakeindexPIDs ] = [ atp_BibtexPIDs, atp_MakeindexPIDs ]
-	if !&l:autochdir
-	    exe "lcd " . fnameescape(cwd)
 	endif
 	return file
     else

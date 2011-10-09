@@ -37,39 +37,22 @@ function! atplib#common#SetProjectName(...)
 	" this is needed for EditInputFile function to come back to the main
 	" file.
 	let b:atp_MainFile	= ( g:atp_RelativePath ? expand("%:t") : expand("%:p") )
-	let b:did_project_name	= 1
+	let s:did_project_name	= 1
     endif
 
-    if exists("b:did_project_name") && b:did_project_name && did
+    let g:did_project_name = (exists("s:did_project_name") ? s:did_project_name : -1)
+    if exists("s:did_project_name") && s:did_project_name && did && exists("b:atp_MainFile")
 	return " project name was already set"
     else
-	let b:did_project_name	= 1
+	let s:did_project_name	= 1
     endif
 
-    if !exists("b:atp_project") || bang == "!"
-	let b:atp_MainFile	= exists("b:atp_MainFile") && did ? b:atp_MainFile : ( g:atp_RelativePath ? expand("%:t") : expand("%:p") )
-" 	let b:atp_ProjectDir	= fnamemodify(resolve(b:atp_MainFile), ":h")
-	let pn_return		= " set from history or just set to " . b:atp_MainFile . " exists=" . exists("b:atp_MainFile") . " did=" . did
-    elseif exists("b:atp_project")
-	let b:atp_MainFile	= ( g:atp_RelativePath ? fnamemodify(b:atp_project, ":t") : b:atp_project ) 
-" 	let b:atp_ProjectDir	= fnamemodify(resolve(b:atp_MainFile), ":h")
-	let pn_return		= " set from b:atp_project to " . b:atp_MainFile 
-    endif
-
-    " we need to escape white spaces in b:atp_MainFile but not in all places so
-    " this is not done here
-
-    " Now we can run things that needs the project name: 
-    " b:atp_PackageList is not used
-"     if !exists("b:atp_PackageList")
-" 	let b:atp_PackageList	= atplib#search#GrepPackageList()
-"     endif
+    let b:atp_MainFile	= exists("b:atp_MainFile") && did ? b:atp_MainFile : 
+		\ ( g:atp_RelativePath ? expand("%:t") : expand("%:p") )
 
     if !exists("b:atp_ProjectDir")
 	let b:atp_ProjectDir = ( exists("b:atp_ProjectScriptFile") ? fnamemodify(b:atp_ProjectScriptFile, ":h") : fnamemodify(resolve(expand("%:p")), ":h") )
     endif
-
-    return pn_return
 endfunction
 " }}}
 "}}}
@@ -88,49 +71,31 @@ function! atplib#common#SetOutDir(arg, ...)
 	return "atp_OutDir EXISTS"
     endif
 
+    " if the user want to be asked for b:atp_OutDir
+    if g:askfortheoutdir == 1 
+	let b:atp_OutDir=substitute(input("Where to put output? do not escape white spaces "), '\\\s', ' ', 'g')
+    endif
 
-    " first we have to check if this is not a project file
-    if exists("b:atp_project") || exists("s:inputfiles") && 
-		\ ( index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1' || 
-		\ index(keys(s:inputfiles),fnamemodify(bufname("%"),":t")) != '-1' )
-	    " if we are in a project input/include file take the correct value of b:atp_OutDir from the atplib#s:outdir_dict dictionary.
-	    
-	    if index(keys(s:inputfiles),fnamemodify(bufname("%"),":t:r")) != '-1'
-		let b:atp_OutDir=substitute(g:outdir_dict[s:inputfiles[fnamemodify(bufname("%"),":t:r")][1]], '\\\s', ' ', 'g')
-	    elseif index(keys(s:inputfiles),fnamemodify(bufname("%"),":t")) != '-1'
-		let b:atp_OutDir=substitute(g:outdir_dict[s:inputfiles[fnamemodify(bufname("%"),":t")][1]], '\\\s', ' ', 'g')
-	    endif
-    else
-	
-	    " if we are not in a project input/include file set the b:atp_OutDir
-	    " variable	
+    if ( get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" 
+		\ && g:askfortheoutdir != 1 
+		\ || b:atp_OutDir == "" && g:askfortheoutdir == 1 )
+		\ && !exists("$TEXMFOUTPUT")
+	 let b:atp_OutDir=substitute(fnamemodify(resolve(expand("%:p")),":h") . "/", '\\\s', ' ', 'g')
 
-	    " if the user want to be asked for b:atp_OutDir
-	    if g:askfortheoutdir == 1 
-		let b:atp_OutDir=substitute(input("Where to put output? do not escape white spaces "), '\\\s', ' ', 'g')
-	    endif
+    elseif exists("$TEXMFOUTPUT")
+	 let b:atp_OutDir=substitute($TEXMFOUTPUT, '\\\s', ' ', 'g') 
+    endif	
 
-	    if ( get(getbufvar(bufname("%"),""),"outdir","optionnotset") == "optionnotset" 
-			\ && g:askfortheoutdir != 1 
-			\ || b:atp_OutDir == "" && g:askfortheoutdir == 1 )
-			\ && !exists("$TEXMFOUTPUT")
-		 let b:atp_OutDir=substitute(fnamemodify(resolve(expand("%:p")),":h") . "/", '\\\s', ' ', 'g')
-
-	    elseif exists("$TEXMFOUTPUT")
-		 let b:atp_OutDir=substitute($TEXMFOUTPUT, '\\\s', ' ', 'g') 
-	    endif	
-
-	    " if arg != 0 then set errorfile option accordingly to b:atp_OutDir
-	    if bufname("") =~ ".tex$" && a:arg != 0
+    " if arg != 0 then set errorfile option accordingly to b:atp_OutDir
+    if bufname("") =~ ".tex$" && a:arg != 0
 " 			\ &&  ( !exists("t:atp_QuickFixOpen") || exists("t:atp_QuickFixOpen") && !t:atp_QuickFixOpen )
-		 call atplib#common#SetErrorFile()
-	    endif
+	 call atplib#common#SetErrorFile()
+    endif
 
-	    if exists("g:outdir_dict")
-		let g:outdir_dict	= extend(g:outdir_dict, {fnamemodify(bufname("%"),":p") : b:atp_OutDir })
-	    else
-		let g:outdir_dict	= { fnamemodify(bufname("%"),":p") : b:atp_OutDir }
-	    endif
+    if exists("g:outdir_dict")
+	let g:outdir_dict	= extend(g:outdir_dict, {fnamemodify(bufname("%"),":p") : b:atp_OutDir })
+    else
+	let g:outdir_dict	= { fnamemodify(bufname("%"),":p") : b:atp_OutDir }
     endif
     return b:atp_OutDir
 endfunction
@@ -148,7 +113,7 @@ function! atplib#common#SetErrorFile()
 
     " set the b:atp_MainFile varibale if it is not set (the project name)
     if !exists("b:atp_MainFile")
-	call SetProjectName()
+	call atplib#common#SetProjectName()
     endif
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)

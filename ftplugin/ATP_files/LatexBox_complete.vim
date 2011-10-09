@@ -118,7 +118,7 @@ endfunction
 " the optional argument is the file name to be searched
 function! LatexBox_kpsewhich(file)
 	let old_dir = getcwd()
-	execute 'lcd ' . LatexBox_GetTexRoot()
+	execute 'lcd ' . fnameescape(LatexBox_GetTexRoot())
 	redir => out
 	silent execute '!kpsewhich ' . a:file
 	redir END

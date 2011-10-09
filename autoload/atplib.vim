@@ -136,9 +136,13 @@ function! atplib#FullPath(file_name) "{{{1
     if a:file_name =~ '^\s*\/'
 	let file_path = a:file_name
     elseif exists("b:atp_ProjectDir")
-	exe "lcd " . fnameescape(b:atp_ProjectDir)
-	let file_path = fnamemodify(a:file_name, ":p")
-	exe "lcd " . fnameescape(cwd)
+	try
+	    exe "lcd " . fnameescape(b:atp_ProjectDir)
+	    let file_path = fnamemodify(a:file_name, ":p")
+	    exe "lcd " . fnameescape(cwd)
+	catch /E344:/
+	    let file_path = fnamemodify(a:file_name, ":p")
+	endtry
     else
 	let file_path = fnamemodify(a:file_name, ":p")
     endif
@@ -398,14 +402,14 @@ endfunction
 " Various Comparing Functions:
 "{{{1 atplib#CompareNumbers
 function! atplib#CompareNumbers(i1, i2)
-   return str2nr(a:i1) == str2nr(a:i2) ? 0 : str2nr(a:i1) > str2nr(a:i2) ? 1 : -1
+   return ( str2nr(a:i1) == str2nr(a:i2) ? 0 : ( str2nr(a:i1) > str2nr(a:i2) ? 1 : -1 ) )
 endfunction
 "}}}1
 " {{{1 atplib#CompareCoordinates
 " Each list is an argument with two values:
 " listA=[ line_nrA, col_nrA] usually given by searchpos() function
 " listB=[ line_nrB, col_nrB]
-" returns 1 iff A is smaller than B
+" returns 1 iff A is before B
 fun! atplib#CompareCoordinates(listA,listB)
     if a:listA[0] < a:listB[0] || 
 	\ a:listA[0] == a:listB[0] && a:listA[1] < a:listB[1] ||

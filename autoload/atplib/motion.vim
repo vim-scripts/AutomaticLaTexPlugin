@@ -68,6 +68,7 @@ function! atplib#motion#maketoc(filename)
     catch /E484:/
 	echohl Warning
 	echo "File " . a:filename . " not readable."
+	echohl None
     endtry
     let texfile_copy	= deepcopy(texfile)
 
@@ -309,7 +310,7 @@ function! atplib#motion#showtoc(toc)
     if tocwinnr != -1
 	" Jump to the existing window.
 	    exe tocwinnr . " wincmd w"
-	    silent exe "%delete"
+	    silent exe "%delete _"
     else
 	" Open new window if its width is defined (if it is not the code below
 	" will put toc in the current buffer so it is better to return.
@@ -528,7 +529,7 @@ function! atplib#motion#showtoc(toc)
 		\ ":'<,'>Fold",
 		\ ':YankSection', 
 		\ ':DeleteSection', 
-		\ ':PasteSection', 		
+		\ ':PasteSection[!]', 		
 		\ ':SectionStack', 
 		\ ':Undo' ])
     endif
@@ -539,7 +540,7 @@ endfunction
 function! atplib#motion#ToCbufnr() 
     return index(map(tabpagebuflist(), 'bufname(v:val)'), '__ToC__')
 endfunction
-" {{{2 UpdateToCLine
+" atplib#motion#UpdateToCLine {{{2
 function! atplib#motion#UpdateToCLine(...)
     if !g:atp_UpdateToCLine
 	return
@@ -574,7 +575,7 @@ function! atplib#motion#UpdateToCLine(...)
     let &eventignore=eventignore
 endfunction
 " This is User Front End Function 
-"{{{2 TOC
+" atplib#motion#TOC {{{2
 function! atplib#motion#TOC(bang,...)
     " skip generating t:atp_toc list if it exists and if a:0 != 0
     if &l:filetype != 'tex' && &l:filetype != 'toc_atp'   
@@ -588,7 +589,7 @@ function! atplib#motion#TOC(bang,...)
     if ( a:bang == "!" || !exists("t:atp_toc") )
 	let t:atp_toc = {}
 	for buffer in t:atp_toc_buflist 
-" 	    let t:atp_toc=atplib#motion#maketoc(buffer)
+" 	    let b:atp_toc=atplib#motion#maketoc(buffer)
 	    call extend(t:atp_toc, atplib#motion#maketoc(buffer))
 	endfor
     endif
@@ -597,8 +598,6 @@ endfunction
 nnoremap <Plug>ATP_TOC			:call atplib#motion#TOC("")<CR>
 
 " This finds the name of currently eddited section/chapter units. 
-" {{{2 Current TOC
-" ToDo: make this faster!
 " {{{2 atplib#motion#NearestSection
 " This function finds the section name of the current section unit with
 " respect to the dictionary a:section={ 'line number' : 'section name', ... }
@@ -727,7 +726,8 @@ function! atplib#motion#Labels(bang)
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     " Generate the dictionary with labels
-    if a:bang == "" || ( a:bang == "!" && !exists("t:atp_labels") )
+    if a:bang == "" || ( a:bang == "!" && !exists("t:atp_labels") ) ||
+		\ ( a:bang == "!" && exists("t:atp_labels") && get(t:atp_labels, atp_MainFile, []) == [] )
 	let [ t:atp_labels, b:ListOfFiles ] =  atplib#tools#generatelabels(atp_MainFile, 1)
     endif
 
@@ -738,12 +738,12 @@ function! atplib#motion#Labels(bang)
 	echohl WarningMsg
 	redraw
 	echomsg "[ATP:] the compelation contains errors, aux file might be not appriopriate for labels window."
-	echohl Normal
+	echohl None
     endif
 endfunction
 nnoremap <Plug>ATP_Labels		:call atplib#motion#Labels("")<CR>
 
-" atplib#motion#GotoLabel & atplib#motion#GotoLabelCompletion {{{1
+" atplib#motion#GotoLabel {{{1
 " a:bang = "!" do not regenerate labels if not necessary
 " This is developed for one tex project in a vim.
 function! atplib#motion#GotoLabel(bang,...)
@@ -771,7 +771,7 @@ function! atplib#motion#GotoLabel(bang,...)
 	redraw
 	echohl WarningMsg
 	echomsg "[ATP:] no matching label"
-	echohl Normal
+	echohl None
 	return 1
     elseif len(matches) == 1
 	let file=matches[0][0]
@@ -789,7 +789,7 @@ function! atplib#motion#GotoLabel(bang,...)
 " 	endif
 	echohl Title
 	echo "Which label to choose?"
-	echohl Normal
+	echohl None
 " 	let mlabels= ( file ? extend([[' nr', 'LABEL', 'LABEL NR', 'FILE']], mlabels) : extend([[' nr', 'LABEL', 'LABEL NR']], mlabels) )
 	let g:mlabels=copy(mlabels)
 	for row in atplib#FormatListinColumns(atplib#Table(mlabels, [1,2]),2)
@@ -812,7 +812,7 @@ function! atplib#motion#GotoLabel(bang,...)
 	call cursor(line,1)
     endif
 endfunction
-
+" atplib#motion#GotoLabelCompletion {{{1
 function! atplib#motion#GotoLabelCompletion(ArgLead, CmdLine, CursorPos)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
@@ -836,7 +836,7 @@ function! atplib#motion#GotoLabelCompletion(ArgLead, CmdLine, CursorPos)
 
     return map(labels, "v:val.'\\>'")
 endfunction
-" {{{1 TAGS
+" atplib#motion#LatexTags {{{1
 function! atplib#motion#LatexTags(bang)
     let hyperref_cmd = ( atplib#search#SearchPackage("hyperref") ? " --hyperref " : "" )
     if has("clientserver")
@@ -922,8 +922,7 @@ function! atplib#motion#CompleteDestinations(ArgLead, CmdLine, CursorPos)
 endfunction
 
 " Motion functions through environments and sections. 
-" {{{1 Motion functions
-" Go to next environment "{{{2
+"  atplib#motion#GotoEnvironment {{{1
 " which name is given as the argument. Do not wrap
 " around the end of the file.
 function! atplib#motion#GotoEnvironment(flag,count,...)
@@ -1032,10 +1031,10 @@ function! atplib#motion#GotoEnvironment(flag,count,...)
 
     call atplib#motion#UpdateToCLine()
     silent! call histadd("search", pattern)
-    silent! let @/ 	 = pattern
+    silent! let @/  = pattern
     return ""
 endfunction
-" {{{2 atplib#motion#GotoFrame
+" atplib#motion#GotoFrame {{{1
 function! atplib#motion#GotoFrame(f, count)
     let g:Count=a:count
     let lz=&lazyredraw
@@ -1050,7 +1049,7 @@ function! atplib#motion#GotoFrame(f, count)
 endfunction
 nnoremap <Plug>NextFrame	:<C-U>call atplib#motion#GotoFrame('forward', v:count1)<CR>
 nnoremap <Plug>PreviousFrame	:<C-U>call atplib#motion#GotoFrame('backward', v:count1)<CR>
-"{{{2 atplib#motion#JumptoEnvironment
+" atplib#motion#JumptoEnvironment {{{1 
 " function! atplib#motion#GotoEnvironmentB(flag,count,...)
 "     let env_name 	= (a:0 >= 1 && a:1 != ""  ? a:1 : '[^}]*')
 "     for i in range(1,a:count)
@@ -1068,7 +1067,7 @@ function! atplib#motion#JumptoEnvironment(backward)
 	let col	= searchpos('\w*\>\zs', 'n')[1]-1
 	if strpart(getline(line(".")), 0, col) =~ '\\begin\>$' &&
 		    \ strpart(getline(line(".")), col) !~ '^\s*{\s*document\s*}'
-	    exe "normal %"
+	    exe "normal g%"
 	endif
 	call search('^\%([^%]\|\\%\)*\zs\\begin\>', 'W')
     else
@@ -1081,7 +1080,7 @@ function! atplib#motion#JumptoEnvironment(backward)
     endif
     let &l:lazyredraw=lazyredraw
 endfunction 
-" Go to next section {{{2 
+" atplib#motion#GotoSection {{{1 
 " The extra argument is a pattern to match for the
 " section title. The first, obsolete argument stands for:
 " part,chapter,section,subsection,etc.
@@ -1128,7 +1127,7 @@ function! atplib#motion#GotoSection(bang, count, flag, secname, ...)
 
     call atplib#motion#UpdateToCLine()
     call histadd("search", pattern)
-    let @/	= pattern
+    let @/ = pattern
 endfunction
 function! atplib#motion#Env_compl(A,P,L) 
     let envlist=sort(['algorithm', 'algorithmic', 'abstract', 'definition', 'equation', 'proposition', 
@@ -1180,7 +1179,7 @@ function! atplib#motion#ggGotoSection(count,section)
     call setpos("''",mark)
 endfunction
 
-" {{{2 atplib#motion#Input()
+" atplib#motion#Input {{{1 
 function! atplib#motion#Input(flag)
     let pat 	= ( &l:filetype == "plaintex" ? '\\input\s*{' : '\%(\\input\>\|\\include\s*{\)' )
     let @/	= '^\([^%]\|\\\@<!\\%\)*' . pat
@@ -1194,7 +1193,7 @@ function! atplib#motion#Input(flag)
     "     search history.
     "     call histadd("search", pat)
 endfunction
-" {{{1 Go to File
+" atplib#motion#GotoFile {{{1
 " This function also sets filetype vim option.
 " It is useing '\f' pattern thus it depends on the 'isfname' vim option.
 try
@@ -1258,42 +1257,44 @@ function! atplib#motion#GotoFile(bang,args,...)
     " \usepackege{...,<package_name>,...}
     if line =~ '\\usepackage' && g:atp_developer
 	let method = "usepackage"
-	    let ext 	= '.sty'
+	let ext 	= '.sty'
 
-	    let fname   = atplib#append_ext(strpart(getline("."), bcol, col-bcol-1), ext)
-	    let file 	= atplib#search#KpsewhichFindFile('tex', fname, g:atp_texinputs, 1)
-	    let file_l	= [ file ]
+	let fname   	= atplib#append_ext(strpart(getline("."), bcol, col-bcol-1), ext)
+	let g:fname	= fname
+	let file 	= atplib#search#KpsewhichFindFile('tex', fname, '', 1)
+	let file_l	= [ file ]
 
-	    let message = "Pacakge: "
-	    let options = ""
+	let message = "Pacakge: "
+	let options = ""
 
     " \input{...}, \include{...}
     elseif line =~ '\\\(input\|include\)\s*{' 
 	let method = "input{"
-	    let ext 	= '.tex'
+	let ext 	= '.tex'
 
-	    " \input{} doesn't allow for {...,...} many file path. 
-	    let fname 	= atplib#append_ext(strpart(getline("."), bcol, col-bcol-1), '.tex')
+	" \input{} doesn't allow for {...,...} many file path. 
+	let fname 	= atplib#append_ext(strpart(getline("."), bcol, col-bcol-1), '.tex')
 
-	    " The 'file . ext' might be already a full path.
-	    if fnamemodify(fname, ":p") != fname
-		let file_l 	= atplib#search#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\|miktex\)')
-		let file	= get(file_l, 0, 'file_missing')
-	    else
-		let file_l	= [ fname ] 
-		let file	= fname
-	    endif
+	" The 'file . ext' might be already a full path.
+	if fnamemodify(fname, ":p") != fname
+	    let file_l 	= atplib#search#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\|miktex\)')
+	    let file	= get(file_l, 0, 'file_missing')
+	else
+	    let file_l	= [ fname ] 
+	    let file	= fname
+	endif
 
-	    let message = "File: "
-	    let options = ""
+
+	let message = "File: "
+	let options = ""
 
     " \input 	/without {/
     elseif line =~ '\\input\s*{\@!'
 	let method = "input"
-	    let fname	= atplib#append_ext(matchstr(getline(line(".")), '\\input\s*\zs\f*\ze'), '.tex')
-	    let file_l	= atplib#search#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\)')
-	    let file	= get(file_l, 0, "file_missing")
-	    let options = ' +setl\ ft=' . &l:filetype  
+	let fname	= atplib#append_ext(matchstr(getline(line(".")), '\\input\s*\zs\f*\ze'), '.tex')
+	let file_l	= atplib#search#KpsewhichFindFile('tex', fname, g:atp_texinputs, -1, ':p', '^\(\/home\|\.\)', '\%(^\/usr\|kpsewhich\|texlive\)')
+	let file	= get(file_l, 0, "file_missing")
+	let options = ' +setl\ ft=' . &l:filetype  
 
     " \documentclass{...}
     elseif line =~ '\\documentclass' && g:atp_developer
@@ -1308,10 +1309,18 @@ function! atplib#motion#GotoFile(bang,args,...)
 	let classname 	= strpart(getline("."), bcol, ecol-bcol-1)
 
 	let fname	= atplib#append_ext(classname, '.cls')
-	let file	= atplib#search#KpsewhichFindFile('tex', fname,  g:atp_texinputs, ':p')
+	let file	= atplib#search#KpsewhichFindFile('tex', fname,  g:atp_texinputs, 1, ':p')
 	let file_l	= [ file ]
 	let options	= ""
-    else
+    elseif line =~ '\\RequirePackage' && g:atp_developer
+	let method = "requirepackage"
+	let ext 	= '.sty'
+	let fname	= atplib#append_ext(strpart(getline("."), bcol, col-bcol-1), ext)
+	let g:fname = fname
+	let file	= atplib#search#KpsewhichFindFile('tex', fname, g:atp_texinputs, 1, ':p')
+	let file_l	= [ file ]
+	let options = ' +setl\ ft=' . &l:filetype  
+    else 
 	" If not over any above give a list of input files to open, like
 	" EditInputFile  
 	let method	= "all"
@@ -1321,6 +1330,8 @@ function! atplib#motion#GotoFile(bang,args,...)
     endif
 
     let g:file_l = copy(file_l)
+    let g:method = method
+    let g:line 	= line
 
     if len(file_l) > 1 && file =~ '^\s*$'
 	if method == "all"
@@ -1368,7 +1379,7 @@ function! atplib#motion#GotoFile(bang,args,...)
 		endif
 		echo f
 		if matchstr(f, '(\d\+)\s*\zs.*$') == expand("%:t") || f == msg
-		    echohl Normal
+		    echohl None
 		endif
 	    endfor
 	    let choice	= input("Type number and <Enter> (empty cancels): ")
@@ -1444,7 +1455,7 @@ function! atplib#motion#GotoFile(bang,args,...)
     else
 	echohl ErrorMsg
 	redraw
-	if file != "file_missing"
+	if file != "file_missing" && exists("fname")
 	    echo "File \'".fname."\' not found."
 	else
 	    echo "Missing file."
@@ -1469,7 +1480,7 @@ function! atplib#motion#GotoFileComplete(ArgLead, CmdLine, CursorPos)
     endif
     return  filter(file_l, "v:val =~ a:ArgLead")
 endfunction
-" Skip Comment "{{{1
+" atplib#motion#SkipComment {{{1
 " a:flag=fb (f-forward, b-backward)
 " f works like ]*
 " b workd like [*
@@ -1478,7 +1489,7 @@ endfunction
 " 	(1) skip empty lines between comments
 function! atplib#motion#SkipComment(flag, mode, ...)
     let flag 	= ( a:flag =~ 'b' ? 'b' : '' ) 
-    let nr	= ( a:flag =~ 'b' ? '-1' : 1 )
+    let nr	= ( a:flag =~ 'b' ? -1 : 1 )
     call search('^\zs\s*%', flag)
     call cursor(line("."), ( nr == -1 ? 1 : len(getline(line(".")))))
 
@@ -1674,7 +1685,7 @@ function! atplib#motion#TexSyntaxMotion(forward, how, ...)
 endfunction
 
 " ctrl-j motion
-" {{{1 ctrl-j motion
+" atplib#motion#JMotion {{{1
 " New <Ctrl-j> motion
 function! atplib#motion#JMotion(flag)
 " 	Note: pattern to match only commands which do not have any arguments:
@@ -1725,4 +1736,60 @@ function! atplib#motion#JMotion(flag)
     endif
 endfunction
 " }}}1
+" atplib#motion#ParagraphNormalMotion {{{1
+function! atplib#motion#ParagraphNormalMotion(backward,count)
+    let g:count = a:count." ".a:backward
+    if a:backward != "b"
+	for i in range(1,a:count)
+	    call search('\(^\(\n\|\s\)*\n\s*\zs\S\|\zs\\par\>\|\%'.line("$").'l$\)', 'W')
+	endfor
+    else
+	for i in range(1,a:count)
+	    call search('\(^\(\n\|\s\)*\n\s*\zs\S\|\zs\\par\>\|^\%1l\)', 'Wb')
+	endfor
+    endif
+endfunction
+nmap <buffer> <Plug>ParagraphNormalMotionForward 	:<C-U>call atplib#motion#ParagraphNormalMotion('', v:count1)<CR>
+nmap <buffer> <Plug>ParagraphNormalMotionBackward	:<C-U>call atplib#motion#ParagraphNormalMotion('b', v:count1)<CR>
+" atplib#motion#StartVisualMode {{{1
+function! atplib#motion#StartVisualMode(mode)
+    let g:atp_visualstartpos = getpos(".")
+    if a:mode ==# 'v'
+	normal! v
+    elseif a:mode ==# 'V'
+	normal! V
+    elseif a:mode ==# 'cv'
+	exe "normal! \<c-v>"
+    endif
+endfunction
+" atplib#motion#ParagraphVisualMotion {{{1
+function! atplib#motion#ParagraphVisualMotion(backward,count)
+    let cond = !atplib#CompareCoordinates(g:atp_visualstartpos[1:2],getpos("'>")[1:2])
+"     let g:pos = string(g:atp_visualstartpos)." ".string(getpos("'<"))." ".string(getpos("'>"))." ".cond
+    let bpos = g:atp_visualstartpos
+    if a:backward != "b"
+	if cond
+	    call cursor(getpos("'<")[1:2])
+	else
+	    call cursor(getpos("'>")[1:2])
+	endif
+	for i in range(1,a:count)
+	    let epos = searchpos('\(^\(\n\|\s\)*\n\ze\|\(\_s*\)\=\\par\>\|\%'.line("$").'l$\)', 'Wn')
+	endfor
+    else 
+	if cond
+	    call cursor(getpos("'<")[1:2])
+	else
+	    call cursor(getpos("'>")[1:2])
+	endif
+	for i in range(1,a:count)
+	    let epos = searchpos('\(^\(\n\|\s\)*\n\ze\|\(\_s*\)\=\\par\>\|^\%1l\ze\)', 'Wnb')
+	endfor
+    endif
+    call cursor(bpos[1:2])
+    exe "normal ".visualmode()
+    call cursor(epos)
+endfunction
+vmap <buffer> <silent> <Plug>ParagraphVisualMotionForward 	:<C-U>call atplib#motion#ParagraphVisualMotion('',v:count1)<CR>
+vmap <buffer> <silent> <Plug>ParagraphVisualMotionBackward 	:<C-U>call atplib#motion#ParagraphVisualMotion('b',v:count1)<CR>
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

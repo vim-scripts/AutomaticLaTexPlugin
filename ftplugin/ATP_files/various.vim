@@ -2,10 +2,10 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Tue Sep 20, 2011 at 09:53  +0100
+" Last Change: Fri Nov 18, 2011 at 09:05:44  +0000
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
-"{{{ ATP_strlen
+"{{{ ATP_strlen()
 " This function is used to measure lenght of a string using :Align, :TexAlign
 " commads. See help file of AlignPlugin for g:Align_xstrlen variable.
 function! ATP_strlen(x)
@@ -110,8 +110,8 @@ function! ATP_strlen(x)
     return strlen(x)
 endfunction
 "}}}
-" Insert() function, which is used to insert text depending on mode: text/math. 
 " {{{ Insert()
+" Insert() function is used to insert text depending on mode: text/math. 
 " Should be called via an imap:
 " imap <lhs> 	<Esc>:call atplib#various#Insert(text, math)<CR>a
 " a:text	= text to insert in text mode
@@ -154,7 +154,6 @@ function! Insert(text, math, ...)
     return ""
 endfunction
 " }}}
-" Insert \item update the number. 
 " {{{ InsertItem()
 " ToDo: indent
 function! InsertItem()
@@ -340,6 +339,38 @@ function! InsertItem()
     return ""
 endfunction
 " }}}
+"{{{ Variables
+if !exists("g:atp_no_toggle_environments")
+    let g:atp_no_toggle_environments=[ 'document', 'tikzpicture', 'picture']
+endif
+if !exists("g:atp_toggle_environment_1")
+    let g:atp_toggle_environment_1=[ 'center', 'flushleft', 'flushright', 'minipage' ]
+endif
+if !exists("g:atp_toggle_environment_2")
+    let g:atp_toggle_environment_2=[ 'enumerate', 'itemize', 'list', 'description' ]
+endif
+if !exists("g:atp_toggle_environment_3")
+    let g:atp_toggle_environment_3=[ 'quotation', 'quote', 'verse' ]
+endif
+if !exists("g:atp_toggle_environment_4")
+    let g:atp_toggle_environment_4=[ 'theorem', 'proposition', 'lemma' ]
+endif
+if !exists("g:atp_toggle_environment_5")
+    let g:atp_toggle_environment_5=[ 'corollary', 'remark', 'note' ]
+endif
+if !exists("g:atp_toggle_environment_6")
+    let g:atp_toggle_environment_6=[  'equation', 'align', 'array', 'alignat', 'gather', 'flalign', 'multline'  ]
+endif
+if !exists("g:atp_toggle_environment_7")
+    let g:atp_toggle_environment_7=[ 'smallmatrix', 'pmatrix', 'bmatrix', 'Bmatrix', 'vmatrix' ]
+endif
+if !exists("g:atp_toggle_environment_8")
+    let g:atp_toggle_environment_8=[ 'tabbing', 'tabular']
+endif
+if !exists("g:atp_toggle_labels")
+    let g:atp_toggle_labels=1
+endif
+"}}}
 " ToDo notes
 " {{{ ToDo
 "
@@ -433,6 +464,7 @@ command! -buffer -bang	TexAlign				:call atplib#various#TexAlign(<q-bang>)
 command! -buffer 	ToggleStar   				:call atplib#various#ToggleStar()<CR>
 command! -buffer -nargs=? ToggleEnv	   			:call atplib#various#ToggleEnvironment(0, <f-args>)
 command! -buffer -nargs=* -complete=customlist,atplib#various#EnvCompletion ChangeEnv				:call atplib#various#ToggleEnvironment(1, <f-args>)
+command! -buffer -nargs=1 ChangeLabel				:call atplib#various#ChangeLabel(<q-args>)
 command! -buffer -nargs=* -complete=customlist,atplib#various#TeXdoc_complete TexDoc 	:call atplib#various#TexDoc(<f-args>)
 command! -buffer -bang 	Delete					:call atplib#various#Delete(<q-bang>)
 nmap <silent> <buffer>	 <Plug>Delete				:call atplib#various#Delete("")<CR>
@@ -451,17 +483,17 @@ command! -buffer 	ListPrinters				:echo atplib#various#ListPrinters("", "", "")
 " List Packages:
 command! -buffer 	ShowPackages				:let b:atp_PackageList = atplib#search#GrepPackageList() | echo join(b:atp_PackageList, "\n")
 if &l:cpoptions =~# 'B'
-    command! -buffer -nargs=? -complete=buffer -bang ToDo	:call ToDo('\c\<to\s*do:\>','\s*%\s*$\|\s*%\c.*\<note:\>',<q-bang>, <f-args>)
-    command! -buffer -nargs=? -complete=buffer -bang Note	:call ToDo('\c\<note:\>','\s*%\s*$\|\s*%\c.*\<to\s*do:\>', <q-bang>, <f-args>)
+    command! -buffer -nargs=? -complete=buffer -bang ToDo	:call ToDo('\c\<to\s*do\s*\>','\s*%\s*$\|\s*%\c.*\<note\>',<q-bang>, <f-args>)
+    command! -buffer -nargs=? -complete=buffer -bang Note	:call ToDo('\c\<note\s*\>','\s*%\s*$\|\s*%\c.*\<to\s*do\>', <q-bang>, <f-args>)
 else
-    command! -buffer -nargs=? -complete=buffer ToDo		:call ToDo('\\c\\<to\\s*do:\\>','\\s*%\\s*$\\|\\s*%\\c.*\\<note:\\>',<f-args>)
-    command! -buffer -nargs=? -complete=buffer Note		:call ToDo('\\c\\<note:\\>','\\s*%\\s*$\\|\\s*%\\c.*\\<to\\s*do:\\>',<f-args>)
+    command! -buffer -nargs=? -complete=buffer ToDo		:call ToDo('\\c\\<to\\s*do>','\\s*%\\s*$\\|\\s*%\\c.*\\<note\\>',<f-args>)
+    command! -buffer -nargs=? -complete=buffer Note		:call ToDo('\\c\\<note\\>','\\s*%\\s*$\\|\\s*%\\c.*\\<to\\s*do\\>',<f-args>)
 endif
 command! -buffer ReloadATP					:call atplib#various#ReloadATP("!")
 command! -bang -buffer -nargs=1 AMSRef				:call atplib#various#AMSRef(<q-bang>, <q-args>)
 command! -buffer	Preamble				:call atplib#various#Preamble()
-command! -bang		WordCount				:call atplib#various#ShowWordCount(<q-bang>)
-command! -buffer -bang	UpadteATP				:call atplib#various#UpdateATP(<q-bang>)
+command! -range  -bang	WordCount				:call atplib#various#ShowWordCount(<q-bang>,[<q-line1>,<q-line2>])
+command! -buffer -bang	UpdateATP				:call atplib#various#UpdateATP(<q-bang>)
 command! -buffer	ATPversion				:echo atplib#various#ATPversion()
 if has("unix") && g:atp_atpdev
     command! -nargs=? -complete=custom,atplib#various#DebugPrintComp DebugPrint	:call atplib#various#DebugPrint(<q-args>)

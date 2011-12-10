@@ -2,7 +2,7 @@
 " Description: This script has functions which have to be called before ATP_files/options.vim 
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Tue Sep 27, 2011 at 20:42:16  +0100
+" Last Change: Tue Dec 06, 2011 at 13:31:10  +0000
 
 " This file contains set of functions which are needed to set to set the atp
 " options and some common tools.
@@ -148,7 +148,7 @@ function! ATPRunning() "{{{
 		endif
 	    endfor
 
-	    if exists("b:atp_ProgressBar") && b:atp_ProgressBar != {}
+	    if exists("b:atp_ProgressBar") && type(b:atp_ProgressBar) == 4 && b:atp_ProgressBar != {}
 		let max = max(values(b:atp_ProgressBar))
 		let progress_bar="[".max."]".( g:atp_statusOutDir ? " " : "" )
 	    else
@@ -294,12 +294,14 @@ function! ATPStatus(command,...) "{{{
 	    let s:errormsg = 1
 	endif
     endif
-    let status_NotifHi	= 
+    let status_NotifHi	=
 		\ ( g:atp_statusNotif && g:atp_statusNotifHi 	? '%#User'.g:atp_statusNotifHi . '#' : '' )
     let status_NotifHiPost =
 		\ ( g:atp_statusNotif && g:atp_statusNotifHi 	? '%*' 	: '' )
-    let status_Notif	= ( g:atp_statusNotif 			? '%{ATPRunning()}' 	: '' )
-    let status_KeyMap	= ( has("keymap") && g:atp_babel && exists("b:keymap_name") 	
+    let status_Notif	=
+		\ ( g:atp_statusNotif 			? '%{ATPRunning()}' 	: '' )
+    let status_KeyMap	=
+		\ ( has("keymap") && g:atp_babel && exists("b:keymap_name") 	
 								\ ? b:keymap_name 	: '' )
     let g:atp_StatusLine= '%<%f '.status_KeyMap.'%(%h%m%r%) '.status_NotifHi.status_Notif.status_NotifHiPost.'%= '.status_CTOC.' %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
     set statusline=%!g:atp_StatusLine

@@ -2,7 +2,7 @@
 " Description: 	This file contains all the options defined on startup of ATP
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Thu Oct 06, 2011 at 08:42:36  +0100
+" Last Change: Sat Dec 10, 2011 at 01:21:26  +0000
 
 " NOTE: you can add your local settings to ~/.atprc.vim or
 " ftplugin/ATP_files/atprc.vim file
@@ -190,8 +190,11 @@ endif
 " }}}
 
 " Make CTRL-A, CTRL-X work over alphabetic characters:
+if has("eval")
+    setl omnifunc=atplib#complete#OmniComplete
+endif
 setl nrformats=alpha
-setl backupskip+=*.project.vim
+set  backupskip+=*.tex.project.vim
 
 " The vim option 'iskeyword' is adjust just after g:atp_separator and
 " g:atp_no_separator variables are defined.
@@ -300,7 +303,7 @@ let s:optionsDict= {
 		\ "atp_updatetime_normal"	: 2000,
 		\ "atp_MaxProcesses"		: 3,
 		\ "atp_KillYoungest"		: 0,
-		\ "atp_ProjectScript"		: "1",
+		\ "atp_ProjectScript"		: ( fnamemodify(b:atp_MainFile, ":e") != "tex" ? "0" : "1" ),
 		\ "atp_Viewer" 			: has("win26") || has("win32") || has("win64") || has("win95") || has("win32unix") ? "AcroRd32.exe" : "okular" , 
 		\ "atp_TexFlavor" 		: &l:filetype, 
 		\ "atp_XpdfServer" 		: fnamemodify(b:atp_MainFile,":t:r"), 
@@ -310,7 +313,7 @@ let s:optionsDict= {
 		\ "atp_TexCompiler" 		: s:TexCompiler,
 		\ "atp_BibCompiler"		: ( getline(atplib#search#SearchPackage('biblatex')) =~ '\<backend\s*=\s*biber\>' ? 'biber' : "bibtex" ),
 		\ "atp_auruns"			: "1",
-		\ "atp_TruncateStatusSection"	: "40", 
+		\ "atp_TruncateStatusSection"	: "60", 
 		\ "atp_LastBibPattern"		: "",
 		\ "atp_TexCompilerVariable"	: "max_print_line=2000",
 		\ "atp_StarEnvDefault"		: "",
@@ -326,14 +329,9 @@ let s:optionsDict= {
 		\ "atp_MakeidxReturnCode"	: 0,
 		\ "atp_BibtexOutput"		: "",
 		\ "atp_MakeidxOutput"		: "",
-		\ "atp_ProgressBar"		: {}}
+		\ "atp_ProgressBar"		: {},
+		\ "atp_DocumentClass"		: atplib#search#DocumentClass(b:atp_MainFile)}
 
-" 		\ "atp_BibCompiler"		: ( getline(atplib#search#SearchPackage('biblatex')) =~ '\<backend\s*=\s*biber\>' ? 'biber' : "bibtex" ),
-" 		\ "atp_TexCompilerVariable"	: "",
-" 			\.";TEXINPUT="
-" 			\.($TEXINPUTS == "" ? b:atp_OutDir : b:atp_OutDir.":".$TEXINPUTS)
-" 			\.";BIBINPUTS="
-" 			\.($BIBINPUTS == "" ? b:atp_OutDir : b:atp_OutDir.":".$BIBINPUTS),
 " the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
 " remember what is the default used by s:SetOutDir().
 
@@ -393,6 +391,9 @@ lockvar b:atp_autex_wait
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_no_tab_map")
+    let g:atp_no_tab_map = 1
+endif
 if !exists("g:atp_folding")
     let g:atp_folding = 0
 endif
@@ -946,7 +947,7 @@ endif  				    " user cannot change the value set by :LoadHistory on startup in 
 " 				    better to start with atp_mapNn = 0 and let the
 " 				    user change it. 
 if !exists("g:atp_TeXdocDefault")
-    let g:atp_TeXdocDefault	= '-a -I lshort'
+    let g:atp_TeXdocDefault	= '-I lshort'
 endif
 "ToDo: to doc.
 "ToDo: luatex! (can produce both!)
@@ -1052,7 +1053,7 @@ if !exists("g:atp_algorithmic_dict")
     let g:atp_algorithmic_dict = { 'IF' : 'ENDIF', 'FOR' : 'ENDFOR', 'WHILE' : 'ENDWHILE' }
 endif
 if !exists("g:atp_bracket_dict")
-    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']', '\lceil' : '\rceil', '\lfloor' : '\rfloor', '\langle' : '\rangle', '\lgroup' : '\rgroup', '<' : '>' }
+    let g:atp_bracket_dict = { '(' : ')', '{' : '}', '[' : ']', '\lceil' : '\rceil', '\lfloor' : '\rfloor', '\langle' : '\rangle', '\lgroup' : '\rgroup', '<' : '>', '\begin' : '\end' }
 endif
 if !exists("g:atp_LatexBox")
     let g:atp_LatexBox		= 1
@@ -1224,7 +1225,7 @@ function! s:ShowOptions(bang,...)
     redraw
     echohl WarningMsg
     echo "Local buffer variables:"
-    echohl Normal
+    echohl None
     for key in sort(keys(s:optionsDict))
 	let space = ""
 	for s in range(mlen-len(key)+1)
@@ -1241,7 +1242,7 @@ function! s:ShowOptions(bang,...)
 	echo "\n"
 	echohl WarningMsg
 	echo "Global variables (defined in ".s:file."):"
-	echohl Normal
+	echohl None
 	let saved_loclist	= getloclist(0)
 	    execute "lvimgrep /^\\s*let\\s\\+g:/j " . fnameescape(s:file)
 	let global_vars		= getloclist(0)
@@ -1407,7 +1408,7 @@ function! <SID>SetXdvi()
     if compiler != "" && compiler !~ '\(la\)\=tex'
 	echohl Error
 	echomsg "[SetXdvi:] You need to change the first line of your project!"
-	echohl Normal
+	echohl None
     endif
 
     " Remove menu entries
@@ -1500,7 +1501,7 @@ function! <SID>SetPdf(viewer)
     if compiler != "" && compiler !~ 'pdf\(la\)\=tex'
 	echohl Error
 	echomsg "[SetPdf:] You need to change the first line of your project!"
-	echohl Normal
+	echohl None
     endif
 
     let b:atp_TexCompiler	= "pdflatex"
@@ -1864,7 +1865,7 @@ endif
 command! -buffer ToggleSpace	:call <SID>ToggleSpace()
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleIMaps	 	:call ATP_ToggleIMaps(0, "!", <f-args>)
 nnoremap <silent> <buffer> 	<Plug>ToggleIMaps		:call ATP_ToggleIMaps(0, "!")<CR>
-inoremap <silent> <buffer> 	<Plug>ToggleIMaps		<Esc>:call ATP_ToggleIMaps(0, "!")<CR>
+inoremap <silent> <buffer> 	<Plug>ToggleIMaps		<C-O>:call ATP_ToggleIMaps(0, "!")<CR>
 " inoremap <silent> <buffer> 	<Plug>ToggleIMaps		<Esc>:call ATP_ToggleIMaps(1, "")<CR>
 
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp ToggleAuTeX 	:call ATP_ToggleAuTeX(<f-args>)
@@ -1888,7 +1889,7 @@ nnoremap <silent> <buffer> 	<Plug>ToggleDebugMode		:call ATP_ToggleDebugMode("De
 
 command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleTab	 	:call ATP_ToggleTab(<f-args>)
 nnoremap <silent> <buffer> 	<Plug>ToggleTab		:call ATP_ToggleTab()<CR>
-inoremap <silent> <buffer> 	<Plug>ToggleTab		<Esc>:call ATP_ToggleTab()<CR>
+inoremap <silent> <buffer> 	<Plug>ToggleTab		<C-O>:call ATP_ToggleTab()<CR>
 "}}}
 
 " Tab Completion Variables:
@@ -2025,7 +2026,7 @@ endif
 	\ "\\cite", "\\nocite{", "\\ref{", "\\pageref{", "\\eqref{", "\\item",
 	\ "\\emph{", "\\documentclass{", "\\usepackage{",
 	\ "\\section", "\\subsection", "\\subsubsection", "\\part", 
-	\ "\\chapter", "\\appendix", "\\subparagraph", "\\paragraph",
+	\ "\\appendix", "\\subparagraph", "\\paragraph",
 	\ "\\textbf{", "\\textsf{", "\\textrm{", "\\textit{", "\\texttt{", 
 	\ "\\textsc{", "\\textsl{", "\\textup{", "\\textnormal", "\\textcolor{",
 	\ "\\bfseries", "\\mdseries", "\\bigskip", "\\bibitem",
@@ -2051,7 +2052,7 @@ endif
 	\ "\\hyphenation{", "\\fussy", "\\eject",
 	\ "\\enlagrethispage{", "\\centerline{", "\\centering", "\\clearpage", "\\cleardoublepage",
 	\ "\\encodingdefault", 
-	\ "\\caption{",
+	\ "\\caption{", "\\chapter", 
 	\ "\\opening{", "\\name{", "\\makelabels{", "\\location{", "\\closing{", 
 	\ "\\signature{", "\\stopbreaks", "\\startbreaks",
 	\ "\\newcounter{", "\\refstepcounter{", 
@@ -2069,14 +2070,20 @@ endif
 	\ "\\exhyphenpenalty",
 	\ "\\topmargin", "\\oddsidemargin", "\\evensidemargin", "\\headheight", "\\headsep", 
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
-	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\theequation", "\\thepage", "\\usetikzlibrary{",
+	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\columnsep", "\\columnseprule", 
+	\ "\\theequation", "\\thepage", "\\usetikzlibrary{",
 	\ "\\tableofcontents", "\\newfont{", "\\phantom{", "\\DeclareMathOperator",
 	\ "\\DeclareRobustCommand", "\\DeclareFixedFont", "\\DeclareMathSymbol", 
 	\ "\\DeclareTextFontCommand", "\\DeclareMathVersion", "\\DeclareSymbolFontAlphabet",
 	\ "\\DeclareMathDelimiter", "\\DeclareMathAccent", "\\DeclareMathRadical",
 	\ "\\SetMathAlphabet", "\\show", "\\CheckCommand", "\\mathnormal",
 	\ "\\pounds", "\\magstep{", "\\hyperlink", "\\newenvironment{", 
-	\ "\\renewenvironemt{", "\\DeclareFixedFont", "\\layout", "\\parskip" ]
+	\ "\\renewenvironemt{", "\\DeclareFixedFont", "\\layout", "\\parskip",
+	\ "\\brokenpenalty", "\\clubpenalty", "\\windowpenalty", "\\hyphenpenalty", "\\tolerance",
+	\ "\\frenchspacing", "\\nonfrenchspacing", "\\binoppenalty", "\\exhyphenpenalty", 
+	\ "\\displaywindowpenalty", "\\floatingpenalty", "\\interlinepenalty", "\\lastpenalty",
+	\ "\\linepenalty", "\\outputpenalty", "\\penalty", "\\postdisplaypenalty", "\\predisplaypenalty", 
+	\ "\\repenalty", "\\unpenalty" ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -2467,7 +2474,7 @@ EOF
 else
     echohl ErrorMsg
     echo "[ATP:] the directory ".a:dir." is not removed."
-    echohl Normal
+    echohl None
 endif
 endfunction
 
@@ -2538,7 +2545,7 @@ endfunction
     if (exists("g:atp_StatusLine") && g:atp_StatusLine == '1') || !exists("g:atp_StatusLine")
 	augroup ATP_Status
 	    au!
-	    au BufEnter,BufWinEnter,TabEnter 	*.tex 	call ATPStatus(0,1)
+	    au BufEnter,BufWinEnter,TabEnter *.tex 	call ATPStatus(0,1)
 	augroup END
     endif
 
@@ -2682,12 +2689,20 @@ endif
 " {{{1 ATP_SyntaxGroups
 function! <SID>ATP_SyntaxGroups()
     if &filetype == ""
-	" this is for :Dsearch window
+	" this is important for :Dsearch window
 	return
     endif
     " add texMathZoneT syntax group for tikzpicture environment:
     if atplib#search#SearchPackage('tikz') || atplib#search#SearchPackage('pgfplots')
-	syntax region texMathZoneT start='\\begin\s*{\s*tikzpicture\s*}' end='\\end\s*{\s*tikzpicture\s*}' keepend contains=@texMathZoneGroup,@texMathZones
+	" This works with \matrix{} but not with \matrix[matrix of math nodes]
+	" It is not working with tikzpicture environment inside mathematics.
+	syntax cluster texMathZones add=texMathZoneT
+	syntax region texMathZoneT start='\\begin\s*{\s*tikzpicture\s*}' end='\\end\s*{\s*tikzpicture\s*}' keepend containedin=@texMathZoneGroup contains=@texMathZoneGroup,@texMathZones,@NoSpell
+	syntax sync match texSyncMathZoneT grouphere texMathZoneT '\\begin\s*{\s*tikzpicture\s*}'
+	" The function TexNewMathZone() will mark whole tikzpicture
+	" environment as a math environment.  This makes problem when one
+	" wants to close \(:\) inside tikzpicture.  
+" 	call TexNewMathZone("T", "tikzpicture", 0)
     endif
     " add texMathZoneALG syntax group for algorithmic environment:
     if atplib#search#SearchPackage('algorithmic')
@@ -2870,7 +2885,7 @@ function! <SID>SetDebugMode(bang,...)
 	    catch /E40/
 		echohl WarningMsg 
 		echo "[ATP:] log file missing."
-		echohl Normal
+		echohl None
 	    endtry
 	    if a:bang == "!"
 		exe "cwindow " . (max([1, min([len(getqflist()), g:atp_DebugModeQuickFixHeight])]))
@@ -2888,7 +2903,7 @@ function! <SID>SetDebugMode(bang,...)
 	catch /E40/
 	    echohl WarningMsg 
 	    echo "[ATP:] log file missing."
-	    echohl Normal
+	    echohl None
 	endtry
 	" DebugMode is not changing when log file is missing!
     elseif a:1 =~# 'D\%[ebug]'
@@ -2902,7 +2917,7 @@ function! <SID>SetDebugMode(bang,...)
 	catch /E40/
 	    echohl WarningMsg 
 	    echo "[ATP:] log file missing."
-	    echohl Normal
+	    echohl None
 	endtry
 	try 
 	    cc
@@ -2933,7 +2948,7 @@ except ImportError:
     if test != str(0):
 	vim.command('echomsg "Falling back to bash"')
 	vim.command("let g:atp_Compiler='bash'")
-    vim.command("echohl Normal")
+    vim.command("echohl None")
     vim.command("echomsg \"If you don't want to see this message (and you are on *nix system)\"") 
     vim.command("echomsg \"put let g:atp_Compiler='bash' in your vimrc or atprc file.\"")
     vim.command("sleep 2")
@@ -2944,11 +2959,11 @@ if g:atp_Compiler == "python"
     if !executable(g:atp_Python) || !has("python")
 	echohl ErrorMsg
 	echomsg "[ATP:] needs: python and python support in vim."
-	echohl Normal
+	echohl None
 	if has("mac") || has("macunix") || has("unix")
 	    echohl ErrorMsg
 	    echomsg "I'm falling back to bash (deprecated)."
-	    echohl Normal
+	    echohl None
 	    let g:atp_Compiler = "bash"
 	    echomsg "If you don't want to see this message"
 	    echomsg "put let g:atp_Compiler='bash' in your vimrc or atprc file."
@@ -2978,7 +2993,7 @@ elseif has("unix") && has("macunix")
 else
     echohl ErrorMsg
     echomsg "[ATP:] Leaving temporary directory ".g:atp_TempDir
-    echohl Normal
+    echohl None
 endif
 endfunction "}}}
 if g:atp_reload_functions == 0

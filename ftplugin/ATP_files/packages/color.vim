@@ -7,9 +7,9 @@ let g:atp_color_options=[
 	    \ 'tcidvi', 'vtex', 'oztex', 'textrues', 'xetex',
 	    \ 'monochrome', 'usenames', 'dvipsnames'
 	    \ ]
-let g:atp_pacakge_color_commands=[
+let g:atp_color_commands=[
 	    \ '\definecolor{', '\color{', '\textcolor{', '\pagecolor{',
-	    \ '\colorbox{', '\fcolorbox{', '\ExecuteOption{', '\DeclareOption{'
+	    \ '\colorbox{', '\fcolorbox{', '\ExecuteOptions{', '\DeclareOption{'
 	    \ ]
 let color_models = [ 'rgb', 'cmyk', 'gray', 'named' ]
 let g:atp_color_command_values={

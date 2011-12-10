@@ -64,6 +64,9 @@ function! s:JumpToMatch(mode, ...)
 	    let backward = 0
 	endif
 
+	" add current position to the jump-list (see :help jump-motions)
+	normal! m`
+
 	let sflags = backward ? 'cbW' : 'cW'
 
 	" selection is lost upon function call, reselect
@@ -72,18 +75,22 @@ function! s:JumpToMatch(mode, ...)
 	endif
 
 	" open/close pairs (dollars signs are treated apart)
-	let open_pats 		= ['{', '\[', '(', '\\begin\>', '\\left\>', '\\lceil\>', '\\lgroup\>', '\\lfloor', '\\langle']
-	let close_pats 		= ['}', '\]', ')', '\\end\>', '\\right\>', '\\rceil', '\\rgroup\>', '\\rfloor', '\\rangle']
+	let open_pats 		= ['\\begin\>', '{', '\[', '(', '\\left\>', '\\lceil\>', '\\lgroup\>', '\\lfloor', '\\langle']
+	let close_pats 		= ['\\end\>', '}', '\]', ')', '\\right\>', '\\rceil', '\\rgroup\>', '\\rfloor', '\\rangle']
 	let dollar_pat 		= '\\\@<!\$'
 	let two_dollar_pat 	= '\\\@<!\$\$'
 
 	let saved_pos = getpos('.')
+	let beg_of_line  = strpart(getline('.'), 0, searchpos('\>', 'n')[1]-1)
 
 	" move to the left until not on alphabetic characters
 	call search('\A', 'cbW', line('.'))
+	if getline('.')[col('.')-1]=~'}\|\]\|)' && col('.') < saved_pos[2]
+	    normal! l
+	endif
 
-		let zonex=s:HasSyntax('texMathZoneX', line("."), col(".")) || s:HasSyntax('texMathZoneX', line('.'), max([1, col(".")-1])) 
-		let zoney=s:HasSyntax('texMathZoneY', line("."), col("."))  
+	let zonex=s:HasSyntax('texMathZoneX', line("."), col(".")) || s:HasSyntax('texMathZoneX', line('.'), max([1, col(".")-1])) 
+	let zoney=s:HasSyntax('texMathZoneY', line("."), col("."))  
 
 	let stopline = ( g:atp_VimCompatible || g:atp_VimCompatible =~? '\<yes\>' ? line('.') : 0 )
 	" go to next opening/closing pattern on same line
@@ -105,9 +112,10 @@ function! s:JumpToMatch(mode, ...)
 	endif
 
 	let rest_of_line = strpart(getline('.'), col('.') - 1)
+" 	    let g:rest_of_line = rest_of_line
 
 	" match for '$' pairs
-	if rest_of_line =~ '^\$' && !s:HasSyntax('texSectionModifier', line('.'), col('.'))
+	if rest_of_line =~ '^\$' && beg_of_line !~ '\C\\item$' && !s:HasSyntax('texSectionModifier', line('.'), col('.'))
 
 		" check if next character is in inline math
 		let zonex+=s:HasSyntax('texMathZoneX', line("."), col(".")) 
@@ -133,14 +141,22 @@ function! s:JumpToMatch(mode, ...)
 	for i in range(len(open_pats))
 		let open_pat = open_pats[i]
 		let close_pat = close_pats[i]
+		let mid_pat = ( open_pat  == '\\begin\>' ? '\C\\item\>' : '' )
 
-		if rest_of_line =~ '^\C\%(' . open_pat . '\)'
-		" if on opening pattern, go to closing pattern
-		    call searchpair('\C' . open_pat, '', '\C' . close_pat, 'W', 'LatexBox_InComment()')
+		if mid_pat != "" && beg_of_line =~ '\C\%(' . mid_pat . '\)$'
+		    " if on mid pattern
+		    call search('\C'.mid_pat, 'Wbc', line("."))
+		    call searchpair('\C'.open_pat, mid_pat, '\C'.close_pat, 'W'.(backward ? 'b' : ''), 'LatexBox_InComment()')
+		    break
+		elseif rest_of_line =~ '^\C\%(' . open_pat . '\)'
+		    " if on opening pattern, go to closing pattern
+		    call searchpair('\C'.open_pat, 
+				\ (!backward && (saved_pos[1] == line('.') && saved_pos[2] >= col('.')) ? mid_pat : ''),
+				\ '\C'.close_pat, 'W', 'LatexBox_InComment()')
 		    break
 		elseif rest_of_line =~ '^\C\%(' . close_pat . '\)'
 		    " if on closing pattern, go to opening pattern
-		    call searchpair('\C' . open_pat, '', '\C' . close_pat, 'bW', 'LatexBox_InComment()')
+		    call searchpair('\C'.open_pat, (!backward ? '' : mid_pat), '\C'.close_pat, 'Wb', 'LatexBox_InComment()')
 		    break
 		endif
 
@@ -149,7 +165,7 @@ function! s:JumpToMatch(mode, ...)
 
 endfunction
 
-nnoremap <silent> <Plug>LatexBox_JumpToMatch 		:call <SID>JumpToMatch('n')<CR>
+nnoremap <silent> <Plug>LatexBox_JumpToMatch		:call <SID>JumpToMatch('n')<CR>
 vnoremap <silent> <Plug>LatexBox_JumpToMatch 		:<C-U>call <SID>JumpToMatch('v')<CR>
 nnoremap <silent> <Plug>LatexBox_BackJumpToMatch 	:call <SID>JumpToMatch('n', 1)<CR>
 vnoremap <silent> <Plug>LatexBox_BackJumpToMatch 	:<C-U>call <SID>JumpToMatch('v', 1)<CR>

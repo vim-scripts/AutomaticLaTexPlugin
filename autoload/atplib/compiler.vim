@@ -8,12 +8,7 @@
 " {{{
 " This limits how many consecutive runs there can be maximally.
 " Note: compile.py script has hardcoded the same value.
-let atplib#compiler#runlimit		= 9
-
-try
-    compiler tex
-catch E666:
-endtry
+let s:runlimit		= 9
 " }}}
 
 " This is the function to view output. It calls compiler if the output is a not
@@ -100,7 +95,7 @@ function! atplib#compiler#ViewOutput(bang,...)
 	else
 	    echohl WarningMsg
 	    echomsg "[SyncTex:] viewer is not running"
-	    echohl Normal
+	    echohl None
 	endif
     endif
 endfunction
@@ -185,7 +180,7 @@ function! atplib#compiler#SyncShow( page_nr, y_coord)
 	echohl WarningMsg
 	echomsg "[SyncTex:] ".a:y_coord
 " 	echomsg "       You cannot forward search on comment lines, if this is not the case try one or two lines above/below"
-	echohl Normal
+	echohl None
     endif
 endfunction "}}}
 " {{{ atplib#compiler#SyncTex
@@ -213,7 +208,7 @@ function! atplib#compiler#SyncTex(bang, mouse, ...)
 "        endif
        echohl WarningMsg
        echomsg "[SyncTex:] no output file"
-       echohl Normal
+       echohl None
        return 2
     endif
     let atp_MainFile         = atplib#FullPath(b:atp_MainFile)
@@ -232,7 +227,7 @@ function! atplib#compiler#SyncTex(bang, mouse, ...)
 	    "another server. We can use: xpdf -remote b:atp_XpdfServer "run('echo %f')"
 	    echohl WarningMsg
 	    echomsg "[SyncTex:] please open the file first. (if file is opend add bang \"!\")"
-	    echohl Normal
+	    echohl None
 	    return
 	endif
     endif
@@ -539,7 +534,7 @@ function! atplib#compiler#Kill(bang)
 	if a:bang != "!"
 	    echohl WarningMsg
 	    echomsg "[ATP:] you need python suppor" 
-	    echohl Normal
+	    echohl None
 	endif
 	return
     endif
@@ -592,6 +587,7 @@ function! atplib#compiler#MakeLatex(bang, mode, start)
 
     let cmd=g:atp_Python." ".PythonMakeLatexPath.
 		\ " --texfile ".shellescape(atplib#FullPath(b:atp_MainFile)).
+		\ " --bufnr ".bufnr("%").
 		\ " --start ".a:start.
 		\ " --output-format ".ext.
 		\ " --verbose ".mode.
@@ -691,17 +687,18 @@ function! atplib#compiler#PythonCompiler(bibtex, start, runs, verbose, command, 
 	echohl WaningMsg | echomsg "[ATP:] your ".b:atp_TexCompiler." and ".b:atp_Viewer." are not compatible:" 
 	echomsg "       b:atp_TexCompiler=" . b:atp_TexCompiler	
 	echomsg "       b:atp_Viewer=" . b:atp_Viewer	
+	echohl None
     endif
     if !has('clientserver')
 	if has("win16") || has("win32") || has("win64") || has("win95")
 	    echohl WarningMsg
 	    echomsg "[ATP:] ATP needs +clientserver vim compilation option."
-	    echohl Normal
+	    echohl None
 	else
 	    echohl WarningMsg
 	    echomsg "[ATP:] python compiler needs +clientserver vim compilation option."
 	    echomsg "       falling back to g:atp_Compiler=\"bash\""
-	    echohl Normal
+	    echohl None
 	    let g:atp_Compiler = "bash"
 	    return
 	endif
@@ -737,6 +734,7 @@ function! atplib#compiler#PythonCompiler(bibtex, start, runs, verbose, command, 
 		\ ." --tex-options ".shellescape(tex_options)
 		\ ." --verbose ".a:verbose
 		\ ." --file ".shellescape(atplib#FullPath(a:filename))
+		\ ." --bufnr ".bufnr("%")
 		\ ." --output-format ".ext
 		\ ." --runs ".a:runs
 		\ ." --servername ".v:servername
@@ -796,27 +794,27 @@ endfunction
 "
 function! atplib#compiler#Compiler(bibtex, start, runs, verbose, command, filename, bang)
     
-    " Set biber setting on the fly
-    call atplib#compiler#SetBiberSettings()
+	" Set biber setting on the fly
+	call atplib#compiler#SetBiberSettings()
 
-    if !has('gui') && a:verbose == 'verbose' && b:atp_running > 0
-	redraw!
-	echomsg "[ATP:] please wait until compilation stops."
-	return
-    endif
+	if !has('gui') && a:verbose == 'verbose' && b:atp_running > 0
+	    redraw!
+	    echomsg "[ATP:] please wait until compilation stops."
+	    return
+	endif
 
-    if g:atp_debugCompiler
-	exe "redir! > ".g:atp_TempDir."/Compiler.log"
-	silent echomsg "________ATP_COMPILER_LOG_________"
-	silent echomsg "changedtick=" . b:changedtick . " atp_changedtick=" . b:atp_changedtick
-	silent echomsg "a:bibtex=" . a:bibtex . " a:start=" . a:start . " a:runs=" . a:runs . " a:verbose=" . a:verbose . " a:command=" . a:command . " a:filename=" . a:filename . " a:bang=" . a:bang
-	silent echomsg "1 b:changedtick=" . b:changedtick . " b:atp_changedtick" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
-    endif
+	if g:atp_debugCompiler
+	    exe "redir! > ".g:atp_TempDir."/Compiler.log"
+	    silent echomsg "________ATP_COMPILER_LOG_________"
+	    silent echomsg "changedtick=" . b:changedtick . " atp_changedtick=" . b:atp_changedtick
+	    silent echomsg "a:bibtex=" . a:bibtex . " a:start=" . a:start . " a:runs=" . a:runs . " a:verbose=" . a:verbose . " a:command=" . a:command . " a:filename=" . a:filename . " a:bang=" . a:bang
+	    silent echomsg "1 b:changedtick=" . b:changedtick . " b:atp_changedtick" . b:atp_changedtick . " b:atp_running=" .  b:atp_running
+	endif
 
-    if has('clientserver') && !empty(v:servername) && g:atp_callback && a:verbose != 'verbose'
-	let b:atp_running+=1
-    endif
-    call atplib#outdir()
+	if has('clientserver') && !empty(v:servername) && g:atp_callback && a:verbose != 'verbose'
+	    let b:atp_running+=1
+	endif
+	call atplib#outdir()
     	" IF b:atp_TexCompiler is not compatible with the viewer
 	" ToDo: (move this in a better place). (luatex can produce both pdf and dvi
 	" files according to options so this is not the right approach.) 
@@ -830,13 +828,14 @@ function! atplib#compiler#Compiler(bibtex, start, runs, verbose, command, filena
 	    echohl WaningMsg | echomsg "[ATP:] your ".b:atp_TexCompiler." and ".b:atp_Viewer." are not compatible:" 
 	    echomsg "       b:atp_TexCompiler=" . b:atp_TexCompiler	
 	    echomsg "       b:atp_Viewer=" . b:atp_Viewer	
+	    echohl None
 	endif
 
-	" there is no need to run more than atplib#compiler#runlimit (=5) consecutive runs
+	" There is no need to run more than ~5 (s:runlimit=9) consecutive runs
 	" this prevents from running tex as many times as the current line
 	" what can be done by a mistake using the range for the command.
-	if a:runs > atplib#compiler#runlimit
-	    let runs = atplib#compiler#runlimit
+	if ( a:runs > s:runlimit )
+	    let runs = s:runlimit
 	else
 	    let runs = a:runs
 	endif
@@ -1059,7 +1058,7 @@ function! atplib#compiler#Compiler(bibtex, start, runs, verbose, command, filena
 
 " 	    let callback	= atplib#compiler#SidWrap('CallBack')
 	    let callback_cmd 	= v:progname . ' --servername ' . v:servername . ' --remote-expr ' . 
-				    \ shellescape('atplib#callback#CallBack').'\(\"'.a:verbose.'\",\"'.a:command.'\",\"'.a:bibtex.'\"\)'. " ; "
+				    \ shellescape('atplib#callback#CallBack').'\(\"'.bufnr("%").'\",\"'.a:verbose.'\",\"'.a:command.'\",\"'.a:bibtex.'\"\)'. " ; "
 
 	    let command = command . " " . callback_cmd
 
@@ -1182,17 +1181,18 @@ function! atplib#compiler#ThreadedCompiler(bibtex, start, runs, verbose, command
 	echohl WaningMsg | echomsg "[ATP:] your ".b:atp_TexCompiler." and ".b:atp_Viewer." are not compatible:" 
 	echomsg "       b:atp_TexCompiler=" . b:atp_TexCompiler	
 	echomsg "       b:atp_Viewer=" . b:atp_Viewer	
+	echohl None
     endif
     if !has('clientserver')
 	if has("win16") || has("win32") || has("win64") || has("win95")
 	    echohl WarningMsg
 	    echomsg "[ATP:] ATP needs +clientserver vim compilation option."
-	    echohl Normal
+	    echohl None
 	else
 	    echohl WarningMsg
 	    echomsg "[ATP:] python compiler needs +clientserver vim compilation option."
 	    echomsg "       falling back to g:atp_Compiler=\"bash\""
-	    echohl Normal
+	    echohl None
 	    let g:atp_Compiler = "bash"
 	    return
 	endif
@@ -1796,6 +1796,10 @@ augroup END
 
 function! atplib#compiler#auTeX(...)
 
+    if !exists("b:atp_changedtick")
+	let b:atp_changedtick = b:changedtick
+    endif
+
     if g:atp_debugauTeX
 	echomsg "*****************"
 	echomsg "b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick
@@ -1922,7 +1926,7 @@ function! atplib#compiler#auTeX(...)
 	    if g:atp_debugauTeX
 		echomsg expand("%") . "E212: Cannon open file for writing"
 	    endif
-	    echohl Normal
+	    echohl None
 	    if g:atp_debugauTeX
 		echomsg " E212"
 	    endif
@@ -2004,8 +2008,6 @@ function! atplib#compiler#TeX(runs, bang, ...)
 	endif
     endfor
 
-"     echomsg "TEX_2 CHANGEDTICK=" . b:changedtick . " " . b:atp_running
-
     if l:mode != 'silent'
 	if a:runs > 2 && a:runs <= 5
 	    echo "[ATP:] ".Compiler . " will run " . a:1 . " times."
@@ -2014,7 +2016,7 @@ function! atplib#compiler#TeX(runs, bang, ...)
 	elseif a:runs == 1
 	    echo "[ATP:] ".Compiler . " will run once."
 	elseif a:runs > 5
-	    echo "[ATP:] ".Compiler . " will run " . atplib#compiler#runlimit . " times."
+	    echo "[ATP:] ".Compiler . " will run " . s:runlimit . " times."
 	endif
     endif
     if g:atp_Compiler == 'python'
@@ -2132,16 +2134,16 @@ endfunction
 " {{{ atplib#compiler#SetErrorFormat
 " first argument is a word in flags 
 " the default is a:1=e /show only error messages/
-function! atplib#compiler#SetErrorFormat(...)
+function! atplib#compiler#SetErrorFormat(cgetfile,...)
 
-    let l:cgetfile = ( a:0 >=2 ? a:2 : 0 )
-    " This l:cgetfile == 1 only if run by the command :ErrorFormat 
-    if l:cgetfile  == 1 && a:1 == ''	
+    " This a:cgetfile == 1 only if run by the command :ErrorFormat 
+    let efm = ( a:0 >= 1 ? a:1 : '' )
+    if efm == "" || a:0 == 0
 	echo "[ATP:] current error format: ".getbufvar(bufnr(fnamemodify(&l:errorfile, ":r").".tex"), "atp_ErrorFormat") 
 	return
     endif
 
-    let carg_raw = ( a:0 == 0 ? g:atp_DefaultErrorFormat : a:1 )
+    let carg_raw = ( a:0 >= 1 ? a:1 : g:atp_DefaultErrorFormat )
     let carg_list= split(carg_raw, '\zs')
     if carg_list[0] =~ '^[+-]$'
 	let add=remove(carg_list,0)
@@ -2317,7 +2319,7 @@ function! atplib#compiler#SetErrorFormat(...)
 			    \%".pm."Q%*[^()])%r,
 			    \%".pm."Q[%\\d%*[^()])%r"
     endif
-    if l:cgetfile
+    if a:cgetfile
 	try
 	    cgetfile
 	catch E40:
@@ -2350,7 +2352,7 @@ function! atplib#compiler#ShowErrors(...)
     if !filereadable(errorfile)
 	echohl WarningMsg
 	echo "[ATP:] no error file: " . errorfile  
-	echohl Normal
+	echohl None
 	return
     endif
 
@@ -2377,7 +2379,7 @@ function! atplib#compiler#ShowErrors(...)
 	echo b:atp_BibtexOutput
 	return
     endif
-    call atplib#compiler#SetErrorFormat(l:arg)
+    call atplib#compiler#SetErrorFormat(0, l:arg)
     let show_message = ( a:0 >= 2 ? a:2 : 1 )
 
     " read the log file
@@ -2385,7 +2387,7 @@ function! atplib#compiler#ShowErrors(...)
 
     " signs
     if g:atp_signs
-	call atplib#callback#Signs()
+	call atplib#callback#Signs(bufnr("%"))
     endif
 
     " final stuff

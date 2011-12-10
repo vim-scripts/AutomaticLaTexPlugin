@@ -9,22 +9,76 @@ let s:sourced = ( !exists("s:sourced") ? 0 : 1 )
 " CTOC Function:
 " {{{1 CTOC
 function! CTOC(...)
-    " if there is any argument given, then the function returns the value
-    " (used by ATPStatus()), otherwise it echoes the section/subsection
-    " title. It returns only the first b:atp_TruncateStatusSection
-    " characters of the the whole titles.
-    let names=atplib#motion#ctoc()
+
+    if &l:filetype !~ 'tex$'
+	return ""
+    endif
+
+    let winsavedview = winsaveview()
+    try
+	if bufloaded(atplib#FullPath(b:atp_MainFile))
+	    let file = getbufline(bufnr(atplib#FullPath(b:atp_MainFile)), 0, "$")
+	elseif filereadable(atplib#FullPath(b:atp_MainFile))
+	    let file = readfile(atplib#FullPath(b:atp_MainFile))
+	else
+	    let s:document_class = ""
+	endif
+	for fline in file
+	    if fline =~# '^\([^%]\|\\%\)*\\documentclass\>'
+		break
+	    endif
+	endfor
+	let s:document_class = matchstr(fline, '\\documentclass\[.*\]{\s*\zs[^}]*\ze\s*}')
+    catch /E484:/
+	if !exists("s:document_class")
+	    let s:document_class = ""
+	endif
+    endtry
+    if s:document_class == "beamer"
+	let saved_pos = getpos(".")
+	if getline(line(".")) =~ '^\([^%]\|\\%\)*\\end\s*{\s*frame\s*}' 
+	    call cursor(line(".")-1, len(getline(line("."))))
+	endif
+	keepjumps call searchpair('^\([^%]\|\\%\)*\\begin\s*{\s*frame\s*}', '', '^\([^%]\|\\%\)*\\end\s*{\s*frame\s*}', 'cbW', '',
+		    \ search('^\([^%]\|\\%\)*\\begin\s*{\s*frame\s*}', 'bnW'))
+	let limit 	= search('^\([^%]\|\\%\)*\\end\s*{\s*frame\s*}', 'nW')
+	let pos	= [ line("."), col(".") ]
+	keepjumps call search('^\([^%]\|\\%\)*\frametitle\>\zs{', 'W', limit)
+	if pos != getpos(".")[1:2]
+	    let a 	= @a
+	    if mode() ==# 'n'
+		" We can't use this normal mode command in visual mode.
+		keepjumps normal! "ayi}
+		let title	= substitute(@a, '\_s\+', ' ', 'g')
+		let @a 	= a
+	    else
+		let title	= matchstr(getline(line(".")), '\\frametitle\s*{\s*\zs[^}]*\ze\(}\|$\)')
+		let title	= substitute(title, '\s\+', ' ', 'g')
+		let title	= substitute(title, '\s\+$', '', 'g')
+		if getline(line(".")) =~ '\\frametitle\s*{[^}]*$'
+		    let title 	.= " ".matchstr(getline(line(".")+1), '\s*\zs[^}]*\ze\(}\|$\)')
+		endif
+	    endif
+	    call winrestview(winsavedview)
+	    return substitute(strpart(title,0,b:atp_TruncateStatusSection/2), '\_s*$', '','')
+	else
+	    call cursor(saved_pos[1:2])
+	    return ""
+	endif
+    endif
+
+    let names		= atplib#motion#ctoc()
     let chapter_name	= get(names, 0, '')
     let section_name	= get(names, 1, '')
     let subsection_name	= get(names, 2, '')
 
     if chapter_name == "" && section_name == "" && subsection_name == ""
 
-    if a:0 == '0'
-	echo "" 
-    else
-	return ""
-    endif
+	if a:0 == '0'
+	    echo "" 
+	else
+	    return ""
+	endif
 	
     elseif chapter_name != ""
 	if section_name != ""
@@ -207,6 +261,5 @@ command! -buffer NInput				:call atplib#motion#Input("w") 	| let v:searchforward
 command! -buffer PInput 			:call atplib#motion#Input("bw")	| let v:searchforward = 0
 command! -buffer -nargs=? -bang -complete=customlist,atplib#motion#GotoFileComplete GotoFile	:call atplib#motion#GotoFile(<q-bang>,<q-args>, 0)
 command! -buffer -nargs=? -bang -complete=customlist,atplib#motion#GotoFileComplete Edit 	:call atplib#motion#GotoFile(<q-bang>,<q-args>, 0)
-" vimeif data[0]['text'] =~ 'No Unique Match Found'	    echohl WarningMsg
-command! -bang -nargs=? -complete=customlist,atplib#motion#GotoLabelCompletion GotoLabel  		:call GotoLabel(<q-bang>, <q-args>)
+command! -bang -nargs=? -complete=customlist,atplib#motion#GotoLabelCompletion GotoLabel  		:call atplib#motion#GotoLabel(<q-bang>, <q-args>)
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

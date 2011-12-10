@@ -20,4 +20,11 @@ let g:atp_hyperref_options=['4=', 'a4paper', 'a5paper', 'anchorcolor=', 'b5paper
 	\ 'pdfpagelayout=', 'pdfpagemode=', 'pdfpagescrop=', 'pdfpagetransition=', 'pdfproducer={', 'pdfstartpage={',
 	\ 'pdfstartview={', 'pdfsubject={', 'pdftex', 'pdftitle={', 'pdftoolbar=', 'pdfusetitle=', 'pdfview',
 	\ 'pdfwindowui=', 'plainpages=', 'ps2pdf', 'raiselinks=', 'runbordercolor', 'tex4ht', 'textures',
-	\ 'unicode=', 'urlbordercolor=', 'urlcolor=', 'verbose=', 'vtex']
+	\ 'unicode=', 'urlbordercolor=', 'urlcolor=', 'verbose=', 'vtex', 'allcolors=', 'allbordercolors=', 'nativepdf=',
+	\ 'pdfdisplaydoctitle=', 'pdfmark=', 'setpagesize=']
+let g:atp_hyperref_options_values={
+	\ '^\%(anchor\|cite\%(border\)\=\|file\|link\%(border\)\=\|page\%(border\)\=\|url\|menu\)color' : 'GetColors',
+	\ '^all\%(border\)\=colors=' : 'GetColors',
+	\ '^\%(colorlinks\|frenchlinks\|hidelinks\|hyperfigures\|pagebackref\|hyperindex\|plainpages\|linktocpage\|breaklinks\|bookmarks\%\(open\|numbered\)\=\|naturalnames\|nativepdf\|nesting\|CJKbookmarks\|pdfcenterwindow\|pdfmark\|pdfdisplaydoctitle\|pdffitwindow\|pdfnewwindow\|unicode\|verbose\)=' : [ 'true', 'false' ],
+	\ '^\%(bookmarks\|pageanchor\|hyperfootnotes\|pdfmenubar\|pdfpagelabels\|pdftoolbar\|pdfwindowui\|setpagesize\)=' : [ 'false', 'true' ]
+	\ }

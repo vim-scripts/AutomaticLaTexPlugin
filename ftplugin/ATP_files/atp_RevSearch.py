@@ -65,7 +65,7 @@ else:
     page=args[1]
     x=args[2]
     y=args[3]
-    if x=="0" and y == "0":
+    if x == "0" and y == "0":
         sys.exit("-1")
     y=float(791.333)-float(y)
     synctex_cmd=["synctex", "edit", "-o", str(page)+":"+str(x)+":"+str(y)+":"+str(file)]
@@ -84,10 +84,14 @@ else:
             break
     if synctex.returncode == 0:
         match_pos=re.findall("(?:Line:(-?\d+)|Column:(-?\d+))",synctex_output)
-        line=match_pos[0][0]
-        column=match_pos[1][1]
-        if column == "-1":
-            column = "1"
+        if len(match_pos):
+            line=match_pos[0][0]
+            column=match_pos[1][1]
+            if column == "-1":
+                column = "1"
+        else:
+            line        = "-1"
+            column      = "-1"
     else:
         print("synctex return code: "+str(synctex.returncode))
         line    = "-1"

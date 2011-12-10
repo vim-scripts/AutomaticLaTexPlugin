@@ -33,6 +33,7 @@ parser.add_option("--aucommand",        dest="aucommand",       default=False, a
 parser.add_option("--tex-options",      dest="tex_options",     default="-synctex=1,-interaction=nonstopmode")
 parser.add_option("--verbose",          dest="verbose",         default="silent"                        )
 parser.add_option("--file",             dest="mainfile",                                                )
+parser.add_option("--bufnr",            dest="bufnr",                                                   )
 parser.add_option("--output-format",    dest="output_format",   default="pdf"                           )
 parser.add_option("--runs",             dest="runs",            default=1,             type="int"       )
 parser.add_option("--servername",       dest="servername",                                              )
@@ -84,6 +85,7 @@ else:
     aucommand="COM"
 command_opt     = list(filter(nonempty,re.split('\s*,\s*', options.tex_options)))
 mainfile_fp     = options.mainfile
+bufnr           = options.bufnr
 output_format   = options.output_format
 if output_format == "pdf":
     extension = ".pdf"
@@ -195,9 +197,9 @@ def latex_progress_bar(cmd):
                 stack.popleft()
             match = re.match('\[(\n?\d(\n|\d)*)({|\])',str(''.join(stack)))
             if match:
-                vim_remote_expr(servername, "atplib#callback#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
+                vim_remote_expr(servername, "atplib#callback#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+","+str(bufnr)+")")
     child.wait()
-    vim_remote_expr(servername, "atplib#callback#ProgressBar('end',"+str(pid)+")")
+    vim_remote_expr(servername, "atplib#callback#ProgressBar('end',"+str(pid)+","+str(bufnr)+")")
     vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_LatexPIDs\")")
     return child
 
@@ -458,8 +460,8 @@ try:
 #
 ####################################
     if verbose != "verbose":
-        debug_file.write("CALL BACK "+"atplib#callback#CallBack('"+str(verbose)+"','"+aucommand+"','"+str(options.bibtex)+"')"+"\n")
-        vim_remote_expr(servername, "atplib#callback#CallBack('"+str(verbose)+"','"+aucommand+"','"+str(options.bibtex)+"')")
+        debug_file.write("CALL BACK "+"atplib#callback#CallBack('"+str(bufnr)+"','"+str(verbose)+"','"+aucommand+"','"+str(options.bibtex)+"')"+"\n")
+        vim_remote_expr(servername, "atplib#callback#CallBack('"+str(bufnr)+"','"+str(verbose)+"','"+aucommand+"','"+str(options.bibtex)+"')")
         # return code of compelation is returned before (after each compilation).
 
 

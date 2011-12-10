@@ -163,11 +163,7 @@ function! atplib#helpfunctions#MapSearch(bang,rhs_pattern,...)
     else
 	let pure_rhs_list = rhs_list
     endif
-    let g:rhs_list_0 = copy(rhs_list)
-    let g:pure_rhs_list = copy(pure_rhs_list)
     if mode == 'i'
-	let g:added =[]
-	let g:add   =[]
 	let j=0
 	for entry in g:atp_imap_greek_letters
 		    \ +g:atp_imap_math_misc
@@ -182,9 +178,7 @@ function! atplib#helpfunctions#MapSearch(bang,rhs_pattern,...)
 			\ index(pure_rhs_list, "@".entry_tab) == -1 &&
 			\ index(pure_rhs_list, "*@".entry_tab) == -1 
 		" Debug:
-		    call add(g:added, j." ".entry[2].entry[3]."    ".entry_tab)
 		    let j+=1
-		    call add(g:add, entry_tab)
 		let space = join(map(range(max([12-len(entry[2].entry[3]),1])), "' '"), "")
 		call add(list, 'i  '.entry[2].entry[3].space.entry_tab)
 		if a:bang == ""
@@ -195,11 +189,10 @@ function! atplib#helpfunctions#MapSearch(bang,rhs_pattern,...)
 	    endif
 	endfor
     endif
-    let g:rhs_list = copy(rhs_list)
     let i = 0
     let i_list = []
     for rhs in rhs_list
-	if rhs =~ a:rhs_pattern
+	if rhs =~? a:rhs_pattern
 	    call add(i_list, i)
 	endif
 	let i+=1
@@ -214,9 +207,8 @@ function! atplib#helpfunctions#MapSearch(bang,rhs_pattern,...)
     else
 	echohl WarningMsg
 	echo "No such map"
-	echohl Normal
+	echohl None
     endif
-"     return found_maps
 endfunction
 
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

@@ -3,6 +3,7 @@
 import re, optparse, subprocess, os
 from optparse import OptionParser
 from time import strftime, localtime
+import locale
 
 # ToDoList:
 # I can use synstack function remotely to get tag_type.
@@ -140,7 +141,7 @@ for file_name in file_list:
             tag=str(match)+"\t"+file_name+"\t"+str(linenr)
             # Set the tag type:
             tag_type=get_tag_type(line, match, "label")
-            print(line)
+#             print(line)
             if tag_type == "":
                 tag_type=get_tag_type(p_line+line, match, "label")
             tag+=";\"\tinfo:"+tag_type+"\tkind:label"
@@ -197,6 +198,7 @@ try:
         if re.match('\\\\newlabel{[^}]*}{{[^}]*}', line):
             [label, counter]=re.match('\\\\newlabel{([^}]*)}{{([^}]*)}', line).group(1,2)
             counter=re.sub('{', '', counter)
+            counter=re.search('[0-9.]+', counter).group(0)
             try:
                 [linenr, file, tag_type, kind]=tag_dict[label]
             except KeyError:
@@ -212,7 +214,7 @@ except IOError:
 # SORT (vim works faster when tag file is sorted) AND WRITE TAGS
 time=strftime("%a, %d %b %Y %H:%M:%S +0000", localtime())
 tags_sorted=sorted(tags, key=str.lower)
-tags_sorted=['!_TAG_FILE_SORTED\t2\t/'+time]+tags_sorted
+tags_sorted=['!_TAG_FILE_SORTED\t1\t/'+time]+tags_sorted
 os.chdir(options.directory)
 tag_file = open("tags", 'w')
 tag_file.write("\n".join(tags_sorted))

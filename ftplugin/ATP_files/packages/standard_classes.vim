@@ -1,3 +1,5 @@
+" This file is a part of ATP.
+" Written by Marcin Szamotulski <atp-list@lists.sourceforge.net>
 let s:options=[
 	    \ '10pt', '11pt', '12pt', 'a4paper', 'a5paper', 'letterpaper', 'legalpaper', 
 	    \ 'executivepaper', 'landscape', 'titlepage', 'notitlepage', 'leqno', 'reqno', 'fleqn',

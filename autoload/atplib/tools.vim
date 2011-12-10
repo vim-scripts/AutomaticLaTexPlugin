@@ -14,7 +14,7 @@ function! atplib#tools#Open(bang, dir, TypeDict, ...)
     if a:dir == "0"
 	echohl WarningMsg 
 	echomsg "You have to set g:atp_LibraryPath in your vimrc or atprc file." 
-	echohl Normal
+	echohl None
 	return
     endif
 
@@ -36,7 +36,7 @@ function! atplib#tools#Open(bang, dir, TypeDict, ...)
 	if len(found) > 1
 	    echohl Title 
 	    echo "Found files:"
-	    echohl Normal
+	    echohl None
 	    let i = 1
 	    for file in found
 		if len(map(copy(found), "v:val =~ escape(fnamemodify(file, ':t'), '~') . '$'")) == 1
@@ -81,7 +81,7 @@ function! atplib#tools#Open(bang, dir, TypeDict, ...)
 	redraw!
 	echohl Title
 	echo "cat '" . file . "'"
-	echohl Normal
+	echohl None
 	echo system(viewer . " '" . file . "' &")  
     endif
 "     if fnamemodify(file, ":t") != "" && count(g:atp_open_completion, fnamemodify(file, ":t")) == 0
@@ -104,14 +104,21 @@ endfunction
 " there are no errors (for to not affect :Labels command)
 function! atplib#tools#GrepAuxFile(...)
     " Aux file to read:
-    if exists("b:atp_MainFile")
-	let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+
+    let base = ( a:0 >= 1 ? fnamemodify(a:1, ":r") : fnamemodify(b:atp_MainFile, ":r") ) 
+    let aux_filename	= base."._aux"
+    if !filereadable(aux_filename)
+	let aux_filename	= a:1
+	if !filereadable(a:1) && exists("b:atp_MainFile")
+	    let aux_filename = fnamemodify(atplib#FullPath(b:atp_MainFile), ":r") . "._aux"
+	    if !filereadable(aux_filename)
+		let aux_filename = fnamemodify(atplib#FullPath(b:atp_MainFile), ":r") . ".aux"
+	    else
+		echoerr "[ATP] aux file not found (atplib#tools#GrepAuxFile)."
+	    endif
+	endif
     endif
-    if filereadable(fnamemodify(atp_MainFile, ":r") . "._aux")
-	let aux_filename	= ( a:0 == 0 && exists("b:atp_MainFile") ? fnamemodify(atp_MainFile, ":r") . "._aux" : a:1 )
-    else
-	let aux_filename	= ( a:0 == 0 && exists("b:atp_MainFile") ? fnamemodify(atp_MainFile, ":r") . ".aux" : a:1 )
-    endif
+
     let tex_filename	= fnamemodify(aux_filename, ":r") . ".tex"
 
     if !filereadable(aux_filename)
@@ -119,7 +126,7 @@ function! atplib#tools#GrepAuxFile(...)
 	" /this is not visible ! only after using the command 'mes'/
 	echohl WarningMsg
 	echomsg "[ATP:] there is no aux file. Run ".b:atp_TexCompiler." first."
-	echohl Normal
+	echohl None
 	return []
 	" CALL BACK is not working
 	" I can not get output of: vim --servername v:servername --remote-expr v:servername
@@ -242,6 +249,7 @@ function! atplib#tools#GrepAuxFile(...)
 	endif
 
 	if label !~ '^nolabel:\>'
+	    let number = substitute(number, '{\|}', '', 'g')
 	    call add(labels, [ label, number, counter])
 	    if g:atp_debugGAF
 		call extend(g:gaf_debug, { label : [ number, counter ] })
@@ -289,18 +297,21 @@ function! atplib#tools#generatelabels(filename, ...)
     let saved_pos	= getpos(".")
     call cursor(1,1)
 
-    let [ TreeofFiles, ListOfFiles, DictOfFiles, LevelDict ] 		= TreeOfFiles(a:filename)
+    let [ TreeOfFiles, ListOfFiles, TypeDict, LevelDict ] 		= TreeOfFiles(a:filename)
     let ListOfFiles_orig = copy(ListOfFiles)
     if count(ListOfFiles, a:filename) == 0
 	call add(ListOfFiles, a:filename)
+	let TypeDict[a:filename] = "input"
     endif
     let saved_llist	= getloclist(0)
     call setloclist(0, [])
 
     " Look for labels in all input files.
     for file in ListOfFiles
-	let file	= atplib#FullPath(file)
-	silent! execute "lvimgrepadd /\\label\s*{/j " . fnameescape(file)
+	if get(TypeDict, file, 'input') == 'input'
+	    let file	= atplib#FullPath(file)
+	    silent! execute "keepjumps lvimgrepadd /\\label\s*{/j " . fnameescape(file)
+	endif
     endfor
     let loc_list	= getloclist(0)
 "     call setloclist(0, saved_llist)
@@ -474,14 +485,15 @@ function! atplib#tools#getlinenr(...) "{{{
     let labels 	=  a:0 >= 2 ? a:2 : expand("%") == "__Labels__" ? 1 : 0
 
     if labels == 0
-	let bnr = bufnr("_ToC_")
-	if string(getbufvar(bnr, "atp_Toc")) != ""
+	let bnr = bufnr("__ToC__")
+	if len(getbufvar(bnr, "atp_Toc"))
 	    return get(getbufvar(bnr, "atp_Toc"), line, ["", ""])[1]
 	endif
     else
-	let bnr = bufnr("_Labels_")
-	if string(getbufvar(bnr, "atp_Lables")) != ""
-	    return get(getbufvar(bnr, "atp_Labels"), line, ["", ""])[1]
+	let bnr = bufnr("__Labels__")
+	let dict=getbufvar(bnr, "atp_Labels")
+	if len(dict)
+	    return get(dict, line, ["", ""])[1]
 	endif
     endif
 endfunction "}}}

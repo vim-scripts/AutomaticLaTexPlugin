@@ -193,6 +193,23 @@ function! LatexBox_LatexmkStatus(detailed)
 
 endfunction
 " }}}
+
+" LatexErrors {{{
+" LatexBox_LatexErrors(jump, [basename])
+function! LatexBox_LatexErrors(jump, ...)
+	if a:0 >= 1
+		let log = a:1 . '.log'
+	else
+		let log = LatexBox_GetLogFile()
+	endif
+
+	if (a:jump)
+		execute 'cfile ' . fnameescape(log)
+	else
+		execute 'cgetfile ' . fnameescape(log)
+	endif
+endfunction
+" }}}
 endif
 
 " Commands {{{

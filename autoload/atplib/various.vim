@@ -2,7 +2,7 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Sun Oct 09, 2011 at 09:02:52  +0100
+" Last Change: Mon Dec 05, 2011 at 20:31:38  +0000
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -390,7 +390,7 @@ function! atplib#various#TexAlign(bang)
 
     let balign=searchpair('\\begin\s*{\s*array\s*}', '', '\\end\s*{\s*array\s*}', 'bnW')
 "     let [bmatrix, bmatrix_col]=searchpairpos('\\matrix\s*\%(\[[^]]*\]\s*\)\=\zs{', '', '}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
-    let [bmatrix, bmatrix_col]=searchpos('\\matrix\s*\%(\[[^]]*\]\s*\)\=\zs{', 'bW', max([1, (line(".")-g:atp_completion_limits[2])]))
+    let [bmatrix, bmatrix_col]=searchpos('^\%([^%]\|\\%\)*\\matrix\s*\%(\[[^]]*\]\s*\)\=\zs{', 'bW', max([1, (line(".")-g:atp_completion_limits[2])]))
     if bmatrix != 0
 	normal %
 	let bmatrix = ( line(".") >= save_pos[1] ? bmatrix : 0 )
@@ -401,7 +401,7 @@ function! atplib#various#TexAlign(bang)
 	let bline = bmatrix+1 
 	let epat = '}'
 	let AlignCtr = 'l+'
-	let AlignSep = '&'
+	let AlignSep = '&\|\\pgfmatrixnextcell'
 	let env = "matrix"
     elseif balign
 	let bpat = '\\begin\s*{\s*array\s*}'
@@ -466,7 +466,6 @@ function! atplib#various#TexAlign(bang)
 	let AlignSep = '&'
 	let env = "table"
     else
-	let g:env="no_env"
 	return
     endif
 
@@ -483,8 +482,10 @@ function! atplib#various#TexAlign(bang)
     endif
 
     if a:bang == "!" && eline-1 > bline
-    " Join lines (g:atp_TexAlign_join_lines)
-    execute 'silent! '.(bline).','.(eline-1).'g/\%(\\\\\s*\|\\intertext.*\)\@<!\n/s/\n//'
+	" Join lines (g:atp_TexAlign_join_lines)
+	execute 'keepjumps silent! '.(bline).','.(eline-1).'g/\%(\\\\\s*\|\\intertext.*\)\@<!\n/s/\n//'
+	call histdel("search", -1)
+	let @/ = histget("search", -1)
 	if env != "matrix"
 	    let eline = searchpair(bpat, '', epat, 'cn')  - 1
 	else
@@ -510,38 +511,6 @@ function! atplib#various#TexAlign(bang)
 endfunction
 "}}}
 " Editing Toggle Functions
-"{{{ Variables
-if !exists("g:atp_no_toggle_environments")
-    let g:atp_no_toggle_environments=[ 'document', 'tikzpicture', 'picture']
-endif
-if !exists("g:atp_toggle_environment_1")
-    let g:atp_toggle_environment_1=[ 'center', 'flushleft', 'flushright', 'minipage' ]
-endif
-if !exists("g:atp_toggle_environment_2")
-    let g:atp_toggle_environment_2=[ 'enumerate', 'itemize', 'list', 'description' ]
-endif
-if !exists("g:atp_toggle_environment_3")
-    let g:atp_toggle_environment_3=[ 'quotation', 'quote', 'verse' ]
-endif
-if !exists("g:atp_toggle_environment_4")
-    let g:atp_toggle_environment_4=[ 'theorem', 'proposition', 'lemma' ]
-endif
-if !exists("g:atp_toggle_environment_5")
-    let g:atp_toggle_environment_5=[ 'corollary', 'remark', 'note' ]
-endif
-if !exists("g:atp_toggle_environment_6")
-    let g:atp_toggle_environment_6=[  'equation', 'align', 'array', 'alignat', 'gather', 'flalign', 'multline'  ]
-endif
-if !exists("g:atp_toggle_environment_7")
-    let g:atp_toggle_environment_7=[ 'smallmatrix', 'pmatrix', 'bmatrix', 'Bmatrix', 'vmatrix' ]
-endif
-if !exists("g:atp_toggle_environment_8")
-    let g:atp_toggle_environment_8=[ 'tabbing', 'tabular']
-endif
-if !exists("g:atp_toggle_labels")
-    let g:atp_toggle_labels=1
-endif
-"}}}
 "{{{ ToggleStar
 " this function adds a star to the current environment
 " todo: to doc.
@@ -611,117 +580,101 @@ try
 function! atplib#various#ToggleEnvironment(ask, ...)
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
-    " l:add might be a number or an environment name
+    " add might be a number or an environment name
     " if it is a number the function will jump this amount in appropriate list
     " (g:atp_toggle_environment_[123...]) to find new environment name
-    let l:add = ( a:0 >= 1 ? a:1 : 1 ) 
+    let add = ( a:0 >= 1 ? a:1 : 1 ) 
 
     " limit:
-    let l:from_line=max([1,line(".")-g:atp_completion_limits[2]])
-    let l:to_line=line(".")+g:atp_completion_limits[2]
+    let from_line=max([1,line(".")-g:atp_completion_limits[2]])
+    let to_line=line(".")+g:atp_completion_limits[2]
 
     " omit pattern
-    let l:omit=join(g:atp_no_toggle_environments,'\|')
-    let l:open_pos=searchpairpos('\\begin\s*{','','\\end\s*{[^}]*}\zs','bnW','getline(".") =~ "\\\\begin\\s*{".l:omit."}"',l:from_line)
-    let l:env_name=matchstr(strpart(getline(l:open_pos[0]),l:open_pos[1]),'begin\s*{\zs[^}]*\ze}')
+    let omit=join(g:atp_no_toggle_environments,'\|')
+    let open_pos=searchpairpos('\\begin\s*{','','\\end\s*{[^}]*}\zs','bcnW','getline(".") =~ "\\\\begin\\s*{".omit."}"',from_line)
+    let env_name=matchstr(strpart(getline(open_pos[0]),open_pos[1]),'begin\s*{\zs[^}]*\ze}')
 
-    let l:label=matchstr(strpart(getline(l:open_pos[0]),l:open_pos[1]),'\\label\s*{\zs[^}]*\ze}')
-    " DEBUG
-"     let b:line=strpart(getline(l:open_pos[0]),l:open_pos[1])
-"     let b:label=l:label
-"     let b:env_name=l:env_name
-    if l:open_pos == [0, 0] || index(g:atp_no_toggle_environments,l:env_name) != -1
+    let label=matchstr(strpart(getline(open_pos[0]),open_pos[1]),'\\label\s*{\zs[^}]*\ze}')
+    if open_pos == [0, 0] || index(g:atp_no_toggle_environments,env_name) != -1
 	return
     endif
 
-    let l:env_name_ws=substitute(l:env_name,'\*$','','')
+    let env_name_ws=substitute(env_name,'\*$','','')
 
     if !a:ask
-	let l:variable="g:atp_toggle_environment_1"
-	let l:i=1
+	let variable="g:atp_toggle_environment_1"
+	let i=1
 	while 1
-	    let l:env_idx=index({l:variable},l:env_name_ws)
-	    if l:env_idx != -1
+	    let env_idx=index({variable},env_name_ws)
+	    if env_idx != -1
 		break
 	    else
-		let l:i+=1
-		let l:variable="g:atp_toggle_environment_".l:i
+		let i+=1
+		let variable="g:atp_toggle_environment_".i
 	    endif
-	    if !exists(l:variable)
+	    if !exists(variable)
 		return
 	    endif
 	endwhile
 
-	if l:add > 0 && l:env_idx > len({l:variable})-l:add-1
-	    let l:env_idx=0
-	elseif ( l:add < 0 && l:env_idx < -1*l:add )
-	    let l:env_idx=len({l:variable})-1
+	if add > 0 && env_idx > len({variable})-add-1
+	    let env_idx=0
+	elseif ( add < 0 && env_idx < -1*add )
+	    let env_idx=len({variable})-1
 	else
-	    let l:env_idx+=l:add
+	    let env_idx+=add
 	endif
-	let l:new_env_name={l:variable}[l:env_idx]
-	if l:env_name =~ '\*$'
-	    let l:new_env_name.="*"
+	let new_env_name={variable}[env_idx]
+	if env_name =~ '\*$'
+	    let new_env_name.="*"
 	endif
     else
-	if l:add == 1
-	    let l:new_env_name=input("What is the new name for " . l:env_name . "? type and hit <Enter> ", "", "customlist,EnvCompletion" )
-	    if l:new_env_name == ""
+	if add == 1
+	    let new_env_name=input("What is the new name for " . env_name . "? type and hit <Enter> ", "", "customlist,EnvCompletion" )
+	    if new_env_name == ""
 		redraw
 		echomsg "[ATP:] environment name not changed"
 		return
 	    endif
 	else
-	    let l:new_env_name = l:add
+	    let new_env_name = add
 	endif
     endif
 
-    " DEBUG
-"     let g:i=l:i
-"     let g:env_idx=l:env_idx
-"     let g:env_name=l:env_name
-"     let g:add = l:add
-"     let g:new_env_name=l:new_env_name
-
-    let l:env_name=escape(l:env_name,'*')
-    let l:close_pos=searchpairpos('\\begin\s*{'.l:env_name.'}','','\\end\s*{'.l:env_name.'}\zs','nW',"",l:to_line)
-    if l:close_pos != [0, 0]
-	call setline(l:open_pos[0],substitute(getline(l:open_pos[0]),'\(\\begin\s*{\)'.l:env_name.'}','\1'.l:new_env_name.'}',''))
-	call setline(l:close_pos[0],substitute(getline(l:close_pos[0]),
-		    \ '\(\\end\s*{\)'.l:env_name.'}','\1'.l:new_env_name.'}',''))
+    let env_name=escape(env_name,'*')
+    let close_pos=searchpairpos('\\begin\s*{'.env_name.'}','','\\end\s*{'.env_name.'}\zs','nW',"",to_line)
+    if close_pos != [0, 0]
+	call setline(open_pos[0],substitute(getline(open_pos[0]),'\(\\begin\s*{\)'.env_name.'}','\1'.new_env_name.'}',''))
+	call setline(close_pos[0],substitute(getline(close_pos[0]),
+		    \ '\(\\end\s*{\)'.env_name.'}','\1'.new_env_name.'}',''))
 	redraw
-	echomsg "[ATP:] environment toggeled at lines: " .l:open_pos[0]." and ".l:close_pos[0]
+	echomsg "[ATP:] environment toggeled at lines: " .open_pos[0]." and ".close_pos[0]
     endif
 
-    if l:label != "" && g:atp_toggle_labels
-	if l:env_name == ""
-	    let l:new_env_name_ws=substitute(l:new_env_name,'\*$','','')
-	    let l:new_short_name=get(g:atp_shortname_dict,l:new_env_name_ws,"")
-	    let l:new_label =  l:new_short_name . strpart(l:label, stridx(l:label, g:atp_separator))
-" 	    let g:new_label = l:new_label . "XXX"
+    if label != "" && g:atp_toggle_labels
+	if env_name == ""
+	    let new_env_name_ws=substitute(new_env_name,'\*$','','')
+	    let new_short_name=get(g:atp_shortname_dict,new_env_name_ws,"")
+	    let new_label =  new_short_name . strpart(label, stridx(label, g:atp_separator))
 	else
-" 	    let g:label = l:label
-	    let l:new_env_name_ws=substitute(l:new_env_name,'\*$','','')
-" 	    let g:new_env_name_ws=l:new_env_name_ws
-	    let l:new_short_name=get(g:atp_shortname_dict,l:new_env_name_ws,"")
-" 	    let g:new_short_name=l:new_short_name
-	    let l:short_pattern= '^\(\ze:\|' . join(values(filter(g:atp_shortname_dict,'v:val != ""')),'\|') . '\)'
-" 	    let g:short_pattern=l:short_pattern
-	    let l:short_name=matchstr(l:label, l:short_pattern)
-" 	    let g:short_name=l:short_name
-	    let l:new_label=substitute(l:label,'^'.l:short_name,l:new_short_name,'')
-" 	    let g:new_label=l:new_label
+	    let new_env_name_ws=substitute(new_env_name,'\*$','','')
+	    let new_short_name=get(g:atp_shortname_dict,new_env_name_ws,"")
+	    let short_pattern= '^\(\ze:\|' . join(values(filter(g:atp_shortname_dict,'v:val != ""')),'\|') . '\)'
+	    let short_name=matchstr(label, short_pattern)
+	    let new_label=substitute(label,'^'.short_name,new_short_name,'')
 	endif
 
 
 	" check if new label is in use!
 	let pos_save=getpos(".")
-	let n=search('\m\C\\\(label\|\%(eq\|page\)\?ref\)\s*{'.l:new_label.'}','nwc')
 
-	if n == 0 && l:new_label != l:label
-	    let hidden =  &hidden
+	" Test if the new label exists.
+	let test = search('\m\C\\\(label\|\%(eq\|page\)\?ref\)\s*{'.new_label.'}','nwc')
+
+	if !test && new_label != label
+	    let hidden = &hidden
 	    set hidden
-	    silent! keepjumps execute l:open_pos[0].'substitute /\\label{'.l:label.'}/\\label{'.l:new_label.'}'
+	    silent! keepjumps execute open_pos[0].'substitute /\\label{'.label.'}/\\label{'.new_label.'}'
 	    " This should be done for every file in the project. 
 	    if !exists("b:TypeDict")
 		call TreeOfFiles(atp_MainFile)
@@ -730,28 +683,74 @@ function! atplib#various#ToggleEnvironment(ask, ...)
 	    let file		= expand("%:p")
 	    let project_files = keys(filter(b:TypeDict, "v:val == 'input'")) + [ atp_MainFile ]
 	    for project_file in project_files
+		let bufloaded = bufloaded(project_file)
 		if atplib#FullPath(project_file) != expand("%:p")
 		    exe "silent keepalt edit " . project_file
 		endif
 		let pos_save_pf=getpos(".")
-		silent! keepjumps execute '%substitute /\\\(eq\|page\)\?\(ref\s*\){'.l:label.'}/\\\1\2{'.l:new_label.'}/gIe'
+		silent! keepjumps execute '%substitute /\\\(eq\|page\)\?\(ref\s*\){'.label.'}/\\\1\2{'.new_label.'}/gIe'
+		" Write the file: 
+" 		update
+" 		if !bufloaded
+" 		    silent! bd
+" 		endif
 		keepjumps call setpos(".", pos_save_pf)
 	    endfor
 	    execute "keepalt buffer " . file
 	    keepjumps call setpos(".", pos_save)
 	    let &hidden = hidden
-	elseif n != 0 && l:new_label != l:label
+	elseif n != 0 && new_label != label
 	    redraw
 	    echohl WarningMsg
-	    echomsg "[ATP:] labels not changed, new label: ".l:new_label." is in use!"
-	    echohl Normal
+	    echomsg "[ATP:] labels not changed, new label: ".new_label." is in use!"
+	    echohl None
 	endif
     endif
-    return  l:open_pos[0]."-".l:close_pos[0]
+    return  open_pos[0]."-".close_pos[0]
 endfunction
 catch /E127:/
 endtry "}}}
+" {{{ ChangeLabel
+function! atplib#various#ChangeLabel(new_label)
+    let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
+    let pos_save=getpos(".")
+    let view = winsaveview()
 
+    let label  = matchstr(getline(line(".")), '\\label\s*{\zs[^}]*\ze}')
+    if label == ""
+	echohl WarningMsg
+	echo "[ATP:] \\label command not found in the current line."
+	echohl None
+	return
+    endif
+    let hidden = &hidden
+    set hidden
+    let save_view 	= winsaveview()
+    execute 's/\\label{'.label.'}/\\label{'.a:new_label.'}/'
+    " This should be done for every file in the project. 
+    if !exists("b:TypeDict")
+	call TreeOfFiles(atp_MainFile)
+    endif
+    let file		= expand("%:p")
+    let project_files = keys(filter(b:TypeDict, "v:val == 'input'")) + [ atp_MainFile ]
+    for project_file in project_files
+	let bufloaded = bufloaded(project_file)
+	if atplib#FullPath(project_file) != expand("%:p")
+	    exe "silent keepalt edit " . project_file
+	endif
+	let pos_save_pf=getpos(".")
+	silent! keepjumps execute '%substitute /\\\(eq\|page\)\?\(ref\s*\){'.label.'}/\\\1\2{'.a:new_label.'}/gIe'
+	" Write the file: 
+" 		update
+" 		if !bufloaded
+" 		    silent! bd
+" 		endif
+	keepjumps call setpos(".", pos_save_pf)
+    endfor
+    execute "keepalt buffer " . file
+    keepjumps keepmarks call winrestview(view)
+    let &hidden = hidden
+endfunction "}}}
 " This is completion for input() inside ToggleEnvironment which uses
 " b:atp_LocalEnvironments variable.
 function! atplib#various#EnvCompletion(ArgLead, CmdLine, CursorPos) "{{{
@@ -881,7 +880,6 @@ function! atplib#various#Delete(delete_output)
     endfor
 endfunction
 "}}}
-
 "{{{ OpenLog, TexLog, TexLog Buffer Options, PdfFonts, YesNoCompletion
 "{{{ atplib#various#Search function for Log Buffer
 function! atplib#various#Search(pattern, flag, ...)
@@ -912,7 +910,7 @@ function! atplib#various#Search(pattern, flag, ...)
 	endif
 	echohl WarningMsg
 	echo "No " . message . " " . type . " message."
-	echohl Normal
+	echohl None
     endif
 " This fails (?):
 "     if center
@@ -1245,8 +1243,6 @@ function! atplib#various#YesNoCompletion(A,P,L)
     return ['yes','no']
 endfunction
 "}}}
-
-" Ssh printing tools
 "{{{ Print, Lpstat, ListPrinters
 " This function can send the output file to local or remote printer.
 " a:1   = file to print		(if not given printing the output file)
@@ -1263,7 +1259,7 @@ endfunction
 	if ext == "not present"
 	    echohl WarningMsg
 	    echomsg "[ATP:] ".b:atp_TexCompiler . " is not present in g:atp_CompilersDict"
-	    echohl Normal
+	    echohl None
 	    return "extension not found"
 	endif
 	if b:atp_TexCompiler =~ "lua"
@@ -1317,7 +1313,7 @@ function! atplib#various#Lpr(...)
 	if ext == "not present"
 	    echohl WarningMsg
 	    echomsg "[ATP:] ".b:atp_TexCompiler . " is not present in g:atp_CompilersDict"
-	    echohl Normal
+	    echohl None
 	    return "extension not found"
 	endif
 	if b:atp_TexCompiler =~ "lua"
@@ -1432,16 +1428,7 @@ function! atplib#various#CompleteLocal_lpr(ArgLead, CmdLine, CPos)
 endfunction
 " }}}
 
-" Open Library Command
-" {{{ :Open
-" -complete=customlist,ATP_CompleteOpen
-" function! ATP_CompleteOpen(ArgLead, CmdLead, CurPos)
-"     return filter(deepcopy(g:atp_open_completion), "v:val =~ '^' . a:ArgLead")
-" endfunction
-" }}}
-
-" This functions reloads ATP (whole or just a function)
-" {{{  ReloadATP
+" {{{  atplib#various#ReloadATP
 " ReloadATP() - reload all the tex_atp functions and delete all autoload functions from
 " autoload/atplib.vim
 try
@@ -1482,7 +1469,7 @@ function! atplib#various#ReloadATP(bang)
 	call setloclist(0,saved_loclist)
 	call map(list, 'matchstr(v:val, ''^\s*fun\%[ction]!\=\s\+\zsatplib#\S\+\ze\s*('')')
 	for fname in list
-	    if fname != "" && fname != "atplib#various#ReloadATP"
+	    if fname != "" && fname != "atplib#various#ReloadATP" && fname != "atplib#various#UpdateATP"
 		try
 		    exe 'delfunction '.fname
 		catch /E130:/
@@ -1496,9 +1483,7 @@ catch /E127:/
     " Cannot redefine function, function is in use.
 endtry
 " }}}
-
-" This functions prints preamble 
-" {{{ Preambule
+" {{{ atplib#various#Preambule
 function! atplib#various#Preamble()
     let loclist = getloclist(0)
     let winview = winsaveview()
@@ -1520,9 +1505,7 @@ function! atplib#various#Preamble()
     endif
 endfunction
 " }}}
-
-" Get bibdata from ams
-" {{{ AMSGet
+" {{{ atplib#various#GetAMS
 
 try
 function! atplib#various#GetAMSRef(what, bibfile)
@@ -1610,7 +1593,7 @@ function! atplib#various#GetAMSRef(what, bibfile)
 	normal GG
 	echohl WarningMsg
 	echomsg "[ATP:] bibkey " . bibkey . " appended to: " . a:bibfile 
-	echohl Normal
+	echohl None
     else
 	" If the user is using \begin{bibliography} environment.
 	let pattern = '^<tr><td align="left">'
@@ -1673,7 +1656,7 @@ function! atplib#various#AMSRef(bang, what)
 	redraw
 	echohl WarningMsg
 	echomsg "[ATP:] found bib data is in register " . g:atp_bibrefRegister
-	echohl Normal
+	echohl None
     elseif return[0] == 'NoUniqueMatch' 
 	redraw
 	echohl WarningMsg
@@ -1682,9 +1665,7 @@ function! atplib#various#AMSRef(bang, what)
     endif
 endfunction
 "}}}
-
-" Dictionary (of J.Trzeciak IMPAN)
-"{{{ Dictionary
+"{{{ atplib#various#Dictionary
 function! atplib#various#Dictionary(word)
     redraw
     let URLquery_path 	= split(globpath(&rtp, 'ftplugin/ATP_files/url_query.py'), "\n")[0]
@@ -1733,7 +1714,7 @@ function! atplib#various#Dictionary(word)
 	endif
 	echo line
 	if line =~ '\[see also:' || i == 0
-	    echohl Normal
+	    echohl None
 	endif
 	let i+=1
     endfor
@@ -2016,19 +1997,71 @@ function! atplib#various#MakeListOfWords()
     return word_list
 endfunction
 "}}}
+" {{{ atplib#various#WordCount()
+function! atplib#various#WordCount(bang, range)
 
-
-" Count Words
-" {{{ WordCount() ShowWordCount()
-function! atplib#various#WordCount(bang)
+    " if range is current line, count whole project, other wise count the
+    " given part of the text (this is the default range for the commmand.
+    " range is [ <line1>, <line2> ]
 
     call atplib#write()
 
     let g:atp_WordCount = {}
-    for file in keys(filter(copy(b:TypeDict), 'v:val == ''input''')) + [ b:atp_MainFile ]
-	let wcount = substitute(system("detex -n " . fnameescape(file) . " | wc -w "), '\D', '', 'g')
-	call extend(g:atp_WordCount, { file : wcount })
-    endfor
+
+    if a:bang == "!"
+	let g:debug = 1
+	for file in keys(filter(copy(b:TypeDict), 'v:val == ''input'''))
+	    let wcount = substitute(system("detex -n " . fnameescape(atplib#FullPath(file)) . " | wc -w "), '\D', '', 'g')
+	    call extend(g:atp_WordCount, { file : wcount })
+	endfor
+	let temp 	= tempname()
+	let bufnr 	= bufnr("%")
+	let winview	= winsaveview()
+	if expand("%:p") != atplib#FullPath(b:atp_MainFile)
+	    keepalt silent! "edit ".fnameescape(atplib#FullPath(b:atp_MainFile))
+	endif
+	keepalt silent! "saveas ".temp
+	" Delete the preambule
+	if &l:filetype == "tex"
+	    0
+	    let preambule	= search('\\begin{\s*document\s*', 'n')
+	    exe '"_d'.preambule.'j'
+	endif
+	let wcount = substitute(system("detex -n " . fnameescape(fnamemodify(bufname("%"), ":p")) . " | wc -w "), '\D', '', 'g')
+	silent! exe "b ".bufnr
+	keepjumps call winrestview(winview)
+	call extend(g:atp_WordCount, { expand("%") : wcount } )
+    elseif a:range == [ string(line(".")), string(line(".")) ] 
+	let g:debug = 2
+	let temp 	= tempname()
+	let bufnr 	= bufnr("%")
+	let winview	= winsaveview()
+	keepalt silent! "saveas ".temp
+	" Delete the preambule
+	if &l:filetype == "tex"
+	    0
+	    let preambule	= search('\\begin{\s*document\s*', 'n')
+	    exe '"_d'.preambule.'j'
+	endif
+	let wcount = substitute(system("detex -n " . fnameescape(fnamemodify(bufname("%"), ":p")) . " | wc -w "), '\D', '', 'g')
+	silent! exe "b ".bufnr
+	keepjumps call winrestview(winview)
+	call extend(g:atp_WordCount, { expand("%") : wcount } )
+    else
+	let g:debug = 3
+	let temp 	= tempname()
+	let range 	= getbufline(bufnr("%"), a:range[0], a:range[1])
+	let bufnr 	= bufnr("%")
+	let winview	= winsaveview()
+	keepalt silent! exe "edit ".temp
+	call append(0,range)
+	silent! update
+	let wcount = substitute(system("detex -n " . fnameescape(fnamemodify(bufname("%"), ":p")) . " | wc -w "), '\D', '', 'g')
+	silent! exe "b ".bufnr
+	keepjumps call winrestview(winview)
+	call extend(g:atp_WordCount, { expand("%") : wcount } )
+    endif
+
 
     " sum values
     let val = values(g:atp_WordCount)
@@ -2038,13 +2071,13 @@ function! atplib#various#WordCount(bang)
     endfor
 
     return wc_sum
-endfunction
+endfunction "}}}
+" {{{ atplib#various#ShowWordCount()
+function! atplib#various#ShowWordCount(bang,range)
 
-function! atplib#various#ShowWordCount(bang)
-
-    let wc = atplib#various#WordCount(a:bang)
+    let wc = atplib#various#WordCount(a:bang,a:range)
     let c = 0
-    if a:bang == "!"
+    if a:bang == "!" && a:range != [ line("."), line(".") ] 
 	echo g:atp_WordCount[b:atp_MainFile] . "\t" . b:atp_MainFile
 	for file in b:ListOfFiles
 	    if get(g:atp_WordCount, file, "NOFILE") != "NOFILE"
@@ -2056,19 +2089,21 @@ function! atplib#various#ShowWordCount(bang)
 	    echomsg wc
 	endif
     else
-	echomsg wc . "  " . b:atp_MainFile
+	if a:range == [ line("."), line(".") ] 
+	    echomsg wc . "  " . b:atp_MainFile
+	else
+	    echomsg wc
+	endif
     endif
 endfunction "}}}
-
-" Wdiff
-" {{{
+" {{{ atplib#various#Wdiff
 " Needs wdiff program.
 function! atplib#various#Wdiff(new_file, old_file)
 
     if !executable("wdiff")
 	echohl WarningMsg
 	echo "You need to install GNU wdiff program." 
-	echohl Normal
+	echohl None
 	return 1
     endif
 
@@ -2078,6 +2113,7 @@ function! atplib#various#Wdiff(new_file, old_file)
     catch /E484/
 	echohl ErrorMsg
 	echomsg "[ATP:] can't open file " . a:new_file
+	echohl None
 	return 1
     endtry
     try
@@ -2085,6 +2121,7 @@ function! atplib#various#Wdiff(new_file, old_file)
     catch /E484/
 	echohl ErrorMsg
 	echomsg "[ATP:] can't open file " . a:old_file
+	echohl None
 	return 1
     endtry
 
@@ -2183,13 +2220,9 @@ function! atplib#various#NiceDiff()
     call matchadd('DiffDelete', '\textcolor{red}{[^}]*}', 10)
     call matchadd('DiffAdd', '\textcolor{blue}{[^}]*}',  10)
 endfunction "}}}
-
-" ATPUpdate
-try "{{{ UpdateATP
+"{{{ atplib#various#UpdateATP
+try 
 function! atplib#various#UpdateATP(bang)
-    "DONE: add bang -> get stable/unstable latest release.
-    "DONE: check if the current version is newer than the available one
-    "		if not do not download and install (this saves time).
 
 	if g:atp_debugUpdateATP
 	    exe "redir! > ".g:atp_TempDir."/UpdateATP.log"
@@ -2258,6 +2291,8 @@ function! atplib#various#UpdateATP(bang)
 	    let sorted_list = sort(keys(dict), "atplib#various#CompareVersions")
 	endif
 	if g:atp_debugUpdateATP
+	    let g:sorted_list 	= sorted_list
+	    let g:dict		= dict
 	    silent echo "dict=".string(dict)
 	    silent echo "sorted_list=".string(sorted_list)
 	endif
@@ -2295,12 +2330,14 @@ function! atplib#various#UpdateATP(bang)
 	    endtry
 	endif
 	if g:atp_debugUpdateATP
+	    let g:old_stamp	= old_stamp
 	    silent echo "old_stamp=".old_stamp
 	endif
 
 
 	let new_stamp = sorted_list[0]
 	if g:atp_debugUpdateATP
+	    let g:new_stamp	= new_stamp
 	    silent echo "new_stamp=".new_stamp
 	endif
 	 
@@ -2312,6 +2349,9 @@ function! atplib#various#UpdateATP(bang)
 	    let compare = atplib#various#CompareStamps(new_stamp, old_stamp)
 	else
 	    let compare = atplib#various#CompareVersions(new_stamp, old_stamp) 
+	endif
+	if g:atp_debugUpdateATP
+	    let g:compare	= compare
 	endif
 	if a:bang == "!"
 	    if  compare == 1 || compare == 0
@@ -2399,9 +2439,18 @@ function! atplib#various#CompareStamps(new, old)
     " new > old => -1
     " new = old => 0
     " new < old => 1
-    let new=substitute(a:new, '\.', '', 'g')
-    let old=substitute(a:old, '\.', '', 'g')
-    return ( new == old ? 0 : new > old ? -1 : 1 )
+    let new_r=split(a:new, '\%(-\|_\)')
+    let old_r=split(a:old, '\%(-\|_\)')
+    let new	= [ new_r[2], new_r[1], new_r[0], new_r[3], new_r[4] ]
+    let old	= [ old_r[2], old_r[1], old_r[0], old_r[3], old_r[4] ]
+    let compare = []
+    for i in range(max([len(new), len(old)]))
+	let nr = (str2nr(get(new,i,0)) < str2nr(get(old,i,0)) ? 1 : ( str2nr(get(new,i,0)) == str2nr(get(old,i,0)) ? 0 : 2 ))
+	call add(compare, nr)
+    endfor
+    let comp = join(compare, "")
+    " comp =~ '^0*1' new is older version 
+    return ( comp == 0 ? 0 : ( comp =~ '^0*1' ? 1 : -1 ))
 endfunction
 function! atplib#various#CompareVersions(new, old)
     " newer stamp is smaller 
@@ -2411,18 +2460,14 @@ function! atplib#various#CompareVersions(new, old)
     " new < old => 1
     let new=split(a:new, '\.')
     let old=split(a:old, '\.')
-    let g:new=new
-    let g:old=old
     let compare = []
     for i in range(max([len(new), len(old)]))
-	let nr = (get(new,i,0) < get(old,i,0) ? 1 : ( get(new,i,0) == get(old,i,0) ? 0 : 2 ))
+	let nr = (str2nr(get(new,i,0)) < str2nr(get(old,i,0)) ? 1 : ( str2nr(get(new,i,0)) == str2nr(get(old,i,0)) ? 0 : 2 ))
 	call add(compare, nr)
     endfor
     let comp = join(compare, "")
     " comp =~ '^0*1' new is older version 
     return ( comp == 0 ? 0 : ( comp =~ '^0*1' ? 1 : -1 ))
-
-"     return ( new == old ? 0 : new > old ? -1 : 1 )
 endfunction
 function! atplib#various#GetTimeStamp(file)
 python << END
@@ -2459,17 +2504,6 @@ file_o=tarfile.open(file_n, "r:gz")
 file_o.extractall(path)
 END
 endfunction
-" function! Tar(file,path)
-" python << END
-" import tarfile, vim
-" file_n=vim.eval("a:file")
-" print(file_n)
-" path=vim.eval("a:path")
-" print(path)
-" file_o=tarfile.open(file_n, "r:gz")
-" file_o.extractall(path)
-" END
-" endfunction
 function! atplib#various#ATPversion()
     " This function is used in opitons.vim
     let saved_loclist = getloclist(0)
@@ -2493,9 +2527,8 @@ function! atplib#various#ATPversion()
     return "ATP version: ".l:version.", time stamp: ".stamp."."
 endfunction
 "}}}
-
-" Comment Lines
-function! atplib#various#Comment(arg) "{{{
+" atplib#various#Comment {{{
+function! atplib#various#Comment(arg)
 
     " remember the column of the cursor
     let col=col('.')
@@ -2510,10 +2543,7 @@ function! atplib#various#Comment(arg) "{{{
     endif
 
 endfunction "}}}
-
-" DebugPrint
-" cat files under g:atp_TempDir (with ATP debug info)
-" {{{
+" {{{ atplib#various#DebugPring
 function! atplib#various#DebugPrint(file)
     if a:file == ""
 	return

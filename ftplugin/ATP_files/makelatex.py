@@ -25,6 +25,7 @@ usage   = "usage: %prog [options]"
 parser  = OptionParser(usage=usage)
 
 parser.add_option("--texfile",          dest="texfile"                                                  )
+parser.add_option("--bufnr",            dest="bufnr"                                                    )
 parser.add_option("--cmd",              dest="cmd",             default="pdflatex"                      )
 parser.add_option("--output-format",    dest="output_format",   default="pdf"                           )
 parser.add_option("--bibcmd",           dest="bibcmd",          default="bibtex"                        )
@@ -53,6 +54,7 @@ debugfile=os.path.join(options.tempdir, "makelatex.log")
 debug_file=open(debugfile, "w")
 
 texfile = options.texfile
+bufnr   = options.bufnr
 basename = os.path.splitext(os.path.basename(texfile))[0]
 texfile_dir = os.path.dirname(texfile)
 logfile = basename+".log"
@@ -213,9 +215,9 @@ def latex_progress_bar(cmd):
                 stack.popleft()
             match = re.match('\[(\n?\d(\n|\d)*)({|\])',''.join(stack))
             if match:
-                vim_remote_expr(servername, "atplib#callback#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+")")
+                vim_remote_expr(servername, "atplib#callback#ProgressBar("+match.group(1)[match.start():match.end()]+","+str(pid)+","+str(bufnr)+")")
     child.wait()
-    vim_remote_expr(servername, "atplib#callback#ProgressBar('end',"+str(pid)+")")
+    vim_remote_expr(servername, "atplib#callback#ProgressBar('end',"+str(pid)+","+str(bufnr)+")")
     vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_LatexPIDs\")")
     return child
 
@@ -536,5 +538,5 @@ if did_makeidx and index_returncode != 0:
 print("did_bibtex="+str(did_bibtex))
 print("did_makeidx="+str(did_makeidx))
 print("verbose="+str(options.verbose))
-vim_remote_expr(servername, "atplib#callback#CallBack('"+str(options.verbose)+"','COM','"+str(did_bibtex)+"','"+str(did_makeidx)+"')")
+vim_remote_expr(servername, "atplib#callback#CallBack('"+str(bufnr)+"','"+str(options.verbose)+"','COM','"+str(did_bibtex)+"','"+str(did_makeidx)+"')")
 sys.exit(latex.returncode)

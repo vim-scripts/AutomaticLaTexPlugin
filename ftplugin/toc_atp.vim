@@ -1,7 +1,7 @@
 " Vim filetype plugin file
 " Language:    tex
 " Maintainer:  Marcin Szamotulski
-" Last Change: Thu Sep 22, 2011 at 08:48  +0100
+" Last Change: Fri Nov 11, 2011 at 06:55:18  +0000
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 
 " if exists("b:did_ftplugin") | finish | endif
@@ -106,6 +106,7 @@ command! -buffer GotoWinNr	:echo s:gotowinnr()
 
 function! GotoLine(closebuffer) "{{{
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
+    let g:labels_window = labels_window
     
     " if under help lines do nothing:
     let toc		= getbufline("%",1,"$")
@@ -121,6 +122,7 @@ function! GotoLine(closebuffer) "{{{
 
     " line to go to
     let nr	= atplib#tools#getlinenr(line("."), labels_window)
+    let g:nr	= nr
 
     " window to go to
     let gotowinnr= s:gotowinnr()
@@ -141,14 +143,16 @@ function! GotoLine(closebuffer) "{{{
     endif
 
     "finally, set the position
+    call setpos("''", getpos("."))
     call setpos('.', [0, nr, 1, 0])
     exe "normal zt"
     
 endfunction
 " }}}
 
-function! <SID>yank(arg) " {{{
+function! <SID>yank(arg, ...) " {{{
     let labels_window	= expand("%") == "__Labels__" ? 1 : 0
+    let register	= ( a:0 >= 1 ? a:1 : '"' )
 
     let l:toc=getbufline("%",1,"$")
     let l:h_line=index(reverse(copy(l:toc)),'')+1
@@ -188,64 +192,63 @@ function! <SID>yank(arg) " {{{
 	return ""
     else
 	if a:arg == '@'
-	    let l:letter=input("To which register? <reg name><Enter> or empty for none ")
-	    silent if l:letter == 'a'
+	    silent if register == 'a'
 		let @a=choice
-	    elseif l:letter == 'b'
+	    elseif register == 'b'
 		let @b=choice
-	    elseif l:letter == 'c'
+	    elseif register == 'c'
 		let @c=choice
-	    elseif l:letter == 'd'
+	    elseif register == 'd'
 		let @d=choice
-	    elseif l:letter == 'e'
+	    elseif register == 'e'
 		let @e=choice
-	    elseif l:letter == 'f'
+	    elseif register == 'f'
 		let @f=choice
-	    elseif l:letter == 'g'
+	    elseif register == 'g'
 		let @g=choice
-	    elseif l:letter == 'h'
+	    elseif register == 'h'
 		let @h=choice
-	    elseif l:letter == 'i'
+	    elseif register == 'i'
 		let @i=choice
-	    elseif l:letter == 'j'
+	    elseif register == 'j'
 		let @j=choice
-	    elseif l:letter == 'k'
+	    elseif register == 'k'
 		let @k=choice
-	    elseif l:letter == 'l'
+	    elseif register == 'l'
 		let @l=choice
-	    elseif l:letter == 'm'
+	    elseif register == 'm'
 		let @m=choice
-	    elseif l:letter == 'n'
+	    elseif register == 'n'
 		let @n=choice
-	    elseif l:letter == 'o'
+	    elseif register == 'o'
 		let @o=choice
-	    elseif l:letter == 'p'
+	    elseif register == 'p'
 		let @p=choice
-	    elseif l:letter == 'q'
+	    elseif register == 'q'
 		let @q=choice
-	    elseif l:letter == 'r'
+	    elseif register == 'r'
 		let @r=choice
-	    elseif l:letter == 's'
+	    elseif register == 's'
 		let @s=choice
-	    elseif l:letter == 't'
+	    elseif register == 't'
 		let @t=choice
-	    elseif l:letter == 'u'
+	    elseif register == 'u'
 		let @u=choice
-	    elseif l:letter == 'v'
+	    elseif register == 'v'
 		let @v=choice
-	    elseif l:letter == 'w'
+	    elseif register == 'w'
 		let @w=choice
-	    elseif l:letter == 'x'
+	    elseif register == 'x'
 		let @x=choice
-	    elseif l:letter == 'y'
+	    elseif register == 'y'
 		let @y=choice
-	    elseif l:letter == 'z'
+	    elseif register == 'z'
 		let @z=choice
-	    elseif l:letter == '*'
+	    elseif register == '*'
 		let @-=choice
-	    elseif l:letter == '+'
+	    elseif register == '+'
 		let @+=choice
-	    elseif l:letter == '-'
+	    elseif register == '-'
 		let @@=choice
 	    endif
 	elseif a:arg == 'p'
@@ -276,7 +279,7 @@ command! -buffer P :call Yank("p")
 
 if !exists("*YankToReg")
 function! YankToReg()
-    call <SID>yank("@")
+    call <SID>yank("@", v:register)
 endfunction
 endif
 
@@ -336,12 +339,20 @@ function! EchoLine()
 "     endif
 
     let buf_name	= s:file()
+    let g:buf_name	= buf_name
     let buf_nr		= bufnr("^" . buf_name . "$")
     if !exists("t:atp_labels")
 	let t:atp_labels[buf_name]	= UpdateLabels(buf_name)[buf_name]
     endif
     let line		= atplib#tools#getlinenr(line("."), labels_window)
+    let g:line		= line
     let sec_line	= join(getbufline(buf_name,line))
+    let i 		= 1
+    while sec_line	!~ '\\\%(\%(sub\)\?paragraph\|\%(sub\)\{0,2}section\|chapter\|part\)\s*{.*}' && i <= 20
+	let sec_line	= substitute(sec_line, '\s*$', '', '') . substitute(join(getbufline(buf_name, line+i)), '^\s*', ' ', '')
+	let i 		+= 1
+    endwhile
+    let g:sec_line	= sec_line
     let sec_type	= ""
 
     if sec_line =~ '\\subparagraph[^\*]'
@@ -493,13 +504,17 @@ if expand("%") == "__ToC__"
 
 	if gotowinnr != -1
 	    exe gotowinnr . " wincmd w"
+	    let winview	= winsaveview()
+	    let bufnr = bufnr("%")
 	else
 	    exe gotowinnr . " wincmd w"
+	    let bufnr = bufnr("%")
+	    let winview	= winsaveview()
 	    exe "e " . fnameescape(file_name)
 	endif
+	let g:bufnr = bufnr
 	    
 	"finally, set the position
-	let winview	= winsaveview()
 	keepjumps call setpos('.',[0,begin_line,1,0])
 	normal! V
 	if end_line != -1 && !bibliography
@@ -513,6 +528,9 @@ if expand("%") == "__ToC__"
 	endif
 
 	execute 'normal '.register.'y'
+	if bufnr != -1
+	    execute "buffer ".bufnr
+	endif
 	call winrestview(winview)
 	execute toc_winnr . "wincmd w"
 	execute "let yanked_section=@".register
@@ -525,7 +543,7 @@ if expand("%") == "__ToC__"
     command! -buffer -nargs=? YankSection	:call <SID>YankSection(<f-args>)
 
 
-    function! s:DeleteSection()
+    function! <SID>DeleteSection()
 
 	" if under help lines do nothing:
 	let toc_line	= getbufline("%",1,"$")
@@ -637,7 +655,7 @@ if expand("%") == "__ToC__"
 	    let g:atp_SectionBackup	= [[title, type, deleted_section, section_nr, expand("%:p")]]
 	endif
 	" return to toc 
-	TOC 0
+	TOC! 0
 
 	" Update the stack of deleted sections
 	call extend(t:atp_SectionStack, [[title, type, deleted_section, section_nr]],0)
@@ -650,7 +668,7 @@ if expand("%") == "__ToC__"
     " type = p/P	like paste p/P.
     " a:1	- the number of the section in the stack (from 1,...)
     " 	- by default it is the last one.
-    function! s:PasteSection(type, ...)
+    function! <SID>PasteSection(type, ...)
 
 	let stack_number = a:0 >= 1 ? a:1-1 : 0 
 
@@ -710,10 +728,10 @@ if expand("%") == "__ToC__"
 	" Update the stack
 	call remove(t:atp_SectionStack, stack_number)
     endfunction
-    command! -buffer -nargs=? PasteSection	:call <SID>PasteSection('p', <f-args>)
+    command! -buffer -nargs=? -bang PasteSection	:call <SID>PasteSection((<q-bang> == '!' ? 'P' : 'p'), <f-args>)
 
     " Lists title of sections in the t:atp_SectionStack
-    function! s:SectionStack()
+    function! <SID>SectionStack()
 	if len(t:atp_SectionStack) == 0
 	    echomsg "[ATP:] section stack is empty"
 	    sleep 750m
@@ -732,7 +750,7 @@ if expand("%") == "__ToC__"
 
     " Undo in the winnr under the cursor.
     " a:1 is one off u or U, default is u.
-    function! s:Undo(...)
+    function! <SID>Undo(...)
 	let cmd	= ( a:0 >= 1 && a:1 =~ '\cu\|g\%(-\|+\)' ? a:1 : 'u' )
 	let winnr	= s:gotowinnr()
 	exe winnr . " wincmd w"
@@ -836,7 +854,11 @@ if !exists("no_plugin_maps") && !exists("no_atp_toc_maps")
     map <silent> <buffer> q 		:bdelete<CR>
     map <silent> <buffer> <CR> 		:call GotoLine(1)<CR>
     map <silent> <buffer> <space> 	:call GotoLine(0)<CR>
-    map <silent> <buffer> _		:call GotoLine(0)<bar>TOC<CR>
+    if expand("%") == "__ToC__"
+	map <silent> <buffer> _		:call GotoLine(0)<bar>TOC<CR>
+    else
+	map <silent> <buffer> _		:call GotoLine(0)<bar>Labels<CR>
+    endif
 " This does not work: 
 "   noremap <silent> <buffer> <LeftMouse> :call GotoLine(0)<CR>
 "   when the cursor is in another buffer (and the option mousefocuse is not

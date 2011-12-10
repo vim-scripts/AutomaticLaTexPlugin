@@ -26,9 +26,44 @@ function! atplib#callback#MakeidxReturnCode(returncode,...)
 endfunction
 " }}}
 " atplib#callback#Signs {{{
-function! atplib#callback#Signs()
+function! atplib#callback#Signs(bufnr)
     if has("signs")
+	if a:bufnr != bufnr("%")
+	    if bufwinnr(str2nr(a:bufnr)) != -1
+		let cwinnr = bufwinnr(bufnr("%"))
+		exe bufwinnr(str2nr(a:bufnr))."wincmd w"
+	    else
+		return
+	    endif
+	endif
 	sign unplace *
+	" This unplaces also signs not in the current buffer
+
+	" This unplaces only signs in the current buffer, but uses 
+	" redir => var | signs place buffer=a:bufnr | redir END
+	" construct which shows signs on the srceen for a second.
+	"
+	" There should be a function which lists signs.
+	"
+" 	let more = &more
+" 	let lz	= &lz
+" 	set nomore
+" 	setl lz
+" 	redir => unplace_signs
+" 	silent exe "sign place buffer=".a:bufnr
+" 	redir END
+" 	let &more = more
+" 	let &lz = lz
+" 	let signs = split(unplace_signs, "\n")
+" 	call map(signs, 'matchstr(v:val, ''\<id=\>\zs\d\+\ze'')')
+" 	for sign in signs
+" 	    exe "sign unplace ".sign." buffer=".a:bufnr
+" 	endfor
+" 	unlet sign
+" 	unlet signs
+" 	unlet unplace_signs
+
+
 	" There is no way of getting list of defined signs in the current buffer.
 	" Thus there is no proper way of deleting them. I overwrite them using
 	" numbers as names. The vim help tells that there might be at most 120
@@ -36,7 +71,6 @@ function! atplib#callback#Signs()
 	
 	" But this is not undefineing signs.
 	let qflist=getqflist()
-	let g:qflist=qflist
 	let i=1
 	for item in qflist
 	    if item['type'] == 'E'
@@ -50,6 +84,10 @@ function! atplib#callback#Signs()
 	    exe 'sign place '.i.' line='.item['lnum'].' name='.i.' file='.expand('%:p')
 	    let i+=1
 	endfor
+	if exists("cwinnr")
+	    exe cwinnr."wincmd w"
+	    unlet cwinnr
+	endif
     endif
 endfunction "}}}
 " atplib#callback#CallBack {{{
@@ -60,8 +98,9 @@ endfunction "}}}
 "
 " Uses b:atp_TexReturnCode which is equal to the value returned by tex
 " compiler.
-function! atplib#callback#CallBack(mode,...)
+function! atplib#callback#CallBack(bufnr,mode,...)
 
+    let g:bufnr = a:bufnr
     " If the compiler was called by autocommand.
     let AU 	= ( a:0 >= 1 ? a:1 : 'COM' )
     " Was compiler called to make bibtex
@@ -89,7 +128,7 @@ function! atplib#callback#CallBack(mode,...)
 
     " signs
     if g:atp_signs
-	call atplib#callback#Signs()
+	call atplib#callback#Signs(a:bufnr)
     endif
 
     if g:atp_debugCallBack
@@ -301,7 +340,7 @@ function! atplib#callback#CallBack(mode,...)
 	    let g:debugCB .=" BIBTEX_output "
 	endif
     endfor
-    echohl Normal
+    echohl None
     if len(msg_list)==0
 	redraw
     endif
@@ -313,9 +352,9 @@ endfunction "}}}
 "{{{ atplib#callback#LatexPID
 "Store LatexPIDs in a variable
 function! atplib#callback#LatexPID(pid)
+    let g:bufnr = bufnr("%")
     call add(b:atp_LatexPIDs, a:pid)
-"     call atplib#callback#PIDsRunning("b:atp_BitexPIDs")
-    let b:atp_LastLatexPID =a:pid
+    let b:atp_LastLatexPID=a:pid
 endfunction "}}}
 "{{{ atplib#callback#BibtexPID
 "Store BibtexPIDs in a variable
@@ -367,11 +406,15 @@ if len(pids) > 0:
 EOL
 endfunction "}}}
 "{{{ atplib#callback#ProgressBar
-function! atplib#callback#ProgressBar(value,pid)
+function! atplib#callback#ProgressBar(value,pid,bufnr)
     if a:value != 'end'
-	let b:atp_ProgressBar[a:pid]=a:value
+	let progress_bar = getbufvar(a:bufnr, "atp_ProgressBar")
+	let progress_bar[a:pid]=a:value
+	call setbufvar(a:bufnr, "atp_ProgressBar", progress_bar)
     else
-	call remove(b:atp_ProgressBar, a:pid)
+	let progress_bar = copy(getbufvar(a:bufnr, "atp_ProgressBar"))
+	call remove(progress_bar, a:pid)
+	call setbufvar(a:bufnr, "atp_ProgressBar", progress_bar)
     endif
     redrawstatus
 endfunction "}}}
@@ -427,6 +470,6 @@ function! atplib#callback#Echo(msg, cmd, hlgroup, ...)
     endif
     exe "echohl ".a:hlgroup
     exe a:cmd." '".a:msg."'"
-    echohl Normal
+    echohl None
 endfunction "}}}
 " vim:fdm=marker:ff=unix:noet:ts=8:sw=4:fdc=1

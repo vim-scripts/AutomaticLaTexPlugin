@@ -132,7 +132,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 
     " Load once feature (if ch_load)	- this is used on starup
     if ch_load && get(get(s:project_Load, expand("%:p"), []), a:type, 0) >= 1
-	echomsg "[ATP:] project script " . a:type . " already loaded for this buffer."
+	echomsg "[ATP:]  " . a:type . "project script already loaded for buffer " . expand("%:p") . "."
 	if g:atp_debugProject
 	    redir END
 	endif
@@ -145,7 +145,7 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
 	if g:atp_debugProject
 	    echohl ErrorMsg
 	    echomsg "[ATP LoadProjectScript:] Error : File name is empty. Not loading project script."
-	    echohl Normal
+	    echohl None
 	    redir END
 	endif
 	return
@@ -250,10 +250,8 @@ function! GetProjectScript(project_files)
 	let sfile_name 	= expand("%:t")
 	try
 	    if !g:atp_RelativePath
-		let g:cmd='lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)\%(' . file_name . '\|' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)' . file_name . '\>\)/j ' . fnameescape(pfile)
 		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)\%(' . file_name . '\|' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)' . file_name . '\>\)/j ' . fnameescape(pfile)
 	    else
-		let g:cmd='lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)[^''"]*\<\%(' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)[^''"]*\<' . sfile_name . '\>\)/j ' . fnameescape(pfile)
 		exe 'lvimgrep /^\s*let\s\+\%(b:atp_MainFile\s\+=\s*\%(''\|"\)[^''"]*\<\%(' . sfile_name . '\)\>\%(''\|"\)\|b:ListOfFiles\s\+=.*\%(''\|"\)[^''"]*\<' . sfile_name . '\>\)/j ' . fnameescape(pfile)
 	    endif
 	catch /E480:/ 
@@ -304,7 +302,6 @@ function! <SID>LoadProjectScript(bang,...)
 	" Look for the project file
 " 	echo join(project_files, "\n")
 	let project_files = FindProjectScripts()
-	let g:project_files = project_files
 
 	" Return if nothing was found
 	if len(project_files) == 0
@@ -585,7 +582,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, 
 
     let bufnr	= bufnr("%")
     try
-	silent! exe "keepalt edit +setl\\ noswapfile " . fnameescape(a:project_script)
+	silent! exe "keepalt keepjumps edit +setl\\ noswapfile " . fnameescape(a:project_script)
     catch /.*/
 	echoerr v:errmsg
 	let errmsg	= v:errmsg
@@ -608,7 +605,7 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, 
     " Delete the variables which where unlet:
     for var in deleted_variables
 	try 
-	    exe 'silent! %g/^\s*let\s\+' . var . '\>/d_'
+	    exe 'keepjumps silent! %g/^\s*let\s\+' . var . '\>/d_'
 	catch /E48\%(6\|0\):/
 	endtry
     endfor
@@ -624,16 +621,16 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, 
 	if exists(lvar)
 
 	    try 
-		exe 'silent! %g/^\s*let\s\+' . var . '\>/d_'
+		exe 'silent! keepjumps %g/^\s*let\s\+' . var . '\>/d_'
 	    catch /E486:/
 	    endtry
-	    call append('$', 'let ' . var . ' = ' . string({lvar}))
+	    keepjumps call append('$', 'let ' . var . ' = ' . string({lvar}))
 	endif
     endfor
     " Save project script file:
     silent w
     let projectscript_bufnr	= bufnr("%")
-    exe "silent keepalt b " . bufnr
+    exe "silent keepalt keepjumps b " . bufnr
     exe "bdelete " . projectscript_bufnr
 
 

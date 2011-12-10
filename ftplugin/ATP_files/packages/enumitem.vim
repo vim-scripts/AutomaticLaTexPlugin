@@ -11,7 +11,7 @@ let s:env_options = [ 'label=', 'label*=', 'start=', 'ref=', 'align=', 'font=',
 	\ 'topsep=', 'partopsep=', 'parsep=', 'itemsep=', 'leftmargin=',
 	\ 'rightmargin=', 'listparindent=', 'labelwidth=', 'labelsep=', 'labelindent=', 'itemindent=',
 	\ 'resume=', 'resume*=', 'beginpenalty=', 'midpenalty=', 'endpenalty=',
-	\ 'before=', 'before*=', 'after=', 'after*=', 'style=', 'noitemsep', 'nolistsep', 
+	\ 'before=', 'before*=', 'after=', 'after*=', 'style=', 'noitemsep', 'nolistsep', 'nosep',
 	\ 'fullwidth', 'widest=' ]
 
 let g:atp_enumitem_environment_options={

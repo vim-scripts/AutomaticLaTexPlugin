@@ -2,7 +2,7 @@
 " Description: 	This file contains all the options defined on startup of ATP
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sat Dec 10, 2011 at 01:21:26  +0000
+" Last Change: Sun Dec 11, 2011 at 08:52:46  +0000
 
 " NOTE: you can add your local settings to ~/.atprc.vim or
 " ftplugin/ATP_files/atprc.vim file
@@ -190,9 +190,6 @@ endif
 " }}}
 
 " Make CTRL-A, CTRL-X work over alphabetic characters:
-if has("eval")
-    setl omnifunc=atplib#complete#OmniComplete
-endif
 setl nrformats=alpha
 set  backupskip+=*.tex.project.vim
 
@@ -391,8 +388,8 @@ lockvar b:atp_autex_wait
 
 " Global Variables: (almost all)
 " {{{ global variables 
-if !exists("g:atp_no_tab_map")
-    let g:atp_no_tab_map = 1
+if !exists("g:atp_tab_map")
+    let g:atp_tab_map = 0
 endif
 if !exists("g:atp_folding")
     let g:atp_folding = 0
@@ -1887,7 +1884,9 @@ nnoremap <silent> <buffer> 	<Plug>TogglesilentMode		:call ATP_ToggleDebugMode("s
 nnoremap <silent> <buffer> 	<Plug>ToggledebugMode		:call ATP_ToggleDebugMode("debug")<CR>
 nnoremap <silent> <buffer> 	<Plug>ToggleDebugMode		:call ATP_ToggleDebugMode("Debug")<CR>
 
-command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleTab	 	:call ATP_ToggleTab(<f-args>)
+if g:atp_tab_map
+    command! -buffer -nargs=? -complete=customlist,atplib#OnOffComp	ToggleTab	 	:call ATP_ToggleTab(<f-args>)
+endif
 nnoremap <silent> <buffer> 	<Plug>ToggleTab		:call ATP_ToggleTab()<CR>
 inoremap <silent> <buffer> 	<Plug>ToggleTab		<C-O>:call ATP_ToggleTab()<CR>
 "}}}

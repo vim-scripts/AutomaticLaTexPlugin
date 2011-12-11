@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* LaTeX filetype plugin	Last change: 10 December 2011
+*automatic-tex-plugin.txt* LaTeX filetype plugin	Last change: 11 December 2011
 
-	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10.6.2)
+	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10.6.3)
 			by Marcin Szamotulski
 		    mszamot [AT] gmail [DOT] com
 -----------------------------------------------------------------------------
@@ -165,18 +165,37 @@ for all the defined functions :help atp*()CTRL-d, mappings: :help atp-mapCTRL-d
 NEWS							*atp-news*
 >
  ======================
+ Changes in version 10.6.3
+<
+ A small bug fixed when opening a new tex buffer.
+
+ Omni completion changed:
+	 (Expert Mode) Tab Completion is mapped to <C-X><C-O>
+     (Non Expert Mode) Tab Completion is mapped to <C-X>o
+ This is the default, if you want to use <Tab> and <S-Tab> keys set
+ |g:atp_tab_map| to 1 in your |vimrc| or |atprc| file.
+
+ For some reasons it is better to map completion to <C-X><C-O> than to use
+ 'omnicomplete' option (as it was done in 10.6.2). Using the option sometimes
+ issues errors (when modifying text) also setting cursor position to the right
+ place is impossible (in more advanced completions, like closing
+ environments).
+
+ Note also that g:atp_no_tab_map has changed to |g:atp_tab_map|.
+>
+ ======================
  Changes in version 10.6.2
 <
- Omni completion	-- ATP Tab completion now works as Omnicompletion, see
+ Omni completion	-- ATP Tab completion now works as Omni Completion, see
 			   |compl-omni|, the non expert mode completion is
 			   mapped to <F7> key. The <Tab> key is not mapped. If
 			   you want to use <Tab> and <S-Tab> for completion,
 			   as it was done before, just put 'let
-			   g:atp_no_tab_map=0' in your |vimrc| or |atprc|
+			   |g:atp_tab_map|=0' in your |vimrc| or |atprc|
 			   files.
 
 			   Note that omni completion might give the 'Pattern
-			   not found' error, when closeing environments or
+			   not found' error, when closing environments or
 			   brackets - you can ignore this message (it is not
 			   possible to turn it off, and working it around will
 			   take to much time).
@@ -186,7 +205,7 @@ NEWS							*atp-news*
 			-- bibref package added.
 
  % motion		-- changes the jump list (this is vim compatible
-			   bhaviour (see |jump-motions|)
+			   behaviour (see |jump-motions|)
 			-- omap % added. Now to delete an environment just put
 			   the cursor over \begin or \end command and use 'd%'.
 			   The same will work if you want to delete (:), [:],
@@ -202,7 +221,7 @@ NEWS							*atp-news*
  At the end of |atp-tips| I show how to make w b and aw work slightly better
  (this is experimental code). 
 
- |atp-:ChangeLabel|       -- a new command for changing labels accross the
+ |atp-:ChangeLabel|       -- a new command for changing labels across the
 			   project.
 
  |atp-:WordCount|         -- range added, if the file type is 'tex' also
@@ -214,7 +233,7 @@ NEWS							*atp-news*
  Changes in version 10.6.1
 <
  In the |atp-:BibSearch| window:
- :BibChoose is now splited into two commands: 
+ :BibChoose is now split into two commands: 
  |atp-:Yank| and |atp-:Paste|, the maps 'y', 'c' and 'p', 'P' can be invoked
  with a count. |atp-:Yank| by default uses the " register.
 
@@ -233,7 +252,7 @@ NEWS							*atp-news*
     :Vmap[!] {pattern}			|atp-:Vmap|
     :Omap[!] {pattern}			|atp-:Omap|
     :Lmap[!] {pattern}			|atp-:Lmap|
-There is another my plugin: MapFinder 
+There is another plugin: MapFinder 
     http://www.vim.org/scripts/script.php?script_id=3767
 which defines them. The only Imap differs, here it is more specific to ATP,
 since ATP defines and deletes some imaps on the fly not all of them are
@@ -271,8 +290,8 @@ visible with :imap command.
  Changes in version 10.5
 <
  Thanks for all the vim karma points: if you look at all ftplugin scripts ATP has 8th
- rate and among ten most ratet plugins it has 2nd best avrage rate: 3.71, while the
- first one has 3.73. If you find something in ATP which is not convienient, or
+ rate and among ten most rated plugins it has 2nd best average rate: 3.71, while the
+ first one has 3.73. If you find something in ATP which is not convenient, or
  you think it might be done in a more friendly way, let me know, I'm open for
  discussions :) 
 
@@ -402,7 +421,7 @@ Third option is to checkout svn repository with the command:
 svn co https://atp-vim.svn.sourceforge.net/svnroot/atp-vim/trunk ~/.vim
 If you use VAM you can checkout into your vim-addon directory
 (~/.vim/vim-addons/AutomaticLaTexPlugin) and VAM will update it using svn
-pull. In this way you will have alwasy the most recent version of ATP.
+pull. In this way you will have always the most recent version of ATP.
 
 
      Necessary vim settings:
@@ -2583,14 +2602,17 @@ BIBSEARCH COMMENTS					*atp-bibsearch-comments*
 ================================================================================
 COMPLETION			                        *atp-completion*
 
-The completion is by default mapped to <Tab>. For example if you type
-\math<Tab> you will get a list of choices which completes this command. (See
-':h popupmenu-completion' and ':h completion' for more).
+The completion is by default mapped to <C-X><C-O> (expert mode) and <C-X>o
+(non expert mode). However if you set |g:atp_tab_map| to 1 (in your |vimrc|
+or |atprc| file), then  <Tab> (expert mode) and <S-Tab> (non expert mode) are
+used. For example if you type \math<C-X><C-o> you will get a list of choices
+which completes this command. (See ':h popupmenu-completion' and ':h
+completion' for more).
 
 							*atp-completion-expert-mode*
 							*atp-completion-non-expert-mode*
-There are two completion algorithm: expert mode  and non expert mode: the
-keyword for completion in expert mode must match at the beginning, in non
+There are two completion algorithm: expert mode and non expert mode: the
+keyword for completion in expert mode must match at the begining, in non
 expert mode any where. Also in expert mode the list of possible completions is
 smaller (for example there is no '\lneqq', there is only '\lneq').
 
@@ -2599,13 +2621,14 @@ Note: Non expert mode doesn't check if you are editing math (see
 command inside mathematics.
 
 							*atp-tab-note*
-							*g:atp_no_tab_map*
-If you prefer to not map <Tab> key then you can define |g:atp_no_tab_map|=1 in
-your vimrc file or atprc file |atprc|. Note that Vim can add/remove
+							*g:atp_tab_map*
+If you prefer to use map <Tab> key then you can define |g:atp_tab_map|=1 in
+your |vimrc| file or atprc file |atprc|. Note that Vim can add/remove
 tabshift width from the beginning of line in other ways: in normal mode with
 |>>| and |<<|, in insert mode: |i_CTRL-T|, |i_CTRL-D| and in visual mode with
 |>| and |<|. Also you can use |atp-g>| and |atp-g<|. The alignment of tabular
 and other environments can be done with |atp-:TexAlign| command. 
+
 
 You can switch off/on completion modes adjusting the variable
 |g:atp_completion_active_modes|, all names of completion modes are stored in
@@ -2618,19 +2641,20 @@ they will be used for completion (with |atp-:LocalCommands|). If its value is
 1 then this will be done during first completion, if it is set to 2 then this
 will be done at start up. The default value is 2 when vim has |+python|
 feature otherwise it is 1. With |+python| this is done at every time you
-use the Tab completion.
+use the completion.
 
-NOTE: if you press <Tab> but then you changed your mind, the completion pop-up
-menu allows to cancel completion: press ctrl+p (i.e.  go up - some times more
-than once) and then press <space>.
+NOTE: if you press <C-X><C-O> but then you changed your mind, the completion
+pop-up menu allows to cancel completion: press <C-p> (i.e.  go up - some
+times more than once) and then press <Space>.
 
-Note: Completion checks the preamble for definitions of LaTeX packages. If
+Note: The completion checks the preamble for definitions of LaTeX packages. If
 a supported package is present (for example: tikz) then the completion will
 contain additional commands. If you add a package or a class you should unlet
-corresponding variable: |g:atp_LatexPackages| and |g:atp_LatexClasses|.
+corresponding variable: |g:atp_LatexPackages| and |g:atp_LatexClasses| and ATP
+will regenerate them when necessary.
 
 							*atp-:ToggleTab*
-:ToggleTab
+:ToggleTab			{only available if g:atp_tab_map=0}
 nmap, imap `<Tab> 
     It is a command to toggle the tab map off/on: :ToggleTab, it is also mapped
     to `<Tab>. 
@@ -3183,7 +3207,7 @@ put it here).
 <		These are zones recognized by tab completion as mathematical
 		ones (see |g:atp_MathOpened|).
 >
-	g:atp_no_tab_map
+	g:atp_tab_map
 	g:atp_no_complete		= ['document']
 <		List of environments which is not closed by <tab> completion.
 		(The document environment in longer documents can be not seen
@@ -3950,8 +3974,8 @@ command:
 The maps are loaded unless you set one of variables: 'g:no_plugin_maps' or
 'g:no_atp_maps' (disables maps defined in tex_atp.Vim), 'g:no_atp_toc_maps'
 (disables maps defined in 'toc_atp.Vim'),  'g:atp_no_env_maps' (disables the
-environment maps '[*', ']*') or 'g:atp_no_tab_map' (disables the tab map
-for completion, then completion is mapped to <F7> and <S-F7> (for the non
+environment maps '[*', ']*') or |g:atp_tab_map| (disables the tab map
+for completion, then completion is mapped to <C-X><C-O> and <C-X>o (for the non
 expert mode) but there is no map for 'WrapSelection()', you have to provide 
 one by your self).
 

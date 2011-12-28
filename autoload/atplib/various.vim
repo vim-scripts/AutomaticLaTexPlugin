@@ -2,49 +2,11 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Mon Dec 05, 2011 at 20:31:38  +0000
+" Last Change: Mon Dec 26, 2011 at 12:01:47  +0000
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
 " Replace function (like :normal! r)
-function! atplib#various#Replace() "{{{
-    " It will not work with <:> since with the default settings "normal %" is not
-    " working with <:>, possibly because g:atp_bracket_dict doesn't contain this
-    " pair.
-    let char =  nr2char(getchar())
-    let f_char = getline(line("."))[col(".")-1]
-    if f_char =~ '^[(){}\[\]]$'
-	if f_char =~ '^[({\[]$'
-	    let bracket_dict = { '{' : '}',
-			\  '(' : ')',
-			\  '[' : ']',}
-	else
-	    let bracket_dict = { '}' : '{',
-			\  ')' : '(',
-			\  ']' : '[',}
-	endif
-	let c_bracket = get(bracket_dict,char, "")
-	if c_bracket == ""
-	    exe "normal! r".char
-	    return
-	endif
-	let [b_line, b_col] = [line("."), col(".")]
-	exe "normal! %"
-	let [e_line, e_col] = [line("."), col(".")]
-	if b_line == e_line && b_col == e_col
-	    exe "normal! r".char
-	    return
-	endif
-	call cursor(b_line, b_col)
-	exe "normal! r".char
-	call cursor(e_line, e_col)
-	exe "normal! r".c_bracket
-	call cursor(b_line, b_col)
-	return
-    else
-	exe "normal! r".char
-    endif
-endfunction 
 "}}}
 
 " This is the wrap selection function.
@@ -388,7 +350,8 @@ function! atplib#various#TexAlign(bang)
     let save_pos = getpos(".")
     let synstack = map(synstack(line("."), col(".")), 'synIDattr( v:val, "name")')
 
-    let balign=searchpair('\\begin\s*{\s*array\s*}', '', '\\end\s*{\s*array\s*}', 'bnW')
+    let barray=searchpair('\\begin\s*{\s*array\s*}', '', '\\end\s*{\s*array\s*}', 'bnW', '',max([1,line('.')-500]))
+    let bsmallmatrix=searchpair('\\begin\s*{\s*smallmatrix\s*}', '', '\\end\s*{\s*smallmatrix\s*}', 'bnW', '',max([1,line('.')-500]))
 "     let [bmatrix, bmatrix_col]=searchpairpos('\\matrix\s*\%(\[[^]]*\]\s*\)\=\zs{', '', '}', 'bnW', '', max([1, (line(".")-g:atp_completion_limits[2])]))
     let [bmatrix, bmatrix_col]=searchpos('^\%([^%]\|\\%\)*\\matrix\s*\%(\[[^]]*\]\s*\)\=\zs{', 'bW', max([1, (line(".")-g:atp_completion_limits[2])]))
     if bmatrix != 0
@@ -403,13 +366,20 @@ function! atplib#various#TexAlign(bang)
 	let AlignCtr = 'l+'
 	let AlignSep = '&\|\\pgfmatrixnextcell'
 	let env = "matrix"
-    elseif balign
+    elseif barray
 	let bpat = '\\begin\s*{\s*array\s*}'
-	let bline = balign+1
+	let bline = barray+1
 	let epat = '\\end\s*{\s*array\s*}'
 	let AlignCtr = 'l+'
 	let AlignSep = '&'
 	let env = "array"
+    elseif bsmallmatrix
+	let bpat = '\\begin\s*{\s*smallmatrix\s*}'
+	let bline = bsmallmatrix+1
+	let epat = '\\end\s*{\s*smallmatrix\s*}'
+	let AlignCtr = 'l+'
+	let AlignSep = '&'
+	let env = "smallmatrix"
     elseif count(synstack, 'texMathZoneA') || count(synstack, 'texMathZoneAS')
 	let bpat = '\\begin\s*{\s*align\*\=\s*}' 
 	let epat = '\\end\s*{\s*align\*\=\s*}' 
@@ -950,8 +920,8 @@ function! atplib#various#OpenLog()
 	nnoremap <silent> <buffer> [c :call atplib#various#Search('\CLaTeX Warning: Citation', 'bW')<CR>
 	nnoremap <silent> <buffer> ]r :call atplib#various#Search('\CLaTeX Warning: Reference', 'W')<CR>
 	nnoremap <silent> <buffer> [r :call atplib#various#Search('\CLaTeX Warning: Reference', 'bW')<CR>
-	nnoremap <silent> <buffer> ]e :call atplib#various#Search('^[^!].*\n\zs!', 'W')<CR>
-	nnoremap <silent> <buffer> [e :call atplib#various#Search('^[^!].*\n\zs!', 'bW')<CR>
+	nnoremap <silent> <buffer> ]e :call atplib#various#Search('^!', 'W')<CR>
+	nnoremap <silent> <buffer> [e :call atplib#various#Search('^!', 'bW')<CR>
 	nnoremap <silent> <buffer> ]f :call atplib#various#Search('\CFont \%(Info\\|Warning\)', 'W')<CR>
 	nnoremap <silent> <buffer> [f :call atplib#various#Search('\CFont \%(Info\\|Warning\)', 'bW')<CR>
 	nnoremap <silent> <buffer> ]p :call atplib#various#Search('\CPackage', 'W')<CR>
@@ -1674,8 +1644,16 @@ function! atplib#various#Dictionary(word)
     let cmd=g:atp_Python." ".shellescape(URLquery_path)." ".shellescape(url)." ".shellescape(wget_file)
     call system(cmd)
     let loclist		= getloclist(0)
-    exe 'lvimgrep /\CMathematical English Usage - a Dictionary/j '.fnameescape(wget_file)
-    let entry=readfile(wget_file)[getloclist(0)[0]['lnum']+1]
+    exe 'silent! lvimgrep /\CMathematical English Usage - a Dictionary/j '.fnameescape(wget_file)
+    let entry=get(readfile(wget_file),get(get(getloclist(0),0,{}),'lnum',-1)+1, -1)
+    if entry == -1
+	call delete(wget_file)
+	redraw
+	echohl WarningMsg
+	echomsg "[ATP:] internet connection seems to be broken."
+	echohl Normal
+	return
+    endif
     call setloclist(0, loclist)
     let entry		= substitute(entry, '<p>', "\n", 'g')
     let entry		= substitute(entry, '<h4>\zs\([0-9]\+\)\ze</h4>', "\n\\1", 'g')
@@ -1718,6 +1696,7 @@ function! atplib#various#Dictionary(word)
 	endif
 	let i+=1
     endfor
+    call delete(wget_file)
 endfunction
 
 function! atplib#various#Complete_Dictionary(ArgLead, CmdLine, CursorPos)

@@ -1487,36 +1487,42 @@ endfunction
 " Note: the 's' search flag is passed by the associated commands.
 " This can be extended: 
 " 	(1) skip empty lines between comments
-function! atplib#motion#SkipComment(flag, mode, ...)
+function! atplib#motion#SkipComment(flag, mode, count, ...)
     let flag 	= ( a:flag =~ 'b' ? 'b' : '' ) 
     let nr	= ( a:flag =~ 'b' ? -1 : 1 )
-    call search('^\zs\s*%', flag)
-    call cursor(line("."), ( nr == -1 ? 1 : len(getline(line(".")))))
 
-    let line	= getline(line("."))
-    " find previous line
-    let pline_nr=min([line("$"), max([1,line(".")+nr])])
-    let pline	= getline(pline_nr) 
+    for c in range(1, a:count)
+	let test = search('^\zs\s*%', flag)
+	if !test
+	    return
+	endif
+	call cursor(line("."), ( nr == -1 ? 1 : len(getline(line(".")))))
 
-    while pline =~ '^\s*%'
-	call cursor(line(".")+nr, ( nr == -1 ? 1 : len(getline(line(".")+nr))))
+	let line	= getline(line("."))
+	" find previous line
 	let pline_nr=min([line("$"), max([1,line(".")+nr])])
 	let pline	= getline(pline_nr) 
-    endwhile
-    if a:mode == 'n' && ( !g:atp_VimCompatible || g:atp_VimCompatible =~? '\<no\>' )
-	if a:flag =~# 'b'
-	    call cursor(line(".")-1,1)
-	else
-	    call cursor(line(".")+1,1)
+
+	while pline =~ '^\s*%' && line(".") != line("$") && line(".") != 1
+	    call cursor(line(".")+nr, ( nr == -1 ? 1 : len(getline(line(".")+nr))))
+	    let pline_nr=min([line("$"), max([1,line(".")+nr])])
+	    let pline	= getline(pline_nr) 
+	endwhile
+	if a:mode == 'n' && ( !g:atp_VimCompatible || g:atp_VimCompatible =~? '\<no\>' )
+	    if a:flag =~# 'b'
+		call cursor(line(".")-1,1)
+	    else
+		call cursor(line(".")+1,1)
+	    endif
 	endif
-    endif
-    if a:mode == 'v'
-	let end_pos = [ line("."), col(".") ]
-	" Go where visual mode started
-	exe "normal `" . ( nr == 1 ? '<' : '>' ) 
-	exe "normal " . visualmode()
-	call cursor(end_pos)
-    endif
+	if a:mode == 'v'
+	    let end_pos = [ line("."), col(".") ]
+	    " Go where visual mode started
+	    exe "normal `" . ( nr == 1 ? '<' : '>' ) 
+	    exe "normal " . visualmode()
+	    call cursor(end_pos)
+	endif
+    endfor
 endfunction
 
 " Syntax motion

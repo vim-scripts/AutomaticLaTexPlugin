@@ -22,8 +22,12 @@ let g:atp_memoir_commands = [
 	    \ '\spinemargin', '\foremargin', '\uppermargin', '\headmargin',
 	    \ '\typeoutlayout', '\typeoutstandardlayout', '\settypeoutlayoutunit{',
 	    \ '\fixpdflayout', '\fixdvipslayout', '\medievalpage', '\isopage',
-	    \ '\semiisopage'
+	    \ '\semiisopage',
+	    \ '\contentsname', '\listfigurename', 'listtablename'
 	    \ ]
+let g:atp_memoir_command_values = {
+	    \ '\\\%(this\)\=pagestyle\s*{' : [ 'cleared', 'chapter', 'titlingpagestyle' ]
+	    \ }
 " Additional commands which seems to be rare and thus not included by default.
 " Uncomment this line to get them.
 " call extend(g:atp_memoir_commands, [

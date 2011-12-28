@@ -1,6 +1,6 @@
-*automatic-tex-plugin.txt* LaTeX filetype plugin	Last change: 11 December 2011
+*automatic-tex-plugin.txt* LaTeX filetype plugin	Last change: 28 December 2011
 
-	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10.6.3)
+	    An Introduction to AUTOMATIC (La)TeX PLUGIN (ver. 10.6.4)
 			by Marcin Szamotulski
 		    mszamot [AT] gmail [DOT] com
 -----------------------------------------------------------------------------
@@ -163,6 +163,23 @@ for all the defined functions :help atp*()CTRL-d, mappings: :help atp-mapCTRL-d
 
 ================================================================================
 NEWS							*atp-news*
+>
+ ======================
+ Changes in version 10.6.4
+<
+ ATP normal r map is working better, that is |.| works well with |atp-r| map.
+
+ |g:atp_OpenAndSyncSleepTime| = "500m"	-- sleep time between the time when
+ ATP finds the viewer working and syncing (forward searching) for the command
+ |atp-:View|! (with bang) (this is time left for the viewer to open the file).
+
+ Plus some new package files for completion: showidx, makeidx, syntonly and
+ a better completion for the \includeonly{} command (which removes items from
+ completion menu which are already included).
+
+ Count added to |atp-]%| and |atp-[%|.
+
+ |atp-:TexAlign| works with smallmatrix environment.
 >
  ======================
  Changes in version 10.6.3
@@ -1146,6 +1163,10 @@ map <LocalLeader>v,map <F3>, imap <F3>
 	With bang (and <F3> maps) opens viewer at the cursor position in vim
 	(forward search). This will only work for viewers that support forward
 	searching (xpdf, xdvi, okular, skim).
+							*g:atp_OpenAndSyncSleepTime*
+let |g:atp_OpenAndSyncSleepTime|="500m"
+	Give 500 milliseconds for the viewer to read the file, before
+	|atp-:View|! command will do a forward search.
 
 :SyncTex[!]						*atp-:SyncTex* *atp-\f*
 map <LocalLeader>f, map <S-LeftMouse>
@@ -1341,11 +1362,12 @@ map <F1>, imap <F1>
 map =d
 	This is an interface to http://www.impan.pl/Dictionary/. Type a [word]
 	and you will get quotes from mathematical articles or books written by
-	native speakers of English. The command has a completion for words.
+	native speakers of English. The command has a completion for words
 	List of words is hard coded in ATP (it is too slow to get it), since the
-	dictionary evolves it might contain new entries.
+	dictionary evolves it might contain new entries (note: if this is the
+	case, please inform me).
 
-	The map takes the |<word>| under the cursor as an argument.
+	The map takes the |<cword>| under the cursor as an argument.
 
 :Delete[!]						*atp-:Delete*
 map <F6>d
@@ -1799,12 +1821,16 @@ nmap -p
 
     							*atp-:SkipCommentForward*
 							*atp-]star* *atp-]%* *atp-gc*
-:SkipCommentForward 
-nmap ]* ]% gc
-	Go to end of current/next comment group.
+:[count]SkipCommentForward 
+nmap [count]]* [count]]% [count]gc
+	Go to end of current/next comment group. Do this [count] times. The
+	default [count] is 1.
 
 	Note: if |g:atp_VimCompatible|=1 (the default) it goes one line below
 	the last commented line, if it is 0 it goes to the end of the comment.
+
+	Note: This commands wraps around the begining/end of the file. The
+	'wrapscan' option applies.
     							*atp-:SkipCommentBackward*
 							*atp-[star* *atp-[%* *atp-gC*
 :SkipCommentBackward 
@@ -4655,15 +4681,15 @@ nmaps: g>, g<, 2g>, ..., 6g>
 	A normal map to m`vipg>`` (or m`vip2g>``).
 								
 							*atp-r*
-nmap r   
-	If |g:atp_VimCompatible| is 0 then the normal command |r| will be over written
-	with an ATP function with the following feature: if you do |atp-r|
-	over one of the brackets: (:), {:}, [:] then r(, r{, r[ (and r), r},
-	r]) will change both: the opening and the closing bracket. Otherwise,
-	i.e. over any other character, or |atp-r| over a bracket with
-	replacing character other than opening bracket at opening position or
-	closing bracket at closing position, |atp-r| will work the same as |r|.
-	
+nmap r{char}
+	Over any charackter which is not a bracket: (:), [:], {:} it acts as
+	|r| command. Over a bracket which has a closing bracket and if {char}
+	is another bracket it replaces both opening and closing bracket. When
+	replacing brackets it will not remember the changing bracket for the
+	|.| command, so you cannot use |.| to change more brackets, but if
+	|atp-r| was used for changing text (non-brackets, or not-closed/opened
+	brackets) then the action can be repeated with |.|.
+
 
 ================================================================================
 REQUIREMENTS						*atp-requirements*

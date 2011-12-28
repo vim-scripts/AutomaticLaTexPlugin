@@ -131,10 +131,10 @@ command! -buffer -count=1 Sec		:call atplib#motion#ggGotoSection(<q-count>, 'sec
 command! -buffer -count=1 SSec		:call atplib#motion#ggGotoSection(<q-count>, 'subsection')
 
 command! -buffer -nargs=1 -complete=custom,atplib#motion#CompleteDestinations GotoNamedDest	:call atplib#motion#GotoNamedDestination(<f-args>)
-command! -buffer SkipCommentForward  	:call atplib#motion#SkipComment('fs', 'n')
-command! -buffer SkipCommentBackward 	:call atplib#motion#SkipComment('bs', 'n')
-vmap <buffer> <Plug>SkipCommentForward	:call atplib#motion#SkipComment('fs', 'v')<CR>
-vmap <buffer> <Plug>SkipCommentBackward	:call atplib#motion#SkipComment('bs', 'v', col("."))<CR>
+command! -buffer -count=1 SkipCommentForward  	:call atplib#motion#SkipComment('fs', 'n', v:count1)
+command! -buffer -count=1 SkipCommentBackward 	:call atplib#motion#SkipComment('bs', 'n', v:count1)
+vmap <buffer> <Plug>SkipCommentForward	:call atplib#motion#SkipComment('fs', 'v', v:count1)<CR>
+vmap <buffer> <Plug>SkipCommentBackward	:call atplib#motion#SkipComment('bs', 'v', , v:count1, col("."))<CR>
 
 imap <Plug>TexSyntaxMotionForward	<Esc>:call atplib#motion#TexSyntaxMotion(1,1,1)<CR>a
 imap <Plug>TexSyntaxMotionBackward	<Esc>:call atplib#motion#TexSyntaxMotion(0,1,1)<CR>a

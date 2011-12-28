@@ -50,6 +50,7 @@ function! atplib#compiler#ViewOutput(bang,...)
 	let g:global_options = global_options
 	let g:local_options  = local_options
 	let g:viewer         = viewer
+	let g:outfile	     = outfile
     endif
     let view_cmd	= viewer." ".global_options." ".local_options." ".shellescape(outfile)." &"
 
@@ -83,14 +84,16 @@ function! atplib#compiler#ViewOutput(bang,...)
     if fwd_search
 	let msg = "[SyncTex:] waiting for the viewer "
 	let i=1
-	while !atplib#compiler#IsRunning(viewer, outfile) && i<10
+	let max=20
+	while !atplib#compiler#IsRunning(b:atp_Viewer, outfile) && i<=max
 	    echo msg
 	    sleep 100m
 	    redraw
 	    let msg.="."
 	    let i+=1
 	endwhile
-	if i<15
+	exe "sleep ".g:atp_OpenAndSyncSleepTime
+	if i<=max
 	    call atplib#compiler#SyncTex("", 0)
 	else
 	    echohl WarningMsg
@@ -237,6 +240,7 @@ function! atplib#compiler#SyncTex(bang, mouse, ...)
 	let sync_cmd_page = "xpdf -remote " . shellescape(b:atp_XpdfServer) . " -exec 'gotoPage(".page_nr.")'"
 	let sync_cmd_y 	= "xpdf -remote " . shellescape(b:atp_XpdfServer) . " -exec 'scrollDown(".y_coord.")'"
         let sync_cmd_x 	= "xpdf -remote " . shellescape(b:atp_XpdfServer) . " -exec 'scrollRight(".x_coord.")'"
+" 	let sync_cmd	= "xpdf -remote " . shellescape(b:atp_XpdfServer) . " -exec 'gotoPage(".page_nr.")'"." -exec 'scrollDown(".y_coord.")'"." -exec 'scrollRight(".x_coord.")'"
 	" There is a bug in xpdf. We need to sleep between sending commands:
 	let sleep    = ( g:atp_XpdfSleepTime ? 'sleep '.string(g:atp_XpdfSleepTime).'s;' : '' )
 	let sync_cmd = "(".sync_cmd_page.";".sleep.sync_cmd_y.")&"

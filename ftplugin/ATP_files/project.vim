@@ -539,8 +539,9 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, 
     let save_loclist		= getloclist(0)
     try
 	silent! exe 'lvimgrep /^\s*\<let\>\s\+[bg]:/j ' . fnameescape(a:project_script)
-    catch E486:
-    catch E480:
+    catch /^Vim\%((\a\+)\)\=:E480/
+    catch /^Vim\%((\a\+)\)\=:E486/
+    catch /^Vim\%((\a\+)\)\=:E21/
     endtry
     let defined_variables	= getloclist(0) 
     call map(defined_variables, 'matchstr(v:val["text"], ''^\s*let\s\+\zs[bg]:[^[:blank:]=]*'')') 
@@ -622,7 +623,8 @@ function! <SID>WriteProjectScript(bang, project_script, cached_variables, type, 
 
 	    try 
 		exe 'silent! keepjumps %g/^\s*let\s\+' . var . '\>/d_'
-	    catch /E486:/
+	    catch /^Vim\%((\a\+)\)\=:E486/
+	    catch /^Vim\%((\a\+)\)\=:E21/
 	    endtry
 	    keepjumps call append('$', 'let ' . var . ' = ' . string({lvar}))
 	endif

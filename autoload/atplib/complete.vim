@@ -1915,8 +1915,7 @@ function! atplib#complete#TabCompletion(expert_mode,...)
 	    call atplib#Log("TabCompletion.log", "b:comp_method=".b:comp_method)
     "{{{3 --------- inputfiles
     elseif (l =~ '\\input\%([^{}]*\|\s*{[^}]*\)$'||
-	  \ l =~ '\\include\s*{[^}]*$' ||
-	  \ l =~ '\\includeonly\s*{[^}]*$') && !normal_mode &&
+	  \ l =~ '\\include\s*{[^}]*$') && !normal_mode &&
 	  \ index(g:atp_completion_active_modes, 'input files') != -1
 	    if begin =~ 'input'
 		let begin=substitute(begin,'.*\%(input\|include\%(only\)\?\)\s\?','','')
@@ -2505,7 +2504,10 @@ function! atplib#complete#TabCompletion(expert_mode,...)
 	    endif
 
 	    if exists("g:atp_".package."_command_values") && 
-		\ ( atplib#search#SearchPackage(package) || test || atplib#search#DocumentClass(b:atp_MainFile) == package )
+		\ ( 
+		    \ atplib#search#SearchPackage(package) || test || 
+		    \ atplib#search#DocumentClass(b:atp_MainFile) == package || package == "common" 
+		\ )
 		for key in keys({"g:atp_".package."_command_values"})
 		    " uncomment this to debug in which package file there is a mistake.
 		    if command =~ key
@@ -2539,7 +2541,7 @@ function! atplib#complete#TabCompletion(expert_mode,...)
     " {{{3 ------------ LABELS /are done later only the completions variable /
     elseif completion_method ==  'labels'
 	let completion_list = []
-    " {{{3 ------------ TEX INPUTFILES
+    " {{{3 ------------ INPUTFILES
     elseif completion_method ==  'inputfiles'
 	let completion_list=[]
 	call  extend(completion_list, atplib#search#KpsewhichGlobPath('tex', b:atp_OutDir . ',' . g:atp_texinputs, '*.tex', ':t:r', '^\%(\/home\|\.\|.*users\)', '\%(^\\usr\|texlive\|miktex\|kpsewhich\|generic\)'))

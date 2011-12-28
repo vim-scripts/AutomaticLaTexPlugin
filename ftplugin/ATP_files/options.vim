@@ -2,7 +2,7 @@
 " Description: 	This file contains all the options defined on startup of ATP
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sun Dec 11, 2011 at 08:52:46  +0000
+" Last Change: Tue Dec 27, 2011 at 10:06:34  +0000
 
 " NOTE: you can add your local settings to ~/.atprc.vim or
 " ftplugin/ATP_files/atprc.vim file
@@ -388,6 +388,9 @@ lockvar b:atp_autex_wait
 
 " Global Variables: (almost all)
 " {{{ global variables 
+if !exists("g:atp_OpenAndSyncSleepTime")
+    let g:atp_OpenAndSyncSleepTime = "750m"
+endif
 if !exists("g:atp_tab_map")
     let g:atp_tab_map = 0
 endif
@@ -1891,7 +1894,7 @@ nnoremap <silent> <buffer> 	<Plug>ToggleTab		:call ATP_ToggleTab()<CR>
 inoremap <silent> <buffer> 	<Plug>ToggleTab		<C-O>:call ATP_ToggleTab()<CR>
 "}}}
 
-" Tab Completion Variables:
+" TabCompletion Variables:
 " {{{ TAB COMPLETION variables
 " ( functions are in autoload/atplib.vim )
 "
@@ -2044,6 +2047,7 @@ endif
 	\ "\\medskip", "\\smallskip", "\\vskip", "\\vfil", "\\vfill", "\\vspace{", "\\vbox",
 	\ "\\hrule", "\\hrulefill", "\\dotfill", "\\hbox",
 	\ "\\thispagestyle{", "\\mathnormal", "\\markright{", "\\markleft{", "\\pagestyle{", "\\pagenumbering{",
+	\ "\\addtocounter{",
 	\ "\\author{", "\\address{", "\\date{", "\\thanks{", "\\title{",
 	\ "\\maketitle",
 	\ "\\marginpar", "\\indent", "\\par", "\\sloppy", "\\pagebreak", "\\nopagebreak",
@@ -2066,7 +2070,7 @@ endif
 	\ "\\bibliography{", "\\bibliographystyle{", "\\baselineskip",
 	\ "\\flushbottom", "\\onecolumn", "\\raggedbottom", "\\twocolumn",  
 	\ "\\alph{", "\\Alph{", "\\arabic{", "\\fnsymbol{", "\\reversemarginpar",
-	\ "\\exhyphenpenalty",
+	\ "\\exhyphenpenalty", "\\frontmatter", "\\mainmatter", "\\backmatter",
 	\ "\\topmargin", "\\oddsidemargin", "\\evensidemargin", "\\headheight", "\\headsep", 
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
 	\ "\\voffset", "\\paperwidth", "\\paperheight", "\\columnsep", "\\columnseprule", 
@@ -2198,8 +2202,6 @@ endif
 		    \ "\\rightmark", "\\leftmark", "\\markboth{", 
 		    \ "\\chaptermark", "\\sectionmark", "\\subsectionmark",
 		    \ "\\fancyheadoffset", "\\fancyfootoffset", "\\fancyhfoffset"]
-
-	let g:atp_makeidx_commands=[ "\\makeindex", "\\index{", "\\printindex" ]
 
 
 	" ToDo: remove tikzpicture from above and integrate the

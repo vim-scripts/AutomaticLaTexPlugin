@@ -2,7 +2,7 @@
 " Description: 	This file contains all the options defined on startup of ATP
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sun Apr 22, 2012 at 11:43:10  +0100
+" Last Change: Fri Sep 21, 2012 at 08:59:51  +0100
 
 " NOTE: you can add your local settings to ~/.atprc.vim or
 " ftplugin/ATP_files/atprc.vim file
@@ -169,9 +169,12 @@ endif
 " vim options
 " {{{ Vim options
 
+" undo_ftplugin
+let b:undo_ftplugin = "setlocal nrformats< complete< keywordprg< suffixes< comments< commentstring< define< include< suffixesadd< includeexpr< eventignore<"
+
 " Make CTRL-A, CTRL-X work over alphabetic characters:
 setl nrformats=alpha
-set  backupskip+=*.tex.project.vim
+setl  backupskip+=*.tex.project.vim
 
 " The vim option 'iskeyword' is adjust just after g:atp_separator and
 " g:atp_no_separator variables are defined.
@@ -195,21 +198,20 @@ exe "setlocal complete+=".
 " setlocal iskeyword+=\
 let suffixes = split(&suffixes, ",")
 if index(suffixes, ".pdf") == -1
-    setlocal suffixes+=.pdf
+    setl suffixes+=.pdf
 elseif index(suffixes, ".dvi") == -1
-    setlocal suffixes+=.dvi
+    setl suffixes+=.dvi
 endif
 " As a base we use the standard value defined in 
 " The suffixes option is also set after g:atp_tex_extensions is set.
 
 " Borrowed from tex.vim written by Benji Fisher:
     " Set 'comments' to format dashed lists in comments
-    setlocal comments=sO:%\ -,mO:%\ \ ,eO:%%,:%
-"     setlocal comments=n:%,s:%,m:%,e:%
+    setl comments=sO:%\ -,mO:%\ \ ,eO:%%,:%
 
     " Set 'commentstring' to recognize the % comment character:
     " (Thanks to Ajit Thakkar.)
-    setlocal commentstring=%%s
+    setl commentstring=%%s
 
     " Allow "[d" to be used to find a macro definition:
     " Recognize plain TeX \def as well as LaTeX \newcommand and \renewcommand .
@@ -223,13 +225,17 @@ endif
 	    \ . '\|DeclareMathOperator\s*{\=\s*'
 	    \ . '\|DeclareFixedFont\s*{\s*'
     if &l:filetype != "plaintex"
-	setlocal include=^[^%]*\\%(\\\\input\\(\\s*{\\)\\=\\\\|\\\\include\\s*{\\)
+	if atplib#search#SearchPackage('subfiles')
+	    setl include=^[^%]*\\%(\\\\input\\(\\s*{\\)\\=\\\\|\\\\include\\s*{\\\\|\\\\subfile\\s*{\\)
+	else
+	    setl include=^[^%]*\\%(\\\\input\\(\\s*{\\)\\=\\\\|\\\\include\\s*{\\)
+	endif
     else
 	setlocal include=^[^%]*\\\\input
     endif
-    setlocal suffixesadd=.tex
+    setl suffixesadd=.tex
 
-    setlocal includeexpr=substitute(v:fname,'\\%(.tex\\)\\?$','.tex','')
+    setl includeexpr=substitute(v:fname,'\\%(.tex\\)\\?$','.tex','')
     " TODO set define and work on the above settings, these settings work with [i
     " command but not with [d, [D and [+CTRL D (jump to first macro definition)
     
@@ -242,10 +248,6 @@ endif
 " BUFFER LOCAL VARIABLES:
 " {{{ buffer variables
 let b:atp_running	= 0
-
-if has("mac") || has("macunix")
-    let b:atp_openOptions = " -a Skim "
-endif
 
 " these are all buffer related variables:
 function! <SID>TexCompiler()
@@ -945,10 +947,10 @@ if !exists("g:atp_vmap_big_bracket_leader")
     let g:atp_vmap_big_bracket_leader='<LocalLeader>b'
 endif
 if !exists("g:atp_map_forward_motion_leader")
-    let g:atp_map_forward_motion_leader='>'
+    let g:atp_map_forward_motion_leader=']'
 endif
 if !exists("g:atp_map_backward_motion_leader")
-    let g:atp_map_backward_motion_leader='<'
+    let g:atp_map_backward_motion_leader='['
 endif
 if !exists("g:atp_RelativePath")
     " This is here only for completness, the default value is set in project.vim
@@ -1012,9 +1014,9 @@ endif
 if !exists("g:atp_statusOutDir")
     let g:atp_statusOutDir 	= 1
 endif
-if !exists("g:atp_developer")
-    let g:atp_developer		= 0
-endif
+" if !exists("g:atp_developer") " is set in plugin/tex_atp.vim
+"     let g:atp_developer		= 0
+" endif
 if !exists("g:atp_mapNn")
 	let g:atp_mapNn		= 0 " This value is used only on startup, then :LoadHistory sets the default value.
 endif  				    " user cannot change the value set by :LoadHistory on startup in atprc file.
@@ -1149,7 +1151,7 @@ if !exists("g:atp_amsmath")
     let g:atp_amsmath=atplib#search#SearchPackage('ams')
 endif
 if atplib#search#SearchPackage('amsmath') || g:atp_amsmath != 0 || atplib#search#DocumentClass(b:atp_MainFile) =~ '^ams'
-    exe "setlocal complete+=k".globpath(&rtp, "ftplugin/ATP_files/dictionaries/ams_dictionary")
+    exe "setl complete+=k".split(globpath(&rtp, "ftplugin/ATP_files/dictionaries/ams_dictionary"), "\n")[0]
 endif
 if !exists("g:atp_no_math_command_completion")
     let g:atp_no_math_command_completion = 0
@@ -1163,7 +1165,7 @@ endif
 for ext in g:atp_tex_extensions
     let suffixes = split(&suffixes, ",")
     if index(suffixes, ".".ext) == -1 && ext !~ 'mtc'
-	exe "setlocal suffixes+=.".ext
+	exe "setl suffixes+=.".ext
     endif
 endfor
 if !exists("g:atp_delete_output")
@@ -1258,6 +1260,9 @@ endif
 if !exists("g:atp_ProgressBarFile")
     " Only needed if g:atp_callback == 0
     let g:atp_ProgressBarFile = tempname()
+endif
+if !exists("g:atp_iskeyword")
+    let g:atp_iskeyword = '65-90,97-122,\'
 endif
 " }}}
 
@@ -2245,7 +2250,7 @@ endfunction
 	    let s:leaving_buffer=expand("%:p")
 	endif
     endfunction
-if (v:version < 703 || v:version == 703 && !has("patch648")) && (!exists("g:patched_vim") || exists("g:patched_vim") && !g:patched_vim)
+if (v:version < 703 || v:version == 703 && !has("patch468"))
     augroup ATP_QuickFix_cgetfile
 "     When using cgetfile the position in quickfix-window is lost, which is
 "     annoying when changing windows. 
@@ -2576,7 +2581,6 @@ function! CompilerComp(A,L,P)
 endfunction
 
 function! <SID>SetDebugMode(bang,...)
-    let g:efm_b = &efm
     if a:0 == 0
 	echo t:atp_DebugMode
 	return
@@ -2596,8 +2600,6 @@ function! <SID>SetDebugMode(bang,...)
 	    let t:atp_DebugMode= auto.g:atp_DefaultDebugMode
 	endif
     endif
-
-    let g:efm_a = &efm
 
     if t:atp_DebugMode =~# 'Debug$' && a:1 =~# 'debug$' || t:atp_DebugMode =~# 'debug$' && a:1 =~# 'Debug$'
 	let change_menu 	= 0
@@ -2646,15 +2648,14 @@ function! <SID>SetDebugMode(bang,...)
 
     if a:1 =~# '\%(auto\)\?s\%[ilent]'
 	let winnr=winnr()
-" 	let quickfix_open = 0
-" 	windo let quickfix_open += ( &buftype == 'quickfix' ? 1 : 0 )
-" 	wincmd w
 	if t:atp_QuickFixOpen
 	    cclose
 	else
 	    try
 		cgetfile
-		call atplib#compiler#FilterQuickFix()
+		if v:version < 703 || v:version == 703 && !has("path468")
+		    call atplib#compiler#FilterQuickFix()
+		endif
 	    catch /E40/
 		echohl WarningMsg 
 		echo "[ATP:] log file missing."
@@ -2667,16 +2668,15 @@ function! <SID>SetDebugMode(bang,...)
 	endif
     elseif a:1 =~# '\%(auto\)\?d\%[ebug]'
 	let winnr=winnr()
-	let g:efm_0 = &efm
 	exe "copen " . (!exists("w:quickfix_title") 
 		    \ ? (max([1, min([atplib#qflength(), g:atp_DebugModeQuickFixHeight])]))
 		    \ : "" )
-	let g:efm = &efm
 	exe winnr . "wincmd w"
-	let g:efm_1 = &efm
 	try
 	    cgetfile
-" 	    call atplib#compiler#FilterQuickFix()
+	    if v:version < 703 || v:version == 703 && !has("path468")
+		call atplib#compiler#FilterQuickFix()
+	    endif
 	catch /E40/
 	    echohl WarningMsg 
 	    echo "[ATP:] log file missing."
@@ -2691,7 +2691,9 @@ function! <SID>SetDebugMode(bang,...)
 	exe winnr . "wincmd w"
 	try
 	    cgetfile
-" 	    call atplib#compiler#FilterQuickFix()
+	    if v:version < 703 || v:version == 703 && !has("path468")
+		call atplib#compiler#FilterQuickFix()
+	    endif
 	catch /E40/
 	    echohl WarningMsg 
 	    echo "[ATP:] log file missing."
@@ -2780,12 +2782,22 @@ endfunction "}}}
 " VIM PATH OPTION: 
 exe "setlocal path+=".substitute(g:texmf."/tex,".join(filter(split(globpath(b:atp_ProjectDir, '**'), "\n"), "isdirectory(expand(v:val))"), ","), ' ', '\\\\\\\ ', 'g')
 
+if has("python") || has("python3")
+let atp_path = fnamemodify(expand('<sfile>'), ':p:h')
+python << EOF
+import vim
+import sys
+sys.path.insert(0, vim.eval('atp_path'))
+EOF
+endif
+
 " Some Commands:
 " {{{
 command! -buffer HelpMathIMaps 	:echo atplib#helpfunctions#HelpMathIMaps()
 command! -buffer HelpEnvIMaps 	:echo atplib#helpfunctions#HelpEnvIMaps()
 command! -buffer HelpVMaps 	:echo atplib#helpfunctions#HelpVMaps()
 " }}}
+
 
 " Help:
 silent call atplib#helpfunctions#HelpEnvIMaps()

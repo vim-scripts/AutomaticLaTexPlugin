@@ -2,7 +2,7 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Sat Apr 28, 2012 at 08:40:02  +0100
+" Last Change: Sun Sep 16, 2012 at 11:13:59  +0100
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 
@@ -69,10 +69,6 @@ function! atplib#various#WrapSelection(...)
     if l:begin[1] != l:end[1]
 	let l:bbegin_line=strpart(l:begin_line,0,l:begin[2]-1)
 	let l:ebegin_line=strpart(l:begin_line,l:begin[2]-1)
-
-	" DEBUG
-	let b:bbegin_line=l:bbegin_line
-	let b:ebegin_line=l:ebegin_line
 
 	let l:bend_line=strpart(l:end_line,0,l:end[2])
 	let l:eend_line=strpart(l:end_line,l:end[2])
@@ -830,6 +826,9 @@ function! atplib#various#TeXdoc_complete(ArgLead, CmdLine, CursorPos)
     for file in texdoc_alias_files
 	call extend(aliases, readfile(file))
     endfor
+    if !exists("g:texmf")
+	let g:texmf = substitute(system("kpsewhich -expand-var='$TEXMFHOME'"), '\n', '', 'g')
+    endif
     let local_list = map(split(globpath(g:texmf.'/doc', '*'), "\n"), 'fnamemodify(v:val, ":t:r")')
 
     call filter(aliases, "v:val =~ 'alias'")
@@ -1413,6 +1412,16 @@ endfunction
 " autoload/atplib.vim
 try
 function! atplib#various#ReloadATP(bang)
+    if has("python")
+python << EOF
+import atplib
+for p in atplib.subpackages:
+    try:
+        exec('reload(%s)' % p)
+    except NameError:
+        pass
+EOF
+    endif
     " First source the option file
     let common_file	= split(globpath(&rtp, 'ftplugin/ATP_files/common.vim'), "\n")[0]
     let options_file	= split(globpath(&rtp, 'ftplugin/ATP_files/options.vim'), "\n")[0]
@@ -1464,10 +1473,15 @@ catch /E127:/
 endtry
 " }}}
 " {{{ atplib#various#Preambule
-function! atplib#various#Preamble()
+function! atplib#various#Preamble(...)
+    let return_preamble =  ( a:0 >= 1 && a:1 ? 1 : 0 ) 
     let loclist = getloclist(0)
     let winview = winsaveview()
-    exe '1lvimgrep /^[^%]*\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
+    try
+	exe '1lvimgrep /^[^%]*\\begin\s*{\s*document\s*}/j ' . fnameescape(b:atp_MainFile)
+    catch /E480:/
+	return ""
+    endtry
     let linenr = get(get(getloclist(0), 0, {}), 'lnum', 'nomatch')
     if linenr != 'nomatch'
 	if expand("%:p") != atplib#FullPath(b:atp_MainFile)
@@ -1475,11 +1489,18 @@ function! atplib#various#Preamble()
 
 	    exe "keepalt edit " . b:atp_MainFile 
 	endif
-	exe "1," . (linenr-1) . "print"
+	if !return_preamble
+	    exe "1," . (linenr-1) . "print"
+	else
+	    let preamble = getbufline(bufnr("%"), 1, linenr-1)
+	endif
 	if exists("cfile")
 	    exe "keepalt edit " . cfile
 	endif
 	call winrestview(winview)
+	if return_preamble
+	    return preamble
+	endif
     else	
 	echomsg "[ATP:] not found \begin{document}."
     endif
@@ -1542,22 +1563,22 @@ function! atplib#various#GetAMSRef(what, bibfile)
 	endif
 
 	let linenumbers = map(copy(data), 'v:val["lnum"]')
-	let begin	= min(linenumbers)
+	let begin = min(linenumbers)
 	let end	= max(linenumbers)
 
 	let bufnr = bufnr(atpbib_WgetOutputFile)
 	" To use getbufline() buffer must be loaded. It is enough to use :buffer
 	" command because vimgrep loads buffer and then unloads it. 
 	execute "buffer " . bufnr
-	let bibdata	= getbufline(bufnr, begin, end)
+	let bibdata = getbufline(bufnr, begin, end)
 	execute "bdelete " . bufnr 
 	let type = matchstr(bibdata[0], '@\%(article\|book\%(let\)\=\|conference\|inbook\|incollection\|\%(in\)\=proceedings\|manual\|masterthesis\|misc\|phdthesis\|techreport\|unpublished\)\ze\s*\%("\|{\|(\)')
         " Suggest Key:
 	let bibkey = input("Provide a key (Enter for the AMS bibkey): ")
 	if !empty(bibkey)
-	    let bibdata[0] 	= type . '{' . bibkey . ','
+	    let bibdata[0] = type . '{' . bibkey . ','
 	else
-	    let bibdata[0] 	= substitute(matchstr(bibdata[0], '@\w*.*$'), '\(@\w*\)\(\s*\)', '\1', '')
+	    let bibdata[0] = substitute(matchstr(bibdata[0], '@\w*.*$'), '\(@\w*\)\(\s*\)', '\1', '')
 	    " This will be only used to echomsg:
 	    let bibkey	= matchstr(bibdata[0], '@\w*.\s*\zs[^,]*')
 	endif
@@ -1581,7 +1602,6 @@ function! atplib#various#GetAMSRef(what, bibfile)
 	catch /E480:/
 	endtry
 	let data = getloclist(0)
-	let g:data = data
 	if !len(data) 
 	    echohl WarningMsg
 	    echomsg "[ATP:] nothing found."
@@ -1601,14 +1621,12 @@ function! atplib#various#GetAMSRef(what, bibfile)
 		let bib_data .= line
 	    endwhile
 	endif
-	let g:bib_data = bib_data
 
 	let bibref = '\bibitem{} ' . matchstr(bib_data, '^<tr><td align="left">\zs.*\ze<\/td><\/tr>')
-	let g:atp_bibref = bibref
 	exe "let @" . g:atp_bibrefRegister . ' = "' . escape(bibref, '\"') . '"'
 	let bibdata = [ bibref ]
     endif
-    let g:atp_bibdata = bibdata
+    let g:atp_bibdata = join(bibdata, "\n")
 "     call delete(atpbib_WgetOutputFile)
     return bibdata
 endfunction
@@ -2398,7 +2416,8 @@ function! atplib#various#UpdateATP(bang)
 	endif
 endfunction 
 catch E127:
-endtry
+endtry "}}}
+"{{{ atplib#various#GetLatestSnapshot
 function! atplib#various#GetLatestSnapshot(bang,url)
     " Get latest snapshot/version
     let url = a:url
@@ -2430,7 +2449,8 @@ function! atplib#various#GetLatestSnapshot(bang,url)
 	silent echo "cmd=".cmd
     endif
     call system(cmd)
-endfunction
+endfunction "}}}
+"{{{ atplib#various#CompareStamps
 function! atplib#various#CompareStamps(new, old)
     " newer stamp is smaller 
     " vim sort() function puts smaller items first.
@@ -2449,7 +2469,8 @@ function! atplib#various#CompareStamps(new, old)
     let comp = join(compare, "")
     " comp =~ '^0*1' new is older version 
     return ( comp == 0 ? 0 : ( comp =~ '^0*1' ? 1 : -1 ))
-endfunction
+endfunction "}}}
+"{{{ atplib#various#CompareVersions
 function! atplib#various#CompareVersions(new, old)
     " newer stamp is smaller 
     " vim sort() function puts smaller items first.
@@ -2466,7 +2487,8 @@ function! atplib#various#CompareVersions(new, old)
     let comp = join(compare, "")
     " comp =~ '^0*1' new is older version 
     return ( comp == 0 ? 0 : ( comp =~ '^0*1' ? 1 : -1 ))
-endfunction
+endfunction "}}}
+"{{{ atplib#various#GetTimeStamp
 function! atplib#various#GetTimeStamp(file)
 python << END
 import vim, tarfile, re
@@ -2492,8 +2514,9 @@ except AttributeError:
     stamp="00-00-00_00-00"
 vim.command("let g:atp_stamp='"+stamp+"'")
 END
-endfunction
-function! atplib#various#Tar(file,path)
+endfunction "}}}
+"{{{ atplib#various#Tar
+function! atplib#various#Tar(file, path)
 python << END
 import tarfile, vim
 file_n=vim.eval("a:file")
@@ -2501,7 +2524,8 @@ path=vim.eval("a:path")
 file_o=tarfile.open(file_n, "r:gz")
 file_o.extractall(path)
 END
-endfunction
+endfunction "}}}
+"{{{ atplib#various#ATPversion
 function! atplib#various#ATPversion()
     " This function is used in opitons.vim
     let saved_loclist = getloclist(0)
@@ -2523,8 +2547,7 @@ function! atplib#various#ATPversion()
     redraw
     let g:atp_version = l:version ." (".stamp.")" 
     return "ATP version: ".l:version.", time stamp: ".stamp."."
-endfunction
-"}}}
+endfunction "}}}
 " atplib#various#Comment {{{
 function! atplib#various#Comment(arg)
 
@@ -2564,4 +2587,11 @@ function! atplib#various#DebugPrintComp(A,C,L)
     return join(list, "\n")
 endfunction
 "}}}
+" {{{ atplib#various#FormatLines
+function! atplib#various#FormatLines()
+    " This function is not using winsaveview() since this might change the
+    " cursor position in the text.
+    normal m`vipgq``
+endfunction
+" }}}
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

@@ -6,6 +6,9 @@
 
 
 if !filereadable("makefile") && !filereadable("Makefile")
+    if !exists("b:TypeDict")
+	let b:TypeDict=[]
+    endif
     let s:makeprg=g:atp_Python." ".split(globpath(&rtp, "ftplugin/ATP_files/makelatex.py"), "\n")[0].
 		\ " --texfile ".shellescape(atplib#FullPath(b:atp_MainFile)).
 		\ " --bufnr ".bufnr("%").
@@ -24,6 +27,7 @@ if !filereadable("makefile") && !filereadable("Makefile")
 		\ " --viewer-options ".shellescape((join((exists("g:atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") ? g:atp_{matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')}Options : []), ";") != "" ? join((exists("g:atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") ? g:atp_{matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')}Options : []), ";").";".join((exists("b:atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") ? getbufvar(bufnr("%"), "atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") : []), ";") : join((exists("b:atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") ? getbufvar(bufnr("%"), "atp_".matchstr(b:atp_Viewer, '^\s*\zs\S\+\ze')."Options") : []), ";"))).
 		\ " --progname ".v:progname.
 		\ " --tempdir ".shellescape(g:atp_TempDir).
+		\ " --logdir ".shellescape(g:atp_TempDir).
 		\ (g:atp_callback ? "" : " --no-callback ").
 		\ (t:atp_DebugMode=='verbose' ? ' --env ""': " --env ".shellescape(b:atp_TexCompilerVariable)).
 		\ ( index(g:atp_ReloadViewers, b:atp_Viewer)+1  ? ' --reload-viewer ' : '' ) . ( b:atp_ReloadOnError ? ' --reload-on-error ' : '' ).
@@ -42,7 +46,7 @@ nmap <buffer> <Plug>SyncTexMouse	:call atplib#compiler#SyncTex("", 1, b:atp_Main
 nmap <buffer> <Plug>SyncTexLKeyStroke	:call atplib#compiler#SyncTex("", 0, expand("%:t"), b:atp_LocalXpdfServer)<CR>
 nmap <buffer> <Plug>SyncTexLMouse	:call atplib#compiler#SyncTex("", 1, expand("%:t"), b:atp_LocalXpdfServer)<CR>
 noremap <silent> <Plug>ATP_TeXCurrent	:<C-U>call atplib#compiler#TeX(v:count1, "", t:atp_DebugMode)<CR>
-noremap <silent> <Plug>ATP_TeXLocal	:<C-U>call atplib#compiler#LocalCompiler("n", "silent")<CR>
+noremap <silent> <Plug>ATP_TeXLocal	:<C-U>call atplib#compiler#LocalCompiler("n", v:count1, "silent")<CR>
 noremap <silent> <Plug>ATP_TeXDefault	:<C-U>call atplib#compiler#TeX(v:count1, "", 'default')<CR>
 noremap <silent> <Plug>ATP_TeXSilent	:<C-U>call atplib#compiler#TeX(v:count1, "", 'silent')<CR>
 noremap <silent> <Plug>ATP_TeXDebug	:<C-U>call atplib#compiler#TeX(v:count1, "", 'Debug')<CR>
@@ -73,7 +77,7 @@ command! -buffer 		PID			:call atplib#compiler#GetPID()
 command! -buffer -nargs=? -bang -complete=custom,atplib#compiler#DebugComp MakeLatex	:call atplib#compiler#SetBiberSettings() | call atplib#compiler#MakeLatex(<q-bang>, <q-args>, 0)
 nmap <buffer> <Plug>ATP_MakeLatex			:MakeLatex<CR>
 command! -buffer -nargs=? -bang -count=1 -complete=custom,atplib#compiler#DebugComp TEX	:call atplib#compiler#TeX(<count>, <q-bang>, <f-args>)
-command! -buffer -nargs=? -complete=custom,atplib#compiler#DebugComp TEXL 		:call atplib#compiler#LocalCompiler("n", <f-args>)
+command! -buffer -nargs=? -count=1 -complete=custom,atplib#compiler#DebugComp TEXL 	:call atplib#compiler#LocalCompiler("n", <count>, <f-args>)
 command! -buffer -count=1 DTEX				:call atplib#compiler#TeX(<count>, <q-bang>, 'debug') 
 command! -buffer -bang -nargs=? -complete=custom,atplib#compiler#BibtexComp Bibtex		:call atplib#compiler#Bibtex(<q-bang>, <f-args>)
 " command! -buffer BibtexOutput	:echo b:atp_BibtexOutput
@@ -89,6 +93,7 @@ augroup END
 
 command! -buffer -nargs=? -complete=custom,atplib#compiler#ListErrorsFlags_A 	ErrorFormat 	:call atplib#compiler#SetErrorFormat(1,<q-args>)
 let load_ef=(exists("t:atp_QuickFixOpen") ? !t:atp_QuickFixOpen : 1)
-command! -buffer -nargs=? -complete=custom,atplib#compiler#ListErrorsFlags 	ShowErrors 	:call atplib#compiler#ShowErrors(<f-args>)
+command! -buffer -bang -nargs=? -complete=custom,atplib#compiler#ListErrorsFlags 	ShowErrors 	:call atplib#compiler#ShowErrors(<q-bang>,0,<f-args>)
+command! -buffer -bang -nargs=? -complete=custom,atplib#compiler#ListErrorsFlags 	ShowErrorsL 	:call atplib#compiler#ShowErrors(<q-bang>,1,<f-args>)
 " }}}
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

@@ -2,7 +2,7 @@
 " Description: This script has functions which have to be called before ATP_files/options.vim 
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Tue Dec 06, 2011 at 13:31:10  +0000
+" Last Change: Fri Aug 24, 2012 at 19:53:10  +0100
 
 " This file contains set of functions which are needed to set to set the atp
 " options and some common tools.
@@ -68,12 +68,12 @@ function! TreeOfFiles(main_file,...) "{{{1
     let time=reltime()
     if has("python") && &filetype != "plaintex" && ( !exists("g:atp_no_python") || g:atp_no_python == 0 )
 	" It was not tested on plaintex files.
-	call atplib#search#TreeOfFiles_py(a:main_file)
+	let [tree, list, types, levels] = atplib#search#TreeOfFiles_py(a:main_file)
     else
-	call atplib#search#TreeOfFiles_vim(a:main_file, pattern, flat, run_nr)
+	let [tree, list, types, levels] = atplib#search#TreeOfFiles_vim(a:main_file, pattern, flat, run_nr)
     endif
     " Notes: vim script avrage is 0.38s, python avrage is 0.28
-    return [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]
+    return [ tree, list, types, levels ]
 endfunction "}}}1
 
 " All Status Line related things:
@@ -329,7 +329,10 @@ function! ATPStatus(command,...) "{{{
     let status_KeyMap	=
 		\ ( has("keymap") && g:atp_babel && exists("b:keymap_name") 	
 								\ ? b:keymap_name 	: '' )
-    let g:atp_StatusLine= '%<%f '.status_KeyMap.'%(%h%m%r%) '.status_NotifHi.status_Notif.status_NotifHiPost.'%= '.status_CTOC.' %{g:status_OutDir} %-14.16(%l,%c%V%)%P'
+    let g:atp_StatusLine= '%<%f '.status_KeyMap.'%(%h%m%r%) '.status_NotifHi.status_Notif.status_NotifHiPost.'%= '.status_CTOC.' %{g:status_OutDir}'
+    if &ruler
+	let g:atp_StatusLine.=' %-14.16(%l,%c%V%)%P'
+    endif
     set statusline=%!g:atp_StatusLine
 endfunction
 try

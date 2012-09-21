@@ -88,10 +88,8 @@ function! atplib#write(command,...) "{{{
 endfunction "}}}
 function! atplib#update(main_file, ...) "{{{
     if !(exists("b:atp_MainFile") && a:main_file == atplib#FullPath(b:atp_MainFile))
-" 	echomsg "NO UPDATE: ".expand("%:p")
 	return
     endif
-"     echomsg "UPDATE: ".expand("%:p")
 
     if a:0 > 0 && a:1 == "silent"
 	silent! update
@@ -99,6 +97,19 @@ function! atplib#update(main_file, ...) "{{{
 	update
     endif
 
+endfunction "}}}
+function! atplib#WriteProject(command,...) "{{{
+    let silent = a:0 >=1 ? a:1 : ''
+    let flist = [b:atp_MainFile]
+    call extend(flist, b:ListOfFiles)
+    for file in flist
+	let bufnr_saved = bufnr("%")
+	if bufloaded(file)
+	    exe "buffer ".bufnr(file)
+	    exe silent." ".a:command
+	endif
+	exe "buffer ".bufnr_saved
+    endfor
 endfunction "}}}
 " Log:
 function! atplib#Log(file, string, ...) "{{{1
@@ -111,6 +122,14 @@ function! atplib#Log(file, string, ...) "{{{1
 	exe "redir >> ".g:atp_TempDir."/".a:file 
 	silent echo a:string
 	redir END
+    endif
+endfunction "}}}1
+
+function! atplib#pyeval(string) " {{{1
+    if has("python")
+	return pyeval(a:string)
+    elseif has("python3")
+	return py3eval(a:string)
     endif
 endfunction "}}}1
 
@@ -184,7 +203,6 @@ function! atplib#FullPath(file_name) "{{{1
 		endif
 	    endfor
 	endif
-        let g:project_dir = project_dir
 	if project_dir != ""
 	    try
 		exe "lcd " . fnameescape(project_dir)
@@ -682,4 +700,12 @@ function! atplib#Add(list,what)
     return new
 endfunction
 "}}}1
+" String Functions:
+function! atplib#TexKeyword() " {{{
+    let isk = &isk
+    let &isk = g:atp_iskeyword
+    let word = expand("<cword>")
+    let &isk = isk
+    return word
+endfunction " }}}
 " vim:fdm=marker:ff=unix:noet:ts=8:sw=4:fdc=1

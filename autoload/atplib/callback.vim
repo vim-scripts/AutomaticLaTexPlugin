@@ -131,7 +131,9 @@ function! atplib#callback#CallBack(bufnr,mode,...)
 
     " Read the log file
     cgetfile
-    call atplib#compiler#FilterQuickFix()
+    if v:version < 703 || v:version == 703 && !has("patch648")
+	call atplib#compiler#FilterQuickFix()
+    endif
 
     " signs
     if g:atp_signs
@@ -388,9 +390,13 @@ endfunction "}}}
 "{{{ atplib#callback#PIDsRunning
 function! atplib#callback#PIDsRunning(var)
 " a:var is a string, and might be one of 'b:atp_LatexPIDs', 'b:atp_BibtexPIDs' or
-" 'b:atp_MakeindexPIDs'
+" 'b:atp_MakeindexPIDs'. PIDs that are not running are removed from this list.
 python << EOL
-import psutil, re, sys, vim
+import sys
+import re
+import vim
+import psutil
+
 var  = vim.eval("a:var")
 pids = vim.eval(var)
 if len(pids) > 0:

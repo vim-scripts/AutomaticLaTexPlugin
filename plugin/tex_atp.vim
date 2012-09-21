@@ -9,6 +9,14 @@
 "    au BufRead *.tex au! BufEnter *.tex :call Function()
 "    \
 
+" Do not source ATP if g:no_atp is set
+if exists("g:no_atp") && g:no_atp
+    finish
+endif
+if !exists("g:atp_developer")
+    let g:atp_developer = 0
+endif
+
 " KpsewhichEdit command: {{{1
 function! <SID>KpsewhichEdit(args)
     let [ string, edit_args, file]  = matchlist(a:args, '\(.\{-}\)\s*\(\f\+\)$')[0:2]
@@ -23,16 +31,26 @@ endfunction
 function! <SID>KpsewhichEditComp(ArgLead, CmdLine, CursorPos)
     let completion_list = []
     if exists("g:atp_LatexPackages")
-" 	let g:atp_LatexPackages	= atplib#search#KpsewhichGlobPath("tex", "", "*.sty")
 	call extend(completion_list, map(deepcopy(g:atp_LatexPackages), 'v:val.".sty"'))
     endif
     if exists("g:atp_LatexClasses")
-" 	let g:atp_LatexClasses	= atplib#search#KpsewhichGlobPath("tex", "", "*.cls")
 	call extend(completion_list, map(deepcopy(g:atp_LatexClasses), 'v:val.".cls"'))
     endif
     return join(completion_list, "\n")
 endfunction
 command! -nargs=1 -complete=custom,<SID>KpsewhichEditComp KpsewhichEdit :call <SID>KpsewhichEdit('<args>')
+" LoadVimSettings "{{{1
+function! ATP_LoadVimSettings()
+    " Load Vim settings stored in project script file (.tex.project.vim)
+    if !exists("b:atp_vim_settings")
+	return
+    endif
+    for line in b:atp_vim_settings
+	exe line
+    endfor
+    " In this way options are loaded only once:
+    unlet b:atp_vim_settings
+endfunction "}}}
 augroup ATP_LoadVimSettings "{{{1
     " In this way settings from project.vim script will overwrite vimrc file.
     au!
@@ -154,6 +172,8 @@ augroup ATP_texlog "{{{1
     au BufEnter *.log call <SID>TexLogSettings(expand("<afile>:p"))
 augroup END
 " Commands: "{{{1
+command! -nargs=* -complete=customlist,atplib#various#TeXdoc_complete 
+	    \  Texdoc					:call atplib#various#TexDoc(<f-args>)
 command! -bang	UpdateATP				:call atplib#various#UpdateATP(<q-bang>)
 command! 	ATPversion				:echo atplib#various#ATPversion()
 
@@ -161,4 +181,6 @@ command! 	ATPversion				:echo atplib#various#ATPversion()
 " sets --tex (-t) and --class (-c) texdef option. Without bang only the --tex
 " (-t) option is set ('tex', 'latex', 'contex', 'xelatex', 'lualatex', ...) 
 " NOTE: only the first three are supported.
-command! -bang -nargs=* TexDef :call atplib#tools#TexDef(<q-bang>,<q-args>)
+if g:atp_developer
+    command! -bang -nargs=* Texdef :call atplib#tools#TexDef(<q-bang>,<q-args>)
+endif

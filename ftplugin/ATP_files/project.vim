@@ -121,8 +121,10 @@ function! <SID>LoadScript(bang, project_script, type, load_variables, ...) "{{{
     " defined later, and g:atp_ProjectScript might already be defined, so not always
     " global variables override local ones).
 
-    " Global variable overrides local one
-    if !ignore && ( exists("g:atp_ProjectScript") && !g:atp_ProjectScript || exists("b:atp_ProjectScript") && ( !b:atp_ProjectScript && (!exists("g:atp_ProjectScript") || exists("g:atp_ProjectScript") && !g:atp_ProjectScript )) )
+    " Global variable overrides local one:
+    let cond = ( exists("g:atp_ProjectScript") && !g:atp_ProjectScript || exists("b:atp_ProjectScript") && ( !b:atp_ProjectScript && (!exists("g:atp_ProjectScript") || exists("g:atp_ProjectScript") && !g:atp_ProjectScript )) )
+    let g:cond_LPS = cond
+    if !ignore && cond
 	exe silent . ' echomsg "[ATP:] LoadScirpt: not loading project script."'
 
 	if g:atp_debugProject
@@ -371,18 +373,6 @@ function! s:LocalCommonComp(ArgLead, CmdLine, CursorPos)
     return filter([ 'local', 'common'], 'v:val =~ "^" . a:ArgLead')
 endfunction
 " }}}
-" LoadVimSettings "{{{
-function! ATP_LoadVimSettings()
-    " Load Vim settings stored in project script file (.tex.project.vim)
-    if !exists("b:atp_vim_settings")
-	return
-    endif
-    for line in b:atp_vim_settings
-	exe line
-    endfor
-    " In this way options are loaded only once:
-    unlet b:atp_vim_settings
-endfunction "}}}
 "}}}
 " WRITE PROJECT SCRIPT:
 "{{{ s:WriteProjectScript(), :WriteProjectScript, autocommands
@@ -676,9 +666,28 @@ function! <SID>WriteProjectScriptInterface(bang,...)
     let type 	= ( a:0 >= 1 ? a:1 : 'local' )
     let silent  = ( a:0 >= 2 ? a:2 : 0 )
 
+    let cond = exists("g:atp_ProjectScript") && !g:atp_ProjectScript || exists("b:atp_ProjectScript") && ( !b:atp_ProjectScript && (!exists("g:atp_ProjectScript") || exists("g:atp_ProjectScript") && !g:atp_ProjectScript )) || !exists("b:atp_ProjectScript") && !exists("g:atp_ProjectScript")
+    if a:bang == "" && cond
+	if !silent
+	    echomsg "[ATP:] WriteProjectScript: ProjectScript is turned off."
+	endif
+	return
+    endif
+
     if type != 'global' && type != 'local' 
 	echoerr "WriteProjectScript Error : type can be: local or global." 
 	return
+    endif
+    
+    if !exists("b:atp_ProjectScriptFile")
+	let project_script = GetProjectScript(FindProjectScripts())
+	if project_script != "no project script found"
+	    let b:atp_ProjectScriptFile = project_script
+	    let b:atp_ProjectDir	= fnamemodify(project_script, ":h")
+	else
+	    let b:atp_ProjectScriptFile = resolve(expand("%:p")) . ".project.vim"
+	    let b:atp_ProjectDir	= fnamemodify(b:atp_ProjectScriptFile, ":h")
+	endif
     endif
 
     let script 	= ( type == 'local' ? b:atp_ProjectScriptFile : s:common_project_script )

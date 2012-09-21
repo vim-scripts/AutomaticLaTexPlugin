@@ -7,11 +7,13 @@ import sys, errno, os.path, shutil, subprocess, psutil, re, tempfile, optparse, 
 import traceback, atexit
 
 from os import chdir, mkdir, putenv, devnull
+
 from optparse import OptionParser
 from collections import deque
 
 import latex_log
-
+import locale
+encoding = locale.getpreferredencoding()
 
 # readlink is not available on Windows.
 readlink=True
@@ -160,29 +162,23 @@ debug_file.write("*PROGRESS_BAR "+str(progress_bar)+"\n")
 #
 ####################################
 
-def decode_list(byte):
-    return byte.decode()
-
 def write_pbf(string):
     # Open pb_fname and write nr to it 
     # only if int(string) is greater than what is in this file 
 
     cond = False
     try:
-        if sys.version_info < (3, 0):
-            pb_fobject  = open(pb_fname, 'r')
+        if sys.version_info.major < 3:
+            with open(pb_fname, 'r') as fobj:
+                pb_file = fobj.read().decode(encoding, errors="replace")
         else:
-            pb_fobject  = open(pb_fname, 'r', errors='replace')
-    except IOError:
+            with open(pb_fname, 'r', encoding=encoding, errors='replace') as fobj:
+                pb_file = fobj.read()
+    except IOError as ioerror:
         debug_file.write("write_pbf at line %d: %s" % (sys.exc_info()[2].tb_lineno, str(ioerror)))
         cond = True
-    else:
-        pb_file     = pb_fobject.read()
-    finally:
-        pb_fobject.close()
     if not cond:
-        pb          = re.match('(\d*)', pb_file)
-        pb_fobject.close()
+        pb = re.match('(\d*)', pb_file)
         if pb:
             try:
                 nr = int(pb.group(1))
@@ -192,22 +188,17 @@ def write_pbf(string):
             nr = 0
         try:
             if nr >= 0:
-                cond = int(string) > nr
+                cond = (int(string) > nr)
             else:
                 cond = True
         except ValueError:
             cond = False
-            pass
     if cond:
         try:
-            pb_fobject=open(pb_fname, 'w')
+            with open(pb_fname, 'w') as fobj:
+                fobj.write((string+"\n").encode(encoding, errors="replace"))
         except IOError as ioerror:
             debug_file.write("write_pbf at line %d: %s" % (sys.exc_info()[2].tb_lineno, str(ioerror)))
-            pass
-        else:
-            pb_fobject.write(string+"\n")
-        finally:
-            pb_fobject.close()
 
 def latex_progress_bar(cmd):
     # Run latex and send data for progress bar,
@@ -219,10 +210,18 @@ def latex_progress_bar(cmd):
     stack = deque([])
     while True:
         try:
-            out = child.stdout.read(1).decode(errors="replace")
+            if sys.version_info >= (2, 7):
+                out = child.stdout.read(1).decode(errors="replace")
+            else:
+                # XXX: set the encoding in a better way. 
+                # we could check what is the encoding of the log file.
+                out = child.stdout.read(1).decode(sys.getdefaultencoding(), "replace")
         except UnicodeDecodeError:
             debug_file.write("UNICODE DECODE ERROR:\n")
-            debug_file.write(child.stdout.read(1).encode(errors="ignore"))
+            if sys.version_info >= (2, 7):
+                debug_file.write(child.stdout.read(1).encode(errors="ignore"))
+            else:
+                debug_file.write(child.stdout.read(1).encode(sys.getdefaultencoding(), "ignore"))
             debug_file.write("\n")
             debug_file.write("stack="+''.join(stack)+"\n")
             out = ""
@@ -243,14 +242,11 @@ def latex_progress_bar(cmd):
     vim_remote_expr(servername, "atplib#callback#PIDsRunning(\"b:atp_LatexPIDs\")")
     if not options.callback:
         try:
-            pb_fobject = open(pb_fname, 'w')
+            with open(pb_fname, 'w') as fobj:
+                pass
         except IOError as ioerror:
             debug_file.write("latex_progress_bar at line %d : %s" % (sys.exc_info()[2].tb_lineno, str(ioerror)))
             pass
-        else:
-            pb_fobject.write('')
-        finally:
-            pb_fobject.close()
     return child
 
 def xpdf_server_file_dict():
@@ -285,10 +281,10 @@ def xpdf_server_file_dict():
     return server_file_dict
 
 def vim_remote_expr(servername, expr):
-    # Send <expr> to vim server,
+    """Send <expr> to vim server,
 
-    # expr must be well quoted:
-    #       vim_remote_expr('GVIM', "atplib#callback#TexReturnCode()")
+    expr must be well quoted:
+          vim_remote_expr('GVIM', "atplib#callback#TexReturnCode()")"""
     if not options.callback:
         return
     cmd=[progname, '--servername', servername, '--remote-expr', expr]

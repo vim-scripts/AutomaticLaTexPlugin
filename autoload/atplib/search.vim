@@ -101,29 +101,36 @@ function! atplib#search#make_defi_dict_py(bang,...)
     let pattern	= a:0 >= 2 ? a:2 : '\\def\|\\newcommand'
     " Not implemeted
     let preambule_only= a:bang == "!" ? 0 : 1
-    let only_begining	= a:0 >= 3 ? a:3 : 0
+    let only_begining	= a:0 >= 3 ? a:3 : "0"
 
     if a:bang == "!" || !exists("b:TreeOfFiles")
 	 " Update the cached values:
 	 let [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ] = TreeOfFiles(atp_MainFile)
     endif
     let [ Tree, List, Type_Dict, Level_Dict ] = deepcopy([ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ])
+
+    let defi_dict = {}
  
 python << ENDPYTHON
-import re, subprocess, os, glob
+import re
+import subprocess
+import os
+import glob
+from atplib.atpvim import readlines
+from atplib.search import newcmd_pattern as pattern
+
 
 def preambule_end(file):
-# find linenr where preambule ends,
+    """find linenr where preambule ends,
 
-# file is list of lines
+    file is list of lines"""
     nr=1
     for line in file:
-        if re.search('\\\\begin\s*{\s*document\s*}', line):
+        if re.search(r'\\begin\s*{\s*document\s*}', line):
             return nr
         nr+=1
     return 0
 
-pattern=vim.eval("pattern")
 type_dict=vim.eval("b:TypeDict")
 main_file=vim.eval("atp_MainFile")
 if int(vim.eval("preambule_only")) != 0:
@@ -132,65 +139,134 @@ if int(vim.eval("preambule_only")) != 0:
     for f in type_dict.keys():
         if type_dict[f] == "preambule":
             files.append(f)
-    main_file_ob=open(main_file, 'r')
-    main_file_l=main_file_ob.read().split("\n")
-    main_file_ob.close()
+    with open(main_file) as sock:
+	main_file_l=sock.read().splitlines()
     preambule_end=preambule_end(main_file_l)
 else:
     preambule_only=False
     files=[main_file]
     files.extend(vim.eval("b:ListOfFiles"))
-if vim.eval("only_begining") != "0":
-    only_begining=True
+
+only_begining = (vim.eval("only_begining") != "0")
+
+if hasattr(vim, 'bindeval'):
+    defi_dict = vim.bindeval("defi_dict")
 else:
-    only_begining=False
-def isnonempty(string):
-    if str(string) == "":
-        return False
-    else:
-        return True
+    defi_dict = {}
 
-if pattern == "":
-    pat=".*"
-else:
-    pat=pattern
-
-# Does the no comment work?
-pattern=re.compile('^(?:[^%]|\\\\%)*(?:\\\\def|\\\\(?:re)?newcommand\s*{|\\\\providecommand\s*{|\\\\(?:re)?newenvironment\s*{|\\\\(?:re)?newtheorem\s*{|\\\\definecolor\s*{)')
-
-defi_dict={}
-for file in files:
-    defi_dict[file]=[]
+for fname in files:
+    defi_dict[fname]=[]
     lnr=1
-    file_ob=open(file, 'r')
-    file_l=file_ob.read().split("\n")
-    file_ob.close()
-    while lnr <= len(file_l) and ( preambule_only and ( file == main_file and lnr <= preambule_end or file != main_file ) or not preambule_only):
+    file_l = readlines(fname)
+
+    while lnr <= len(file_l) and ( preambule_only and ( fname == main_file and lnr <= preambule_end or fname != main_file ) or not preambule_only):
         line=file_l[lnr-1]
         if re.search(pattern, line):
             # add: no search in comments.
-            b_lnr       = lnr
+            b_lnr = lnr
             if not only_begining:
-                _open       = len(re.findall("({)", line))
-                _close      = len(re.findall("(})", line))
+                _open  = len(re.findall("({)", line))
+                _close = len(re.findall("(})", line))
                 while _open != _close:
                     lnr+=1
-                    line     = file_l[lnr-1]
-                    _open   += len(re.findall("({)", line))
-                    _close  += len(re.findall("(})", line))
-                e_lnr        = lnr
-                defi_dict[file].append([ b_lnr, e_lnr ])
+                    line    = file_l[lnr-1]
+                    _open  += len(re.findall("({)", line))
+                    _close += len(re.findall("(})", line))
+                e_lnr = lnr
+                defi_dict[fname].extend([[b_lnr, e_lnr ]])
             else:
-                defi_dict[file].append([ b_lnr, b_lnr ])
-            lnr         += 1
+                defi_dict[fname].extend([[b_lnr, b_lnr ]])
+            lnr += 1
         else:
-            lnr+=1
-vim.command("let s:defi_dict_py="+str(defi_dict))
-vim.command("let g:defi_dict_py="+str(defi_dict))
+            lnr += 1
+
+if not hasattr(vim, 'bindeval'):
+    # There is no need of using json.dumps() here since the defi_dict has str
+    # type keys and list of intergers inside.
+    import json
+    vim.command("let defi_dict_py=%s" % json.dumps(defi_dict))
 ENDPYTHON
-return s:defi_dict_py
+return defi_dict
 endfunction
 "}}}
+function! atplib#search#GlobalDefi(command) "{{{
+    " This function behaves like gD, but descends to included files.
+    " a:cmd   - cmd which definition we are searching for
+if !has("python")
+    return
+endif
+python << EOF
+import vim
+import re
+import os
+from atplib.atpvim import readlines
+from atplib.search import scan_preambule
+from atplib.search import addext
+from atplib.search import kpsewhich_find
+from atplib.search import kpsewhich_path
+from atplib.search import newcmd_pattern as pattern
+
+cur_line = vim.eval('line(".")')
+cur_file = vim.eval('atplib#FullPath(expand("%"))')
+command = vim.eval('a:command')
+mainfile = vim.eval('atplib#FullPath(b:atp_MainFile)')
+if scan_preambule(mainfile, re.compile(r'\\usepackage{[^}]*\bsubfiles\b')):
+    pat_str = r'^[^%]*(?:\\input\s+([\w_\-\.]*)|\\(?:input|include(?:only)?|subfile)\s*{([^}]*)})'
+    inclpat = re.compile(pat_str)
+else:
+    pat_str = r'^[^%]*(?:\\input\s+([\w_\-\.]*)|\\(?:input|include(?:only)?)\s*{([^}]*)})'
+    inclpat = re.compile(pat_str)
+
+tex_path=kpsewhich_path('tex')
+relative_path = vim.eval('g:atp_RelativePath')
+project_dir = vim.eval('b:atp_ProjectDir')
+
+def scan_file(fname, command, pattern=pattern):
+    linenr = 0
+    flines = readlines(fname)
+    for line in flines:
+        linenr += 1
+        matches = re.findall(inclpat, line)
+        if len(matches) > 0:
+            for match in matches:
+                for m in match:
+                    if str(m) != "":
+                        m=addext(m, "tex")
+                        if not os.access(m, os.F_OK):
+                            try:
+                                m=kpsewhich_find(m, tex_path)[0]
+                            except IndexError:
+                                pass
+                        (ffile, linenr, col) = scan_file(m, command, pattern)
+                        if ffile:
+                            return (ffile, linenr, col)
+        match = re.search(pattern, line)
+        if match:
+            if match.group(1) == command:
+                col = match.start(1)+1
+                return (fname, linenr, col)
+    else:
+        return ("", 0, 0)
+    if os.path.abspath(fname) == os.path.abspath(cur_file) and linenr > cur_line:
+        return ("", 0, 0)
+
+
+(ffile, line, col) = scan_file(mainfile, command, pattern)
+vim.command("let ffile='%s'" % ffile)
+vim.command(" let line=%d" % line)
+vim.command(" let col=%d" % col)
+EOF
+if !empty(ffile)
+    let bufnr = bufnr(ffile)
+    if bufnr != -1 && buflisted(bufnr)
+        exe "b ".bufnr
+        call setpos(".", [0, line, col, 0])
+    else
+        exe "edit +".line." ".ffile
+        call setpos(".", [0, line, col, 0])
+    endif
+endif
+endfunction "}}}
 
 "{{{ atplib#search#LocalCommands_vim 
 " a:1 = pattern
@@ -316,62 +392,54 @@ function! atplib#search#LocalCommands_py(write, ...)
 	     endif
 	 endif
      endfor
+let atp_LocalCommands = []
+let atp_LocalColors = []
+let atp_LocalEnvironments = []
 python << END
-import re, vim, os.path
+import re
+import vim
+import os.path
+from atplib.atpvim import readlines
 
-def bufnumber(file):
-    for buffer in vim.buffers:
-        # This requires that we are in the directory of the main tex file,
-        # and the directory is changed in the vim script above.
-        if buffer.name == os.path.abspath(file):
-            return buffer.number
-    for buffer in vim.buffers:
-	try:
-            if os.path.basename(buffer.name) == file:
-                return buffer.number
-        except:
-            pass
-    return 0
-
-pattern=re.compile('\s*(?:\\\\(?P<def>def)(?P<def_c>\\\\[^#{]*)|(?:\\\\(?P<nc>newcommand)|\\\\(?P<env>newenvironment)|\\\\(?P<nt>newtheorem\*?)|\\\\(?P<col>definecolor)|\\\\(?P<dec>Declare)(?:RobustCommand|FixedFont|TextFontCommand|MathVersion|SymbolFontAlphabet|MathSymbol|MathDelimiter|MathAccent|MathRadical|MathOperator)\s*{|\\\\(?P<sma>SetMathAlphabet))\s*{(?P<arg>[^}]*)})')
+pattern=re.compile(r'\s*(?:\\(?P<def>def)(?P<def_c>\\[^#{]*)|(?:\\(?P<nc>newcommand)|\\(?P<env>newenvironment)|\\(?P<nt>newtheorem\*?)|\\(?P<col>definecolor)|\\(?P<dec>Declare)(?:RobustCommand|FixedFont|TextFontCommand|MathVersion|SymbolFontAlphabet|MathSymbol|MathDelimiter|MathAccent|MathRadical|MathOperator)\s*{|\\(?P<sma>SetMathAlphabet))\s*{(?P<arg>[^}]*)})')
 
 files=[vim.eval("atp_MainFile")]+vim.eval("files")
-localcommands   =[]
-localcolors     =[]
-localenvs       =[]
-for file in files:
+localcommands = []
+localcolors = []
+localenvs  = []
+for fname in files:
     lnr=1
-    bufnr = bufnumber(file)
-    if os.path.exists(file) or bufnr in vim.buffers:
-        try:
-            if bufnr in vim.buffers:
-                file_l = vim.buffers[bufnr]
-            else:
-                file_ob=open(file, 'r')
-                file_l=file_ob.read().split("\n")
-                file_ob.close()
-            for line in file_l:
-                m=re.match(pattern, line)
-                if m:
-                    if m.group('def'):
-                        if re.search('\\\\def\\\\\w+#[1-9]', line):
-                            localcommands.append(m.group('def_c')+'{')
-                        else:
-                            localcommands.append(m.group('def_c'))
-                    elif m.group('nc') or m.group('dec') or m.group('sma'):
-                        if re.search('\\\\newcommand\s*{[^}]*}\s*\[[1-9]\]\s*{', line):
-                            localcommands.append(m.group('arg')+'{')
-                        else:
-                            localcommands.append(m.group('arg'))
-                    elif m.group('nt') or m.group('env'):
-                        localenvs.append(m.group('arg'))
-                    elif m.group('col'):
-                        localcolors.append(m.group('arg'))
-        except IOError:
-            pass
-vim.command("let atp_LocalCommands="+str(localcommands))
-vim.command("let atp_LocalEnvironments="+str(localenvs))
-vim.command("let atp_LocalColors="+str(localcolors))
+    file_l = readlines(fname)
+    for line in file_l:
+        m=re.match(pattern, line)
+        if m:
+            if m.group('def'):
+                if re.search(r'\\def\\\w+#[1-9]', line):
+                    localcommands.append(m.group('def_c')+'{')
+                else:
+                    localcommands.append(m.group('def_c'))
+            elif m.group('nc') or m.group('dec') or m.group('sma'):
+                if re.search(r'\\newcommand\s*{[^}]*}\s*\[[1-9]\]\s*{', line):
+                    localcommands.append(m.group('arg')+'{')
+                else:
+                    localcommands.append(m.group('arg'))
+            elif m.group('nt') or m.group('env'):
+                localenvs.append(m.group('arg'))
+            elif m.group('col'):
+                localcolors.append(m.group('arg'))
+
+if hasattr(vim, 'bindeval'):
+    cmds = vim.bindeval('atp_LocalCommands')
+    cmds.extend(localcommands)
+    envs = vim.bindeval('atp_LocalEnvironments')
+    envs.extend(localenvs)
+    cols = vim.bindeval('atp_LocalColors')
+    cols.extend(localcolors)
+else:
+    import json
+    vim.command("let atp_LocalCommands=%s" % json.dumps(localcommands))
+    vim.command("let atp_LocalEnvironments=%s" % json.dumps(localenvs))
+    vim.command("let atp_LocalColors=%s" % json.dumps(localcolors))
 END
 if exists("atp_LocalCommands")
     let b:atp_LocalCommands=map(atp_LocalCommands, 'substitute(v:val, ''\\\\'', ''\'', '''')')
@@ -488,7 +556,7 @@ function! atplib#search#Dsearch(bang,...)
 	    if a:bang == "!"
 		echomsg "[ATP:] definition not found."
 	    else
-		echomsg "[ATP:] definition not found in the preambule, try with a bang ! to search beyond."
+		echomsg "[ATP:] definition not found in the preambule, try [D or :Dsearch! to search beyond."
 	    endif
 	    echohl None
 	    return
@@ -518,7 +586,7 @@ function! atplib#search#Dsearch(bang,...)
 	setl readonly
 	map <buffer> <silent> q	:bd<CR>
 	" Place signs:
-	if has("signs")
+	if has("signs") && len(signs) > 1
 	    sign unplace *
 	    for i in range(0,len(signs)-1)
 		try
@@ -1381,9 +1449,12 @@ function! atplib#search#GetSearchArgs(Arg,flags)
     return [ pattern, flag ]
 endfunction
 "}}}
-" {{{ Search()
+" {{{ atplib#search#Search()
 try
 function! atplib#search#Search(Bang, Arg)
+
+    "Like :s, :S should be a jump-motion (see :help jump-motions)
+    normal! m`
 
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
     let [ pattern, flag ] = atplib#search#GetSearchArgs(a:Arg, 'bceswWx')
@@ -1610,7 +1681,7 @@ function! atplib#search#KpsewhichFindFile(format, name, ...)
     let l:count	= a:0 >= 2 ? a:2 : 0
     let modifiers = a:0 >= 3 ? a:3 : ""
     " This takes most of the time!
-    if path == ""
+    if !path
 	let path	= substitute(substitute(system("kpsewhich -show-path ".a:format ),'!!','','g'),'\/\/\+','\/','g')
 	let path	= substitute(path,':\|\n',',','g')
 	let path_list	= split(path, ',')
@@ -1640,15 +1711,30 @@ function! atplib#search#KpsewhichFindFile(format, name, ...)
 	let path	= join(path_list, ',')
     endif
 
+    let g:name = a:name
+    let g:path = path
+    let g:count = l:count
+
     if l:count >= 1
-	let result	= findfile(a:name, path, l:count)
+	if has("python")
+	    let result	= atplib#search#findfile(a:name, path, l:count)
+	else
+	    let result	= findfile(a:name, path, l:count)
+	endif
     elseif l:count == 0
-	let result	= findfile(a:name, path)
+	if has("python")
+	    let result	= atplib#search#findfile(a:name, path)
+	else
+	    let result	= findfile(a:name, path)
+	endif
     elseif l:count < 0
-	let result	= findfile(a:name, path, -1)
+	if has("python")
+	    let result	= atplib#search#findfile(a:name, path, -1)
+	else
+	    let result	= findfile(a:name, path, -1)
+	endif
     endif
 	
-
     if l:count >= 0 && modifiers != ""
 	let result	= fnamemodify(result, modifiers) 
     elseif l:count < 0 && modifiers != ""
@@ -1659,6 +1745,37 @@ function! atplib#search#KpsewhichFindFile(format, name, ...)
     return result
 endfunction
 " }}}1
+" {{{1 atplib#search#findfile
+function! atplib#search#findfile(fname, ...)
+" Python implementation of the vim findfile() function.
+let time = reltime()
+let path = ( a:0 >= 1 ? a:1 : &l:path )
+let l:count = ( a:0 >= 2 ? a:2 : 1 )
+python << EOF
+import vim
+import os.path
+import glob
+import json
+
+path=vim.eval("path")
+fname=vim.eval("a:fname")
+file_list = []
+for p in path.split(","):
+    if len(p) >= 2 and p[-2:] == "**":
+	file_list.extend(glob.glob(os.path.join( p[:-2], fname )))
+    file_list.extend(glob.glob(os.path.join( p, fname )))
+
+vim.command("let file_list=%s" % json.dumps(file_list))
+EOF
+if l:count == -1
+    return file_list
+elseif l:count <= len(file_list)
+    return file_list[l:count-1]
+else
+    return ""
+endif
+endfunction
+"}}}1
 
 " atplib#search#SearchPackage {{{1
 "
@@ -2107,104 +2224,68 @@ function! atplib#search#TreeOfFiles_vim(main_file,...)
 endfunction "}}}
 " atplib#search#TreeOfFiles_py "{{{
 function! atplib#search#TreeOfFiles_py(main_file)
+
+let b:TreeOfFiles = {}
+let b:ListOfFiles = []
+let b:TypeDict = {}
+let b:LevelDict = {}
+
 let time=reltime()
 python << END_PYTHON
-import vim, re, subprocess, os, glob
+import vim
+import re
+import subprocess
+import os
+import glob
+import json
+from atplib.search import scan_preambule
+from atplib.search import addext
+from atplib.search import kpsewhich_find
+from atplib.search import kpsewhich_path
 
-filename=vim.eval('a:main_file')
-relative_path=vim.eval('g:atp_RelativePath')
-project_dir=vim.eval('b:atp_ProjectDir')
+filename = vim.eval('a:main_file')
+relative_path = vim.eval('g:atp_RelativePath')
+project_dir = vim.eval('b:atp_ProjectDir')
 
 def vim_remote_expr(servername, expr):
-# Send <expr> to vim server,
+    """Send <expr> to vim server,
 
-# expr must be well quoted:
-#       vim_remote_expr('GVIM', "atplib#callback#TexReturnCode()")
+    expr must be well quoted:
+          vim_remote_expr('GVIM', "atplib#callback#TexReturnCode()")"""
     cmd=[options.progname, '--servername', servername, '--remote-expr', expr]
     subprocess.Popen(cmd, stdout=subprocess.PIPE).wait()
 
-def isnonempty(string):
-    if str(string) == "":
-        return False
-    else:
-        return True
-
-def scan_preambule(file, pattern):
-# scan_preambule for a pattern
-
-# file is list of lines
-    for line in file:
-        ret=re.search(pattern, line)
-        if ret:
-            return True
-        elif re.search('\\\\begin\s*{\s*document\s*}', line):
-            return False
-    return False
-
 def preambule_end(file):
-# find linenr where preambule ends,
+    """Find linenr where preambule ends,
 
-# file is list of lines
+    file is list of lines."""
     nr=1
     for line in file:
-        if re.search('\\\\begin\s*{\s*document\s*}', line):
+        if re.search(r'\\begin\s*{\s*document\s*}', line):
             return nr
         nr+=1
     return 0
 
-def addext(string, ext):
-# the pattern is not matching .tex extension read from file.
-    if not re.search("\."+ext+"$", string):
-        return string+"."+ext
-    else:
-        return string
-
-def kpsewhich_path(format):
-# find fname of format in path given by kpsewhich,
-
-    kpsewhich=subprocess.Popen(['kpsewhich', '-show-path', format], stdout=subprocess.PIPE)
-    kpsewhich.wait()
-    path=kpsewhich.stdout.read()
-    path=re.sub("!!", "",path)
-    path=re.sub("\/\/+", "/", path)
-    path=re.sub("\n", "",path)
-    path_list=path.split(":")
-    return path_list
-
-def kpsewhich_find(file, path_list):
-    results=[]
-    for path in path_list:
-        found=glob.glob(os.path.join(path, file))
-        results.extend(found)
-        found=glob.glob(os.path.join(path, file))
-        results.extend(found)
-    return results
-
 def bufnumber(file):
+
     cdir = os.path.abspath(os.curdir)
     os.chdir(project_dir)
-    for buffer in vim.buffers:
+    for buf in vim.buffers:
         # This requires that we are in the directory of the main tex file:
-        try:
-            if buffer.name == os.path.abspath(file):
-                os.chdir(cdir)
-                return buffer.number
-        except:
-            pass
-    for buffer in vim.buffers:
-        try:
-            if os.path.basename(buffer.name) == file:
-                os.chdir(cdir)
-                return buffer.number
-        except:
-            pass
+        if buf.name == os.path.abspath(file):
+            os.chdir(cdir)
+            return buf.number
+    for buf in vim.buffers:
+        if os.path.basename(buf.name) == file:
+            os.chdir(cdir)
+            return buf.number
     os.chdir(cdir)
     return 0
 
 def scan_file(file, fname, pattern, bibpattern):
-# scan file for a pattern, return all groups,
+    """Scan file for a pattern, return all groups,
 
-# file is a list of lines, 
+    file is a list of lines."""
     matches_d={}
     matches_l=[]
     nr = 0
@@ -2242,30 +2323,29 @@ def scan_file(file, fname, pattern, bibpattern):
     return [ matches_d, matches_l ]
 
 def tree(file, level, pattern, bibpattern):
-# files - list of file names to scan, 
+    """files - list of file names to scan,"""
 
     bufnr = bufnumber(file)
     if bufnr in vim.buffers:
         file_l = vim.buffers[bufnr]
     else:
         try:
-            file_ob = open(file, 'r')
+            with open(file) as fo:
+                file_l = fo.read().splitlines(False)
         except IOError:
-            if re.search('\.bib$', file):
+            if file.endswith('.bib'):
                 path=bib_path
             else:
                 path=tex_path
             try:
                 file=kpsewhich_find(file, path)[0]
-            except IndexError:
-                pass
-            try:
-                file_ob = open(file, 'r')
+                with open(file) as fo:
+                    file_l = fo.read().splitlines(False)
             except IOError:
                 return [ {}, [], {}, {} ]
-        file_l  = file_ob.read().split("\n")
-        file_ob.close()
-    [found, found_l] =scan_file(file_l, file, pattern, bibpattern)
+            except IndexError:
+                return [ {}, [], {}, {} ]
+    [found, found_l] = scan_file(file_l, file, pattern, bibpattern)
     t_list=[]
     t_level={}
     t_type={}
@@ -2273,50 +2353,62 @@ def tree(file, level, pattern, bibpattern):
     for item in found_l:
         t_list.append(item)
         t_level[item]=level
-        t_type[item]=found[item][3]
+        t_type[item]=(found[item][3]) # t_type values are ASCII
     i_list=[]
     for file in t_list:
-        if found[file][3]=="input":
+        if found[file][3] == "input":
             i_list.append(file)
     for file in i_list:
         [ n_tree, n_list, n_type, n_level ] = tree(file, level+1, pattern, bibpattern)
         for f in n_list:
             t_list.append(f)
-            t_type[f]   =n_type[f]
-            t_level[f]  =n_level[f]
-        t_tree[file]    = [ n_tree, found[file][2] ]
+            t_type[f] = (n_type[f])
+            t_level[f] = n_level[f]
+        t_tree[file] = [ n_tree, found[file][2] ]
     return [ t_tree, t_list, t_type, t_level ]
 
 try:
-    mainfile_ob = open(filename, 'r')
-    mainfile    = mainfile_ob.read().split("\n")
-    mainfile_ob.close()
-    if scan_preambule(mainfile, re.compile('\\\\usepackage\s*{\s*subfiles\s*}')):
-	pat_str='^[^%]*(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?|subfile)\s*{([^}]*)})'
-	pattern=re.compile(pat_str)
+    with open(filename) as sock:
+        mainfile = sock.read().splitlines(False)
+except IOError:
+    [ tree_of_files, list_of_files, type_dict, level_dict]= [ {}, [], {}, {} ]
+else:
+    if scan_preambule(mainfile, re.compile(r'\\usepackage{[^}]*\bsubfiles\b')):
+        pat_str = r'^[^%]*(?:\\input\s+([\w_\-\.]*)|\\(?:input|include(?:only)?|subfile)\s*{([^}]*)})'
+        pattern = re.compile(pat_str)
     else:
-	pat_str='^[^%]*(?:\\\\input\s+([\w_\-\.]*)|\\\\(?:input|include(?:only)?)\s*{([^}]*)})'
-	pattern=re.compile(pat_str)
+        pat_str = r'^[^%]*(?:\\input\s+([\w_\-\.]*)|\\(?:input|include(?:only)?)\s*{([^}]*)})'
+        pattern = re.compile(pat_str)
 
-    bibpattern=re.compile('^[^%]*\\\\(?:bibliography|addbibresource|addsectionbib(?:\s*\[.*\])?|addglobalbib(?:\s*\[.*\])?)\s*{([^}]*)}')
+    bibpattern=re.compile(r'^[^%]*\\(?:bibliography|addbibresource|addsectionbib(?:\s*\[.*\])?|addglobalbib(?:\s*\[.*\])?)\s*{([^}]*)}')
 
     bib_path=kpsewhich_path('bib')
     tex_path=kpsewhich_path('tex')
     preambule_end=preambule_end(mainfile)
 
-# Make TreeOfFiles:
-    [ tree_of_files, list_of_files, type_dict, level_dict]= tree(filename, 1, pattern, bibpattern)
-    vim.command("let b:TreeOfFiles="+str(tree_of_files))
-    vim.command("let b:ListOfFiles="+str(list_of_files))
-    vim.command("let b:TypeDict="+str(type_dict))
-    vim.command("let b:LevelDict="+str(level_dict))
-except IOError:
-    vim.command("let b:TreeOfFiles={}")
-    vim.command("let b:ListOfFiles=[]")
-    vim.command("let b:TypeDict={}")
-    vim.command("let b:LevelDict={}")
+    [ tree_of_files, list_of_files, type_dict, level_dict] = tree(filename, 1, pattern, bibpattern)
+
+if hasattr(vim, 'bindeval'):
+    def copy_dict(from_dict, to_dict):
+        for key in from_dict.iterkeys():
+            to_dict[str(key)] = from_dict[key]
+    TreeOfFiles = vim.bindeval('b:TreeOfFiles')
+    copy_dict(tree_of_files, TreeOfFiles)
+    ListOfFiles = vim.bindeval('b:ListOfFiles')
+    ListOfFiles.extend(list_of_files)
+    TypeDict = vim.bindeval('b:TypeDict')
+    copy_dict(type_dict, TypeDict)
+    LevelDict = vim.bindeval('b:LevelDict')
+    copy_dict(level_dict, LevelDict)
+else:
+    vim.command("let b:TreeOfFiles=%s"  % json.dumps(tree_of_files))
+    vim.command("let b:ListOfFiles=%s"  % json.dumps(list_of_files))
+    vim.command("let b:TypeDict=%s"     % json.dumps(type_dict))
+    vim.command("let b:LevelDict=%s"    % json.dumps(level_dict))
 END_PYTHON
 let g:time_TreeOfFiles_py=reltimestr(reltime(time))
+
+return [ b:TreeOfFiles, b:ListOfFiles, b:TypeDict, b:LevelDict ]
 endfunction
 "}}}
 

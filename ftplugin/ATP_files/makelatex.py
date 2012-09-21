@@ -16,6 +16,8 @@
 
 import shutil, os.path, re, optparse, subprocess, traceback, psutil
 import tempfile, os, atexit, sys
+import locale
+encoding = locale.getpreferredencoding()
 
 import latex_log
 
@@ -164,29 +166,25 @@ run   = 0
 bound = 6
 
 # FUNCTIONS
-
 def vim_remote_expr(servername, expr):
-    # Send <expr> to vim server,
+    """Send <expr> to vim server,
 
-    # expr must be well quoted:
-    #       vim_remote_expr('GVIM', "atplib#CatchStatus()")
-    # (this is the only way it works)
-    #     print("VIM_REMOTE_EXPR "+str(expr))
+    expr must be well quoted:
+          vim_remote_expr('GVIM', "atplib#CatchStatus()")
+    (this is the only way it works)
+        print("VIM_REMOTE_EXPR "+str(expr))"""
     if not options.callback:
         return
     cmd=[progname, '--servername', servername, '--remote-expr', expr]
     try:
-        devnull=open(os.devnull, "w+")
+        with open(os.devnull, "w+") as fsock:
+            subprocess.Popen(cmd, stdout=fsock, stderr=subprocess.STDOUT).wait()
     except IOError:
         print("IOError: cannot open os.devnull")
         sys.exit(1)
-    else:
-        subprocess.Popen(cmd, stdout=devnull, stderr=subprocess.STDOUT).wait()
-    finally:
-        devnull.close()
 
 def latex_progress_bar(cmd):
-    # Run latex and send data for progress bar,
+    """Run latex and send data for progress bar,"""
 
     debug_file.write("RUN "+str(run)+" CMD"+str(cmd)+"\n")
 
@@ -220,17 +218,18 @@ def latex_progress_bar(cmd):
     return child
 
 def xpdf_server_file_dict():
-    # Make dictionary of the type { xpdf_servername : [ file, xpdf_pid ] },
+    """Make dictionary of the type { xpdf_servername : [ file, xpdf_pid ] },
 
-    # to test if the server host file use:
-    # basename(xpdf_server_file_dict().get(server, ['_no_file_'])[0]) == basename(file)
-    # this dictionary always contains the full path (Linux).
-    # TODO: this is not working as I want to:
-    #    when the xpdf was opened first without a file it is not visible in the command line
-    #    I can use 'xpdf -remote <server> -exec "run('echo %f')"'
-    #    where get_filename is a simple program which returns the filename. 
-    #    Then if the file matches I can just reload, if not I can use:
-    #          xpdf -remote <server> -exec "openFile(file)"
+    to test if the server host file use:
+    basename(xpdf_server_file_dict().get(server, ['_no_file_'])[0]) == basename(file)
+    this dictionary always contains the full path (Linux).
+    TODO: this is not working as I want to:
+       when the xpdf was opened first without a file it is not visible in the command line
+       I can use 'xpdf -remote <server> -exec "run('echo %f')"'
+       where get_filename is a simple program which returns the filename. 
+       Then if the file matches I can just reload, if not I can use:
+             xpdf -remote <server> -exec "openFile(file)"
+     """
     ps_list=psutil.get_pid_list()
     server_file_dict={}
     for pr in ps_list:
@@ -251,21 +250,20 @@ def xpdf_server_file_dict():
     return server_file_dict
 
 def reload_xpdf():
-    # Reload xpdf if asked,
+    """Reload xpdf if asked,"""
 
     if re.search(viewer, '^\s*xpdf\e') and reload_viewer:
         cond=xpdf_server_file_dict().get(XpdfServer, ['_no_file_']) != ['_no_file_']
         if cond and ( reload_on_error or latex.returncode == 0 or bang ):
             debug_file.write("reloading Xpdf\n")
             cmd=['xpdf', '-remote', XpdfServer, '-reload']
-            devnull=open(os.devnull, "w+")
-            subprocess.Popen(cmd, stdout=devnull, stderr=subprocess.STDOUT)
-            devnull.close()
+            with open(os.devnull, "w+") as devnull:
+                subprocess.Popen(cmd, stdout=devnull, stderr=subprocess.STDOUT)
 
 def copy_back_output(tmpdir):
-    # Copy pdf(dvi) and (aux) files back to working directory,
+    """Copy pdf(dvi) and (aux) files back to working directory,
 
-    # aux file is copied also to _aux file used by ATP.
+    aux file is copied also to _aux file used by ATP."""
     os.chdir(tmpdir)
     if os.path.exists(basename+output_ext):
         shutil.copy(basename+output_ext, texfile_dir)
@@ -343,12 +341,12 @@ try:
 
         need_runs = [0]
 
-        if sys.version_info < (3, 0):
-            log_file  = open(tmplog, "r")
+        if sys.version_info.major < 3:
+            with open(tmplog, "r") as log_file:
+                log = log_file.read().decode(encoding, errors='replace')
         else:
-            log_file  = open(tmplog, "r", errors="replace")
-        log       = log_file.read()
-        log_file.close()
+            with open(tmplog, "r", enconding=encoding, errors="replace") as log_file:
+                log = log_file.read()
         log_list=re.findall('(undefined references)|(Citations undefined)|(There were undefined citations)|(Label\(s\) may have changed)|(Writing index file)|(run Biber on the file)',log)
         citations       =False
         labels          =False
@@ -407,32 +405,32 @@ try:
         thmfile_readable = os.path.isfile(thmfile)
 
         try:
-            if sys.version_info < (3, 0):
-                aux_file=open(tmpaux, "r")
+            if sys.version_info.major < 3:
+                with open(tmpaux, "r") as aux_file:
+                    aux=aux_file.read().decode(encoding, errors="replace")
             else:
-                aux_file=open(tmpaux, "r", errors="replace")
-            aux=aux_file.read()
-            aux_file.close()
+                with open(tmpaux, "r", encondig=encoding, errors="replace") as aux_file:
+                    aux=aux_file.read()
         except IOError:
             aux=""
-            pass
         bibtex=re.search('\\\\bibdata\s*{', aux)
         # This can be used to make it faster and use the old bbl file.
         # For this I have add a switch (bang).
         #         bibtex=re.search('No file '+basename+'\.bbl\.', log)
         if not bibtex:
             # Then search for biblatex package. Alternatively, I can search for biblatex messages in log file.
-            if sys.version_info < (3, 0):
-                texfile_ob = open(texfile, 'r')
+            if sys.version_info.major < 3:
+                with open(texfile, 'r') as sock:
+                    tex_lines = sock.read().decode(encoding=encoding, errors="replace").split("\n")
             else:
-                texfile_ob = open(texfile, 'r', errors='replace')
-            for line in texfile_ob:
+                with open(texfile, 'r', encoding=encoding, errors="replace") as sock:
+                    tex_lines = sock.read().split("\n")
+            for line in tex_lines:
                 if re.match('[^%]*\\\\usepackage\s*(\[[^]]*\])?\s*{(\w\|,)*biblatex',line):
                     bibtex=True
                     break
                 elif re.search('\\\\begin\s*{\s*document\s*}',line):
                     break
-            texfile_ob.close()
         debug_file.write("BIBTEX="+str(bibtex)+"\n")
 
         # I have to take the second condtion (this is the first one):
@@ -488,15 +486,14 @@ try:
 
             #CONDITION
             try:
-                if sys.version_info < (3, 0):
-                    log_file=open(tmplog, "r")
+                if sys.version_info.major < 3:
+                    with open(tmplog, "r") as sock:
+                        log=sock.read().decode(encoding, errors='replace')
                 else:
-                    log_file=open(tmplog, "r", errors="replace")
-                log=log_file.read()
-                log_file.close()
+                    with open(tmplog, "r", errors="replace") as sock:
+                        log=sock.read()
             except IOError:
                 log=""
-                pass
 
             # Citations undefined|Label(s) may have changed
             log_list=re.findall('(undefined references)|(Citations undefined)|(Label\(s\) may have changed)',log)
@@ -533,9 +530,8 @@ try:
             run=[viewer]
             run.extend(viewer_opt)
             run.append(output_fp)
-            devnull=open(os.devnull, "w+")
-            subprocess.Popen(run, stdout=devnull, stderr=subprocess.STDOUT)
-            devnull.close()
+            with open(os.devnull, "w+") as devnull:
+                subprocess.Popen(run, stdout=devnull, stderr=subprocess.STDOUT)
         if start == 2:
             debug_file.write("SyncTex with "+str(viewer))
             vim_remote_expr(servername, "atplib#SyncTex()")

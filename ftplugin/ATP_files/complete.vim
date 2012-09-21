@@ -2,7 +2,7 @@
 " Description: 	This file contains all the options and functions for completion.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Sat Mar 03, 2012 at 15:58:17  +0000
+" Last Change: Mon Sep 03, 2012 at 19:01:07  +0100
 
 " Todo: biblatex.sty (recursive search for commands contains strange command \i}.
 
@@ -149,7 +149,7 @@ endif
 	\ "\hfil", "\\hfill", "\\hspace","\\hline", 
 	\ "\\large", "\\Large", "\\LARGE", "\\huge", "\\HUGE",
 	\ "\\underline{", 
-	\ "\\usefont{", "\\fontsize{", "\\selectfont", "\\fontencoding{", "\\fontfamiliy{", "\\fontseries{", "\\fontshape{",
+	\ "\\usefont{", "\\fontsize{", "\\selectfont", "\\fontencoding{", "\\fontfamily{", "\\fontseries{", "\\fontshape{",
 	\ "\\familydefault", 
 	\ "\\rmdefault", "\\sfdefault", "\\ttdefault", "\\bfdefault", "\\mddefault", "\\itdefault",
 	\ "\\sldefault", "\\scdefault", "\\updefault",  "\\renewcommand{", "\\newcommand{",
@@ -186,7 +186,7 @@ endif
 	\ "\\topmargin", "\\oddsidemargin", "\\evensidemargin", "\\headheight", "\\headsep", 
 	\ "\\textwidth", "\\textheight", "\\marginparwidth", "\\marginparsep", "\\marginparpush", "\\footskip", "\\hoffset",
 	\ "\\voffset", "\\parindent", "\\paperwidth", "\\paperheight", "\\columnsep", "\\columnseprule", 
-	\ "\\theequation", "\\thepage", "\\usetikzlibrary{",
+	\ "\\theequation", "\\thepage", "\\usetikzlibrary{", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle",
 	\ "\\tableofcontents", "\\newfont{", "\\phantom{", "\\DeclareMathOperator",
 	\ "\\DeclareRobustCommand", "\\DeclareFixedFont", "\\DeclareMathSymbol", 
 	\ "\\DeclareTextFontCommand", "\\DeclareMathVersion", "\\DeclareSymbolFontAlphabet",
@@ -198,7 +198,8 @@ endif
 	\ "\\frenchspacing", "\\nonfrenchspacing", "\\binoppenalty", "\\exhyphenpenalty", 
 	\ "\\displaywindowpenalty", "\\floatingpenalty", "\\interlinepenalty", "\\lastpenalty",
 	\ "\\linepenalty", "\\outputpenalty", "\\penalty", "\\postdisplaypenalty", "\\predisplaypenalty", 
-	\ "\\repenalty", "\\unpenalty" ]
+	\ "\\repenalty", "\\unpenalty", "\\everymath", "\\DeclareMathSizes{",
+	\ "\\abovedisplayskip", "\\belowdisplayskip", "\\abovedisplayshortskip", "\\belowdisplayshortskip", ]
 	
 	let g:atp_picture_commands=[ "\\put", "\\circle", "\\dashbox", "\\frame{", 
 		    \"\\framebox(", "\\line(", "\\linethickness{",
@@ -257,10 +258,13 @@ endif
 	\ "\\langle", "\\rangle", "\\Diamond", "\\lgroup", "\\rgroup", "\\propto", "\\Join", "\\div", 
 	\ "\\land", "\\star", "\\uplus", "\\leadsto", "\\rbrack", "\\lbrack", "\\mho", 
 	\ "\\diamondsuit", "\\heartsuit", "\\clubsuit", "\\spadesuit", "\\top", "\\ell", 
-	\ "\\imath", "\\jmath", "\\wp", "\\Im", "\\Re", "\\prime", "\\ll", "\\gg", "\\Nabla" ]
+	\ "\\imath", "\\jmath", "\\wp", "\\Im", "\\Re", "\\prime", "\\ll", "\\gg", "\\Nabla", ]
 
-	let g:atp_math_commands_PRE=[ "\\diagdown", "\\diagup", "\\subset", "\\subseteq", "\\supset", "\\supsetneq",
-		    \ "\\sharp", "\\underline{", "\\underbrace{",  ]
+	let g:atp_math_commands_PRE=[  
+		    \ "\\diagdown", "\\diagup", 
+		    \ "\\subset", "\\subseteq", 
+		    \ "\\supset", "\\supseteq", "\\sharp", 
+		    \ "\\underline{", "\\underbrace{",  ] " THEY ARE NOT REALLY AT THE BEGINING.
 
 	let g:atp_greek_letters = ['\alpha', '\beta', '\chi', '\delta', '\epsilon', '\phi', '\gamma', '\eta', '\iota', '\kappa', '\lambda', '\mu', '\nu', '\theta', '\pi', '\rho', '\sigma', '\tau', '\upsilon', '\vartheta', '\xi', '\psi', '\zeta', '\Delta', '\Phi', '\Gamma', '\Lambda', '\Mu', '\Theta', '\Pi', '\Sigma', '\Tau', '\Upsilon', '\Omega', '\Psi']
 
@@ -534,7 +538,6 @@ python << EOF
 import vim, re, subprocess, os.path
 package = vim.eval("a:package_name")
 
-
 # Pattern to find declared options:
 option_pat = re.compile('\\\\(?:KOMA@|X)?Declare(?:Void|Local|(?:Bi)?Bool(?:ean)?|String|Standard|Switch|Type|Unicode|Entry|Bibliography|Caption|Complementary|Quote)?Option(?:Beamer)?X?\*?(?:<\w+>)?\s*(?:%\s*\n\s)?{((?:\w|\d|-|_|\*)+)}|\\\\Declare(?:Exclusive|Local|Void)?Options\*?\s*{((?:\n|[^}])+)}')
 # This adds \define@key{}{}[]{} command (keyval) but this might be used not only for package options:
@@ -607,12 +610,10 @@ def ScanPackage(package, o=True, c=True):
     package_file = Kpsewhich(package)
     # check the variable: @classoptionslist
     if package_file != '':
-        vim.command("let path='"+str(package_file)+"'")
+        vim.command("let path='%s'" % str(package_file))
         package_fo = open(package_file, 'r')
         package_f  = package_fo.read()
-        # vim.command("let self['file']="+decode(package_fo))
         package_fo.close()
-        # print(package_file)
         if o:
             # We can cut the package_f variable at \ProcessOptions:
             o_match = re.match('((?:.|\n)*)\\\\ProcessOptions', package_f)
@@ -667,16 +668,13 @@ def RecursiveSearch(package):
     global did_files
     i_files = RequiredPackage(Kpsewhich(package))
     did_files.append(package)
-    # print(input_files)
     re_commands_add = ScanPackage(package, o=False, c=True)[1]
     recursive_dict[package]=remove_duplicates(re_commands_add)
-    # print("re_commands_add="+str(re_commands_add))
     for c in re_commands_add:
 	if not c in re_commands:
             re_commands.append(c)
     for p in i_files:
 	if not p in did_files:
-            # print("rs: "+p)
             RecursiveSearch(p)
 
 
@@ -686,7 +684,8 @@ if vim.eval("recursive") == '0':
     [options, commands]=ScanPackage(package, o, c)
 else:
     RecursiveSearch(package)
-    vim.command("let recursive_dict="+str(recursive_dict))
+    import json
+    vim.command("let recursive_dict="+json.dmup(recursive_dict))
     commands = re_commands
     # print("re_commands="+str(re_commands))
     o = ( str(vim.eval("modes_dict['options']")) == '1' )

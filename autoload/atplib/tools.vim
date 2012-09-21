@@ -89,13 +89,13 @@ endfunction
 
 " Labels Tools: GrepAuxFile, SrotLabels, generatelabels and showlabes.
 " {{{1 LABELS
-" the argument should be: resolved full path to the file:
-" resove(fnamemodify(bufname("%"),":p"))
-
 " {{{2 --------------- atplib#tools#GrepAuxFile
 " This function searches in aux file (actually it tries first ._aux file,
 " made by compile.py - this is because compile.py is copying aux file only if
 " there are no errors (to not affect :Labels command)
+
+" The argument should be: resolved full path to the file:
+" resove(fnamemodify(bufname("%"),":p"))
 function! atplib#tools#GrepAuxFile(...)
     " Aux file to read:
 
@@ -144,6 +144,19 @@ function! atplib#tools#GrepAuxFile(...)
 	silent execute 'lvimgrep /\\newlabel\s*{/j ' . fnameescape(aux_filename)
     catch /E480:/
     endtry
+    if atplib#FullPath(b:atp_MainFile) != expand("%:p")
+	" if we are in the project file and one is useing the subfiles package
+	" search the 'local' aux file as well, but only if its time stamp is
+	" newer than the time stamp of the aux_filename
+	let local_base = expand("%:r")
+	let local_aux =  filereadable(local_base."._aux") ? local_base."._aux" : local_base.".aux"
+	if filereadable(local_aux) && getftime(local_aux) > getftime(aux_filename)
+	    try
+		silent execute 'lvimgrepadd /\\newlabel\s*{/j ' . fnameescape(local_aux)
+	    catch /E480:/
+	    endtry
+	endif
+    endif
     let loc_list	= getloclist(0)
     call setloclist(0, saved_llist)
     call map(loc_list, ' v:val["text"]')
@@ -323,21 +336,29 @@ function! atplib#tools#generatelabels(filename, ...)
     else
 " We should save all files before.
 " Using this python grep makes twice as fast.
+let loc_list = []
 python << EOF
-import vim, re
+import vim
+import re
+from atplib.atpvim import readlines
+
 files = vim.eval("InputFileList")
 loc_list = []
-for file in files:
-    file_o = open(file, 'r')
-    file_l = file_o.readlines()
-    file_o.close()
+for fname in files:
+    file_l = readlines(fname)
     lnr = 0
     for line in file_l:
         lnr += 1
 	matches = re.findall('^(?:[^%]*|\\\\%)\\\\label\s*{\s*([^}]*)\s*}', line)
 	for m in matches:
-            loc_list.append([ lnr, m, file])
-vim.command("let loc_list="+str(loc_list))
+            loc_list.append([ lnr, m, fname])
+
+if hasattr(vim, 'bindeval'):
+    llist = vim.bindeval('loc_list')
+    llist.extend(loc_list)
+else:
+    import json
+    vim.command("let loc_list=%s" % json.dumps(loc_list))
 EOF
 	endif
 

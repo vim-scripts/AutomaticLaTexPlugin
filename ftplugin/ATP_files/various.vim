@@ -2,7 +2,7 @@
 " Descriptiion:	These are various editting tools used in ATP.
 " Note:	       This file is a part of Automatic Tex Plugin for Vim.
 " Language:    tex
-" Last Change: Thu Apr 26, 2012 at 19:09:01  +0100
+" Last Change: Fri Aug 17, 2012 at 08:46:06  +0100
 
 let s:sourced 	= exists("s:sourced") ? 1 : 0
 "{{{ ATP_strlen()
@@ -427,7 +427,6 @@ command! -buffer 	ToggleStar   				:call atplib#various#ToggleStar()<CR>
 command! -buffer -nargs=? ToggleEnv	   			:call atplib#various#ToggleEnvironment(0, <f-args>)
 command! -buffer -nargs=* -complete=customlist,atplib#various#EnvCompletion ChangeEnv				:call atplib#various#ToggleEnvironment(1, <f-args>)
 command! -buffer -nargs=1 ChangeLabel				:call atplib#various#ChangeLabel(<q-args>)
-command! -buffer -nargs=* -complete=customlist,atplib#various#TeXdoc_complete TexDoc 	:call atplib#various#TexDoc(<f-args>)
 command! -buffer -bang 	Delete					:call atplib#various#Delete(<q-bang>)
 nmap <silent> <buffer>	 <Plug>Delete				:call atplib#various#Delete("")<CR>
 command! -buffer 	OpenLog					:call atplib#various#OpenLog()
@@ -458,4 +457,5 @@ command! -range  -bang	WordCount				:call atplib#various#ShowWordCount(<q-bang>,
 if has("unix") && g:atp_atpdev
     command! -nargs=? -complete=custom,atplib#various#DebugPrintComp DebugPrint	:call atplib#various#DebugPrint(<q-args>)
 endif 
+nmap <silent> <buffer> <Plug>FormatLines			:call atplib#various#FormatLines()<CR>
 " vim:fdm=marker:tw=85:ff=unix:noet:ts=8:sw=4:fdc=1

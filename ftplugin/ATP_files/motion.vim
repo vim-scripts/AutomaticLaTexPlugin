@@ -154,7 +154,7 @@ command! -buffer -nargs=1 -complete=custom,atplib#motion#CompleteDestinations Go
 command! -buffer -count=1 SkipCommentForward  	:call atplib#motion#SkipComment('fs', 'n', v:count1)
 command! -buffer -count=1 SkipCommentBackward 	:call atplib#motion#SkipComment('bs', 'n', v:count1)
 vmap <buffer> <Plug>SkipCommentForward	:call atplib#motion#SkipComment('fs', 'v', v:count1)<CR>
-vmap <buffer> <Plug>SkipCommentBackward	:call atplib#motion#SkipComment('bs', 'v', , v:count1, col("."))<CR>
+vmap <buffer> <Plug>SkipCommentBackward	:call atplib#motion#SkipComment('bs', 'v', v:count1)<CR>
 
 imap <Plug>TexSyntaxMotionForward	<Esc>:call atplib#motion#TexSyntaxMotion(1,1,1)<CR>a
 imap <Plug>TexSyntaxMotionBackward	<Esc>:call atplib#motion#TexSyntaxMotion(0,1,1)<CR>a

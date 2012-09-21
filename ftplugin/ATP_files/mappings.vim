@@ -2,7 +2,7 @@
 " Description:  This file contains mappings defined by ATP.
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Thu Apr 26, 2012 at 20:40:41  +0100
+" Last Change: Tue Sep 18, 2012 at 22:06:12  +0100
 
 " Add maps, unless the user didn't want them.
 if exists("g:no_plugin_maps") && g:no_plugin_maps ||
@@ -23,12 +23,10 @@ endif
 if g:atp_mapNn
     call atplib#search#ATP_ToggleNn(1,"on")
 endif
-
 " DICTIONARY MAP: {{{1
 if !hasmapto("<Plug>Dictionray")
     nmap <buffer> <silent> =d <Plug>Dictionary
 endif
-
 " REPLACE: {{{1 
 " Replace map (is not working -> use :Repace command)
 " if !g:atp_VimCompatible && !hasmapto("<Plug>Replace")
@@ -46,18 +44,18 @@ function! <SID>Replace(sid,...) "{{{2
     else
 	let char = a:1
     endif
-    let g:char = char
     let f_char = getline(line("."))[col(".")-1]
-    let g:f_char = f_char
-    if f_char =~ '^[(){}\[\]]$'
-	if f_char =~ '^[({\[]$'
+    if index([ '(', ')', '{', '}', '[', ']' ], f_char ) != -1
+	if index([ '(', '{', '[' ], f_char) != -1
 	    let bracket_dict = { '{' : '}',
 			\  '(' : ')',
-			\  '[' : ']',}
+			\  '[' : ']',
+			\  '|' : '|' }
 	else
 	    let bracket_dict = { '}' : '{',
 			\  ')' : '(',
-			\  ']' : '[',}
+			\  ']' : '[',
+			\  '|' : '|' }
 	endif
 	let c_bracket = get(bracket_dict,char, "")
 	if c_bracket == ""
@@ -90,63 +88,43 @@ function! <SID>Replace(sid,...) "{{{2
 	call cursor(line("."), col("."))
     endif
 endfunction "}}}2
-
 " UNWRAP MAP: {{{1
 if !hasmapto("<Plug>Unwrap")
     nmap <buffer> <silent> <LocalLeader>u <Plug>Unwrap
 endif
-
 " CC IMAP: {{{1
 " <c-c> in insert mode doesn't trigger InsertLeave autocommands
 " this fixes this.
 if g:atp_IMapCC
     imap <silent> <buffer> <C-c> <C-[>
 endif
-
 " NOT A COMMENT PATTERN CMAP: {{{1
 exe "cmap <buffer> <expr> <M-c> '^'.(getcmdline() =~ '\\\\v' ? '' : '".s:backslash."').'([^'.(getcmdline() =~ '\\\\v' ? '".s:backslash."' : '').'%]'.(getcmdline() =~ '\\\\v' ? '' : '".s:backslash."').'\\|".s:bbackslash."'.(getcmdline() =~ '\\\\v' ? '".s:backslash."' : '').'%'.(getcmdline() =~ '\\\\v' ? '' : '".s:backslash."').')*".s:backslash."zs'"
 " SPECIAL SPACE CMAP: {{{1
-if has("gui")
-    if &l:cpoptions =~# "B"
-	if g:atp_cmap_space
-	    cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[/?]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
-	endif
-	cmap <expr> <buffer> <C-Space> ( getcmdtype() =~ '[/?]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) ) 
-	cmap <expr> <buffer> <C-_> ( getcmdtype() =~ '[/?]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
-    else
-	if g:atp_cmap_space
-	    cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[/?]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
-	endif
-	cmap <expr> <buffer> <C-Space> ( getcmdtype() =~ '[/?]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
-	cmap <expr> <buffer> <C-_> ( getcmdtype() =~ '[/?]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
+if &l:cpoptions =~# "B"
+    if g:atp_cmap_space
+	cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[/?]' ? (getcmdline() =~ '\%([^\\]\\|^\)\\v' ? '\_s+' : '\_s\+') : ' ' )
     endif
+    cmap <expr> <buffer> <C-@> ( g:atp_cmap_space && getcmdtype() =~ '[/?]' ? (getcmdline() =~ '\%([^\\]\\|^\)\\v' ? '\_s+' : '\_s\+') : ' ' )
+    cmap <expr> <buffer> <C-_> ( g:atp_cmap_space && getcmdtype() =~ '[/?]' ? (getcmdline() =~ '\%([^\\]\\|^\)\\v' ? '\_s+' : '\_s\+') : ' ' )
 else
-    if &l:cpoptions =~# "B"
-	if g:atp_cmap_space
-	    cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[/?]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
-	endif
-	cmap <expr> <buffer> <C-@> ( getcmdtype() =~ '[/?]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
-	cmap <expr> <buffer> <C-_> ( getcmdtype() =~ '[/?]' && getcmdline() !~ '\\v' ? '\_s\+' : ( getcmdline() =~ '\\v' ? '\_s+' : ' ' ) )
-    else
-	if g:atp_cmap_space
-	    cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[?\/]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
-	endif
-	cmap <expr> <buffer> <C-@> ( g:atp_cmap_space && getcmdtype() =~ '[?\/]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
-	cmap <expr> <buffer> <C-_> ( g:atp_cmap_space && getcmdtype() =~ '[?\/]' && getcmdline() !~ '\\v' ? '\\_s\\+' : ( getcmdline() =~ '\\v' ? '\\_s+' : ' ' ) )
-" OK
+    " Some how with no 'B' flag the patter which matches '\v' but not '\\v' is
+    " might be simpler.
+    if g:atp_cmap_space
+	cmap <buffer> <expr> <space> ( g:atp_cmap_space && getcmdtype() =~ '[/?]' ? (getcmdline() =~ '[^\\\\]\\v' ? '\\_s+' : '\\_s\\+') : ' ' )
     endif
+    cmap <expr> <buffer> <C-@> ( g:atp_cmap_space && getcmdtype() =~ '[/?]' ? (getcmdline() =~ '[^\\\\]\\v' ? '\\_s+' : '\\_s\\+') : ' ' )
+    cmap <expr> <buffer> <C-_> ( g:atp_cmap_space && getcmdtype() =~ '[/?]' ? (getcmdline() =~ '[^\\\\]\\v' ? '\\_s+' : '\\_s\\+') : ' ' )
 endif
 if maparg("<F2>", "n") == ""
     nmap <buffer> <F2>	:echo ATP_ToggleSpace()<CR>
 endif
-
 " COMMANDS: font preview, open fd file, close last: environment, bracket {{{1
 command! -buffer -bang -nargs=* FontSearch	:call atplib#fontpreview#FontSearch(<q-bang>, <f-args>)
 command! -buffer -bang -nargs=* FontPreview	:call atplib#fontpreview#FontPreview(<q-bang>,<f-args>)
 command! -buffer -nargs=1 -complete=customlist,atplib#Fd_completion OpenFdFile	:call atplib#tools#OpenFdFile(<f-args>) 
 command! -buffer -nargs=* CloseLastEnvironment	:call atplib#complete#CloseLastEnvironment(<f-args>)
 command! -buffer 	  CloseLastBracket	:call atplib#complete#CloseLastBracket()
-
 " SECTION MOTION MAPS: {{{1
 if !hasmapto("\"SSec") && !hasmapto("'SSec")
     exe "nmap <buffer> <silent>	".g:atp_goto_section_leader."S		:<C-U>keepjumps exe v:count1.\"SSec\"<CR>"
@@ -160,20 +138,19 @@ endif
 if !hasmapto("\"Part") && !hasmapto("'Part")
     exe "nmap <buffer> <silent>	".g:atp_goto_section_leader."p		:<C-U>keepjumps exe v:count1.\"Part\"<CR>"
 endif
-
 " SYNCTEX MAPS: {{{1
 if !hasmapto("<Plug>SyncTexKeyStroke", "n")
-    nmap <buffer> <silent> <LocalLeader>f	<Plug>SyncTexKeyStroke
+    nmap <buffer> <silent> <LocalLeader>f		<Plug>SyncTexKeyStroke
 endif
 if !hasmapto("<Plug>SyncTexLKeyStroke", "n")
-    nmap <buffer> <silent> <LocalLeader>F	<Plug>SyncTexLKeyStroke
+    nmap <buffer> <silent> <LocalLeader><LocalLeader>f	<Plug>SyncTexLKeyStroke
+    nmap <buffer> <silent> <LocalLeader>F		<Plug>SyncTexLKeyStroke
 endif
 if !hasmapto("<LeftMouse><Plug>SyncTexMouse", "n")
     nmap <buffer> <S-LeftMouse> 		<LeftMouse><Plug>SyncTexMouse
 endif
-
 " COMMENT LINES: {{{1
-if g:atp_MapCommentLines    
+if g:atp_MapCommentLines && !empty(g:atp_map_Comment)
     if !hasmapto("<Plug>CommentLines", "n")
 	exe "nmap <buffer> <silent> ".g:atp_map_Comment."	<Plug>CommentLines"
     endif
@@ -187,7 +164,6 @@ if g:atp_MapCommentLines
 " 	exe "vmap <buffer> <silent> ".g:atp_map_UnComment."	<Plug>UnCommentLines"
 "     endif
 endif
-
 " MOVE AROUND COMMENTS: {{{1
 if !hasmapto("<Plug>ParagraphNormalMotion")
     nmap <buffer> <silent> }	<Plug>ParagraphNormalMotionForward
@@ -235,6 +211,7 @@ if !hasmapto("<Plug>SkipCommentBackward", 'v')
     vmap <buffer> <silent> gC	<Plug>SkipCommentBackward
 endif
 
+if !empty(g:atp_map_forward_motion_leader)
 if !hasmapto(":NInput<CR>")
     execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."i	:NInput<CR>"
     execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."gf	:NInput<CR>"
@@ -244,7 +221,7 @@ if !hasmapto(":PInput<CR>")
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."i	:PInput<CR>"
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."gf	:PInput<CR>"
 endif
-
+endif
 " MOTIONS: {{{1
 " imap <buffer> <C-j> <Plug>TexSyntaxMotionForward
 " imap <buffer> <C-k> <Plug>TexSyntaxMotionBackward
@@ -281,29 +258,18 @@ if g:atp_map_backward_motion_leader == "<"
     vnoremap <buffer> <silent> <<  :<C-U>exe "'<,'>normal! v".v:count1."<<"<CR>
 endif
 
+if !empty(g:atp_map_forward_motion_leader)
 if !hasmapto("<Plug>GotoNextSubSection", 'n')
     execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."S 	<Plug>GotoNextSubSection"
 endif
 if !hasmapto("<Plug>vGotoNextSubSection", 'v')
     execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."S	<Plug>vGotoNextSubSection"
 endif
-if !hasmapto("<Plug>GotoPreviousSubSection", 'n')
-    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>GotoPreviousSubSection"
-endif
-if !hasmapto("<Plug>vGotoPreviousSubSection", 'v')
-    execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>vGotoPreviousSubSection"
-endif
 if !hasmapto("<Plug>GotoNextSection", 'n')
     execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."s 	<Plug>GotoNextSection"
 endif
 if !hasmapto("<Plug>vGotoNextSection", 'v')
     execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."s	<Plug>vGotoNextSection"
-endif
-if !hasmapto("<Plug>GotoPreviousSection", 'n')
-    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>GotoPreviousSection"
-endif
-if !hasmapto("<Plug>vGotoPreviousSection", 'v')
-    execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>vGotoPreviousSection"
 endif
 if !( g:atp_map_forward_motion_leader == "]" && &l:diff )
     if !hasmapto("<Plug>GotoNextChapter", 'n')
@@ -313,6 +279,35 @@ if !( g:atp_map_forward_motion_leader == "]" && &l:diff )
 	execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."c 	<Plug>vGotoNextChapter"
     endif
 endif
+if !hasmapto("<Plug>JumptoNextEnvironment", "n")
+    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."e	<Plug>JumptoNextEnvironment"
+endif
+if !hasmapto("<Plug>GotoNextMath", "n")
+    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."m	<Plug>GotoNextMath"
+endif
+if !hasmapto("<Plug>GotoNextDisplayedMath", "n")
+    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."M	<Plug>GotoNextDisplayedMath"
+endif
+if !hasmapto("<Plug>GotoNextPart", 'n')
+    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>GotoNextPart"
+endif
+if !hasmapto("<Plug>vGotoNextPart", 'v')
+    execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>vGotoNextPart"
+endif
+endif
+if !empty(g:atp_map_backward_motion_leader)
+if !hasmapto("<Plug>GotoPreviousSubSection", 'n')
+    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>GotoPreviousSubSection"
+endif
+if !hasmapto("<Plug>vGotoPreviousSubSection", 'v')
+    execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."S 	<Plug>vGotoPreviousSubSection"
+endif
+if !hasmapto("<Plug>GotoPreviousSection", 'n')
+    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>GotoPreviousSection"
+endif
+if !hasmapto("<Plug>vGotoPreviousSection", 'v')
+    execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."s 	<Plug>vGotoPreviousSection"
+endif
 if !( g:atp_map_backward_motion_leader == "]" && &l:diff )
     if !hasmapto("<Plug>GotoPreviousChapter", 'n')
 	execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>GotoPreviousChapter"
@@ -321,11 +316,14 @@ if !( g:atp_map_backward_motion_leader == "]" && &l:diff )
 	execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."c 	<Plug>vGotoPreviousChapter"
     endif
 endif
-if !hasmapto("<Plug>GotoNextPart", 'n')
-    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>GotoNextPart"
+if !hasmapto("<Plug>JumptoPreviousEnvironment", "n")
+    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."e 	<Plug>JumptoPreviousEnvironment"
 endif
-if !hasmapto("<Plug>vGotoNextPart", 'v')
-    execute "vmap <silent> <buffer> ".g:atp_map_forward_motion_leader."p 	<Plug>vGotoNextPart"
+if !hasmapto("<Plug>GotoPreviousMath", "n")
+    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."m	<Plug>GotoPreviousMath"
+endif
+if !hasmapto("<Plug>GotoPreviousDisplayedMath", "n")
+    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."M	<Plug>GotoPreviousDisplayedMath"
 endif
 if !hasmapto("<Plug>GotoPreviousPart", "n")
     execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>GotoPreviousPart"
@@ -333,32 +331,7 @@ endif
 if !hasmapto("<Plug>vGotoPreviousPart", 'v')
     execute "vmap <silent> <buffer> ".g:atp_map_backward_motion_leader."p 	<Plug>vGotoPreviousPart"
 endif
-
-if !hasmapto("<Plug>GotoNextEnvironment", "n")
-    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."e	<Plug>GotoNextEnvironment"
 endif
-if !hasmapto("<Plug>JumptoNextEnvironment", "n")
-    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."E	<Plug>JumptoNextEnvironment"
-endif
-if !hasmapto("<Plug>GotoPreviousEnvironment", "n")
-    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."e	<Plug>GotoPreviousEnvironment"
-endif
-if !hasmapto("<Plug>JumptoPreviousEnvironment", "n")
-    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."E 	<Plug>JumptoPreviousEnvironment"
-endif
-if !hasmapto("<Plug>GotoNextMath", "n")
-    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."m	<Plug>GotoNextMath"
-endif
-if !hasmapto("<Plug>GotoPreviousMath", "n")
-    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."m	<Plug>GotoPreviousMath"
-endif
-if !hasmapto("<Plug>GotoNextDisplayedMath", "n")
-    execute "nmap <silent> <buffer> ".g:atp_map_forward_motion_leader."M	<Plug>GotoNextDisplayedMath"
-endif
-if !hasmapto("<Plug>GotoPreviousDisplayedMath", "n")
-    execute "nmap <silent> <buffer> ".g:atp_map_backward_motion_leader."M	<Plug>GotoPreviousDisplayedMath"
-endif
-
 " GOTO FILE MAP: {{{1
 if has("path_extra") && !hasmapto(" GotoFile(", 'n')
 	nnoremap <buffer> <silent> gf		:call atplib#motion#GotoFile("", "")<CR>
@@ -380,7 +353,6 @@ endif
 if !hasmapto(":Wrap { } begin<cr>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."{ 	:Wrap { } begin<CR>"
 endif
-
 " WRAPERS: {{{1
 " OPERATOR FONT MAPS: {{{2
 function! ATP_LastWrap(type)
@@ -388,6 +360,7 @@ function! ATP_LastWrap(type)
     let marks = ["'[", "']"]
     call atplib#various#RedoLastWrapSelection(marks)
 endfunction
+if !empty(g:atp_vmap_text_font_leader)
 exe "nmap <buffer> ".g:atp_vmap_text_font_leader."w :set opfunc=ATP_LastWrap<CR>g@"
 function! ATP_WrapBold(type)
     if a:type == "block" | return | endif
@@ -460,8 +433,10 @@ function! ATP_WrapCal(type)
     endif
 endfunction
 exe "nmap <buffer> ".g:atp_vmap_text_font_leader."cal :set opfunc=ATP_WrapCal<CR>g@"
+endif
 
 " FONTS: {{{2
+if !empty(g:atp_vmap_text_font_leader)
 if !hasmapto(":Wrap {".s:backslash."usefont{".g:atp_font_encoding."}{}{}{}\\selectfont", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."f	:Wrap {".s:backslash."usefont{".g:atp_font_encoding."}{}{}{}\\selectfont\\  } ".(len(g:atp_font_encoding)+11)."<CR>"
 endif
@@ -523,8 +498,10 @@ endif
 if !hasmapto("atplib#various#RedoLastWrapSelection", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_text_font_leader."w	<Esc>:<C-U>:call atplib#various#RedoLastWrapSelection([\"'<\", \"'>\"])<CR>"
 endif
+endif
 
 " ENVIRONMENTS: {{{2
+if !empty(g:atp_vmap_environment_leader)
 if !hasmapto(":Wrap ".s:backslash."begin{center} ".s:backslash."end{center} 0 1<CR>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_environment_leader."C   :Wrap ".s:backslash."begin{center} ".s:backslash."end{center} 0 1<CR>"
 endif
@@ -540,26 +517,30 @@ endif
 if !hasmapto(":Wrap ".s:backslash."begin{align=b:atp_StarMathEnvDefault<CR>} ".s:backslash."end{align=b:atp_StarMathEnvDefault<CR>} 0 1<CR>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_environment_leader."A   :Wrap ".s:backslash."begin{align=b:atp_StarMathEnvDefault<CR>} ".s:backslash."end{align=b:atp_StarMathEnvDefault<CR>} 0 1<CR>"
 endif
+endif
 
 " MATH MODES: {{{2
 if !hasmapto(':<C-U>Wrap '.s:backslash.'( '.s:backslash.')<CR>', 'v')
     exe "vmap <silent> <buffer> m				:<C-U>Wrap ".s:backslash."( ".s:backslash.")<CR>"
 endif
+if !hasmapto(':<C-U>Wrap '.s:backslash.'[ '.s:backslash.']<CR>', 'v')
+    exe "vmap <silent> <buffer> M				:<C-U>Wrap ".s:backslash."[ ".s:backslash."]<CR>"
+endif
 function! ATP_WrapVMath(type)
     if a:type == "block" | return | endif
     call atplib#various#WrapSelection('\(', '\)', 'begin', 0, ["'[", "']"])
 endfunction
-exe "nmap <buffer> ".g:atp_vmap_bracket_leader."m :set opfunc=ATP_WrapVMath<CR>g@"
-if !hasmapto(':<C-U>Wrap '.s:backslash.'[ '.s:backslash.']<CR>', 'v')
-    exe "vmap <silent> <buffer> M				:<C-U>Wrap ".s:backslash."[ ".s:backslash."]<CR>"
-endif
 function! ATP_WrapWMath(type)
     if a:type == "block" | return | endif
     call atplib#various#WrapSelection('\[', '\]', 'begin', 0, ["'[", "']"])
 endfunction
+if !empty(g:atp_vmap_bracket_leader)
+exe "nmap <buffer> ".g:atp_vmap_bracket_leader."m :set opfunc=ATP_WrapVMath<CR>g@"
 exe "nmap <buffer> ".g:atp_vmap_bracket_leader."M :set opfunc=ATP_WrapWMath<CR>g@"
+endif
 
 " BRACKETS: {{{2
+if !empty(g:atp_vmap_bracket_leader)
 if !hasmapto(":Wrap ( ) begin<cr>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_bracket_leader."( 	:Wrap ( ) begin<CR>"
 endif
@@ -641,6 +622,8 @@ function! ATP_WrapKet_5_end(type)
     call atplib#various#WrapSelection('<', '>', 'end', 0, ["'[", "']"])
 endfunction
 exe "nmap <buffer> ".g:atp_vmap_bracket_leader."> :set opfunc=ATP_WrapKet_5_end<CR>g@"
+endif
+if !empty(g:atp_vmap_big_bracket_leader)
 if !hasmapto(":Wrap ".s:backslash."left( ".s:backslash."right) end<CR>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader.")	:Wrap ".s:backslash."left( ".s:backslash."right) end<CR>"
 endif
@@ -693,8 +676,10 @@ exe "nmap <buffer> ".g:atp_vmap_big_bracket_leader.s:backslash."{ :set opfunc=AT
 if !hasmapto(":Wrap ".s:backslash."left".s:backslash."{ ".s:backslash."right".s:backslash."} end<CR>", 'v')
     execute "vnoremap <silent> <buffer> ".g:atp_vmap_big_bracket_leader."}	:Wrap ".s:backslash."left".s:backslash."{ ".s:backslash."right".s:backslash."} end<CR>"
 endif
+endif
 
 " ACCENTS: {{{2
+if !empty(g:atp_imap_over_leader)
 if !hasmapto(":<C-U>IWrap ['".s:backslash."''{'],['".s:backslash."acute{']<CR>", "v")
     execute "vnoremap <silent> <buffer> ".g:atp_imap_over_leader."' 		:<C-U>IWrap ['".s:backslash."''{'],['".s:backslash."acute{']<CR>"
 endif
@@ -732,12 +717,12 @@ if !hasmapto(":<C-U>Wrap ".s:backslash."t{ } end<CR>", "v")
     execute "vnoremap <silent> <buffer> ".g:atp_imap_over_leader."t		:<C-U>Wrap ".s:backslash."t{ } end<CR>"
 endif
 execute "vnoremap <silent> <buffer> <expr>".g:atp_imap_over_leader."~		':<C-U>Wrap ".s:backslash."'.(g:atp_imap_wide ? \"wide\" : \"\").'tilde{ } end<CR>'"
+endif
 
 " TEX ALIGN: {{{1
 if !hasmapto(":TexAlign<CR>", 'n')
     nmap <silent> <buffer> <Localleader>a	<Plug>TexAlign
 endif
-
 " PARAGRAPH SELECTION: {{{1
 if !hasmapto("<Plug>ATP_SelectCurrentParagraphInner", 'v')
     vmap <silent> <buffer> ip 	<Plug>ATP_SelectCurrentParagraphInner
@@ -751,16 +736,13 @@ endif
 if !hasmapto(" vap<CR>", "o")
     omap <silent> <buffer>  ap	:normal vap<CR>
 endif
-
 " FORMATING: {{{1
-if !hasmapto("m`vipgq``", "n")
-    nmap <silent> <buffer> gw		m`vipgq``
+if !hasmapto("<Plug>FormatLines", "n")
+    nmap <silent> <buffer> gw		<Plug>FormatLines
 endif
-
 " INDENT BLOCK: {{{1
 nnoremap <buffer> g>	:<C-U>call feedkeys("m`vip".(v:count1 <= 1 ? "" : v:count1).">``", 't')<CR>
 nnoremap <buffer> g<	:<C-U>call feedkeys("m`vip".(v:count1 <= 1 ? "" : v:count1)."<``", 't')<CR>
-
 " SELECT SYNTAX: {{{1
 if !hasmapto("<Plug>SelectOuterSyntax", "v")
     vmap <buffer> <silent> aS		<Plug>SelectOuterSyntax
@@ -768,21 +750,20 @@ endif
 if !hasmapto("<Plug>SelectInnerSyntax", "v")
     vmap <buffer> <silent> iS		<Plug>SelectInnerSyntax
 endif
-
 " ENVIRONMENT MOVES: {{{1
 " From vim.vim plugin (by Bram Mooleaner)
 " Move around functions.
 exe "nnoremap <silent> <buffer> <Plug>BegPrevEnvironment m':call search('".s:bbackslash."begin".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."[".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'bW')<CR>"
-if !hasmapto("<Plug>BegPrevEnvironment", "n")
-    nmap <silent> <buffer> [[ <Plug>BegPrevEnvironment
+if !hasmapto("<Plug>GotoPreviousEnvironment", "n")
+    nmap <silent> <buffer> [[ <Plug>GotoPreviousEnvironment
 endif
 exe "vnoremap <silent> <buffer> <Plug>vBegPrevEnvironment m':<C-U>exe \"normal! gv\"<Bar>call search('".s:bbackslash."begin".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."[".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'bW')<CR>"
 if !hasmapto("<Plug>vBegPrevEnvironment", "v")
     vmap <silent> <buffer> [[ <Plug>vBegPrevEnvironment
 endif
 exe "nnoremap <silent> <buffer> <Plug>BegNextEnvironment m':call search('".s:bbackslash."begin".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."[".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'W')<CR>"
-if !hasmapto("<Plug>BegNextEnvironment", "n")
-    nmap <silent> <buffer> ]] <Plug>BegNextEnvironment
+if !hasmapto("<Plug>GotoNextEnvironment", "n")
+    nmap <silent> <buffer> ]] <Plug>GotoNextEnvironment
 endif
 exe "vnoremap <silent> <buffer> <Plug>vBegNextEnvironment m':<C-U>exe \"normal! gv\"<Bar>call search('".s:bbackslash."begin".s:backslash."s*{".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash.s:bbackslash."[".s:bbackslash."|".s:backslash.s:bbackslash."@<!".s:backslash."$".s:backslash."$', 'W')<CR>"
 if !hasmapto("<Plug>vBegNextEnvironment", "v")
@@ -804,13 +785,14 @@ exe "vnoremap <silent> <buffer> <Plug>vEndNextEnvironment m':<C-U>exe \"normal! 
 if !hasmapto("<Plug>vEndNextEnvironment", "v")
     vmap <silent> <buffer> ][ <Plug>vEndNextEnvironment
 endif
-
 " SELECT COMMENT: {{{1
+if !empty(g:atp_MapSelectComment)
 if !hasmapto("v<Plug>vSelectComment", "n")
     exe "nmap <silent> <buffer> ".g:atp_MapSelectComment." v<Plug>vSelectComment"
 endif
 if !hasmapto(g:atp_MapSelectComment, "o")
     exe "omap <silent> <buffer>".g:atp_MapSelectComment." :normal ".g:atp_MapSelectComment."<CR>"
+endif
 endif
 " SELECT FRAME: (beamer) {{{1
 " This is done by a function, because it has to be run through an autocommand
@@ -837,7 +819,6 @@ function! <SID>BeamerOptions()
     endif
 endfunction
 au BufEnter *.tex 	call <SID>BeamerOptions()
-
 " NORMAL MODE MAPS: (most of them) {{{1
 
 " Enabling this requires uncommenting augroup ATP_Cmdwin in options.vim
@@ -912,7 +893,7 @@ if !hasmapto("<Plug>ATP_TeXCurrent", "n")
     nmap  <silent> <buffer> <LocalLeader>l 		<Plug>ATP_TeXCurrent
 endif
 if !hasmapto("<Plug>ATP_TeXLocal", "n")
-    nmap <silent> <buffer> <LocalLeader>k		<Plug>ATP_TeXLocal
+    nmap <silent> <buffer> <LocalLeader><LocalLeader>l  <Plug>ATP_TeXLocal
 endif
 if !hasmapto("<Plug>ATP_TeXdebug", "n")
     nmap  <silent> <buffer> <LocalLeader>d 		<Plug>ATP_TeXdebug
@@ -993,7 +974,6 @@ endif
 if !hasmapto("<Plug>PdfFonts", "n")
     nmap  <silent> <buffer> <F6>g 			<Plug>PdfFonts
 endif
-
 " TEXDOC: {{{2
 " Note :TexDoc map cannot be <silent>
 nnoremap           <buffer> <Plug>TexDoc		:TexDoc<space>
@@ -1014,8 +994,9 @@ if !exists("g:atp_imap_define_fonts")
 endif
 
 let s:math_open = ( &filetype == "plaintex" ? "$" : (&l:cpoptions =~# "B" ? "\\" : "\\\\")."(" )
-if !exists("g:atp_imap_fonts") || g:atp_reload_variables
+if (!empty(g:atp_imap_leader_2) && !exists("g:atp_imap_fonts")) || g:atp_reload_variables
     let g:atp_imap_fonts = []
+    
     for font in [ 'rm', 'it', 'sf', 'bf', 'tt', 'normal']
 	call add(g:atp_imap_fonts, 
 	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_2, font, '(atplib#IsInMath() ? "\\math'.font.'{}<Left>" : "\\text'.font.'{}<Left>" )' , "g:atp_imap_define_fonts", '\text'.font ])
@@ -1041,12 +1022,11 @@ if !exists("g:atp_imap_fonts") || g:atp_reload_variables
 	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_2, 'uf',
 		\ s:backslash.'usefont{'.g:atp_font_encoding.'}{}{}{}<Left><Left><Left><Left><Left>', "g:atp_imap_define_fonts", 'usefont command']
 	\ ])
-    endif
+endif
     " Make Font Maps:
     call atplib#MakeMaps(g:atp_imap_fonts)
-	    
 " GREEK LETTERS: {{{1
-if !exists("g:atp_imap_greek_letters") || g:atp_reload_variables
+if (!empty(g:atp_imap_leader_1) && !exists("g:atp_imap_greek_letters")) || g:atp_reload_variables
     let g:atp_imap_greek_letters= [
 	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'a', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'alpha" : g:atp_imap_leader_1."a" )' ,	 
 		    \ "g:atp_imap_define_greek_letters", '\alpha' ],
@@ -1127,6 +1107,8 @@ if !exists("g:atp_imap_greek_letters") || g:atp_reload_variables
 	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_leader_1, 'W', '(!atplib#IsLeft("\\")&& atplib#IsInMath() ? "'.s:bbackslash.'Omega" : g:atp_imap_leader_1."W" )',	 
 		    \ "g:atp_imap_define_greek_letters", '\Omega' ],
 	    \ ]
+else
+    let g:atp_imap_greek_letters = []
 endif
 
     " Make Greek Letters:
@@ -1139,37 +1121,27 @@ endif
 " 	au InsertLeave	*.tex 	:call atplib#MakeMaps(g:atp_imap_greek_letters, 'InsertLeave')
 	au BufEnter	*.tex 	:call atplib#MakeMaps(g:atp_imap_greek_letters, 'BufEnter')
     augroup END
-
 " MISCELLANEOUS MATHEMATICAL MAPS: {{{1
 if !exists("g:atp_imap_math_misc") || g:atp_reload_variables
 let g:atp_imap_math_misc = [
 \ [ 'inoremap', '<silent> <buffer> <expr>', '+',	      '+', 
 	\ '!atplib#IsLeft("^")&&!atplib#IsLeft("_") ? '''.s:backslash.'sum'' : "++"',
 	\ "g:atp_imap_define_math_misc", '\sum' ],
-\ [ 'inoremap', '<silent> <buffer>', '<bar>', 		      '-', s:backslash.'vdash',
-	\ "g:atp_imap_define_math_misc", '\vdash' ],
-\ [ 'inoremap', '<silent> <buffer>', '-', 		      '<bar>', s:backslash.'dashv',
+\ [ 'inoremap', '<silent> <buffer> <expr>', '<bar>', '-', 'getline(".")[:col(".")-2] !~ ''\\draw\s*\[[^\]]*$'' ? "\\vdash" : "\|-"',
+	\ "g:atp_imap_define_math_misc", '\sum' ],
+\ [ 'inoremap', '<silent> <buffer> <expr>', '-', '<bar>', 'getline(".")[:col(".")-2] !~ ''\\draw\s*\[[^\]]*$'' ? "\\dashv" : "\|-"',
 	\ "g:atp_imap_define_math_misc", '\dashv' ],
+\ ]
+let s:misc_infty_leader = [
 \ [ 'inoremap', '<silent> <buffer>', g:atp_infty_leader,      '8', s:backslash.'infty', 	
 	\ "g:atp_imap_define_math_misc", '\infty' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_infty_leader,      '6', s:backslash.'partial',	
 	\ "g:atp_imap_define_math_misc", '\partial' ],
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '&', s:backslash.'wedge', 	
-	\ "g:atp_imap_define_math_misc", '\wedge' ], 
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '+', s:backslash.'bigcup', 	
-	\ "g:atp_imap_define_math_misc", '\bigcup' ],
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '*', s:backslash.'bigcap', 	
-	\ "g:atp_imap_define_math_misc", '\bigcap' ],
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'N', s:backslash.'Nabla', 	
-	\ "g:atp_imap_define_math_misc", '\Nabla' ],
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '@', s:backslash.'circ', 	
-	\ "g:atp_imap_define_math_misc", '\circ' ],
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '=', s:backslash.'equiv', 	
-	\ "g:atp_imap_define_math_misc", '\equiv' ],
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '.', s:backslash.'dot', 
-	\ "g:atp_imap_define_math_misc", '\dot' ],
-\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '/', s:backslash.'frac{}{}<Esc>F}i',
-	\ "g:atp_imap_define_math_misc", '\frac{}{}' ],
+\ ]
+if !empty(g:atp_infty_leader)
+    call extend(g:atp_imap_math_misc, s:misc_infty_leader)
+endif
+let s:misc_over_leader = [
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  '`', s:backslash.'grave{}<Left>',
 	\ "g:atp_imap_define_math_misc", '\grave{}' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  'v', s:backslash.'check{}<Left>',
@@ -1186,13 +1158,43 @@ let g:atp_imap_math_misc = [
 	\ "g:atp_imap_define_math_misc", '''\''.(g:atp_imap_wide ? "wide" : "")."tilde"' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  '^', s:backslash.'=(g:atp_imap_wide ? "wide" : "" )<CR>hat{}<Left>',
 	\ "g:atp_imap_define_math_misc", '''\''.(g:atp_imap_wide ? "wide" : "")."hat"' ], 
+\ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_over_leader,  	      'D', '"<ESC>vx".(col(".")<=len(getline("."))? "i" : "a" )."'.s:bbackslash.'frac{'.s:bbackslash.'partial}{'.s:bbackslash.'partial \"}".(g:atp_imap_diffop_move ? "<C-o>F}<space>" : "")', 
+	\ "g:atp_imap_define_math_misc", '\frac{\partial}{\partial x} - x comes from the letter wrote just before' ]
+\ ]
+if !empty(g:atp_imap_over_leader)
+    call extend(g:atp_imap_math_misc, s:misc_over_leader)
+endif
+let s:misc_leader_2 = [
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_2,  'ov', s:backslash.'overline{}<Left>',
 	\ "g:atp_imap_define_math_misc", '\overline{}' ],
 \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_2,  'un', s:backslash.'underline{}<Left>',
 	\ "g:atp_imap_define_math_misc", '\underline{}' ],
-\ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_over_leader,  	      'D', '"<ESC>vx".(col(".")<=len(getline("."))? "i" : "a" )."'.s:bbackslash.'frac{'.s:bbackslash.'partial}{'.s:bbackslash.'partial \"}".(g:atp_imap_diffop_move ? "<C-o>F}<space>" : "")', 
-	\ "g:atp_imap_define_math_misc", '\frac{\partial}{\partial x} - x comes from the letter wrote just before' ]
 \ ]
+if !empty(g:atp_imap_leader_2)
+    call extend(g:atp_imap_math_misc, s:misc_leader_2)
+endif
+let s:misc_leader_1 = [
+    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '&', s:backslash.'wedge',	    
+    \ "g:atp_imap_define_math_misc", '\wedge' ], 
+    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '+', s:backslash.'bigcup',    
+    \ "g:atp_imap_define_math_misc", '\bigcup' ],
+    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '*', s:backslash.'bigcap',    
+    \ "g:atp_imap_define_math_misc", '\bigcap' ],
+    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 'N', s:backslash.'Nabla',	    
+    \ "g:atp_imap_define_math_misc", '\Nabla' ],
+    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '@', s:backslash.'circ',	
+    \ "g:atp_imap_define_math_misc", '\circ' ],
+    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '=', s:backslash.'equiv',	    
+    \ "g:atp_imap_define_math_misc", '\equiv' ],
+    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '.', s:backslash.'dot', 
+    \ "g:atp_imap_define_math_misc", '\dot' ],
+    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '/', s:backslash.'frac{}{}<Esc>F}i',
+    \ "g:atp_imap_define_math_misc", '\frac{}{}' ],
+    \ ]
+if !empty(g:atp_imap_leader_1)
+    call extend(g:atp_imap_math_misc, s:misc_leader_1)
+endif
+
 " These two maps where interfering with \varepsilon
 " \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, 've', s:backslash.'vee',
 " 	\ "g:atp_imap_define_math_misc", '\vee' ],
@@ -1201,6 +1203,8 @@ let g:atp_imap_math_misc = [
 
 " " 		\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '~', s:backslash.'=(g:atp_imap_wide ? "wide" : "")<CR>tilde{}<Left>', 	"g:atp_imap_define_math_misc", '''\''.(g:atp_imap_wide ? "wide" : "")."tilde"' ],
 " 		\ [ 'inoremap', '<silent> <buffer>', g:atp_imap_leader_1, '^', s:backslash.'=(g:atp_imap_wide ? "wide" : "" )<CR>hat{}<Left>', 	"g:atp_imap_define_math_misc", '''\''.(g:atp_imap_wide ? "wide" : "")."hat"' ], 
+else
+    let g:atp_imap_math_misc = []
 endif
 
     " Make Miscellaneous Mathematical Maps:
@@ -1209,9 +1213,8 @@ endif
 	au CursorHoldI 	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_math_misc, 'CursorHoldI', g:atp_imap_diacritics) 
 	au InsertEnter	*.tex 	:call atplib#ToggleIMaps(g:atp_imap_math_misc, 'InsertEnter', g:atp_imap_diacritics) 
     augroup END
-
 " DIACRITICSC IMAPS: {{{1
-    if g:atp_diacritics == 2
+    if g:atp_diacritics == 1
 	let g:atp_imap_diacritics = [
 	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  '''', s:backslash.'''{}<Left>',
 		    \ "g:atp_imap_define_diacritics", '\''{}' ],
@@ -1240,8 +1243,7 @@ endif
 	    \ [ 'inoremap', '<silent> <buffer>', g:atp_imap_over_leader,  't', s:backslash.'t{}<Left>',
 		    \ "g:atp_imap_define_diacritics", '\t{}' ]
 	    \ ]
-
-    elseif g:atp_diacritics
+    elseif g:atp_diacritics == 2
 	let g:atp_imap_diacritics = [
 	    \ [ 'inoremap', '<silent> <buffer> <expr>', g:atp_imap_over_leader,  '''', '(index(split(g:atp_diacritics_letters["''"], ''\zs''), tolower(getline(line("."))[col(".")-2])) != -1  ? "<ESC>vx".(col(".")<=len(getline(line(".")))? "i" : "a" )."'.s:bbackslash.'''{\"}" : "'.escape(g:atp_imap_over_leader, '\"').'''")', 
 		    \ "g:atp_imap_define_diacritics", '\''{}' ],
@@ -1273,9 +1275,8 @@ endif
     else
 	let g:atp_imap_diacritics=[]
     endif
-
 " ENVIRONMENT MAPS: {{{1
-if g:atp_no_env_maps != 1
+if g:atp_no_env_maps != 1 && !empty(g:atp_imap_leader_3)
     if !exists("g:atp_imap_environments") || g:atp_reload_variables
     let g:atp_imap_environments = [
 	\ [ "inoremap", "<buffer> <silent>", 	g:atp_imap_leader_3, "m", 			s:backslash.'('.s:backslash.')<Left><Left>', 						"g:atp_imap_define_environments", 'inlince math' ],
@@ -1311,14 +1312,12 @@ if g:atp_no_env_maps != 1
     endif
     " Make Environment Maps:
     call atplib#MakeMaps(g:atp_imap_environments)
+else
+    let g:atp_imap_environments = []
 endif
-
-
 " MATHEMATICAL MAPS: {{{1
 if !exists("g:atp_imap_math") || g:atp_reload_variables
     let g:atp_imap_math	= [ 
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", g:atp_imap_subscript, "( g:atp_imap_subscript == '_' && !atplib#IsLeft('\\', 1) && atplib#IsLeft('_') <bar><bar> g:atp_imap_subscript != '_' ) && atplib#IsInMath() ? (g:atp_imap_subscript == '_' ? '<BS>' : '' ).'_{}<Left>' : '_'", "g:atp_imap_define_math", 	'_{}'], 
-	\ [ "inoremap", "<buffer> <silent> <expr>", "", g:atp_imap_supscript, "( g:atp_imap_supscript == '^' && !atplib#IsLeft('\\', 1) && atplib#IsLeft('^') <bar><bar> g:atp_imap_supscript != '^' ) && atplib#IsInMath() ? (g:atp_imap_supscript == '^' ? '<BS>' : '' ).'^{}<Left>' : (atplib#IsLeft('~') ? '<BS>".s:backslash."=(g:atp_imap_wide ? ''wide'' : '''' )<CR>hat{}<Left>' : '^')", "g:atp_imap_define_math", 	'^{}'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "~", "atplib#IsLeft('~') && atplib#IsInMath() ? '<BS>".s:backslash."=(g:atp_imap_wide ? \"wide\" : \"\" ) <CR>tilde=(g:atp_imap_tilde_braces ? \"{}\" : \"\")<CR>'.(g:atp_imap_tilde_braces ? '<Left>' : '') : '~'" , "g:atp_imap_define_math", 	'\\(wide)tilde({})'], 
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "=", "atplib#IsInMath() && atplib#IsLeft('=') && !atplib#IsLeft('&',1) ? '<BS>&=' : '='", "g:atp_imap_define_math",	'&=' ],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "o+", "atplib#IsInMath() ? '".s:backslash."oplus' 	: 'o+'", "g:atp_imap_define_math", 		'\\oplus' ],
@@ -1353,8 +1352,16 @@ if !exists("g:atp_imap_math") || g:atp_reload_variables
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "<_", "atplib#IsInMath('!') ? '".s:backslash."Leftarrow' 	: '<-'", "g:atp_imap_define_math",		'\\Leftarrow'],
 	\ [ "inoremap", "<buffer> <silent> <expr>", "", "_>", "atplib#IsInMath('!') ? '".s:backslash."Rightarrow' 	: '->'", "g:atp_imap_define_math",		'\\Rightarrow'],
 	\ ]
-endif
 
+    if !empty(g:atp_imap_subscript)
+	call add(g:atp_imap_math, [ "inoremap", "<buffer> <silent> <expr>", "", g:atp_imap_subscript, "( g:atp_imap_subscript == '_' && !atplib#IsLeft('\\', 1) && atplib#IsLeft('_') <bar><bar> g:atp_imap_subscript != '_' ) && atplib#IsInMath() ? (g:atp_imap_subscript == '_' ? '<BS>' : '' ).'_{}<Left>' : '_'", "g:atp_imap_define_math", 	'_{}'] )
+    endif
+    if !empty(g:atp_imap_supscript)
+	call add(g:atp_imap_math, [ "inoremap", "<buffer> <silent> <expr>", "", g:atp_imap_supscript, "( g:atp_imap_supscript == '^' && !atplib#IsLeft('\\', 1) && atplib#IsLeft('^') <bar><bar> g:atp_imap_supscript != '^' ) && atplib#IsInMath() ? (g:atp_imap_supscript == '^' ? '<BS>' : '' ).'^{}<Left>' : (atplib#IsLeft('~') ? '<BS>".s:backslash."=(g:atp_imap_wide ? ''wide'' : '''' )<CR>hat{}<Left>' : '^')", "g:atp_imap_define_math", 	'^{}'] )
+    endif
+else
+    let g:atp_imap_math = []
+endif
 " MAKE MATHEMATICAL MAPS: (autocommands) "{{{1
 augroup ATP_MathIMaps
     au!

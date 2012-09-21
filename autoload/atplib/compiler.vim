@@ -276,8 +276,9 @@ function! atplib#compiler#SyncTex(bang, mouse, main_file, xpdf_server, ...)
 	    call atplib#compiler#SyncShow(page_nr, y_coord)
 	endif
     elseif b:atp_Viewer == "evince"
-	let evince_vim_dbus=split(globpath(&rtp, "ftplugin/ATP_files/evince_vim_dbus.py"), "\n")[0]
-	let sync_cmd = g:atp_Python." ".shellescape(evince_vim_dbus)." EVINCE ".shellescape(output_file)." ".line." ".shellescape(main_file)
+	let curr_file = atplib#FullPath(expand("%:p"))
+	let evince_sync=split(globpath(&rtp, "ftplugin/ATP_files/evince_sync.py"), "\n")[0]
+	let sync_cmd = g:atp_Python." ".shellescape(evince_sync)." EVINCE ".shellescape(output_file)." ".line." ".shellescape(curr_file)
 	call system(sync_cmd)
     elseif b:atp_Viewer =~ '^\s*xdvi\>'
 	if exists("g:atp_xdviOptions")
@@ -317,7 +318,7 @@ endfunction
 "}}}
 "
 " This function gets the pid of the running compiler
-" ToDo: review LatexBox has a better approach!
+" ToDo: review, LatexBox has a better approach!
 "{{{ Get PID Functions
 function! atplib#compiler#getpid()
 	let atplib#compiler#command="ps -ef | grep -v " . $SHELL  . " | grep " . b:atp_TexCompiler . " | grep -v grep | grep " . fnameescape(expand("%")) . " | awk 'BEGIN {ORS=\" \"} {print $2}'" 
@@ -349,7 +350,7 @@ for pr in ps_list:
 		pass
 
 if latex_running:
-	vim.command("let atplib#compiler#var="+str(latex_pid))
+	vim.command("let atplib#compiler#var=%s" % latex_pid)
 else:
 	vim.command("let atplib#compiler#var=''")
 EOF
@@ -540,7 +541,7 @@ for pid in psutil.get_pid_list():
         pass
     except IndexError:
         pass
-vim.command("let s:return_is_running="+str(x))
+vim.command("let s:return_is_running=%d" % x)
 EOF
 let l:return=s:return_is_running
 unlet s:return_is_running
@@ -556,7 +557,7 @@ function! atplib#compiler#Kill(bang)
     if !has("python")
 	if a:bang != "!"
 	    echohl WarningMsg
-	    echomsg "[ATP:] you need python suppor" 
+	    echomsg "[ATP:] you need python support." 
 	    echohl None
 	endif
 	return
@@ -636,7 +637,11 @@ function! atplib#compiler#MakeLatex(bang, mode, start)
     lockvar g:atp_TexCommand
 
     " Write file
-    call atplib#write("COM", "silent")
+    if a:bang == "!"
+	call atplib#WriteProject('update')
+    else
+	call atplib#write("COM", "silent")
+    endif
 
     if mode == "verbose"
 	exe ":!".cmd
@@ -653,7 +658,7 @@ function! atplib#compiler#PythonCompiler(bibtex, start, runs, verbose, command, 
     " a:1	= b:atp_XpdfServer (default value)
 
     if fnamemodify(&l:errorfile, ":p") != fnamemodify(a:filename, ":p:r").".".(g:atp_ParseLog ? "_" : "")."log"
-	exe "setl errorfile=".fnamemodify(a:filename, ":p:r").".".(g:atp_ParseLog ? "_" : "")."log"
+	exe "setl errorfile=".fnameescape(fnamemodify(a:filename, ":p:r").".".(g:atp_ParseLog ? "_" : "")."log")
     endif
 
     " Kill comiple.py scripts if there are too many of them.
@@ -748,7 +753,10 @@ function! atplib#compiler#PythonCompiler(bibtex, start, runs, verbose, command, 
     else
 	let viewer_options  	= local_options
     endif
-    let bang 			= ( a:bang == '!' ? ' --bang ' : '' ) 
+"     let bang 			= ( a:bang == '!' ? ' --bang ' : '' ) 
+	" this is the old bang (used furthere in the code: when           
+	" equal to '!' the function wasn't not makeing a copy of aux file    
+    let bang			= ""
     let bibtex 			= ( a:bibtex ? ' --bibtex ' : '' )
     let reload_on_error 	= ( b:atp_ReloadOnError ? ' --reload-on-error ' : '' )
     let gui_running 		= ( has("gui_running") ? ' --gui-running ' : '' )
@@ -788,7 +796,11 @@ function! atplib#compiler#PythonCompiler(bibtex, start, runs, verbose, command, 
     if g:atp_debugPythonCompiler
 	call atplib#Log("PythonCompiler.log", "PRE WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
     endif
-    call atplib#write(a:command,"silent")
+    if a:bang == "!"
+	call atplib#WriteProject('write')
+    else
+	call atplib#write(a:command, "silent")
+    endif
 
     if g:atp_debugPythonCompiler
 	call atplib#Log("PythonCompiler.log", "POST WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
@@ -814,7 +826,7 @@ function! atplib#compiler#PythonCompiler(bibtex, start, runs, verbose, command, 
 endfunction
 " }}}
 " {{{ atplib#compiler#LocalCompiler
-function! atplib#compiler#LocalCompiler(mode, ...)
+function! atplib#compiler#LocalCompiler(mode, runs, ...)
     let debug_mode = ( a:0 && a:1 != ""  ? a:1 : 'silent' )
 
     let subfiles = atplib#search#SearchPackage('subfiles')
@@ -877,9 +889,9 @@ for ext in extensions:
             pass
 ENDPYTHON
 	if g:atp_Compiler == 'python'
-	    call  atplib#compiler#PythonCompiler(0,0,1,debug_mode,'COM',expand("%:p"),"",b:atp_LocalXpdfServer)
+	    call  atplib#compiler#PythonCompiler(0,0,a:runs,debug_mode,'COM',expand("%:p"),"",b:atp_LocalXpdfServer)
 	else
-	    call atplib#compiler#Compiler(0,0,1,debug_mode, 'COM', expand(":p"), "", b:atp_LocalXpdfServer)
+	    call atplib#compiler#Compiler(0,0,a:runs,debug_mode, 'COM', expand(":p"), "", b:atp_LocalXpdfServer)
 	endif
     endif
 endfunction
@@ -1113,8 +1125,8 @@ function! atplib#compiler#Compiler(bibtex, start, runs, verbose, command, filena
 	    " 	Reload on Error:
 	    " 	for xpdf it copies the out file but does not reload the xpdf
 	    " 	server for other viewers it simply doesn't copy the out file.
-	    if b:atp_ReloadOnError || a:bang == "!"
-		if a:bang == "!"
+	    if b:atp_ReloadOnError || bang == "!"
+		if bang == "!"
 		    let command="( ".texcomp." ; ".catchstatus_cmd." ".g:atp_cpcmd." ".cpoptions." ".shellescape(tmpaux)." ".shellescape(b:atp_OutDir)." ; ".cpoutfile." ".Reload_Viewer 
 		else
 		    let command="( (".texcomp." && ".g:atp_cpcmd." ".cpoptions." ".shellescape(tmpaux)." ".shellescape(b:atp_OutDir)." ) ; ".catchstatus_cmd." ".cpoutfile." ".Reload_Viewer 
@@ -1215,13 +1227,20 @@ endfunction
 "{{{ aptlib#compiler#ThreadedCompiler
 function! atplib#compiler#ThreadedCompiler(bibtex, start, runs, verbose, command, filename, bang)
 
+
     " Write file:
     if g:atp_debugPythonCompiler
 	call atplib#Log("ThreadedCompiler.log", "", "init")
 	call atplib#Log("ThreadedCompiler.log", "PRE WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
     endif
 
-    call atplib#write(a:command, "silent")
+    let bang = ""   " this is the old bang (used furthere in the code: when
+		    " equal to '!' the function wasn't not makeing a copy of aux file
+    if a:bang == "!"
+	call atplib#WriteProject('update')
+    else
+	call atplib#write(a:command, "silent")
+    endif
 
     if g:atp_debugPythonCompiler
 	call atplib#Log("ThreadedCompiler.log", "POST WRITING b:atp_changedtick=".b:atp_changedtick." b:changedtick=".b:changedtick)
@@ -2005,7 +2024,7 @@ function! atplib#compiler#auTeX(...)
 " 			call atplib#compiler#ThreadedCompiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
 " 		    endif
 		else
-		    call atplib#compiler#LocalCompiler("n")
+		    call atplib#compiler#LocalCompiler("n", 1)
 		endif
 	    else
 		call atplib#compiler#Compiler(0, 0, b:atp_auruns, mode, "AU", atp_MainFile, "")
@@ -2072,10 +2091,6 @@ endfunction
 " 		  (g:atp_DefaultDebugMode).
 function! atplib#compiler#TeX(runs, bang, ...)
 
-"     if a:bang == "!"
-" 	call atplib#compiler#LocalCompiler("n")
-" 	return
-"     endif
     let atp_MainFile	= atplib#FullPath(b:atp_MainFile)
 
     if !exists("t:atp_DebugMode")
@@ -2103,7 +2118,6 @@ function! atplib#compiler#TeX(runs, bang, ...)
 	let mode = t:atp_DebugMode
     endif
     let mode = auto . mode
-    let g:mode_0 = mode
 
     for cmd in keys(g:CompilerMsg_Dict) 
 	if b:atp_TexCompiler =~ '^\s*' . cmd . '\s*$'
@@ -2126,18 +2140,11 @@ function! atplib#compiler#TeX(runs, bang, ...)
 	endif
     endif
     if g:atp_Compiler == 'python'
-"         if g:atp_devversion == 0
-"             call atplib#compiler#PythonCompiler(0,0, a:runs, mode, "COM", atp_MainFile, "")
-            call atplib#compiler#PythonCompiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
-"         else
-"             call atplib#compiler#ThreadedCompiler(0,0, a:runs, mode, "COM", atp_MainFile, "")
-"             call atplib#compiler#ThreadedCompiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
-"         endif
+	call atplib#compiler#PythonCompiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
     else
 	call atplib#compiler#Compiler(0,0, a:runs, mode, "COM", atp_MainFile, a:bang)
     endif
 endfunction
-" command! -buffer -count=1	VTEX		:call atplib#compiler#TeX(<count>, 'verbose') 
 "}}}
 "{{{ atplib#compiler#DebugComp()
 function! atplib#compiler#DebugComp(A,L,P)
@@ -2264,7 +2271,6 @@ function! atplib#compiler#SetErrorFormat(cgetfile,...)
     let carg_raw = ( a:0 >= 1 ? a:1 : g:atp_DefaultErrorFormat )
     let carg_lists = split(carg_raw, '\ze[+-]')
 
-    let g:carg_lists = carg_lists
     for carg_r in carg_lists
 	let carg_list= split(carg_r, '\zs')
 	if carg_list[0] =~ '^[+-]$'
@@ -2534,8 +2540,26 @@ endfunction
 " word 'whole') + two other flags: all (include all errors) and ALL (include
 " all errors and don't ignore any line - this overrides the variables
 " g:atp_ignore_unmatched and g:atp_show_all_lines.
-function! atplib#compiler#ShowErrors(...)
+function! atplib#compiler#ShowErrors(bang,...)
     " It is not atplib#compiler# because it is run from atplib#callback#CallBack()
+
+    let local_errorfile = ( a:0 >= 1 ? a:1 : 0 )
+    let error_format = b:atp_ErrorFormat " remember the old error format to set it back, unless bang is present.
+    let l:arg = ( a:0 >= 2 ? a:2 : b:atp_ErrorFormat )
+    let show_message = ( a:0 >= 3 ? a:3 : 1 )
+
+    if local_errorfile
+	if !exists("s:errorfile")
+	    let s:errorfile = &l:errorfile
+	endif
+	let &l:errorfile = expand("%:p:r")."._log"
+    else
+	if exists("s:errorfile")
+	    let &l:errorfile = s:errorfile
+	    unlet s:errorfile
+	endif
+    endif
+
 
     let errorfile	= &l:errorfile
     " read the log file and merge warning lines 
@@ -2564,7 +2588,6 @@ function! atplib#compiler#ShowErrors(...)
     endif
     
     " set errorformat 
-    let l:arg = ( a:0 >= 1 ? a:1 : b:atp_ErrorFormat )
 
     if l:arg =~# 'o'
 	OpenLog
@@ -2574,7 +2597,6 @@ function! atplib#compiler#ShowErrors(...)
 	return
     endif
     call atplib#compiler#SetErrorFormat(0, l:arg)
-    let show_message = ( a:0 >= 2 ? a:2 : 1 )
 
     " read the log file
     cgetfile
@@ -2588,33 +2610,34 @@ function! atplib#compiler#ShowErrors(...)
     " final stuff
     if len(getqflist()) == 0 
 	if show_message
-	    echo "[ATP:] no errors :)"
+	    echo "[ATP:] no errors :)" . (local_errorfile ? " in ".fnamemodify(&l:errorfile, ":.") : "")
 	endif
-	return ":)"
     else
-	cl
-	return 1
+	clist
+    endif
+    if empty(a:bang) && l:arg != error_format
+	call atplib#compiler#SetErrorFormat(0, error_format)
+	cgetfile
     endif
 endfunction
 "}}}
 if !exists("*ListErrorsFlags")
 function! atplib#compiler#ListErrorsFlags(A,L,P)
-    if g:atp_ParseLog
-	let flags = "e\nw\nr\nc\nf\nfi\nF\nh\np\nP\no\nall\nAll"
-	return flags
-    else
-	let flags = "e\nw\nr\nc\nf\nfi\nF\no\nP\nall\nAll"
+    let flags=['e', 'w', 'r', 'c', 'f', 'F', 'h', 'p', 'P', 'o', 'all', 'All']
+    if !g:atp_ParseLog
+	call remove(flags, index(flags, 'p'))
     endif
+    return join(flags, "\n")
 endfunction
 endif
 if !exists("*ListErrorsFlags_A")
 function! atplib#compiler#ListErrorsFlags_A(A,L,P)
     " This has no o flag.
-    if g:atp_ParseLog
-	return "e\nw\nr\nc\nf\nfi\nF\nh\np\nP\nall\nAll"
-    else
-	return "e\nw\nr\nc\nf\nfi\nF\nP\nall\nAll"
+    let flags=['e', 'w', 'r', 'c', 'f', 'fi', 'F', 'h', 'p', 'P', 'all', 'All']
+    if !g:atp_ParseLog
+	call remove(flags, index(flags, 'p'))
     endif
+    return join(flags, "\n")
 endfunction
 endif
 "}}}

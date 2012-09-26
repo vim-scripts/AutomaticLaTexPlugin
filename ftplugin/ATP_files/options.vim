@@ -2,13 +2,22 @@
 " Description: 	This file contains all the options defined on startup of ATP
 " Note:		This file is a part of Automatic Tex Plugin for Vim.
 " Language:	tex
-" Last Change: Fri Sep 21, 2012 at 08:59:51  +0100
+" Last Change: Tue Sep 25, 2012 at 20:52:55  +0100
 
 " NOTE: you can add your local settings to ~/.atprc.vim or
 " ftplugin/ATP_files/atprc.vim file
 
 " Some options (functions) should be set once:
 let s:did_options 	= exists("s:did_options") ? 1 : 0
+
+if has("python") || has("python3")
+let atp_path = fnamemodify(expand('<sfile>'), ':p:h')
+python << EOF
+import vim
+import sys
+sys.path.insert(0, vim.eval('atp_path'))
+EOF
+endif
 
 "{{{ tab-local variables
 " We need to know bufnumber and bufname in a tabpage.
@@ -277,7 +286,7 @@ let s:optionsDict= {
 		\ "atp_updatetime_normal"	: 2000,
 		\ "atp_MaxProcesses"		: 3,
 		\ "atp_KillYoungest"		: 0,
-		\ "atp_ProjectScript"		: ( fnamemodify(b:atp_MainFile, ":e") != "tex" ? "0" : "1" ),
+		\ "atp_ProjectScript"		: ( fnamemodify(b:atp_MainFile, ":e") != "tex" || stridx(expand('%'), 'fugitive:') == 0 ? "0" : "1" ),
 		\ "atp_Viewer" 			: has("win26") || has("win32") || has("win64") || has("win95") || has("win32unix") ? "AcroRd32.exe" : ( has("mac") || has("macunix") ? "open" : "okular" ), 
 		\ "atp_TexFlavor" 		: &l:filetype, 
 		\ "atp_XpdfServer" 		: fnamemodify(b:atp_MainFile,":t:r"), 
@@ -304,7 +313,9 @@ let s:optionsDict= {
 		\ "atp_MakeidxReturnCode"	: 0,
 		\ "atp_BibtexOutput"		: "",
 		\ "atp_MakeidxOutput"		: "",
-		\ "atp_DocumentClass"		: atplib#search#DocumentClass(b:atp_MainFile)}
+		\ "atp_DocumentClass"		: atplib#search#DocumentClass(b:atp_MainFile),
+		\ "atp_statusCurSection"	: 1,
+		\ }
 
 " Note: the above atp_OutDir is not used! the function s:SetOutDir() is used, it is just to
 " remember what is the default used by s:SetOutDir().
@@ -811,7 +822,7 @@ if !exists("g:atp_CommentLeader")
     let g:atp_CommentLeader="% "
 endif
 if !exists("g:atp_MapCommentLines")
-    let g:atp_MapCommentLines = 1
+    let g:atp_MapCommentLines = empty(globpath(&rtp, 'plugin/EnhancedCommentify.vim').globpath(&rtp,'NERD_commenter.vim').globpath(&rtp, 'commenter.vim'))
 endif
 if !exists("g:atp_XpdfSleepTime")
     let g:atp_XpdfSleepTime = "0"
@@ -1263,6 +1274,12 @@ if !exists("g:atp_ProgressBarFile")
 endif
 if !exists("g:atp_iskeyword")
     let g:atp_iskeyword = '65-90,97-122,\'
+endif
+if !exists("g:atp_HighlightMatchingPair")
+    let g:atp_HighlightMatchingPair = 1
+endif
+if !exists("g:atp_SelectInlineMath_withSpace")
+    let g:atp_SelectInlineMath_withSpace = 0
 endif
 " }}}
 
@@ -2306,14 +2323,16 @@ endif
 
     if (exists("g:atp_StatusLine") && g:atp_StatusLine == '1') || !exists("g:atp_StatusLine")
 	" Note: ctoc doesn't work in include files (and it is slow there).
-	if exists("b:TypeDict")
-	    let g:atp_ctoc = !( len(filter(copy(b:TypeDict), 'v:val == "input"')) )
-	else
-	    let g:atp_ctoc = atplib#FullPath(b:atp_MainFile) != expand("%:p")
+	if b:atp_statusCurSection 
+	    if exists("b:TypeDict")
+		let b:atp_statusCurSection = !( len(filter(copy(b:TypeDict), 'v:val == "input"')) )
+	    else
+		let b:atp_statusCurSection = atplib#FullPath(b:atp_MainFile) != expand("%:p")
+	    endif
 	endif
 	augroup ATP_Status
 	    au!
-	    au BufEnter,BufWinEnter,TabEnter *.tex 	call ATPStatus(0,g:atp_ctoc)
+	    au BufEnter,BufWinEnter,TabEnter *.tex 	:call ATPStatus(0,b:atp_statusCurSection)
 	augroup END
     endif
 
@@ -2781,15 +2800,6 @@ endfunction "}}}
 
 " VIM PATH OPTION: 
 exe "setlocal path+=".substitute(g:texmf."/tex,".join(filter(split(globpath(b:atp_ProjectDir, '**'), "\n"), "isdirectory(expand(v:val))"), ","), ' ', '\\\\\\\ ', 'g')
-
-if has("python") || has("python3")
-let atp_path = fnamemodify(expand('<sfile>'), ':p:h')
-python << EOF
-import vim
-import sys
-sys.path.insert(0, vim.eval('atp_path'))
-EOF
-endif
 
 " Some Commands:
 " {{{

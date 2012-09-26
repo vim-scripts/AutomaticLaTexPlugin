@@ -262,8 +262,7 @@ function! atplib#compiler#SyncTex(bang, mouse, main_file, xpdf_server, ...)
     elseif b:atp_Viewer == "okular"
 	let [ page_nr, y_coord, x_coord ] = atplib#compiler#GetSyncData(line, col, a:main_file)
 	" This will not work in project files. (so where it is mostly needed.) 
-	let sync_cmd = "okular --unique ".shellescape(expand("%:p:r")).".pdf\\#src:".line.shellescape(expand("%:p"))." &"
-	let sync_args = " ".shellescape(expand("%:p:r")).".pdf\\#src:".line.shellescape(expand("%:p"))." "
+	let sync_cmd = "okular --unique ".shellescape(fnamemodify(main_file, ":p:r").".pdf")."\\#src:".line.shellescape(expand("%:p"))." &"
 	if !dryrun
 	    call system(sync_cmd)
 	    call atplib#compiler#SyncShow(page_nr, y_coord)
@@ -294,7 +293,6 @@ function! atplib#compiler#SyncTex(bang, mouse, main_file, xpdf_server, ...)
 		\ " --remote-wait +%l %f' -sourceposition ". 
 		\ line.":".col.shellescape(fnameescape(fnamemodify(expand("%"),":p"))). 
 		\ " ".fnameescape(output_file)." &"
-	let sync_args = " -sourceposition ".line.":".col.shellescape(fnameescape(fnamemodify(expand("%"),":p")))." "
 	if !dryrun
 	    call system(sync_cmd)
 	endif
@@ -1125,8 +1123,8 @@ function! atplib#compiler#Compiler(bibtex, start, runs, verbose, command, filena
 	    " 	Reload on Error:
 	    " 	for xpdf it copies the out file but does not reload the xpdf
 	    " 	server for other viewers it simply doesn't copy the out file.
-	    if b:atp_ReloadOnError || bang == "!"
-		if bang == "!"
+	    if b:atp_ReloadOnError || a:bang == "!"
+		if a:bang == "!"
 		    let command="( ".texcomp." ; ".catchstatus_cmd." ".g:atp_cpcmd." ".cpoptions." ".shellescape(tmpaux)." ".shellescape(b:atp_OutDir)." ; ".cpoutfile." ".Reload_Viewer 
 		else
 		    let command="( (".texcomp." && ".g:atp_cpcmd." ".cpoptions." ".shellescape(tmpaux)." ".shellescape(b:atp_OutDir)." ) ; ".catchstatus_cmd." ".cpoutfile." ".Reload_Viewer 

@@ -232,7 +232,7 @@ function! s:SelectInlineMath(seltype)
 	    elseif zone == 'X'
 		normal! l
 	    endif
-	    if getline(".")[col(".")-1] == ' '
+	    if getline(".")[col(".")-1] == ' ' && !g:atp_SelectInlineMath_withSpace
 		normal! w
 	    endif
 	endif
@@ -246,7 +246,7 @@ function! s:SelectInlineMath(seltype)
 	call s:SearchAndSkipComments(Zone{zone}_pat_C, 'W')
 
 	if a:seltype == 'inner'
-	    if getline(".")[col(".")-2] == ' '
+	    if getline(".")[col(".")-2] == ' ' && !g:atp_SelectInlineMath_withSpace
 		normal! ge
 	    else
 		if col(".") > 1
@@ -513,6 +513,10 @@ endfunction
 " 	winheight(0)			returns window height
 " 	winsaveview()['topline'] 	returns the top line
 function! <SID>HighlightMatchingPair()
+
+	if !g:atp_HighlightMatchingPair
+	    return
+	endif
 
 	2match none
 

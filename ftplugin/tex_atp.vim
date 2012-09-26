@@ -1,15 +1,16 @@
-" Title:		Vim filetype plugin file
-" Author:		Marcin Szamotulski
-" Web Page:		http://atp-vim.sourceforge.net
-" Mailing List: 	atp-vim-list [AT] lists.sourceforge.net
+" Title: Vim filetype plugin file
+" Author: Marcin Szamotulski
+" Web Page: http://atp-vim.sourceforge.net
+" Mailing List:	atp-vim-list [AT] lists.sourceforge.net
 " Do NOT DELETE the line just below, it is used by :UpdateATP (':help atp-:UpdateATP')
-" Time Stamp: 21-09-12_12-38
+" Time Stamp: 26-09-12_19-33
 " (but you can edit, if there is a reason for doing this. The format is dd-mm-yy_HH-MM)
-" Language:	    tex
-" Last Change: Tue Jul 31, 2012 at 08:47:16  +0100
+" Language: tex
+" Last Change: Tue Sep 25, 2012 at 21:04:09  +0100
 " GetLatestVimScripts: 2945 62 :AutoInstall: tex_atp.vim
 " GetLatestVimScripts: 884 1 :AutoInstall: AutoAlign.vim
-" Copyright Statement: 
+" Copyright: © Marcin Szamotulski, 2012
+" License: 
 "     This file is a part of Automatic Tex Plugin for Vim.
 "
 "     Automatic Tex Plugin for Vim is free software: you can redistribute it
@@ -30,10 +31,21 @@
 " Do not source ATP if g:no_atp is set
 if exists("g:no_atp") && g:no_atp || exists("b:did_ftplugin")
     finish
+elseif  stridx(expand("%"), 'fugitive:') == 0
+    " Minimal settings for Gdiff (fugitive plugin):
+    " [these are setting needed for autocommands that are runnign with *.tex]
+    let b:atp_ProjectScript = 0
+    let b:atp_XpdfServer = 'fugitive'
+    let b:atp_statusCurSection = 0
+    let b:TypeDict = {}
+    let b:ListOfFiles = []
+    let b:LevelDict = {}
+    " Note: ATP could run, but in this way Gdiff is faster.
+    finish
 endif
 
 let b:did_ftplugin	= 1
-let g:loaded_AutomaticLatexPlugin = "12"
+let g:loaded_AutomaticLatexPlugin = "12.1"
 
 if !exists("g:atp_reload_functions")
 	let g:atp_reload_functions = 0
@@ -49,6 +61,17 @@ let saved_cpo = &cpo
 if &cpo =~ '<'
     setl cpo-=<
 endif
+
+" Set Python path.
+if has("python") || has("python3")
+let atp_path = fnamemodify(expand('<sfile>'), ':p:s?tex_atp.vim$?ATP_files?')
+python << EOF
+import vim
+import sys
+sys.path.insert(0, vim.eval('atp_path'))
+EOF
+endif
+
 
 	" Source Project Script
 	runtime ftplugin/ATP_files/project.vim

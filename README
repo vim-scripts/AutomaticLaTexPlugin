@@ -4,6 +4,9 @@ This is a complete plugin with lots of tools to make editing of TeX/LaTeX file m
         http://atp-vim.sourceforge.net/features.shtml
 After looking there you can read the complete documentation in vim (:help atp) 
 
+Want to help to develop: fork me at GitHub:
+https://github.com/coot/atp_vim
+
 VIDEO CASTS:
         http://atp-vim.sourceforge.net/videos.shtml
 
@@ -38,4 +41,3 @@ LATEX BOX:
 BUGS 
     Send an email to the mailing list: 
         https://lists.sourceforge.net/lists/listinfo/atp-vim-list
-
